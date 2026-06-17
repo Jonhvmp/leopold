@@ -1,0 +1,23 @@
+{
+  "//": "Leopold hook wiring. install.sh merges this into your ~/.claude/settings.json,",
+  "//2": "substituting the absolute path to the installed hooks. Both hooks are no-ops",
+  "//3": "unless a Leopold run is active (.leopold/state.json with active=true), so they",
+  "//4": "are safe to leave installed in every session.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/stop-continuity.sh" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/guard-irreversible.sh" }
+        ]
+      }
+    ]
+  }
+}

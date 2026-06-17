@@ -1,0 +1,16 @@
+# Leopold runtime state (per-project, created by /leopold-run)
+.leopold/
+
+# Local Claude Code settings
+.claude/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Node (for the future SDK driver)
+node_modules/
+dist/
+*.log
