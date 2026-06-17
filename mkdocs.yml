@@ -1,0 +1,116 @@
+site_name: Leopold
+site_description: An autonomous orchestration harness for Claude Code. Brief it like a teammate; it conducts Claude Code in your seat.
+site_url: https://jonhvmp.github.io/leopold/
+site_author: Jonhvmp
+repo_url: https://github.com/Jonhvmp/leopold
+repo_name: Jonhvmp/leopold
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2026 Jonhvmp — MIT
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/music-clef-treble
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.caret
+  - pymdownx.tilde
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Jonhvmp/leopold
+  generator: false
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Install: getting-started/install.md
+      - Quickstart: getting-started/quickstart.md
+      - Your First Run: getting-started/first-run.md
+  - Concepts:
+      - What Is a Harness: concepts/harness.md
+      - The Two Phases: concepts/two-phases.md
+      - Decision Protocol: decision-protocol.md
+      - Guardrails: guardrails.md
+      - gstack Playbook: gstack-playbook.md
+  - Architecture:
+      - Overview: architecture.md
+      - In-Session Engine: architecture/in-session.md
+      - SDK Driver: architecture/driver.md
+      - Conductor & Worker Protocol: architecture/protocol.md
+  - Reference:
+      - Skills: reference/skills.md
+      - Hooks: reference/hooks.md
+      - Brief Artifacts: reference/artifacts.md
+      - Driver Config: reference/driver-config.md
+  - Comparisons:
+      - Leopold vs Ralph: comparisons/ralph.md
+  - Roadmap: roadmap.md
+  - Contributing: contributing.md

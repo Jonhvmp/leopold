@@ -14,6 +14,18 @@ The hook is the real lock. The protocol is the steering.
 
 ---
 
+```mermaid
+flowchart TD
+    Cmd["tool call during an active run"] --> Type{kind?}
+    Type -- "read / edit / build / test / stage" --> Allow([allow])
+    Type -- "commit / push / publish" --> Token{opt-in token?}
+    Token -- yes --> Allow
+    Token -- no --> Deny["deny · log guard_block"]
+    Type -- "rm -rf / force-push / reset --hard" --> Deny
+    classDef deny fill:#e63946,stroke:#9d0208,color:#fff;
+    class Deny deny;
+```
+
 ## Action classes
 
 ### Autonomous (decide and do)

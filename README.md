@@ -8,7 +8,7 @@ It is built to keep going: think, research, wait on long tasks, pick the next it
 
 > The name is a tip of the hat to Bugs Bunny. In *Long-Haired Hare* (1949), Bugs takes the podium disguised as the great conductor **Leopold** and runs the whole orchestra with a wave of the baton. That is the job: you are the composer, Leopold is the conductor, Claude Code is the orchestra.
 
-> Status: **alpha**. The in-session engine (skills + hooks) works today. The external SDK driver is on the roadmap. See [Roadmap](#roadmap).
+> Status: **alpha**. The in-session engine (skills + hooks) works today. The external SDK driver (`packages/driver/`) is built and typechecks against the Agent SDK (alpha). See [Roadmap](#roadmap).
 
 ---
 
@@ -117,7 +117,7 @@ Leopold never weakens Claude Code's own permission system. It adds a second lock
 
 ## Architecture at a glance
 
-Leopold maps onto the standard harness layers. The v0.1 in-session engine implements the orchestration, memory, guardrails, and observability layers entirely through Claude Code's own skills and hooks. The roadmap SDK driver adds the API and sandbox layers.
+Leopold maps onto the standard harness layers. The v0.1 in-session engine implements the orchestration, memory, guardrails, and observability layers entirely through Claude Code's own skills and hooks. The SDK driver (`packages/driver/`) adds the API and sandbox layers.
 
 | Harness layer | v0.1 (in-session) | Roadmap (SDK driver) |
 |---|---|---|
@@ -136,10 +136,23 @@ Full design in [`docs/architecture.md`](docs/architecture.md).
 
 - [x] In-session engine: skills + Stop/PreToolUse hooks (the v0.1 you are reading)
 - [ ] `leopold doctor` — verify install, hooks, and gstack wiring
-- [ ] SDK driver: an external orchestrator on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk) that spawns Claude Code as a worker, detects "asking" / "waiting" states, and auto-responds from a founder persona built off the charter
+- [x] SDK driver (v0.1 built — see `packages/driver/`): an external orchestrator on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk) that spawns Claude Code as a worker, detects "asking" / "waiting" states, and auto-responds from a founder persona built off the charter
 - [ ] gstack playbook router as a first-class config
 - [ ] Multi-worker fan-out for large missions
 - [ ] Web dashboard for the decision log and live run state
+
+---
+
+## Documentation
+
+Full docs (Material + Mermaid): **https://jonhvmp.github.io/leopold/**
+
+- [Quickstart](https://jonhvmp.github.io/leopold/getting-started/quickstart/)
+- [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/)
+- [Architecture](https://jonhvmp.github.io/leopold/architecture/)
+- [Leopold vs Ralph](https://jonhvmp.github.io/leopold/comparisons/ralph/)
+
+Run the docs locally: `pip install -r requirements-docs.txt && mkdocs serve`
 
 ---
 

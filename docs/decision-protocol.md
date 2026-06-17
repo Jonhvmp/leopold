@@ -10,6 +10,17 @@ never decides something irreversible that the charter does not clearly cover.
 
 ---
 
+```mermaid
+flowchart TD
+    Fork["a fork appears"] --> Rev{reversible?}
+    Rev -- yes --> Decide["decide · log · continue"]
+    Rev -- no --> Clear{charter clear?}
+    Clear -- yes --> Decide
+    Clear -- no --> Stop["STOP · ask the human"]
+    classDef stop fill:#e63946,stroke:#9d0208,color:#fff;
+    class Stop stop;
+```
+
 ## The core test
 
 On any fork, classify it on two axes:

@@ -14,3 +14,7 @@
 node_modules/
 dist/
 *.log
+
+# MkDocs build output
+site/
+.cache/

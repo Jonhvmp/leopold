@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- SDK driver (`packages/driver/`): persistent conductor + fresh Claude Code workers per item, real conductor/worker message exchange via a status protocol, charter-grounded decisions, git-locked `canUseTool` guard, and completion/escalation notifications. Uses your Claude Code auth (no separate API key).
 - v0.1 in-session engine: `/leopold-brief`, `/leopold-run`, `/leopold-status`, `/leopold-stop` skills.
 - Stop hook (`stop-continuity.sh`) for autonomous continuity.
 - PreToolUse hook (`guard-irreversible.sh`) that keeps git commit/push and destructive commands locked while autonomous.

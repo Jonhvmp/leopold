@@ -11,6 +11,20 @@ the gstack workflows.
 
 ---
 
+```mermaid
+flowchart LR
+    Item["plan item"] --> Kind{situation}
+    Kind -- "fuzzy build" --> Spec["/spec"]
+    Kind -- "after a change" --> Review["/code-review"]
+    Kind -- "behavior change" --> Verify["/verify"]
+    Kind -- "UI change" --> QA["/qa"]
+    Kind -- "something broke" --> Inv["/investigate"]
+    Kind -- "unknown API" --> Docs["/find-docs"]
+    Kind -- "ready to ship" --> Ship["/ship · GATED"]
+    classDef gated fill:#e63946,stroke:#9d0208,color:#fff;
+    class Ship gated;
+```
+
 ## How Leopold uses it
 
 During a turn, after picking a plan item, Leopold matches the item's *situation*
