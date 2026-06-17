@@ -15,9 +15,13 @@ unattended, background runs.
 ## Install the in-session engine
 
 ```bash
-git clone https://github.com/Jonhvmp/leopold.git
-cd leopold
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/Jonhvmp/leopold/main/install.sh | bash
+```
+
+Or clone it (more transparent):
+
+```bash
+git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
 ```
 
 What the installer does:

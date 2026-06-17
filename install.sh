@@ -6,7 +6,21 @@
 # unless a Leopold run is active, so they are safe to leave installed.
 set -euo pipefail
 
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve the source tree. When run from a clone, that is the script's dir.
+# When piped (curl ... | bash), there is no local tree, so we fetch one first.
+_self="${BASH_SOURCE[0]:-}"
+if [ -n "$_self" ] && [ -d "$(dirname "$_self")/skills" ]; then
+  SRC="$(cd "$(dirname "$_self")" && pwd)"
+else
+  SRC="${LEOPOLD_SRC:-$HOME/.local/share/leopold}"
+  echo "-> fetching Leopold into $SRC"
+  if [ -d "$SRC/.git" ]; then
+    ( cd "$SRC" && git pull --ff-only -q ) || true
+  else
+    mkdir -p "$(dirname "$SRC")"
+    git clone --depth 1 https://github.com/Jonhvmp/leopold.git "$SRC"
+  fi
+fi
 CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"
 SKILLS="$CLAUDE/skills"
 LEO_HOME="$CLAUDE/leopold"

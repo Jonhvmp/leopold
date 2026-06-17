@@ -101,10 +101,16 @@ Where it shines is **planning**: with gstack present, Leopold can conduct `/offi
 
 ## Quickstart
 
+Install with one command:
+
 ```bash
-git clone https://github.com/Jonhvmp/leopold.git
-cd leopold
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/Jonhvmp/leopold/main/install.sh | bash
+```
+
+Or clone it (more transparent):
+
+```bash
+git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
 ```
 
 `install.sh` copies the skills into `~/.claude/skills/`, the hooks into `~/.claude/leopold/hooks/`, and prints the `settings.json` snippet to merge (or merges it for you).
