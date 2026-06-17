@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/leopold.gif" alt="Leopold - brief it like a teammate, it conducts Claude Code" width="720" />
+</p>
+
 # Leopold
 
 **Brief it like a teammate. It conducts Claude Code in your seat.**
@@ -159,3 +163,9 @@ Run the docs locally: `pip install -r requirements-docs.txt && mkdocs serve`
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Jonhvmp/leopold&type=Date)](https://star-history.com/#Jonhvmp/leopold&Date)
