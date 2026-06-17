@@ -6,19 +6,26 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # ---- validation (runs on every push + PR) --------------------------------
   hooks:
+    name: hooks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Syntax-check hooks + installer
-        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh
+      - name: Syntax-check hooks, installer, and scripts
+        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh scripts/*.sh
       - name: Hook behavior tests
         run: bash scripts/test-hooks.sh
 
   driver:
+    name: driver
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,16 +35,92 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install
+          cache: npm
+          cache-dependency-path: packages/driver/package-lock.json
+      - run: npm ci
       - run: npm run typecheck
       - run: npm run build
 
   docs:
+    name: docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
       - run: pip install -r requirements-docs.txt
       - run: mkdocs build --strict
+
+  # ---- delivery (only on main, after validation passes) --------------------
+  docs-deploy:
+    name: docs-deploy
+    needs: [hooks, driver, docs]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-docs.txt
+      - run: mkdocs gh-deploy --force
+
+  release:
+    name: release
+    needs: [hooks, driver, docs]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read version
+        id: ver
+        run: echo "v=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
+      - name: Tag already exists?
+        id: tag
+        run: |
+          if git rev-parse "v${{ steps.ver.outputs.v }}" >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create tag + GitHub Release
+        if: steps.tag.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="v${{ steps.ver.outputs.v }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$V"
+          git push origin "$V"
+          notes="$(awk -v ver="${{ steps.ver.outputs.v }}" 'BEGIN{f=0} $0 ~ "## \\["ver"\\]"{f=1;next} /^## \[/{if(f)exit} f{print}' CHANGELOG.md)"
+          [ -z "$notes" ] && notes="Leopold $V"
+          gh release create "$V" --title "Leopold $V" --notes "$notes"
+      - name: Setup Node for npm
+        if: steps.tag.outputs.new == 'true' && env.NPM_TOKEN != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish leopold-driver to npm (idempotent)
+        if: steps.tag.outputs.new == 'true' && env.NPM_TOKEN != ''
+        working-directory: packages/driver
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          V="$(node -p "require('./package.json').version")"
+          if npm view "leopold-driver@$V" version >/dev/null 2>&1; then
+            echo "leopold-driver@$V already on npm — skipping publish."
+          else
+            npm ci
+            npm publish --access public
+          fi

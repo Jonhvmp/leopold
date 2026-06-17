@@ -22,7 +22,7 @@ flowchart LR
 
 ## Next
 
-- [ ] `leopold doctor` — verify install, hooks, and gstack wiring
+- [x] `leopold doctor` — verify install, hooks, and gstack wiring
 - [ ] Worker watchdog for turns that end without a status block
 - [ ] gstack playbook router as first-class config
 - [ ] Multi-worker fan-out for independent plan items (parallel waves)
