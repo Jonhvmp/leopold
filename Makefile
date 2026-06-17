@@ -25,6 +25,10 @@ help: ## Show this help
 install: ## Install skills + hooks into ~/.claude (runs ./install.sh)
 	@./install.sh
 
+.PHONY: update
+update: ## Update Leopold to the latest (pull + reinstall)
+	@bash scripts/leopold-update.sh
+
 .PHONY: gstack-install
 gstack-install: ## Install gstack (optional, MIT by Garry Tan) — the toolchain Leopold conducts
 	@if [ -d "$(GSTACK_DIR)" ]; then \

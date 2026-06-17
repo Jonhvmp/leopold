@@ -49,7 +49,9 @@ echo "-> installing hooks, templates, docs"
 cp -R "$SRC/hooks"     "$LEO_HOME/"
 cp -R "$SRC/templates" "$LEO_HOME/"
 cp -R "$SRC/docs"      "$LEO_HOME/" 2>/dev/null || true
+cp -R "$SRC/scripts"   "$LEO_HOME/" 2>/dev/null || true
 chmod +x "$LEO_HOME"/hooks/*.sh
+chmod +x "$LEO_HOME"/scripts/*.sh 2>/dev/null || true
 
 STOP_HOOK="$LEO_HOME/hooks/stop-continuity.sh"
 GUARD_HOOK="$LEO_HOME/hooks/guard-irreversible.sh"

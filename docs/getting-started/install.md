@@ -84,3 +84,11 @@ npm i -g leopold-driver
 # then, in a project that has a .leopold/ brief:
 leopold-driver
 ```
+
+## Updating
+
+- **Engine (curl / `install.sh`):** `make update`, or `/leopold-update` from inside
+  Claude Code. Opt into automatic updates with `touch ~/.leopold/auto-update` — the
+  brief then checks and updates on its own (notify-only otherwise).
+- **Plugin:** `claude plugin update leopold`.
+- **npm driver:** `npm i -g leopold-driver@latest`.

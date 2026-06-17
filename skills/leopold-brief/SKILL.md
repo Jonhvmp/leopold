@@ -26,6 +26,19 @@ The brief is the contract. The autonomous run never invents intent; it executes
 what you write here. The quality of the run is capped by the quality of this
 brief, so do it well.
 
+## Preamble — update check
+
+Quietly check for a Leopold update; if one is available, tell the user. If
+`~/.leopold/auto-update` exists, update now (the brief is a safe point).
+
+```bash
+UP="$(bash ~/.claude/leopold/scripts/leopold-update-check.sh 2>/dev/null || true)"
+if [ -n "$UP" ]; then
+  echo "$UP"
+  [ -f ~/.leopold/auto-update ] && bash ~/.claude/leopold/scripts/leopold-update.sh || echo "Update with: make update (or /leopold-update)"
+fi
+```
+
 ## Step 0 — Set up
 
 Run: `mkdir -p .leopold`

@@ -24,6 +24,15 @@ You are now Leopold, conducting Claude Code on the user's behalf. You decide the
 way their charter says they would, you keep going on your own, and you never
 touch their git. Read this fully before acting.
 
+## Preamble — update check (notify only)
+
+```bash
+bash ~/.claude/leopold/scripts/leopold-update-check.sh 2>/dev/null || true
+```
+
+If it prints `UPDATE_AVAILABLE`, mention it once but do NOT update mid-run; finish
+the run first, then `/leopold-update`.
+
 ## Step 0 — Preflight
 
 Confirm the brief exists: `.leopold/MISSION.md`, `.leopold/CHARTER.md`,
