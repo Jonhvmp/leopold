@@ -8,6 +8,7 @@
 DRIVER := packages/driver
 NPM    ?= npm
 MKDOCS ?= python3 -m mkdocs
+GSTACK_DIR ?= $(HOME)/.claude/skills/gstack
 
 .DEFAULT_GOAL := help
 
@@ -24,14 +25,26 @@ help: ## Show this help
 install: ## Install skills + hooks into ~/.claude (runs ./install.sh)
 	@./install.sh
 
+.PHONY: gstack-install
+gstack-install: ## Install gstack (optional, MIT by Garry Tan) — the toolchain Leopold conducts
+	@if [ -d "$(GSTACK_DIR)" ]; then \
+		echo "gstack already installed at $(GSTACK_DIR)"; \
+	else \
+		echo "Installing gstack (https://github.com/garrytan/gstack) — needs Bun v1.0+..."; \
+		git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git "$(GSTACK_DIR)" && cd "$(GSTACK_DIR)" && ./setup; \
+	fi
+
 # ---- Hooks ------------------------------------------------------------------
 
-.PHONY: hooks-check
+.PHONY: hooks-check hooks-test
 hooks-check: ## Syntax-check the hooks and the installer
 	@bash -n hooks/stop-continuity.sh
 	@bash -n hooks/guard-irreversible.sh
 	@bash -n install.sh
 	@echo "hooks + install.sh: syntax OK"
+
+hooks-test: ## Run the hook behavior tests
+	@bash scripts/test-hooks.sh
 
 # ---- Driver -----------------------------------------------------------------
 
@@ -69,7 +82,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check driver-check docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test driver-check docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

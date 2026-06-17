@@ -12,6 +12,10 @@ SKILLS="$CLAUDE/skills"
 LEO_HOME="$CLAUDE/leopold"
 SETTINGS="$CLAUDE/settings.json"
 
+# Optional gstack integration: pass --with-gstack to install it non-interactively.
+WITH_GSTACK=0
+for _a in "$@"; do [ "$_a" = "--with-gstack" ] && WITH_GSTACK=1; done
+
 echo "Leopold installer"
 echo "  source:   $SRC"
 echo "  target:   $CLAUDE"
@@ -59,10 +63,33 @@ else
 fi
 
 echo
-if [ -d "$SKILLS/gstack" ] || ls "$SKILLS" 2>/dev/null | grep -q '^spec$'; then
-  echo "gstack detected: Leopold will conduct the full skill toolchain."
+GSTACK_DIR="$SKILLS/gstack"
+gstack_present() { [ -d "$GSTACK_DIR" ] || ls "$SKILLS" 2>/dev/null | grep -q '^spec$'; }
+install_gstack() {
+  echo "-> installing gstack (MIT, by Garry Tan: https://github.com/garrytan/gstack)"
+  command -v bun >/dev/null 2>&1 || echo "   note: gstack needs Bun v1.0+ (https://bun.sh); its setup will guide you."
+  if git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git "$GSTACK_DIR" && ( cd "$GSTACK_DIR" && ./setup ); then
+    echo "   gstack installed."
+  else
+    echo "   gstack install did not finish; retry with: make gstack-install"
+  fi
+}
+
+if gstack_present; then
+  echo "gstack detected: Leopold will conduct its planning toolchain (/spec, /autoplan, /plan-*-review, ...)."
+elif [ "$WITH_GSTACK" = "1" ]; then
+  install_gstack
 else
-  echo "gstack not detected: Leopold will orchestrate plain Claude Code (still works)."
+  echo "gstack not detected. Leopold works on plain Claude Code, but it shines when it can conduct"
+  echo "gstack's planning toolchain (/autoplan, /plan-eng-review, /spec). gstack is a separate MIT"
+  echo "project by Garry Tan: https://github.com/garrytan/gstack"
+  if [ -t 0 ]; then
+    printf "Install gstack now? (clones to %s, runs its setup, needs Bun) [y/N] " "$GSTACK_DIR"
+    read -r _ans || _ans=""
+    case "$_ans" in [yY]*) install_gstack ;; *) echo "Skipped. Install later: make gstack-install" ;; esac
+  else
+    echo "Enable it later with: make gstack-install   (or re-run ./install.sh --with-gstack)"
+  fi
 fi
 
 echo

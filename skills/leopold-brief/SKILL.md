@@ -72,6 +72,21 @@ Decompose the mission into an ordered, checkbox backlog in `PLAN.md`. Each item
 should be independently completable and verifiable. Order by dependency, then by
 value. Keep items small enough that one is a reasonable unit of autonomous work.
 
+## Step 4b — Harden the plan with gstack (optional)
+
+If gstack is installed (check for `~/.claude/skills/gstack/`, or whether the
+`/spec` skill exists), offer to sharpen the plan before writing it. gstack's
+planning skills are excellent here:
+
+- Heavy or architectural plan -> offer `/autoplan` or `/plan-eng-review`.
+- Product or scope decision -> offer `/plan-ceo-review`.
+- A fuzzy item that needs an executable spec -> offer `/spec`.
+
+Run them in spawned mode (prefix any gstack bash with `OPENCLAW_SESSION=1`) so
+they auto-decide and report instead of prompting, then fold the result back into
+`PLAN.md`. If gstack is not installed, skip this step silently; the plan you
+already built is enough. gstack is optional and separate: https://github.com/garrytan/gstack
+
 ## Step 5 — Write the artifacts
 
 Copy the templates from the Leopold install (`~/.claude/leopold/templates/`) and

@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in Leopold did not work as expected.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. /leopold-brief with ...
+        2. /leopold-run
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Which tier
+      options:
+        - In-session engine (skills + hooks)
+        - SDK driver
+        - Docs
+        - Install / Makefile
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Claude Code version, OS, and (for the driver) Node version.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste output, and the relevant lines of `.leopold/events.jsonl` or `DECISIONS.md` if applicable.
+      render: shell
