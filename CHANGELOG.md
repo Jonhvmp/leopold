@@ -4,13 +4,16 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-06-17
+
+Initial public release.
 
 ### Added
-- SDK driver (`packages/driver/`): persistent conductor + fresh Claude Code workers per item, real conductor/worker message exchange via a status protocol, charter-grounded decisions, git-locked `canUseTool` guard, and completion/escalation notifications. Uses your Claude Code auth (no separate API key).
-- v0.1 in-session engine: `/leopold-brief`, `/leopold-run`, `/leopold-status`, `/leopold-stop` skills.
-- Stop hook (`stop-continuity.sh`) for autonomous continuity.
-- PreToolUse hook (`guard-irreversible.sh`) that keeps git commit/push and destructive commands locked while autonomous.
-- Brief artifact templates: MISSION, CHARTER, GUARDRAILS, PLAN, DECISIONS.
-- `install.sh` installer and `settings.template.json` wiring.
-- Architecture, decision-protocol, guardrails, and gstack-playbook docs.
+- In-session engine: `/leopold-brief`, `/leopold-run`, `/leopold-status`, `/leopold-stop`.
+- Stop hook (autonomous continuity) and PreToolUse hook (git lock), with behavior tests.
+- Brief artifacts (MISSION, CHARTER, GUARDRAILS, PLAN, DECISIONS) and the decision protocol.
+- SDK driver (`packages/driver/`, npm `leopold-driver`): persistent conductor + fresh workers per item, conductor/worker status protocol, charter-grounded decisions, git-locked `canUseTool`, notifications. Uses your Claude Code auth (no API key).
+- Optional gstack integration (detect + offer; never bundled) with planning hooks in `/leopold-brief`.
+- Run hygiene: clears `STOP` + git opt-in tokens on stop; `on_finish: keep | archive`; single-run-per-checkout guard with worktree guidance for parallelism.
+- Install paths: one-command `curl | bash`, `install.sh`, `make`, and a Claude Code plugin (`.claude-plugin/`).
+- Docs site (MkDocs Material + Mermaid) and CI.

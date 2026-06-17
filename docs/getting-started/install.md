@@ -62,3 +62,25 @@ conductor, so there is **no separate API key**. See
 
 If Leopold is installed, this reports "No Leopold run in this project." (which is
 the correct answer before you start one).
+
+## Install as a Claude Code plugin (one command, auto-wires hooks)
+
+Once published, the plugin is the most native install — it wires the skills and
+hooks automatically, no `settings.json` merge:
+
+```bash
+claude plugin marketplace add Jonhvmp/leopold
+claude plugin install leopold@leopold
+```
+
+Use the plugin **or** `install.sh`, not both, to avoid double-wired hooks.
+
+## The SDK driver from npm
+
+For the background-driver tier:
+
+```bash
+npm i -g leopold-driver
+# then, in a project that has a .leopold/ brief:
+leopold-driver
+```

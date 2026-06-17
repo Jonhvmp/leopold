@@ -1,0 +1,14 @@
+{
+  "name": "leopold",
+  "description": "Leopold - an autonomous orchestration harness for Claude Code.",
+  "owner": { "name": "Jonhvmp", "url": "https://github.com/Jonhvmp" },
+  "plugins": [
+    {
+      "name": "leopold",
+      "description": "Brief it like a teammate, it conducts Claude Code in your seat. Charter-driven decisions, git locked.",
+      "author": { "name": "Jonhvmp" },
+      "category": "orchestration",
+      "source": "."
+    }
+  ]
+}

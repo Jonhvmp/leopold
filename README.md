@@ -113,6 +113,18 @@ Or clone it (more transparent):
 git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
 ```
 
+As a Claude Code plugin (auto-wires skills + hooks):
+
+```bash
+claude plugin marketplace add Jonhvmp/leopold && claude plugin install leopold@leopold
+```
+
+The SDK driver from npm:
+
+```bash
+npm i -g leopold-driver
+```
+
 `install.sh` copies the skills into `~/.claude/skills/`, the hooks into `~/.claude/leopold/hooks/`, and prints the `settings.json` snippet to merge (or merges it for you).
 
 Then, in any project:

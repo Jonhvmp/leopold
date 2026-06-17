@@ -1,0 +1,8 @@
+{
+  "name": "leopold",
+  "version": "0.1.0",
+  "description": "An autonomous orchestration harness for Claude Code: brief it like a teammate, it conducts Claude Code in your seat, deciding from your charter with git locked.",
+  "author": { "name": "Jonhvmp" },
+  "homepage": "https://github.com/Jonhvmp/leopold",
+  "license": "MIT"
+}

@@ -1,0 +1,20 @@
+{
+  "description": "Leopold hooks: Stop-hook continuity and the PreToolUse git-lock guard. Both are no-ops unless a Leopold run is active in the project.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-continuity.sh\"" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-irreversible.sh\"" }
+        ]
+      }
+    ]
+  }
+}
