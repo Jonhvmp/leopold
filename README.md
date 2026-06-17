@@ -171,7 +171,7 @@ Full design in [`docs/architecture.md`](docs/architecture.md).
 ## Roadmap
 
 - [x] In-session engine: skills + Stop/PreToolUse hooks (the v0.1 you are reading)
-- [ ] `leopold doctor` — verify install, hooks, and gstack wiring
+- [x] `leopold doctor` — verify install, hooks, and gstack wiring (`make doctor` / `/leopold-doctor`)
 - [x] SDK driver (v0.1 built — see `packages/driver/`): an external orchestrator on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk) that spawns Claude Code as a worker, detects "asking" / "waiting" states, and auto-responds from a founder persona built off the charter
 - [ ] gstack playbook router as a first-class config
 - [ ] Multi-worker fan-out for large missions

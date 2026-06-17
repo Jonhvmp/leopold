@@ -40,6 +40,10 @@ gstack-install: ## Install gstack (optional, MIT by Garry Tan) — the toolchain
 
 # ---- Hooks ------------------------------------------------------------------
 
+.PHONY: doctor
+doctor: ## Diagnose the Leopold install (skills, hooks, wiring, gstack)
+	@bash scripts/leopold-doctor.sh
+
 .PHONY: hooks-check hooks-test
 hooks-check: ## Syntax-check the hooks and the installer
 	@bash -n hooks/stop-continuity.sh

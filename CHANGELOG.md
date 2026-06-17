@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-17
+
+### Added
+- `leopold doctor` (`make doctor`, `/leopold-doctor`): diagnoses the install — skills, hooks and their wiring, gstack, the driver toolchain, and update status.
+
+### Changed
+- Auto-release CI: npm publish is now idempotent (skips a version already on npm).
+
 ## [0.1.0] - 2026-06-17
 
 Initial public release.

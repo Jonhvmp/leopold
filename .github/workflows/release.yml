@@ -52,5 +52,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm ci || npm install
-          npm publish --access public
+          V="$(node -p "require('./package.json').version")"
+          if npm view "leopold-driver@$V" version >/dev/null 2>&1; then
+            echo "leopold-driver@$V already on npm — skipping publish."
+          else
+            npm ci || npm install
+            npm publish --access public
+          fi
