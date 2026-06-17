@@ -200,4 +200,10 @@ MIT. See [LICENSE](LICENSE).
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Jonhvmp/leopold&type=Date)](https://star-history.com/#Jonhvmp/leopold&Date)
+<a href="https://www.star-history.com/?type=date&repos=Jonhvmp%2Fleopold">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&legend=top-left" />
+  </picture>
+</a>
