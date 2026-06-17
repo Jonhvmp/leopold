@@ -2,7 +2,7 @@
 // per item, deciding from the charter, with git locked, until the plan is done
 // or a stop condition fires. It notifies the human on completion or escalation.
 
-import { loadBrief, initState, writeState, killSwitch, loadConfig } from "./config.js";
+import { loadBrief, initState, writeState, killSwitch, loadConfig, clearRunTokens } from "./config.js";
 import { runItem } from "./worker.js";
 import { decide } from "./conductor.js";
 import { logEvent, logDecision, markItemDone, openItems, nextOpenItem } from "./log.js";
@@ -31,6 +31,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     state.active = false;
     state.stopped_reason = reason;
     writeState(brief.leoDir, state);
+    clearRunTokens(brief.leoDir);
     logEvent(brief.leoDir, { event: "stop", reason });
   };
 

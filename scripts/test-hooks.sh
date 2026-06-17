@@ -57,5 +57,13 @@ echo '{"active":false}' > "$T/.leopold/state.json"
 out="$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' "$T" | bash "$HOOKS/guard-irreversible.sh")"
 assert "guard inert when run inactive" "" "$out"
 
+# --- Token hygiene on stop ---
+echo '{"active":true,"iteration":1}' > "$T/.leopold/state.json"
+printf '# Plan\n- [x] done\n' > "$T/.leopold/PLAN.md"
+touch "$T/.leopold/ALLOW_GIT" "$T/.leopold/STOP"
+printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
+assert "stop clears ALLOW_GIT token" "cleared" "$([ -f "$T/.leopold/ALLOW_GIT" ] && echo present || echo cleared)"
+assert "stop clears STOP file" "cleared" "$([ -f "$T/.leopold/STOP" ] && echo present || echo cleared)"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "all hook behavior tests passed"; else echo "HOOK TESTS FAILED"; exit 1; fi

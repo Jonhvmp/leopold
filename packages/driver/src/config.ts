@@ -60,6 +60,14 @@ export function killSwitch(leoDir: string): boolean {
   return fs.existsSync(path.join(leoDir, "STOP"));
 }
 
+/** Safety hygiene on stop: clear the kill switch and per-session git opt-in
+ *  tokens so the next run re-locks git and does not halt on a stale STOP. */
+export function clearRunTokens(leoDir: string): void {
+  for (const t of ["STOP", "ALLOW_GIT", "ALLOW_PUSH", "ALLOW_PUBLISH"]) {
+    try { fs.rmSync(path.join(leoDir, t), { force: true }); } catch { /* ignore */ }
+  }
+}
+
 export function loadConfig(argv: string[]): DriverConfig {
   return {
     conductorModel: process.env.LEOPOLD_CONDUCTOR_MODEL || undefined,

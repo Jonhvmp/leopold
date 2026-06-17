@@ -125,3 +125,48 @@ reports, you commit and push.
 | Max consecutive fails| 3       | `GUARDRAILS.md`          |
 | Max iterations       | 50      | `GUARDRAILS.md`          |
 | Edits outside root   | never   | not configurable         |
+
+## Run hygiene and parallel runs
+
+### What is cleared when a run stops
+
+On every stop, Leopold clears the kill switch (`STOP`) and the git opt-in tokens
+(`ALLOW_GIT` / `ALLOW_PUSH` / `ALLOW_PUBLISH`). This is a safety property: the
+next run starts with git **re-locked** and is not halted by a stale `STOP`. The
+durable record (the brief, `DECISIONS.md`, `events.jsonl`) is never deleted.
+
+### on_finish: keep or archive
+
+Set in `GUARDRAILS.md`:
+
+- **`keep`** (default) — the brief, decisions, and events stay in `.leopold/`.
+- **`archive`** — on a clean finish (plan complete), `DECISIONS.md` and
+  `events.jsonl` move to `.leopold/runs/<timestamp>/`, so the next run starts
+  with a clean log while the full history is preserved.
+
+Auto-delete is never a default; if you want a fresh start, remove `.leopold/`
+yourself.
+
+### One run per checkout
+
+A project supports **one active Leopold run at a time**. Parallel runs in the
+same checkout share `.leopold/` (one `state.json`, one `PLAN.md`) and the same
+working tree, so they would clobber each other's state and code. `/leopold-run`
+refuses to start a second run while another is active (a run idle for 10+ minutes
+is treated as stale and can be taken over).
+
+### Running in parallel — use worktrees
+
+True parallelism comes from isolation, not threads: two agents editing the same
+files conflict no matter how concurrent the orchestrator is. To run Leopold in
+parallel, give each run its own git worktree:
+
+```bash
+git worktree add ../proj-leopold-2 && cd ../proj-leopold-2
+# now /leopold-brief + /leopold-run here, fully isolated from the first run
+```
+
+Each worktree has its own checkout and its own `.leopold/`, so N runs proceed
+concurrently without collision. The SDK driver's coordinated multi-worker fan-out
+(one worktree or sandbox per worker) is the roadmap path for automated parallel
+execution.

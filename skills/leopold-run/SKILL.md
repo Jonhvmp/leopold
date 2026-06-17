@@ -32,6 +32,33 @@ the user to run `/leopold-brief` first. Do not improvise a brief.
 
 Read all four artifacts in full. They are your authority.
 
+**Single-run guard (one run per checkout).** A project supports one active Leopold
+run at a time: parallel runs share `.leopold/` and the same working tree, so they
+would collide. Before activating, check for another active run:
+
+```bash
+LEO=.leopold
+if [ -f "$LEO/state.json" ]; then
+  a=$(jq -r '.active // false' "$LEO/state.json" 2>/dev/null)
+  l=$(jq -r '.last_turn // .started_at // empty' "$LEO/state.json" 2>/dev/null)
+  s=$(jq -r '.session_id // empty' "$LEO/state.json" 2>/dev/null)
+  if [ "$a" = "true" ] && [ -n "$l" ]; then
+    age=$(( $(date -u +%s) - $(date -u -d "$l" +%s 2>/dev/null || echo 0) ))
+    if [ "$age" -lt 600 ] && [ "$s" != "${CLAUDE_CODE_SESSION_ID:-none}" ]; then
+      echo "BLOCKED: another Leopold run is active in this checkout (last active $l)."
+    fi
+  fi
+fi
+```
+
+If it prints `BLOCKED`, stop. Tell the user a run is already active here. To run
+in **parallel**, use a separate git worktree (one run per worktree):
+
+    git worktree add ../<proj>-leopold-2 && cd ../<proj>-leopold-2
+
+Otherwise wait for the other run, or `/leopold-stop` it first. A run idle for
+over 10 minutes is treated as stale and may be taken over.
+
 ## Step 1 — Activate the run
 
 Write `.leopold/state.json` (read `max_iterations` / `max_failures` from
@@ -42,7 +69,7 @@ mkdir -p .leopold
 [ -f .leopold/DECISIONS.md ] || printf '# Decisions\n\nAutonomous decisions, newest last.\n\n' > .leopold/DECISIONS.md
 : >> .leopold/events.jsonl
 cat > .leopold/state.json <<JSON
-{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
 JSON
 ```
 

@@ -35,6 +35,17 @@ allow_stop() {
   tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
   jq --arg r "$r" '.active=false | .stopped_reason=$r' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
   log_event "{\"ts\":\"$now\",\"event\":\"stop\",\"reason\":\"$r\"}"
+  # Safety hygiene: always clear the kill switch and per-session git opt-in tokens
+  # so the next run re-locks git and does not halt immediately on a stale STOP.
+  rm -f "$LEO/STOP" "$LEO/ALLOW_GIT" "$LEO/ALLOW_PUSH" "$LEO/ALLOW_PUBLISH" 2>/dev/null || true
+  # on_finish policy (GUARDRAILS.md): archive the run logs on a clean finish.
+  if [ "$r" = "plan_complete" ] && grep -qiE '^[[:space:]]*-?[[:space:]]*on_finish:[[:space:]]*archive' "$LEO/GUARDRAILS.md" 2>/dev/null; then
+    arch="$LEO/runs/$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "$arch" 2>/dev/null || true
+    [ -f "$LEO/DECISIONS.md" ] && mv "$LEO/DECISIONS.md" "$arch/" 2>/dev/null || true
+    [ -f "$LEO/events.jsonl" ] && mv "$LEO/events.jsonl" "$arch/" 2>/dev/null || true
+    cp "$LEO/PLAN.md" "$arch/" 2>/dev/null || true
+  fi
   exit 0
 }
 
