@@ -1636,7 +1636,9 @@ Claude Code auth.</p>
     Auth --&gt; Conductor["conductor"]</code></pre>
 <h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
 <p>Alpha. Verified: typechecks against <code>@anthropic-ai/claude-agent-sdk</code>, the CLI and
-dry-run work, the status parser and git guard are tested. Roadmap: a watchdog for
+dry-run work, and the status parser + <code>canUseTool</code> guard have unit tests
+(<code>make driver-test</code>) covering the same bypass attempts as the bash guard's red-team
+suite. Roadmap: a watchdog for
 a worker that ends a turn without a status block, parallel multi-worker waves, and
 a live dashboard.</p>
 <p>See <a href="../../reference/driver-config/">Driver Config</a> to run it, and the

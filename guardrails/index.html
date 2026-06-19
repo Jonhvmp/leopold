@@ -1790,6 +1790,15 @@ explicit human opt-in, and how a run ends.</p>
 - <strong>By protocol</strong> (the agent's own discipline): the decision protocol and the
   stop conditions.</p>
 <p>The hook is the real lock. The protocol is the steering.</p>
+<p><strong>Default vs paranoid.</strong> By default the hook is a <strong>denylist</strong> — everything is allowed
+except the forbidden/gated ops below. That list is hardened against evasion (git global
+options, absolute paths, long-form and split <code>rm</code> flags, <code>find -delete</code>/<code>-exec</code>,
+whitespace/tab tricks) and covered by a red-team suite (<code>make test-guard</code>). For maximum
+caution, set <strong><code>LEOPOLD_PARANOID=1</code></strong> to flip the hook into a <strong>deny-by-default
+allowlist</strong>: only read/build/test/lint commands and <code>git add</code> / read-only <code>git</code> pass;
+everything else is denied. Paranoid mode is opt-in and best-effort (it keys off the
+leading command word); the hardened denylist is the default because it is the more
+predictable lock.</p>
 <hr />
 <pre class="mermaid"><code>flowchart TD
     Cmd["tool call during an active run"] --&gt; Type{kind?}
@@ -1843,8 +1852,9 @@ true:</p>
 <li><strong>Kill switch</strong> — <code>.leopold/STOP</code> exists (<code>/leopold-stop</code> or <code>touch</code>).</li>
 <li><strong>Repeated failure</strong> — the same test or build has failed N consecutive turns
    (default 3). Escalate, do not keep hammering.</li>
-<li><strong>Loop detection</strong> — the same file or the same fix variant has been retried
-   without progress. Stop and report rather than thrash.</li>
+<li><strong>Loop detection</strong> — if the set of open <code>PLAN.md</code> items is byte-identical for
+   <code>max_no_progress</code> consecutive turns (default 6 — nothing checked off, nothing
+   added), the run is thrashing and stops with reason <code>no_progress</code>.</li>
 <li><strong>Budget exhausted</strong> — the iteration counter or a token/time budget set in
    <code>GUARDRAILS.md</code> is reached.</li>
 <li><strong>Irreversible + ambiguous fork</strong> — the decision protocol routed a fork to
