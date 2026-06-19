@@ -111,7 +111,7 @@ Full design in [`docs/architecture.md`](docs/architecture.md).
 - [x] `leopold doctor` — verify install, hooks, gstack wiring
 - [x] Guard red-team suite — bypass attempts blocked in CI
 - [x] SDK driver (v0.1 built) — external orchestrator on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk)
-- [ ] SDK driver unit tests (status parser + `canUseTool` guard)
+- [x] SDK driver unit tests (status parser + `canUseTool` guard)
 - [ ] Multi-worker fan-out, web dashboard for the decision log
 
 ---

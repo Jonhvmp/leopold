@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `stop-continuity` blocks loudly (with a clear reason) on a malformed `state.json` rather than stopping silently.
 
 ### Fixed
-- Corrected the "status parser and git guard are tested" claim in the driver docs (the TS driver is typechecked, not yet unit-tested; the bash guard now has the red-team suite).
+- The driver's `canUseTool` guard (`guard.ts`) had the **same bypasses** as the bash guard — hardened to match, and given unit tests (`test/guard.test.ts` + `test/protocol.test.ts`, `make driver-test`, in CI on Node 22). The driver's "tested" claim is now backed by real tests instead of being softened.
 - `docs/guardrails.md` marks fine-grained loop detection as roadmap (the engine enforces the consecutive-failure and iteration budgets today).
 
 ## [0.3.0] - 2026-06-19
