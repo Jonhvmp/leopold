@@ -29,7 +29,8 @@ case "${1:-}" in
     ;;
 
   install|update)
-    # Full OpenAI profile (verified). Local/Ollama profiles are still TODO.
+    # install.sh is also the reconfigure/switch path: it detects the current setup,
+    # offers to reuse the credential, and rebuilds the index when the embedding changes.
     bash "$HERE/install.sh"
     ;;
 

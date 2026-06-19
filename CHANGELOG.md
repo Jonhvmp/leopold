@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `scripts/record-demo.sh` to regenerate it.
 - **Loop detection** (`max_no_progress`, default 6): if the open `PLAN.md` set is unchanged
   for N turns, the run stops with `no_progress` instead of thrashing. Tested in `make hooks-test`.
+- **ovmem provider switching** — re-running the ovmem installer detects the current setup,
+  offers to reuse the existing credential, and safely **rebuilds the vector index when the
+  embedding model changes** (OpenAI ⇄ Bedrock): memory content is preserved, the old index
+  is backed up and restored if the rebuild fails. Server restarts are data-dir-lock-aware.
 
 ### Security
 - **Hardened the PreToolUse guard.** Replaced loose regexes with real parsing and closed confirmed bypasses: `git -c user.name=x commit` / `git -C /r commit` / `git --git-dir=… commit` and git by absolute path / `env git` (global options skipped, subcommand resolved by basename), `rm --recursive --force` / `rm -r -f` / `/bin/rm -rf` (recursive+force in any spelling), `find … -delete` / `find … -exec rm`, and whitespace/tab evasion (normalized before matching). The guard **fails closed** on a malformed `state.json`.
