@@ -51,7 +51,8 @@ Then, in any project:
 ```
 /leopold-brief    # debate the mission, write the brief
 /leopold-run      # hand over the seat
-/leopold-status   # see where it is
+/leopold-watch    # live web dashboard: cost meters, events, decisions, Stop
+/leopold-status   # see where it is (terminal)
 /leopold-stop     # take the seat back
 ```
 

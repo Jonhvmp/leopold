@@ -33,6 +33,10 @@ update: ## Update Leopold to the latest (pull + reinstall)
 menu: ## Open the toolchain manager (install/manage gstack, ovmem, ...)
 	@bash scripts/leopold-menu.sh
 
+.PHONY: watch
+watch: ## Live dashboard for the run in this project (http://127.0.0.1:4179, Ctrl-C to stop)
+	@python3 scripts/leopold-watch.py --project .
+
 .PHONY: serena-install serena-doctor
 serena-install: ## Install + register Serena (LSP code intelligence MCP) — mandatory for quality
 	@bash extensions/serena/manage.sh install

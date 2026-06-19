@@ -109,6 +109,16 @@ run: 82 subagents and a 5.9MB session over 681 turns.)
 Belt and braces: set an **Anthropic spending cap** on your account before long autonomous
 runs on large projects. Leopold has no billing limit of its own.
 
+### Watching a run (live dashboard)
+
+`/leopold-watch` (or `make watch`) starts a **local** dashboard at `http://127.0.0.1:4179`
+that reads the run's own `.leopold/` files and updates live over SSE. It shows the run
+status, the cost meters above (context MB, subagents, forks, iterations, failures — each
+against its budget), the live event feed (turns, guard blocks, `subagent_spawn` with size +
+fork flag, stops), the decisions log, and a **Stop** button that uses the kill switch. It is
+zero-dependency (Python stdlib), read-only except that one button, and binds to loopback —
+nothing leaves the machine.
+
 ---
 
 ## Stop conditions

@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recommend an Anthropic spending cap for large runs.
 
 ### Added
+- **`/leopold-watch` — local live dashboard.** A zero-dependency (Python stdlib) web
+  dashboard at `http://127.0.0.1:4179` that reads the run's own `.leopold/` files and
+  updates live over SSE: run status, the cost meters (context MB / subagents / forks /
+  iterations / failures vs their budgets), the event feed (turns, guard blocks,
+  `subagent_spawn` with size + fork flag, stops), the decisions log, and a **Stop** button
+  (the kill switch). Read-only otherwise, loopback-only — nothing leaves the machine.
+  Launch with `/leopold-watch` or `make watch`. The Stop hook now also records `context_mb`
+  so the meter is live.
 - **Serena — mandatory LSP code intelligence (MCP).** Leopold's installer now sets up
   [Serena](https://github.com/oraios/serena) automatically (installs `serena-agent` via uv
   if absent, registers the MCP server for all projects via `claude mcp add --scope user …

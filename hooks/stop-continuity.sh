@@ -92,10 +92,12 @@ if [ "$fails" -ge "$max_fails" ] 2>/dev/null; then allow_stop "repeated_failure"
 # balloon. The brief persists -> a fresh /leopold-run resumes from PLAN.md with clean context.
 max_ctx_mb="$(jq -r '.max_context_mb // 5' "$STATE" 2>/dev/null || echo 5)"
 case "$max_ctx_mb" in (*[!0-9]*|"") max_ctx_mb=5 ;; esac
+ctx_mb=0
 tpath="$(printf '%s' "$input" | jq -r '.transcript_path // empty' 2>/dev/null || true)"
 if [ -n "$tpath" ] && [ -f "$tpath" ]; then
   ctx_bytes="$(wc -c < "$tpath" 2>/dev/null || echo 0)"
-  [ "$(( ctx_bytes / 1048576 ))" -ge "$max_ctx_mb" ] 2>/dev/null && allow_stop "context_budget"
+  ctx_mb="$(awk "BEGIN{printf \"%.1f\", ${ctx_bytes:-0}/1048576}" 2>/dev/null || echo 0)"
+  [ "$(( ${ctx_bytes:-0} / 1048576 ))" -ge "$max_ctx_mb" ] 2>/dev/null && allow_stop "context_budget"
 fi
 
 # Plan complete? (no unchecked checkboxes remain)
@@ -119,8 +121,8 @@ if [ "$np" -ge "$max_np" ] 2>/dev/null; then allow_stop "no_progress"; fi
 # Otherwise: continue. Increment the iteration counter; persist the progress signature.
 next=$((iter + 1))
 tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
-jq --argjson n "$next" --arg t "$now" --argjson np "$np" --arg sig "$sig" \
-   '.iteration=$n | .last_turn=$t | .no_progress=$np | .progress_sig=$sig' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+jq --argjson n "$next" --arg t "$now" --argjson np "$np" --arg sig "$sig" --argjson cm "${ctx_mb:-0}" \
+   '.iteration=$n | .last_turn=$t | .no_progress=$np | .progress_sig=$sig | .context_mb=$cm' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
 log_event "{\"ts\":\"$now\",\"event\":\"turn_start\",\"iteration\":$next,\"open_items\":$open_items,\"no_progress\":$np}"
 
 reason="Leopold autonomous mode is ACTIVE (turn $next/$max_iter, $open_items open plan items). Do not stop. Steps: (1) Read .leopold/PLAN.md and pick the next unchecked item. (2) Complete it; reach for the gstack playbook skill that fits the situation. (3) On any fork, apply .leopold/CHARTER.md and the decision protocol: if the call is reversible OR the charter is clear, decide it yourself, append the decision to .leopold/DECISIONS.md, and keep going; stop only for an irreversible AND ambiguous fork, a charter contradiction, or a mission-premise change. (4) Mark the finished item as done ([x]) in PLAN.md. Hard rules: git commit/push/publish stay locked; never edit files outside this project; never touch .leopold/GUARDRAILS.md or the hooks. When the plan is complete or a stop condition is met, write a short final summary and then stop."
