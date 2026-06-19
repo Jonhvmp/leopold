@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.1] - 2026-06-19
+## [0.4.2] - 2026-06-19
 
 ### Security
 - **Cost guardrails — caps the #1 autonomous-run blowup, on both axes.** Nothing limited
@@ -43,6 +43,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same context-lean discipline the cost guards enforce. New `extensions/serena/` (manage via
   `make serena-install` / `make serena-doctor` / `make menu`); `/leopold-run` prefers Serena's
   tools. Setup uses the official path, not the MCP marketplace (which ships stale commands).
+
+### Fixed
+- **Live progress on long, silent installer steps** so they never look frozen: a spinner
+  with elapsed seconds wraps the OpenViking download (~140 packages on first install), the
+  server health-wait, the embedding reindex (up to ~10 min), and the verify/extract
+  (up to ~2 min) — on failure the captured output is shown. git clones (Leopold + gstack)
+  now run with `--progress`. (Reported: a fresh Bedrock install looked stuck at
+  "ensuring OpenViking + boto3".)
+
+## [0.4.1] - 2026-06-19
+
+### Added
 - **ovmem provider switching** — re-running the ovmem installer detects the current setup,
   offers to reuse the existing credential, and safely **rebuilds the vector index when the
   embedding model changes** (OpenAI ⇄ Bedrock): memory content is preserved, the old index
@@ -52,12 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - README guard count corrected to **59** red-team cases (was a stale 49); ovmem `manage.sh`
   header no longer describes `install`/`update` as stubs (they run the full installer).
-- **Live progress on long, silent installer steps** so they never look frozen: a spinner
-  with elapsed seconds wraps the OpenViking download (~140 packages on first install), the
-  server health-wait, the embedding reindex (up to ~10 min), and the verify/extract
-  (up to ~2 min) — on failure the captured output is shown. git clones (Leopold + gstack)
-  now run with `--progress`. (Reported: a fresh Bedrock install looked stuck at
-  "ensuring OpenViking + boto3".)
 
 ## [0.4.0] - 2026-06-19
 

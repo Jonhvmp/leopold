@@ -4,5 +4,5 @@
   "summary": "LSP-backed code intelligence (MCP). Symbol-level retrieval + editing instead of grep/whole-file reads — sharper edits, far fewer tokens. Mandatory for quality.",
   "homepage": "https://github.com/oraios/serena",
   "license": "MIT",
-  "order": 5
+  "order": 15
 }
