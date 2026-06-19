@@ -96,6 +96,13 @@ echo '{"active":true,"max_subagents":8,"subagents_spawned":0,"max_forks":1,"fork
 fork='{"cwd":"%s","tool_name":"Task","tool_input":{"subagent_type":"fork","prompt":"x"}}'
 out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork 1/1 allowed" "" "$(perm "$out")"
 out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork over budget denied" "deny" "$(perm "$out")"
+echo '{"active":true,"max_subagents":8,"subagents_spawned":0}' > "$T/.leopold/state.json"
+out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork forbidden by default (max_forks absent)" "deny" "$(perm "$out")"
+
+# --- Spawn audit log ---
+echo '{"active":true,"max_subagents":8,"subagents_spawned":0}' > "$T/.leopold/state.json"; : > "$T/.leopold/events.jsonl"
+printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh" >/dev/null
+assert "spawn logged to events.jsonl" "1" "$(grep -c subagent_spawn "$T/.leopold/events.jsonl" 2>/dev/null || echo 0)"
 
 # --- Oversized subagent prompt (context dumping) ---
 echo '{"active":true,"max_subagents":8,"subagents_spawned":0}' > "$T/.leopold/state.json"

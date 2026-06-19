@@ -18,14 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     money pit.)
   - **`max_subagents`** (default 8) — total `Task`/subagent spawns per run; denied past it,
     the run continues **serially**.
-  - **`max_forks`** (default 2) — forks clone the *entire* session context, so they are
-    capped far tighter.
+  - **`max_forks`** (default **0 — forks forbidden**) — a fork clones the *entire* session
+    context into the spawn (the literal "each subagent got the 5.8MB parent" leak). A fresh
+    subagent does the same work clean. Raise only for a sub-task that needs the full convo.
   - **Oversized subagent prompts** (>~256KB) are denied — that means context is being
     pasted into the spawn; point subagents at file paths instead.
-
-  The `/leopold-run` protocol also steers the agent to work serially, never fork, and hand
-  subagents minimal prompts. Tested in `make hooks-test`. Docs recommend an Anthropic
-  spending cap for large runs.
+  - **Spawn audit log** — every subagent spawn writes a `subagent_spawn` line to
+    `events.jsonl` (size + fork flag) so a run's cost is inspectable.
+- **Optimization — the lean orchestrator.** The biggest cost lever isn't the subagents, it's
+  the **orchestrator session** re-billing its whole growing context every turn. The
+  `/leopold-run` protocol now mandates context discipline: the brief is the memory (not the
+  transcript); bulk-output work (authoring content, generating files) is delegated to a
+  subagent that **writes to a file**, and the orchestrator verifies the file instead of
+  reading the output back — so its context stays flat. Tested in `make hooks-test`. Docs
+  recommend an Anthropic spending cap for large runs.
 
 ### Added
 - **ovmem provider switching** — re-running the ovmem installer detects the current setup,

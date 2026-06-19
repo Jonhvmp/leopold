@@ -87,10 +87,14 @@ run: 82 subagents and a 5.9MB session over 681 turns.)
   each turn re-bills the whole accumulated transcript. `max_context_mb` (default **5**)
   stops the run when the transcript passes that size — the brief persists, so a fresh
   `/leopold-run` resumes from `PLAN.md` with clean context. Bounded, resumable runs beat
-  one giant session.
-- **Forks clone the entire session.** A fork carries the full multi-MB context — the most
-  expensive spawn there is. `max_forks` (default **2**) caps them far tighter than fresh
-  subagents.
+  one giant session. The protocol also keeps the orchestrator lean: bulk-output work
+  (authoring content, generating files) is delegated to a subagent that **writes to a
+  file**, so the output never accumulates in the orchestrator's context — the exact thing
+  that blew up a real run (the orchestrator held every lesson it generated).
+- **Forks clone the entire session — they ARE the per-subagent leak.** A fork carries the
+  full multi-MB parent context into the spawn. `max_forks` is **0 by default (forbidden)**;
+  a fresh subagent does the same work with a clean slate. Raise it only for a sub-task that
+  genuinely needs the whole conversation.
 - **Oversized subagent prompts** mean context is being pasted into the spawn (billed in
   full). The guard denies a subagent prompt over ~256KB — point subagents at file *paths*,
   don't paste files in.
@@ -169,7 +173,7 @@ reports, you commit and push.
 | Max consecutive fails| 3       | `GUARDRAILS.md`          |
 | Max iterations       | 50      | `GUARDRAILS.md`          |
 | Subagent spawns/run  | 8       | `max_subagents` in `GUARDRAILS.md` |
-| Forks/run            | 2       | `max_forks` in `GUARDRAILS.md` |
+| Forks/run            | 0 (off) | `max_forks` in `GUARDRAILS.md` |
 | Context budget       | 5 MB    | `max_context_mb` in `GUARDRAILS.md` |
 | Edits outside root   | never   | not configurable         |
 

@@ -21,7 +21,8 @@
 - max_subagents: 8           # total Task/subagent spawns per run; past it the guard
                              # denies more (each subagent re-loads the full context =
                              # the #1 cost multiplier). Raise only if you must.
-- max_forks: 2               # forks clone the WHOLE session context — capped tighter
+- max_forks: 0               # forks clone the WHOLE session context (the leak) — forbidden
+                             # by default; raise only if a sub-task needs the full convo
 - max_context_mb: 5          # stop when the transcript passes this; a long run re-bills
                              # its growing context every turn. Resume with a fresh run.
 - token/time budget: none    # set if you want a hard ceiling

@@ -77,13 +77,15 @@ case "$tool" in
       deny "Leopold guard: this subagent prompt is ~$(( ${plen:-0} / 1024 ))KB — you're handing the subagent a huge context (each spawn is billed in full). Pass a minimal, scoped prompt: point it at files to read, don't paste them in."
     fi
 
-    # (b) Forks clone the ENTIRE parent session (multi-MB) — the most expensive spawn there
-    # is. Cap them far tighter than fresh subagents.
+    # (b) Forks clone the ENTIRE parent session (multi-MB) — they ARE the per-subagent
+    # context leak. Forbidden by default (max_forks 0); a fresh scoped subagent does the
+    # same work with a clean slate. Raise max_forks in GUARDRAILS.md only for a sub-task
+    # that genuinely needs the full conversation.
     if [ "$stype" = "fork" ]; then
-      max_fk="$(jq -r '.max_forks // 2' "$STATE" 2>/dev/null || echo 2)"; case "$max_fk" in (*[!0-9]*|"") max_fk=2 ;; esac
+      max_fk="$(jq -r '.max_forks // 0' "$STATE" 2>/dev/null || echo 0)"; case "$max_fk" in (*[!0-9]*|"") max_fk=0 ;; esac
       forked="$(jq -r '.forks_spawned // 0' "$STATE" 2>/dev/null || echo 0)"; case "$forked" in (*[!0-9]*|"") forked=0 ;; esac
       if [ "$forked" -ge "$max_fk" ] 2>/dev/null; then
-        deny "Leopold guard: fork budget exhausted ($forked/$max_fk this run). A fork clones the WHOLE session context — the single most expensive spawn. Use a regular scoped subagent, or do it in-turn."
+        deny "Leopold guard: forks are forbidden in autonomous mode ($forked/$max_fk). A fork clones the WHOLE session context (multi-MB) into the spawn — this is the leak that runs up the bill. Use a regular subagent with a minimal prompt instead (it starts clean). To allow a fork, raise max_forks in GUARDRAILS.md."
       fi
       gtmp="$(mktemp 2>/dev/null || echo "$STATE.gtmp")"
       jq --argjson f "$((forked+1))" '.forks_spawned=$f' "$STATE" > "$gtmp" 2>/dev/null && mv "$gtmp" "$STATE" || rm -f "$gtmp" 2>/dev/null
@@ -98,6 +100,11 @@ case "$tool" in
     fi
     gtmp="$(mktemp 2>/dev/null || echo "$STATE.gtmp")"
     jq --argjson s "$((spawned+1))" '.subagents_spawned=$s' "$STATE" > "$gtmp" 2>/dev/null && mv "$gtmp" "$STATE" || rm -f "$gtmp" 2>/dev/null
+    # Audit trail: one line per spawn (size + fork flag) so a run's cost is inspectable.
+    sts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')"
+    printf '{"ts":"%s","event":"subagent_spawn","fork":%s,"prompt_kb":%s,"total":%s}\n' \
+      "$sts" "$([ "$stype" = fork ] && echo true || echo false)" "$(( ${plen:-0} / 1024 ))" "$((spawned+1))" \
+      >> "$LEO/events.jsonl" 2>/dev/null || true
     ;;
 
   Bash)
