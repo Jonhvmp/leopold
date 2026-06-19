@@ -74,7 +74,7 @@ Then, in any project:
 Because Leopold sells autonomy, guardrails are the product, not an afterthought.
 
 - **Git stays locked.** Commit, push, force-push, `reset --hard`, recursive `rm` (any spelling), `find … -delete`, `gh pr create/merge`, and package publish are blocked while autonomous — regardless of permission mode. You opt in explicitly, per session, or they never run.
-- **Red-teamed.** The guard ships a bypass-attempt test suite — **49 cases run in CI** (`make test-guard`) — covering tricks like `git -c user.name=x commit`, `rm --recursive --force`, `/bin/rm -rf`, and `find -exec rm`. Think you can slip one past it? [Open an issue](https://github.com/Jonhvmp/leopold/issues) — break it.
+- **Red-teamed.** The guard ships a bypass-attempt test suite — **59 cases run in CI** (`make test-guard`), plus unit tests for the TS driver guard — covering tricks like `git -c user.name=x commit`, `rm --recursive --force`, `/bin/rm -rf`, and `find -exec rm`. Think you can slip one past it? [Open an issue](https://github.com/Jonhvmp/leopold/issues) — break it.
 - **Fails closed.** A malformed run-state file blocks loudly; it never silently lets autonomy through.
 - **Kill switch + audit.** `/leopold-stop` (or `touch .leopold/STOP`) halts at the next turn boundary; every autonomous decision is logged with its reasoning.
 
