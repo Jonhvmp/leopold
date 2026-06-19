@@ -88,6 +88,10 @@ extra:
       link: https://github.com/Jonhvmp/leopold
   generator: false
 
+# Internal launch drafts live in docs/launch/ but are not part of the published site.
+exclude_docs: |
+  launch/
+
 nav:
   - Home: index.md
   - Getting Started:

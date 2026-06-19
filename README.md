@@ -51,6 +51,9 @@ Then, in any project:
 /leopold-stop     # take the seat back
 ```
 
+> **See it work:** a full [worked example run](examples/add-json-output/) — the brief and
+> the `DECISIONS.md` it produced — or render the demo cast with [`scripts/record-demo.sh`](scripts/record-demo.sh).
+
 ---
 
 ## How it works

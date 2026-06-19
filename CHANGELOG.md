@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0] - 2026-06-19
 
+### Added
+- **`examples/`** — a reproducible run (`add-json-output`): the full brief plus the
+  `DECISIONS.md` an autonomous run produced from it. Proves the loop and teaches the format.
+- **`docs/launch/`** — review-ready drafts (Show HN, r/ClaudeAI, X thread,
+  awesome-claude-code) + a manual `CHECKLIST.md`. (Posting stays a human action.)
+- **`scripts/record-demo.sh`** — records a scripted walkthrough cast and renders it (needs
+  asciinema + a renderer; skips cleanly when absent).
+
 ### Security
 - **Hardened the PreToolUse guard.** Replaced loose regexes with real parsing and closed confirmed bypasses: `git -c user.name=x commit` / `git -C /r commit` / `git --git-dir=… commit` and git by absolute path / `env git` (global options skipped, subcommand resolved by basename), `rm --recursive --force` / `rm -r -f` / `/bin/rm -rf` (recursive+force in any spelling), `find … -delete` / `find … -exec rm`, and whitespace/tab evasion (normalized before matching). The guard **fails closed** on a malformed `state.json`.
 - **`LEOPOLD_PARANOID=1`** — opt-in deny-by-default allowlist mode (only read/build/test/lint + `git add`/read-only `git` pass), documented in `docs/guardrails.md`.
