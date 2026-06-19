@@ -118,5 +118,20 @@ echo "  /leopold-run      hand over the seat"
 echo "  /leopold-status   see where it is"
 echo "  /leopold-stop     take the seat back"
 echo
-echo "Manage the toolchain (gstack, ovmem, ...):"
-echo "  bash $LEO_HOME/scripts/leopold-menu.sh    (or: make menu)"
+# Offer the toolchain manager. We read from /dev/tty (the controlling terminal),
+# not stdin, so this works even when the installer is piped: `curl ... | bash`
+# leaves stdin as the script, but the terminal is still reachable via /dev/tty.
+MENU="$LEO_HOME/scripts/leopold-menu.sh"
+if exec 3<>/dev/tty 2>/dev/null; then
+  printf "Open the toolchain manager (install/manage gstack, ovmem, ...)? [Y/n] " >&3
+  read -r _ans <&3 || _ans="y"
+  case "$_ans" in
+    [nN]*) echo "Skipped. Open it anytime:  bash $MENU   (or: make menu)" ;;
+    *)     bash "$MENU" <&3 || true ;;
+  esac
+  exec 3>&-
+else
+  # no terminal (headless / CI): just point at it
+  echo "Manage the toolchain (gstack, ovmem, ...):"
+  echo "  bash $MENU    (or: make menu)"
+fi
