@@ -93,6 +93,26 @@ else
   echo "   (serena extension missing from this build; skipping)"
 fi
 
+# The `leopold` CLI — so `leopold menu / watch / doctor / serena` work from anywhere,
+# no repo and no `make`. Skip if it's already here (e.g. you ran `leopold install`).
+echo
+if command -v leopold >/dev/null 2>&1; then
+  echo "-> leopold CLI already installed"
+elif command -v npm >/dev/null 2>&1; then
+  echo "-> installing the leopold CLI (npm i -g leopold-driver)"
+  if npm i -g leopold-driver >/dev/null 2>&1; then
+    if command -v leopold >/dev/null 2>&1; then
+      echo "   ok   'leopold' command ready (leopold menu · watch · doctor)"
+    else
+      echo "   installed, but 'leopold' isn't on PATH yet — open a new shell (or: hash -r)"
+    fi
+  else
+    echo "   warn: 'npm i -g leopold-driver' failed (permissions?) — run it yourself, maybe with sudo"
+  fi
+else
+  echo "-> npm not found — the 'leopold' CLI needs Node/npm. Then: npm i -g leopold-driver"
+fi
+
 echo
 GSTACK_DIR="$SKILLS/gstack"
 gstack_present() { [ -d "$GSTACK_DIR" ] || ls "$SKILLS" 2>/dev/null | grep -q '^spec$'; }
@@ -124,12 +144,26 @@ else
   fi
 fi
 
+# Verify the install: skills, hooks, and the leopold CLI should all be in place.
+echo
+echo "-> verifying"
+v_warn=0
+sc="$(ls "$SKILLS" 2>/dev/null | grep -c '^leopold-' || true)"
+[ "${sc:-0}" -ge 4 ] 2>/dev/null && echo "   ok   $sc leopold skills installed" || { echo "   warn: leopold skills not found in $SKILLS"; v_warn=$((v_warn+1)); }
+if command -v jq >/dev/null 2>&1 && [ -f "$SETTINGS" ] && jq -e '(.hooks.Stop|length>0) and (.hooks.PreToolUse|length>0)' "$SETTINGS" >/dev/null 2>&1; then
+  echo "   ok   Stop + PreToolUse hooks wired in settings.json"
+else echo "   warn: hooks not detected in settings.json"; v_warn=$((v_warn+1)); fi
+command -v leopold  >/dev/null 2>&1 && echo "   ok   leopold CLI on PATH" || { echo "   warn: 'leopold' not on PATH yet (open a new shell, or: npm i -g leopold-driver)"; v_warn=$((v_warn+1)); }
+command -v serena   >/dev/null 2>&1 && echo "   ok   serena (LSP) present" || echo "   note: serena not on PATH — run: leopold serena install"
+[ "$v_warn" -eq 0 ] && echo "   all good." || echo "   $v_warn warning(s) above — see the hints."
+
 echo
 echo "Done. In any project:"
 echo "  /leopold-brief    debate the mission, write the brief"
 echo "  /leopold-run      hand over the seat"
 echo "  /leopold-status   see where it is"
 echo "  /leopold-stop     take the seat back"
+echo "  (or from a shell: leopold menu · leopold watch · leopold doctor)"
 echo
 # Offer the toolchain manager. We read from /dev/tty (the controlling terminal),
 # not stdin, so this works even when the installer is piped: `curl ... | bash`
