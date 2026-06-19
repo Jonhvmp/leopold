@@ -15,6 +15,9 @@ node_modules/
 dist/
 *.log
 
+# Driver build artifact: the harness runtime vendored in at build time (copy-runtime.mjs)
+packages/driver/assets/
+
 # MkDocs build output
 site/
 .cache/

@@ -29,10 +29,25 @@ Leopold is an autonomous orchestration harness for [Claude Code](https://claude.
 ## Quickstart
 
 ```bash
+# from npm — no clone, no make. Installs the harness, then `leopold` manages everything.
+npm i -g leopold-driver && leopold install
+```
+
+```bash
+# or the one-line installer
 curl -fsSL https://raw.githubusercontent.com/Jonhvmp/leopold/main/install.sh | bash
 ```
 
-The installer copies the skills + hooks into `~/.claude/`, merges the `settings.json` snippet, and offers to open the toolchain manager.
+Either way, the skills + hooks land in `~/.claude/` and the `settings.json` snippet is
+merged. With the npm package, the bundled `leopold` CLI runs the whole toolchain **without
+the repo**:
+
+```bash
+leopold menu                 # toolchain manager (serena / gstack / ovmem)
+leopold watch                # live dashboard at http://127.0.0.1:4179
+leopold serena install       # set up an extension (also: gstack, ovmem)
+leopold doctor               # health check
+```
 
 <details><summary>Other ways to install</summary>
 
@@ -41,8 +56,6 @@ The installer copies the skills + hooks into `~/.claude/`, merges the `settings.
 git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
 # as a Claude Code plugin (auto-wires skills + hooks)
 claude plugin marketplace add Jonhvmp/leopold && claude plugin install leopold@leopold
-# just the external SDK driver
-npm i -g leopold-driver
 ```
 </details>
 
@@ -51,7 +64,8 @@ Then, in any project:
 ```
 /leopold-brief    # debate the mission, write the brief
 /leopold-run      # hand over the seat
-/leopold-status   # see where it is
+/leopold-watch    # live web dashboard: cost meters, events, decisions, Stop
+/leopold-status   # see where it is (terminal)
 /leopold-stop     # take the seat back
 ```
 

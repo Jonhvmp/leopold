@@ -109,6 +109,21 @@ run: 82 subagents and a 5.9MB session over 681 turns.)
 Belt and braces: set an **Anthropic spending cap** on your account before long autonomous
 runs on large projects. Leopold has no billing limit of its own.
 
+### Watching a run (live dashboard)
+
+`/leopold-watch` (or `make watch`, or `leopold watch` from the npm CLI) starts a **local**
+dashboard at `http://127.0.0.1:4179` that updates live over SSE. Its headline is the **real
+estimated spend**, parsed from the Claude Code session transcript: dollars, the token
+breakdown (input / output / cache-write / cache-read), cache-hit %, per-model, and main vs
+subagent. Below it: the budget meters above (context MB, subagents, forks, iterations,
+failures — each against its budget), the live event feed (turns, guard blocks,
+`subagent_spawn`, stops), the decisions log, and a **Stop** button that uses the kill switch.
+The cost number is an estimate from a built-in price map, **configurable** via the
+`LEOPOLD_PRICES` env var (a JSON file) or a `.leopold/prices.json` in the project — override
+any model or family, e.g. `{"opus": {"in": 15, "out": 75, "cache_write": 18.75, "cache_read":
+1.5}}` (cache rates default to 1.25× / 0.1× of input). It is zero-dependency (Python stdlib),
+read-only except that one button, and binds to loopback — nothing leaves the machine.
+
 ---
 
 ## Stop conditions
