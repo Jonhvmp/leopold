@@ -922,6 +922,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cost-the-expensive-mistakes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cost — the expensive mistakes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stop-conditions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1656,6 +1667,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cost-the-expensive-mistakes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cost — the expensive mistakes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#stop-conditions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1844,6 +1866,37 @@ in fully autonomous mode.</p>
 <li>Sending project content to an external service not named in the brief.</li>
 </ul>
 <hr />
+<h2 id="cost-the-expensive-mistakes">Cost — the expensive mistakes<a class="headerlink" href="#cost-the-expensive-mistakes" title="Permanent link">&para;</a></h2>
+<p>Cost in an autonomous run blows up on <strong>two axes</strong>, and Leopold caps both. (One reported
+run: 82 subagents and a 5.9MB session over 681 turns.)</p>
+<p><strong>1. How much context each unit carries.</strong></p>
+<ul>
+<li><strong>The main session grows every turn.</strong> On a big-context model it never auto-compacts, so
+  each turn re-bills the whole accumulated transcript. <code>max_context_mb</code> (default <strong>5</strong>)
+  stops the run when the transcript passes that size — the brief persists, so a fresh
+  <code>/leopold-run</code> resumes from <code>PLAN.md</code> with clean context. Bounded, resumable runs beat
+  one giant session. The protocol also keeps the orchestrator lean: bulk-output work
+  (authoring content, generating files) is delegated to a subagent that <strong>writes to a
+  file</strong>, so the output never accumulates in the orchestrator's context — the exact thing
+  that blew up a real run (the orchestrator held every lesson it generated).</li>
+<li><strong>Forks clone the entire session — they ARE the per-subagent leak.</strong> A fork carries the
+  full multi-MB parent context into the spawn. <code>max_forks</code> is <strong>0 by default (forbidden)</strong>;
+  a fresh subagent does the same work with a clean slate. Raise it only for a sub-task that
+  genuinely needs the whole conversation.</li>
+<li><strong>Oversized subagent prompts</strong> mean context is being pasted into the spawn (billed in
+  full). The guard denies a subagent prompt over ~256KB — point subagents at file <em>paths</em>,
+  don't paste files in.</li>
+</ul>
+<p><strong>2. How many subagents are spawned.</strong></p>
+<ul>
+<li>The model loves to parallelize into bursts of 10+. <code>max_subagents</code> (default <strong>8</strong>) is the
+  total spawn budget per run; the guard counts spawns in <code>state.json</code> and <strong>denies</strong> past
+  the cap so the run continues serially. The <code>/leopold-run</code> protocol also steers it to work
+  serially and never batch-spawn.</li>
+</ul>
+<p>Belt and braces: set an <strong>Anthropic spending cap</strong> on your account before long autonomous
+runs on large projects. Leopold has no billing limit of its own.</p>
+<hr />
 <h2 id="stop-conditions">Stop conditions<a class="headerlink" href="#stop-conditions" title="Permanent link">&para;</a></h2>
 <p>The run ends, and the Stop hook allows the session to halt, when any of these is
 true:</p>
@@ -1857,6 +1910,8 @@ true:</p>
    added), the run is thrashing and stops with reason <code>no_progress</code>.</li>
 <li><strong>Budget exhausted</strong> — the iteration counter or a token/time budget set in
    <code>GUARDRAILS.md</code> is reached.</li>
+<li><strong>Context budget</strong> — the transcript passed <code>max_context_mb</code> (default 5). Resume
+   with a fresh <code>/leopold-run</code>; the brief continues it with clean context.</li>
 <li><strong>Irreversible + ambiguous fork</strong> — the decision protocol routed a fork to
    the human.</li>
 </ol>
@@ -1912,6 +1967,21 @@ reports, you commit and push.</p>
 <td>Max iterations</td>
 <td>50</td>
 <td><code>GUARDRAILS.md</code></td>
+</tr>
+<tr>
+<td>Subagent spawns/run</td>
+<td>8</td>
+<td><code>max_subagents</code> in <code>GUARDRAILS.md</code></td>
+</tr>
+<tr>
+<td>Forks/run</td>
+<td>0 (off)</td>
+<td><code>max_forks</code> in <code>GUARDRAILS.md</code></td>
+</tr>
+<tr>
+<td>Context budget</td>
+<td>5 MB</td>
+<td><code>max_context_mb</code> in <code>GUARDRAILS.md</code></td>
 </tr>
 <tr>
 <td>Edits outside root</td>
