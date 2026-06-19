@@ -34,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recommend an Anthropic spending cap for large runs.
 
 ### Added
+- **Serena — mandatory LSP code intelligence (MCP).** Leopold's installer now sets up
+  [Serena](https://github.com/oraios/serena) automatically (installs `serena-agent` via uv
+  if absent, registers the MCP server for all projects via `claude mcp add --scope user …
+  --context=claude-code --project-from-cwd`, and wires its recommended hooks). It gives the
+  agent symbol-level tools (`find_symbol` / `find_referencing_symbols` / `replace_symbol_body`)
+  instead of grep + whole-file reads — sharper edits **and** far fewer tokens, which is the
+  same context-lean discipline the cost guards enforce. New `extensions/serena/` (manage via
+  `make serena-install` / `make serena-doctor` / `make menu`); `/leopold-run` prefers Serena's
+  tools. Setup uses the official path, not the MCP marketplace (which ships stale commands).
 - **ovmem provider switching** — re-running the ovmem installer detects the current setup,
   offers to reuse the existing credential, and safely **rebuilds the vector index when the
   embedding model changes** (OpenAI ⇄ Bedrock): memory content is preserved, the old index

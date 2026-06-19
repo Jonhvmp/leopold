@@ -33,6 +33,13 @@ update: ## Update Leopold to the latest (pull + reinstall)
 menu: ## Open the toolchain manager (install/manage gstack, ovmem, ...)
 	@bash scripts/leopold-menu.sh
 
+.PHONY: serena-install serena-doctor
+serena-install: ## Install + register Serena (LSP code intelligence MCP) — mandatory for quality
+	@bash extensions/serena/manage.sh install
+
+serena-doctor: ## Check the Serena install (CLI, MCP registration, hooks)
+	@bash extensions/serena/manage.sh doctor
+
 .PHONY: gstack-install
 gstack-install: ## Install gstack (optional, MIT by Garry Tan) — the toolchain Leopold conducts
 	@if [ -d "$(GSTACK_DIR)" ]; then \

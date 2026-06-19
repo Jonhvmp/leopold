@@ -81,6 +81,18 @@ else
   echo "   merged (backup at $SETTINGS.leopold.bak)"
 fi
 
+# Serena — MANDATORY. LSP-backed code intelligence (MCP): symbol-level retrieval/editing
+# instead of grep + whole-file reads. It is the biggest lever for code quality AND for
+# keeping context lean (fewer tokens per operation), so Leopold sets it up for everyone.
+echo
+echo "-> setting up Serena (LSP code intelligence — mandatory for quality + lean context)"
+SERENA_MGR="$LEO_HOME/extensions/serena/manage.sh"
+if [ -f "$SERENA_MGR" ]; then
+  bash "$SERENA_MGR" install || echo "   Serena setup did not finish; complete it with: make serena-install  (or: make menu)"
+else
+  echo "   (serena extension missing from this build; skipping)"
+fi
+
 echo
 GSTACK_DIR="$SKILLS/gstack"
 gstack_present() { [ -d "$GSTACK_DIR" ] || ls "$SKILLS" 2>/dev/null | grep -q '^spec$'; }

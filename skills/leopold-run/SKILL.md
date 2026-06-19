@@ -116,6 +116,13 @@ For this entire run you are an orchestrator-driven session. That means:
   3. **Let it stop and resume.** The run auto-stops at `max_context_mb` (default 5); that
      is by design — a fresh `/leopold-run` continues from `PLAN.md` with clean context.
      Bounded, resumable segments beat one giant session.
+- **Prefer Serena's symbolic tools.** If the `mcp__serena__*` tools are present (the
+  Leopold install sets Serena up), use them to read and edit code: `get_symbols_overview`
+  / `find_symbol` / `find_referencing_symbols` to navigate, `replace_symbol_body` /
+  `insert_after_symbol` to edit. They operate on the *symbol*, not the whole file, so they
+  are far more token-efficient than grep + full-file reads — which is the same context-lean
+  discipline above — and far more reliable for cross-file refactors. Fall back to
+  grep/Read only for discovery or non-code files.
 - When you invoke a **gstack** skill, run it in spawned mode: it should
   auto-pick the recommended option and report, not prompt. If a gstack skill
   shells out to its own bins, prefix that bash with `OPENCLAW_SESSION=1`.

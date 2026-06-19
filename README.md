@@ -97,7 +97,13 @@ A small interactive menu installs and manages the toolchain + companion extensio
 make menu     # or: bash ~/.claude/leopold/scripts/leopold-menu.sh
 ```
 
-Each component lives under [`extensions/`](extensions/) (an `extension.json` + a `manage.sh`). Built in: **gstack**, and **ovmem** — autonomous RAG long-term memory (OpenViking + 4 hooks; OpenAI or AWS Bedrock; runs entirely on `127.0.0.1`). Walkthrough: [Toolchain Manager](docs/getting-started/toolchain-manager.md).
+Each component lives under [`extensions/`](extensions/) (an `extension.json` + a `manage.sh`). Built in:
+
+- **serena** (mandatory) — [LSP code intelligence](https://github.com/oraios/serena) over MCP: symbol-level retrieval + editing instead of grep/whole-file reads. Set up automatically by the installer (`make serena-install`); it's the biggest lever for both code quality and lean context (fewer tokens per op).
+- **gstack** — the planning/QA skill suite Leopold conducts.
+- **ovmem** — autonomous RAG long-term memory (OpenViking + 4 hooks; OpenAI or AWS Bedrock; runs entirely on `127.0.0.1`).
+
+Walkthrough: [Toolchain Manager](docs/getting-started/toolchain-manager.md).
 
 ---
 
