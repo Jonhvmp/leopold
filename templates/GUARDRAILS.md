@@ -17,6 +17,7 @@
 ## Stop conditions
 - max_iterations: 50
 - max_failures: 3            # consecutive failures of the same kind
+- max_no_progress: 6         # turns with the open PLAN set unchanged -> loop, stop
 - token/time budget: none    # set if you want a hard ceiling
 
 ## On finish

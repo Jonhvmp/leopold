@@ -83,7 +83,9 @@ in-session engine.
 ## Status and known limits
 
 Alpha. Verified: compiles against `@anthropic-ai/claude-agent-sdk`, the CLI and
-dry-run work, the status parser and git guard are tested. Not yet built: a
+dry-run work, and the status parser + `canUseTool` guard have unit tests
+(`make driver-test` / `npm test`) covering the same bypass attempts as the bash
+guard's red-team suite. Not yet built: a
 watchdog for a worker that ends a turn without emitting a status block (today the
 worker is strongly instructed to always emit one), parallel multi-worker waves,
 and the live dashboard. See the repo roadmap.

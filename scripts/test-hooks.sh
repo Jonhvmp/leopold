@@ -65,5 +65,21 @@ printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "stop clears ALLOW_GIT token" "cleared" "$([ -f "$T/.leopold/ALLOW_GIT" ] && echo present || echo cleared)"
 assert "stop clears STOP file" "cleared" "$([ -f "$T/.leopold/STOP" ] && echo present || echo cleared)"
 
+# --- Loop detection (no progress for N turns) ---
+echo '{"active":true,"iteration":0,"max_iterations":50,"max_no_progress":2}' > "$T/.leopold/state.json"
+printf '# Plan\n- [ ] stuck item\n' > "$T/.leopold/PLAN.md"
+for _ in 1 2 3; do printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1; done
+assert "stop hook halts on a no-progress loop" "no_progress" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
+
+# --- State validation: fail safe + loud ---
+echo '{"active":true,"iteration":"abc","max_iterations":50}' > "$T/.leopold/state.json"
+printf '# Plan\n- [ ] x\n' > "$T/.leopold/PLAN.md"
+printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
+assert "non-numeric budget field stops the run" "state_invalid" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
+
+printf 'not json {' > "$T/.leopold/state.json"
+printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
+assert "malformed state.json stops the run" "state_invalid" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "all hook behavior tests passed"; else echo "HOOK TESTS FAILED"; exit 1; fi

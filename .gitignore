@@ -19,5 +19,6 @@ dist/
 site/
 .cache/
 
-# Maintainer-only publishing notes (kept local, not public)
+# Maintainer-only publishing + launch notes (kept local, not public)
 PUBLISHING.md
+launch/

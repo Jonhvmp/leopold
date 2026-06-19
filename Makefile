@@ -58,9 +58,13 @@ hooks-check: ## Syntax-check the hooks and the installer
 hooks-test: ## Run the hook behavior tests
 	@bash scripts/test-hooks.sh
 
+.PHONY: test-guard
+test-guard: ## Run the guard red-team suite (bypass attempts must stay blocked)
+	@bash scripts/test-guard.sh
+
 # ---- Driver -----------------------------------------------------------------
 
-.PHONY: driver-install driver-build driver-check driver-clean
+.PHONY: driver-install driver-build driver-check driver-test driver-clean
 driver-install: ## Install the SDK driver dependencies
 	@cd $(DRIVER) && $(NPM) install
 
@@ -69,6 +73,9 @@ driver-build: ## Build the SDK driver (tsc)
 
 driver-check: ## Typecheck the SDK driver
 	@cd $(DRIVER) && $(NPM) run typecheck
+
+driver-test: ## Run the SDK driver unit tests (parser + guard; needs Node 22.6+)
+	@cd $(DRIVER) && $(NPM) test
 
 driver-clean: ## Remove driver build output and dependencies
 	@rm -rf $(DRIVER)/dist $(DRIVER)/node_modules
@@ -94,7 +101,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test driver-check docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test test-guard driver-check driver-test docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate
