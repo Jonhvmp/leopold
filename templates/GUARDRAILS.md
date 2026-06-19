@@ -18,6 +18,9 @@
 - max_iterations: 50
 - max_failures: 3            # consecutive failures of the same kind
 - max_no_progress: 6         # turns with the open PLAN set unchanged -> loop, stop
+- max_subagents: 8           # total Task/subagent spawns per run; past it the guard
+                             # denies more (each subagent re-loads the full context =
+                             # the #1 cost multiplier). Raise only if you must.
 - token/time budget: none    # set if you want a hard ceiling
 
 ## On finish

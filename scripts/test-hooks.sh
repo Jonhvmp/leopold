@@ -81,5 +81,15 @@ printf 'not json {' > "$T/.leopold/state.json"
 printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "malformed state.json stops the run" "state_invalid" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
 
+# --- Subagent budget (cost guard) ---
+task='{"cwd":"%s","tool_name":"Task","tool_input":{"description":"x"}}'
+echo '{"active":true,"max_subagents":2,"subagents_spawned":0}' > "$T/.leopold/state.json"
+out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent 1/2 allowed" "" "$(perm "$out")"
+out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent 2/2 allowed" "" "$(perm "$out")"
+out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent over budget denied" "deny" "$(perm "$out")"
+assert "subagent counter persisted" "2" "$(jq -r '.subagents_spawned' "$T/.leopold/state.json" 2>/dev/null)"
+echo '{"active":false,"max_subagents":2,"subagents_spawned":9}' > "$T/.leopold/state.json"
+out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent free when run inactive" "" "$(perm "$out")"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "all hook behavior tests passed"; else echo "HOOK TESTS FAILED"; exit 1; fi

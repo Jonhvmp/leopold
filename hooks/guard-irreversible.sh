@@ -65,6 +65,24 @@ git_subcmd() {  # $1 = normalized command -> echoes the subcommand (or empty)
 }
 
 case "$tool" in
+  Task|Agent)
+    # Subagent budget. Fanning out into many subagents is the single biggest cost
+    # multiplier in an autonomous run: each subagent loads the parent session's
+    # (often multi-MB) context, and the model will happily spawn them in bursts of
+    # 10+. Cap the TOTAL per run (default 8) and deny past it — the run then keeps
+    # going serially instead of exploding. Raise max_subagents in GUARDRAILS.md for
+    # runs that genuinely need more. Counter lives in state.json (best-effort).
+    max_sub="$(jq -r '.max_subagents // 8' "$STATE" 2>/dev/null || echo 8)"
+    case "$max_sub" in (*[!0-9]*|"") max_sub=8 ;; esac
+    spawned="$(jq -r '.subagents_spawned // 0' "$STATE" 2>/dev/null || echo 0)"
+    case "$spawned" in (*[!0-9]*|"") spawned=0 ;; esac
+    if [ "$spawned" -ge "$max_sub" ] 2>/dev/null; then
+      deny "Leopold guard: subagent budget exhausted ($spawned/$max_sub this run). Spawning many subagents multiplies cost — each one re-loads the full session context. Do this task yourself in-turn (work serially). To allow more, raise max_subagents in GUARDRAILS.md and restart the run."
+    fi
+    gtmp="$(mktemp 2>/dev/null || echo "$STATE.gtmp")"
+    jq --argjson s "$((spawned+1))" '.subagents_spawned=$s' "$STATE" > "$gtmp" 2>/dev/null && mv "$gtmp" "$STATE" || rm -f "$gtmp" 2>/dev/null
+    ;;
+
   Bash)
     cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
     # normalize: newlines/tabs -> space, collapse runs (defeats whitespace/tab evasion).

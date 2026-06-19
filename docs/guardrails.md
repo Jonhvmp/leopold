@@ -76,6 +76,24 @@ in fully autonomous mode.
 
 ---
 
+## Cost — subagent fan-out (the expensive mistake)
+
+The biggest way an autonomous run runs up a bill is **subagent fan-out**: the model
+decides to parallelize, spawns the `Task` tool many times in bursts, and each subagent
+re-loads the parent session's (often multi-MB) context. That is how one session quietly
+spawns 80+ subagents and gets very expensive.
+
+Leopold caps it. `max_subagents` (default **8**) is the total subagent-spawn budget per
+run; the guard counts spawns in `state.json` and **denies** past the cap, so the run
+continues serially instead of exploding. The `/leopold-run` protocol also steers the
+agent to work serially and spawn a subagent only for a single, genuinely isolatable
+sub-task — never as a batch.
+
+Belt and braces: set an **Anthropic spending cap** on your account before long autonomous
+runs on large projects. Leopold has no billing limit of its own.
+
+---
+
 ## Stop conditions
 
 The run ends, and the Stop hook allows the session to halt, when any of these is
@@ -135,6 +153,7 @@ reports, you commit and push.
 | Push / PR / publish  | locked  | per-token, off by default  |
 | Max consecutive fails| 3       | `GUARDRAILS.md`          |
 | Max iterations       | 50      | `GUARDRAILS.md`          |
+| Subagent spawns/run  | 8       | `max_subagents` in `GUARDRAILS.md` |
 | Edits outside root   | never   | not configurable         |
 
 ## Run hygiene and parallel runs

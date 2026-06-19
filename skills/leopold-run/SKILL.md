@@ -78,7 +78,7 @@ mkdir -p .leopold
 [ -f .leopold/DECISIONS.md ] || printf '# Decisions\n\nAutonomous decisions, newest last.\n\n' > .leopold/DECISIONS.md
 : >> .leopold/events.jsonl
 cat > .leopold/state.json <<JSON
-{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
+{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
 JSON
 ```
 
@@ -92,6 +92,13 @@ For this entire run you are an orchestrator-driven session. That means:
 
 - **Do not use AskUserQuestion** except for a true irreversible-and-ambiguous
   fork (see the decision protocol). Decide everything else yourself.
+- **Work serially. Do NOT fan out into parallel subagents.** Spawning subagents
+  (the `Task` tool) is the biggest cost multiplier there is: each one re-loads the
+  full session context, and a burst of 10 means 10× that context billed at once.
+  Do each plan item yourself, in your own turn. Only spawn a subagent for a single
+  genuinely isolatable sub-task, rarely, and never as a batch — there is a per-run
+  budget (`max_subagents`, default 8) the guard hard-enforces; past it, spawns are
+  denied and you continue serially.
 - When you invoke a **gstack** skill, run it in spawned mode: it should
   auto-pick the recommended option and report, not prompt. If a gstack skill
   shells out to its own bins, prefix that bash with `OPENCLAW_SESSION=1`.

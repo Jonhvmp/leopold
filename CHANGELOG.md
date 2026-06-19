@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.1] - 2026-06-19
 
+### Security
+- **Subagent budget — caps the #1 cost blowup.** Nothing limited subagent fan-out: an
+  autonomous run could spawn the `Task` tool in bursts of 10+, each re-loading the full
+  multi-MB session context (one report: 82 subagents in a single run). The guard now caps
+  total spawns per run (`max_subagents`, default 8), counting them in `state.json` and
+  denying past the cap so the run continues **serially** instead of exploding. The
+  `/leopold-run` protocol also steers the agent to work serially and never batch-spawn.
+  Tested in `make hooks-test`. Docs recommend an Anthropic spending cap for large runs.
+
 ### Added
 - **ovmem provider switching** — re-running the ovmem installer detects the current setup,
   offers to reuse the existing credential, and safely **rebuilds the vector index when the
