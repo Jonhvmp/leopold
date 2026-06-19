@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-06-19
+
+### Changed
+- **The `leopold-driver` npm version now tracks the repo version.** It had its own
+  `0.1.x` line (0.1.3 on npm) while the repo was at `0.4.x`, which was confusing now that
+  the npm package *is* Leopold (it bundles the whole harness). The release workflow now sets
+  the published version from `VERSION` (single source of truth), so npm and the repo move in
+  lockstep. `leopold-driver` jumps `0.1.3 → 0.4.5` to match.
+
 ## [0.4.4] - 2026-06-19
 
 ### Changed
