@@ -49,7 +49,8 @@ git_subcmd() {  # $1 = normalized command -> echoes the subcommand (or empty)
   local toks=() i n t want=0
   read -ra toks <<< "$1"
   n=${#toks[@]}; i=0
-  while [ "$i" -lt "$n" ] && [ "${toks[$i]}" != "git" ]; do i=$((i+1)); done
+  # match 'git', '/usr/bin/git', './git', 'env git' ... by basename
+  while [ "$i" -lt "$n" ] && [ "${toks[$i]##*/}" != "git" ]; do i=$((i+1)); done
   i=$((i+1))
   while [ "$i" -lt "$n" ]; do
     t="${toks[$i]}"
@@ -66,7 +67,22 @@ git_subcmd() {  # $1 = normalized command -> echoes the subcommand (or empty)
 case "$tool" in
   Bash)
     cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
-    norm="$(printf '%s' "$cmd" | tr '\n\t' '  ')"
+    # normalize: newlines/tabs -> space, collapse runs (defeats whitespace/tab evasion).
+    norm="$(printf '%s' "$cmd" | tr '\n\t' '  ' | tr -s ' ')"
+
+    # Opt-in deny-by-default (LEOPOLD_PARANOID=1): only a small allowlist of
+    # read/build/test/lint commands passes; everything else is denied. Best-effort
+    # (it keys off the first command word), kept off by default in favor of the
+    # hardened denylist below. Documented in docs/guardrails.md.
+    if [ "${LEOPOLD_PARANOID:-0}" = "1" ]; then
+      first="$(printf '%s' "$norm" | awk '{print $1}')"; base="${first##*/}"; ok=0
+      case "$base" in
+        ls|cat|head|tail|wc|grep|rg|awk|sed|find|file|stat|tree|pwd|cd|echo|printf|true|jq|make|node|npx|tsc|mkdir|cp|touch|test|diff|cmp) ok=1 ;;
+        git) case "$(git_subcmd "$norm")" in add|status|diff|log|show|rev-parse|branch|fetch|remote|config) ok=1 ;; esac ;;
+        npm|pnpm|yarn) matches "$norm" '[[:space:]](run|test|ci|pack|install|build|typecheck|lint)([[:space:]]|$)' && ok=1 ;;
+      esac
+      [ "$ok" = 1 ] || deny "Leopold PARANOID: '$base' is not on the allowlist (read/build/test/lint/git add). Unset LEOPOLD_PARANOID to use the default denylist."
+    fi
 
     # --- destructive deletes (rm recursive+force, in any spelling) ----------
     if matches "$norm" '(^|[^[:alnum:]_-])rm([[:space:]]|$)'; then

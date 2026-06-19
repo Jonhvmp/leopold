@@ -23,17 +23,34 @@ STATE="$LEO/state.json"
 
 # Not a Leopold run -> normal stop.
 [ -f "$STATE" ] || exit 0
-# Fail LOUD, not silent: if state.json exists but is malformed, the run cannot read
-# its active flag / budgets. Block the stop with a clear reason so the human notices,
-# instead of the run dying quietly (or looping with a stale budget).
-if ! jq -e . "$STATE" >/dev/null 2>&1; then
-  jq -cn '{decision:"block", reason:"Leopold: .leopold/state.json is malformed (not valid JSON) — the run cannot read its active flag or iteration budget. Fix or delete the file, or run /leopold-stop."}'
+
+now="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')"
+
+# Fail SAFE and LOUD on a broken state file. Malformed JSON, or a missing/non-numeric
+# budget field, means the iteration budget cannot be trusted -- the run could loop
+# forever on a silently-skipped budget. Stop the run and say why, rather than continue
+# blindly or die in silence.
+state_invalid() {
+  printf '{"ts":"%s","event":"state_invalid","reason":"%s"}\n' "$now" "$1" >> "$LEO/events.jsonl" 2>/dev/null || true
+  echo "Leopold: .leopold/state.json is invalid ($1) -- stopping the run (fail-safe). Fix the file or re-run /leopold-brief." >&2
+  printf '{"active":false,"stopped_reason":"state_invalid"}\n' > "$STATE" 2>/dev/null || true
   exit 0
-fi
+}
+jq -e . "$STATE" >/dev/null 2>&1 || state_invalid "malformed JSON"
+
 active="$(jq -r '.active // false' "$STATE" 2>/dev/null || echo false)"
 [ "$active" = "true" ] || exit 0
 
-now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# A present-but-non-numeric budget field is the real hole: it would make the
+# `iter >= max` test below error out (and get swallowed), silently skipping the
+# budget -> unbounded loop. So any present budget field must be an integer. Missing
+# fields fall back to the safe defaults below (50 / 0 / 3), so the budget still holds.
+for f in iteration max_iterations consecutive_failures max_failures; do
+  v="$(jq -r --arg k "$f" '.[$k] // empty' "$STATE" 2>/dev/null)"
+  if [ -n "$v" ] && ! printf '%s' "$v" | grep -qE '^[0-9]+$'; then
+    state_invalid "non-numeric $f ($v)"
+  fi
+done
 
 log_event() { printf '%s\n' "$1" >> "$LEO/events.jsonl" 2>/dev/null || true; }
 

@@ -12,6 +12,16 @@ Guardrails are enforced two ways:
 
 The hook is the real lock. The protocol is the steering.
 
+**Default vs paranoid.** By default the hook is a **denylist** — everything is allowed
+except the forbidden/gated ops below. That list is hardened against evasion (git global
+options, absolute paths, long-form and split `rm` flags, `find -delete`/`-exec`,
+whitespace/tab tricks) and covered by a red-team suite (`make test-guard`). For maximum
+caution, set **`LEOPOLD_PARANOID=1`** to flip the hook into a **deny-by-default
+allowlist**: only read/build/test/lint commands and `git add` / read-only `git` pass;
+everything else is denied. Paranoid mode is opt-in and best-effort (it keys off the
+leading command word); the hardened denylist is the default because it is the more
+predictable lock.
+
 ---
 
 ```mermaid
