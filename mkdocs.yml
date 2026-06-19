@@ -94,6 +94,7 @@ nav:
       - Install: getting-started/install.md
       - Quickstart: getting-started/quickstart.md
       - Your First Run: getting-started/first-run.md
+      - Toolchain Manager: getting-started/toolchain-manager.md
   - Concepts:
       - What Is a Harness: concepts/harness.md
       - The Two Phases: concepts/two-phases.md

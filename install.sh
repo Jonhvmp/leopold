@@ -45,13 +45,16 @@ for d in "$SRC"/skills/*/; do
   echo "   $name"
 done
 
-echo "-> installing hooks, templates, docs"
-cp -R "$SRC/hooks"     "$LEO_HOME/"
-cp -R "$SRC/templates" "$LEO_HOME/"
-cp -R "$SRC/docs"      "$LEO_HOME/" 2>/dev/null || true
-cp -R "$SRC/scripts"   "$LEO_HOME/" 2>/dev/null || true
+echo "-> installing hooks, templates, docs, extensions"
+cp -R "$SRC/hooks"      "$LEO_HOME/"
+cp -R "$SRC/templates"  "$LEO_HOME/"
+cp -R "$SRC/docs"       "$LEO_HOME/" 2>/dev/null || true
+cp -R "$SRC/scripts"    "$LEO_HOME/" 2>/dev/null || true
+cp -R "$SRC/extensions" "$LEO_HOME/" 2>/dev/null || true
+cp    "$SRC/VERSION"    "$LEO_HOME/" 2>/dev/null || true
 chmod +x "$LEO_HOME"/hooks/*.sh
 chmod +x "$LEO_HOME"/scripts/*.sh 2>/dev/null || true
+chmod +x "$LEO_HOME"/extensions/*/manage.sh 2>/dev/null || true
 
 STOP_HOOK="$LEO_HOME/hooks/stop-continuity.sh"
 GUARD_HOOK="$LEO_HOME/hooks/guard-irreversible.sh"
@@ -114,3 +117,6 @@ echo "  /leopold-brief    debate the mission, write the brief"
 echo "  /leopold-run      hand over the seat"
 echo "  /leopold-status   see where it is"
 echo "  /leopold-stop     take the seat back"
+echo
+echo "Manage the toolchain (gstack, ovmem, ...):"
+echo "  bash $LEO_HOME/scripts/leopold-menu.sh    (or: make menu)"

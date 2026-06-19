@@ -1,0 +1,8 @@
+{
+  "name": "leopold",
+  "title": "Leopold",
+  "summary": "The autonomous orchestration harness itself (skills + Stop/PreToolUse hooks).",
+  "homepage": "https://github.com/Jonhvmp/leopold",
+  "license": "MIT",
+  "order": 10
+}
