@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-06-19
+
+### Changed
+- **The installer now bundles the `leopold` CLI too, and verifies the install.** After
+  copying skills + hooks, `install.sh` runs `npm i -g leopold-driver` (unless `leopold` is
+  already on PATH, e.g. you came via `leopold install`), so the `curl … | bash` path also
+  gives you the `leopold menu / watch / doctor` commands — not just the npm path. It then
+  prints a **verify** summary (skills, hooks, `leopold` CLI, serena) so you can see at a
+  glance that everything landed. (Fixes: after merging/installing, `leopold` was "command
+  not found" because the harness and the CLI were separate installs.) Driver 0.1.3.
+
 ## [0.4.3] - 2026-06-19
 
 ### Added
