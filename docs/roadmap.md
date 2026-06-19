@@ -23,6 +23,8 @@ flowchart LR
 ## Next
 
 - [x] `leopold doctor` — verify install, hooks, and gstack wiring
+- [ ] Toolchain manager (`make menu`): acceptance-test the ovmem installer on a clean Linux box + macOS
+- [ ] ovmem extension: fully-local Ollama/GGUF provider profile (no API key)
 - [ ] Worker watchdog for turns that end without a status block
 - [ ] gstack playbook router as first-class config
 - [ ] Multi-worker fan-out for independent plan items (parallel waves)

@@ -97,6 +97,21 @@ git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.cl
 
 Where it shines is **planning**: with gstack present, Leopold can conduct `/office-hours`, `/spec`, `/autoplan`, and `/plan-ceo-review` / `/plan-eng-review` / `/plan-design-review` to harden the brief before a run.
 
+### Toolchain manager
+
+A small interactive menu manages the toolchain Leopold conducts and its companion extensions, in one place:
+
+```bash
+make menu      # or: bash ~/.claude/leopold/scripts/leopold-menu.sh
+```
+
+It is data-driven: each component lives under [`extensions/`](extensions/) with an `extension.json` and a `manage.sh` that implements `detect | status | install | update | remove | doctor`. Adding a component is dropping in a folder. Current extensions:
+
+- **gstack** — the planning/QA skill suite above.
+- **ovmem** — autonomous RAG long-term memory (OpenViking + 4 Claude Code hooks), so sessions stay optimized without destructive `/compact` or `/clear`. Its installer ships the **OpenAI profile** (the key is validated and stored locally; the server binds to `127.0.0.1` only); a fully-local Ollama profile is on the roadmap.
+
+Everything runs on the user's own device — `127.0.0.1` is loopback, and each install is self-contained. See [`extensions/README.md`](extensions/README.md) for the contract and [Toolchain Manager](docs/getting-started/toolchain-manager.md) for the walkthrough.
+
 ---
 
 ## Quickstart

@@ -1,0 +1,8 @@
+{
+  "name": "ovmem",
+  "title": "ovmem",
+  "summary": "Autonomous RAG long-term memory (OpenViking + 4 hooks). Full OpenAI installer ready; local/Ollama TODO.",
+  "homepage": "https://github.com/Jonhvmp/leopold",
+  "license": "MIT",
+  "order": 30
+}

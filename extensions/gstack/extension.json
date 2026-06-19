@@ -1,0 +1,8 @@
+{
+  "name": "gstack",
+  "title": "gstack",
+  "summary": "Garry Tan's planning + QA skill suite that Leopold conducts (/spec, /autoplan, /plan-*-review).",
+  "homepage": "https://github.com/garrytan/gstack",
+  "license": "MIT",
+  "order": 20
+}
