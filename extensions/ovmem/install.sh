@@ -43,6 +43,29 @@ ask_secret() { local p="$1" a=""
 confirm() { case "$(ask "$1 [Y/n]" "Y")" in [nN]*) return 1;; *) return 0;; esac; }
 j() { jq -r "$1" "$MODELS"; }
 
+# Run a command with a live "<label>… Ns" spinner so a long, silent step never looks
+# frozen — even when it's really a background download/reindex. stdout+stderr are captured
+# to SPIN_OUT so callers can use the output (or print it on failure). Headless: one line.
+SPIN_OUT=""
+run_spin() {
+  local label="$1"; shift
+  local tmp; tmp="$(mktemp 2>/dev/null || echo "/tmp/ovm_spin.$$")"
+  ( "$@" >"$tmp" 2>&1 ) & local pid=$!
+  if [ -n "$TTY" ]; then
+    local i=0 t0=$SECONDS f='|/-\'
+    while kill -0 "$pid" 2>/dev/null; do
+      printf "\r   \033[2m%s %s… %ds\033[0m" "${f:i%4:1}" "$label" "$((SECONDS-t0))" >&"$TTY"
+      i=$((i+1)); sleep 0.2
+    done
+    printf "\r\033[K" >&"$TTY"
+  else
+    printf "   ... %s (running)\n" "$label"
+  fi
+  local rc=0; wait "$pid" || rc=$?
+  SPIN_OUT="$(cat "$tmp" 2>/dev/null || true)"; rm -f "$tmp"
+  return "$rc"
+}
+
 # ---- platform + server lifecycle (lock-aware) ------------------------------
 case "$(uname -s 2>/dev/null || echo unknown)" in
   Linux|Darwin) : ;;
@@ -64,7 +87,8 @@ stop_server() {
 }
 start_server() {
   "$BIN/openviking-start"
-  curl -s --retry 40 --retry-delay 1 --retry-connrefused -m 80 "$HEALTH" >/dev/null 2>&1 \
+  run_spin "waiting for OpenViking to be healthy" \
+    curl -s --retry 40 --retry-delay 1 --retry-connrefused -m 80 "$HEALTH" \
     || die "OpenViking did not become healthy; see /tmp/openviking.log"
 }
 
@@ -158,13 +182,16 @@ fi
 # First install downloads ~140 packages (OpenViking + LiteLLM + deps); warn so the long,
 # quiet uv resolve/download step doesn't look frozen. Re-runs are near-instant.
 ov_hint() { printf "   \033[2m(downloading OpenViking + ~140 packages — up to a few minutes on first install)\033[0m\n"; }
+uv_fail() { [ -n "$SPIN_OUT" ] && printf '%s\n' "$SPIN_OUT" | tail -5 | sed 's/^/     /'; die "$1"; }
 if [ "$PROVIDER" = bedrock ]; then
   say "ensuring OpenViking + boto3 (Bedrock)"
   command -v openviking-server >/dev/null 2>&1 || ov_hint
-  uv tool install --with boto3 "$OPENVIKING_PIN" || die "uv tool install (with boto3) failed"
+  run_spin "downloading OpenViking + boto3" uv tool install --with boto3 "$OPENVIKING_PIN" \
+    || uv_fail "uv tool install (with boto3) failed"
 elif ! command -v openviking-server >/dev/null 2>&1; then
   say "installing OpenViking"; ov_hint
-  uv tool install "$OPENVIKING_PIN" || die "uv tool install failed"
+  run_spin "downloading OpenViking + deps" uv tool install "$OPENVIKING_PIN" \
+    || uv_fail "uv tool install failed"
 fi
 export PATH="$BIN:$PATH"
 command -v openviking-server >/dev/null 2>&1 || die "openviking-server not on PATH (add $BIN)"
@@ -247,8 +274,10 @@ start_server
 ok "server healthy on 127.0.0.1:1933"
 
 if [ "$REINDEX" = 1 ]; then
-  say "re-embedding your memories with $EMBED_ID (content preserved) …"
-  R="$(curl -s -m 600 -X POST "${H[@]}" -d '{"uri":"viking://","wait":true}' "$API/content/reindex" 2>/dev/null || echo '{}')"
+  say "re-embedding your memories with $EMBED_ID (content preserved)"
+  run_spin "re-embedding memories" \
+    curl -s -m 600 -X POST "${H[@]}" -d '{"uri":"viking://","wait":true}' "$API/content/reindex" || true
+  R="$SPIN_OUT"; [ -n "$R" ] || R='{}'
   if echo "$R" | jq -e '(.result.status=="completed") and ((.result.failed_records // 0)==0)' >/dev/null 2>&1; then
     ok "reindex complete ($(echo "$R" | jq -r '.result.rebuilt_records // 0') records re-embedded)"
     rm -rf "$VDB.ovmem.bak"
@@ -283,7 +312,9 @@ say "verifying end-to-end (commit -> extract)"
 SID="ovmem-install-check"
 curl -s -m 10 -X POST "${H[@]}" -d "{\"session_id\":\"$SID\"}" "$API/sessions" >/dev/null 2>&1 || true
 curl -s -m 12 -X POST "${H[@]}" -d '{"messages":[{"role":"user","content":"Install check: I prefer concise answers."},{"role":"assistant","content":"Noted."}]}' "$API/sessions/$SID/messages/batch" >/dev/null 2>&1 || true
-EXTRACT="$(curl -s -m 150 -X POST "${H[@]}" "$API/sessions/$SID/extract" 2>/dev/null || echo '{}')"
+run_spin "extracting memories (this can take up to ~2 min)" \
+  curl -s -m 150 -X POST "${H[@]}" "$API/sessions/$SID/extract" || true
+EXTRACT="$SPIN_OUT"; [ -n "$EXTRACT" ] || EXTRACT='{}'
 curl -s -m 8 -X DELETE "${H[@]}" "$API/sessions/$SID" >/dev/null 2>&1 || true
 if echo "$EXTRACT" | jq -e '.status=="ok"' >/dev/null 2>&1; then
   ok "extraction works (memories: $(echo "$EXTRACT" | jq '.result|if type=="array" then length else . end' 2>/dev/null))"

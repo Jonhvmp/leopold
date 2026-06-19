@@ -18,7 +18,7 @@ else
     ( cd "$SRC" && git pull --ff-only -q ) || true
   else
     mkdir -p "$(dirname "$SRC")"
-    git clone --depth 1 https://github.com/Jonhvmp/leopold.git "$SRC"
+    git clone --progress --depth 1 https://github.com/Jonhvmp/leopold.git "$SRC"
   fi
 fi
 CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"
@@ -87,7 +87,8 @@ gstack_present() { [ -d "$GSTACK_DIR" ] || ls "$SKILLS" 2>/dev/null | grep -q '^
 install_gstack() {
   echo "-> installing gstack (MIT, by Garry Tan: https://github.com/garrytan/gstack)"
   command -v bun >/dev/null 2>&1 || echo "   note: gstack needs Bun v1.0+ (https://bun.sh); its setup will guide you."
-  if git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git "$GSTACK_DIR" && ( cd "$GSTACK_DIR" && ./setup ); then
+  echo "   cloning gstack (shows progress) + running its setup…"
+  if git clone --progress --single-branch --depth 1 https://github.com/garrytan/gstack.git "$GSTACK_DIR" && ( cd "$GSTACK_DIR" && ./setup ); then
     echo "   gstack installed."
   else
     echo "   gstack install did not finish; retry with: make gstack-install"

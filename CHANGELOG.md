@@ -16,8 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - README guard count corrected to **59** red-team cases (was a stale 49); ovmem `manage.sh`
   header no longer describes `install`/`update` as stubs (they run the full installer).
-- ovmem installer now warns that the **first** OpenViking install downloads ~140 packages —
-  the long, quiet `uv` resolve/download step was looking frozen on a fresh machine.
+- **Live progress on long, silent installer steps** so they never look frozen: a spinner
+  with elapsed seconds wraps the OpenViking download (~140 packages on first install), the
+  server health-wait, the embedding reindex (up to ~10 min), and the verify/extract
+  (up to ~2 min) — on failure the captured output is shown. git clones (Leopold + gstack)
+  now run with `--progress`. (Reported: a fresh Bedrock install looked stuck at
+  "ensuring OpenViking + boto3".)
 
 ## [0.4.0] - 2026-06-19
 
