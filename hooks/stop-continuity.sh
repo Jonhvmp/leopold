@@ -91,11 +91,24 @@ open_items="$(grep -cE '^[[:space:]]*- \[ \]' "$PLAN" 2>/dev/null || true)"
 open_items="${open_items:-0}"
 if [ "$open_items" -eq 0 ] 2>/dev/null; then allow_stop "plan_complete"; fi
 
-# Otherwise: continue. Increment the iteration counter.
+# Loop detection: if the SET of open plan items is byte-identical for N consecutive
+# turns, the run is thrashing without progress (no item checked off, no item added) ->
+# stop and report rather than burn the whole iteration budget hammering one spot.
+max_np="$(jq -r '.max_no_progress // 6' "$STATE" 2>/dev/null || echo 6)"
+case "$max_np" in (*[!0-9]*|"") max_np=6 ;; esac
+sig="$(grep -E '^[[:space:]]*- \[ \]' "$PLAN" 2>/dev/null | cksum | awk '{print $1}')"
+last_sig="$(jq -r '.progress_sig // empty' "$STATE" 2>/dev/null || true)"
+np="$(jq -r '.no_progress // 0' "$STATE" 2>/dev/null || echo 0)"
+case "$np" in (*[!0-9]*|"") np=0 ;; esac
+if [ "$sig" = "$last_sig" ] && [ -n "$last_sig" ]; then np=$((np + 1)); else np=0; fi
+if [ "$np" -ge "$max_np" ] 2>/dev/null; then allow_stop "no_progress"; fi
+
+# Otherwise: continue. Increment the iteration counter; persist the progress signature.
 next=$((iter + 1))
 tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
-jq --argjson n "$next" --arg t "$now" '.iteration=$n | .last_turn=$t' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
-log_event "{\"ts\":\"$now\",\"event\":\"turn_start\",\"iteration\":$next,\"open_items\":$open_items}"
+jq --argjson n "$next" --arg t "$now" --argjson np "$np" --arg sig "$sig" \
+   '.iteration=$n | .last_turn=$t | .no_progress=$np | .progress_sig=$sig' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+log_event "{\"ts\":\"$now\",\"event\":\"turn_start\",\"iteration\":$next,\"open_items\":$open_items,\"no_progress\":$np}"
 
 reason="Leopold autonomous mode is ACTIVE (turn $next/$max_iter, $open_items open plan items). Do not stop. Steps: (1) Read .leopold/PLAN.md and pick the next unchecked item. (2) Complete it; reach for the gstack playbook skill that fits the situation. (3) On any fork, apply .leopold/CHARTER.md and the decision protocol: if the call is reversible OR the charter is clear, decide it yourself, append the decision to .leopold/DECISIONS.md, and keep going; stop only for an irreversible AND ambiguous fork, a charter contradiction, or a mission-premise change. (4) Mark the finished item as done ([x]) in PLAN.md. Hard rules: git commit/push/publish stay locked; never edit files outside this project; never touch .leopold/GUARDRAILS.md or the hooks. When the plan is complete or a stop condition is met, write a short final summary and then stop."
 

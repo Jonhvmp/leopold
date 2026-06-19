@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **`examples/`** — a reproducible run (`add-json-output`): the full brief plus the
   `DECISIONS.md` an autonomous run produced from it. Proves the loop and teaches the format.
-- **`docs/launch/`** — review-ready drafts (Show HN, r/ClaudeAI, X thread,
-  awesome-claude-code) + a manual `CHECKLIST.md`. (Posting stays a human action.)
-- **`scripts/record-demo.sh`** — records a scripted walkthrough cast and renders it (needs
-  asciinema + a renderer; skips cleanly when absent).
+- **Demo cast** (`assets/demo.cast` + `assets/demo.svg`) at the top of the README, with
+  `scripts/record-demo.sh` to regenerate it.
+- **Loop detection** (`max_no_progress`, default 6): if the open `PLAN.md` set is unchanged
+  for N turns, the run stops with `no_progress` instead of thrashing. Tested in `make hooks-test`.
 
 ### Security
 - **Hardened the PreToolUse guard.** Replaced loose regexes with real parsing and closed confirmed bypasses: `git -c user.name=x commit` / `git -C /r commit` / `git --git-dir=… commit` and git by absolute path / `env git` (global options skipped, subcommand resolved by basename), `rm --recursive --force` / `rm -r -f` / `/bin/rm -rf` (recursive+force in any spelling), `find … -delete` / `find … -exec rm`, and whitespace/tab evasion (normalized before matching). The guard **fails closed** on a malformed `state.json`.

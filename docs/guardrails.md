@@ -85,9 +85,9 @@ true:
 2. **Kill switch** — `.leopold/STOP` exists (`/leopold-stop` or `touch`).
 3. **Repeated failure** — the same test or build has failed N consecutive turns
    (default 3). Escalate, do not keep hammering.
-4. **Loop detection** *(roadmap)* — detecting the same file or fix variant retried
-   without progress is planned. Today the backstop against thrashing is the
-   consecutive-failure budget (above) plus the iteration budget (below).
+4. **Loop detection** — if the set of open `PLAN.md` items is byte-identical for
+   `max_no_progress` consecutive turns (default 6 — nothing checked off, nothing
+   added), the run is thrashing and stops with reason `no_progress`.
 5. **Budget exhausted** — the iteration counter or a token/time budget set in
    `GUARDRAILS.md` is reached.
 6. **Irreversible + ambiguous fork** — the decision protocol routed a fork to

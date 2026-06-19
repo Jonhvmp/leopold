@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/leopold.gif" alt="Leopold - brief it like a teammate, it conducts Claude Code" width="720" />
+  <img src="assets/demo.svg" alt="Leopold conducting a run: brief → run → decisions logged → staged, awaiting your commit" width="760" />
 </p>
 
 # Leopold
@@ -12,6 +12,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Jonhvmp/leopold" alt="license" /></a>
   <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/works%20with-Claude%20Code-d97757" alt="works with Claude Code" /></a>
   <a href="https://github.com/Jonhvmp/leopold/stargazers"><img src="https://img.shields.io/github/stars/Jonhvmp/leopold?style=social" alt="stars" /></a>
+</p>
+
+<p align="center">
+  <img src="assets/leopold.gif" alt="Leopold the conductor (Bugs Bunny, Long-Haired Hare, 1949)" width="380" />
 </p>
 
 Leopold is an autonomous orchestration harness for [Claude Code](https://claude.com/claude-code). You debate the work with it — goals, constraints, taste, what "done" means — and that becomes a durable brief. Then it takes the seat and drives Claude Code continuously, deciding the way you would instead of stopping at every fork, until the plan is done or a stop condition fires — **with your git locked the whole time.**
@@ -51,8 +55,9 @@ Then, in any project:
 /leopold-stop     # take the seat back
 ```
 
-> **See it work:** a full [worked example run](examples/add-json-output/) — the brief and
-> the `DECISIONS.md` it produced — or render the demo cast with [`scripts/record-demo.sh`](scripts/record-demo.sh).
+> The cast at the top is a scripted walkthrough ([regenerate it](scripts/record-demo.sh)).
+> For a full reproducible run — a real brief and the `DECISIONS.md` it produced — see
+> [`examples/add-json-output/`](examples/add-json-output/).
 
 ---
 

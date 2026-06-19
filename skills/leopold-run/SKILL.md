@@ -78,7 +78,7 @@ mkdir -p .leopold
 [ -f .leopold/DECISIONS.md ] || printf '# Decisions\n\nAutonomous decisions, newest last.\n\n' > .leopold/DECISIONS.md
 : >> .leopold/events.jsonl
 cat > .leopold/state.json <<JSON
-{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
+{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
 JSON
 ```
 
