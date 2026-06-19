@@ -95,22 +95,61 @@ def read_events(limit=60):
 
 
 # --------------------------------------------------------------------------- cost / session
-# Estimated prices, USD per million tokens. cache-write = 1.25x input, cache-read = 0.1x
-# input (Anthropic's standard cache pricing). Matched by model family substring.
+# Estimated prices, USD per million tokens. cache-write defaults to 1.25x input, cache-read
+# to 0.1x input (Anthropic's standard cache pricing). Matched by model family substring.
+# Override per model/family via a JSON file in $LEOPOLD_PRICES or .leopold/prices.json, e.g.
+#   {"opus": {"in": 15, "out": 75, "cache_write": 18.75, "cache_read": 1.5},
+#    "claude-my-model-1": {"in": 2, "out": 8}}
+# (cache_write/cache_read optional; merged over these defaults; restart watch to apply.)
 PRICES = {
     "opus":   {"in": 15.0, "out": 75.0},
     "sonnet": {"in": 3.0,  "out": 15.0},
     "haiku":  {"in": 1.0,  "out": 5.0},
 }
 _DEFAULT_PRICE = {"in": 3.0, "out": 15.0}
+_PRICES_LOADED = None
+
+
+def _with_cache(p):
+    q = {"in": float(p["in"]), "out": float(p["out"])}
+    q["cache_write"] = float(p.get("cache_write", q["in"] * 1.25))
+    q["cache_read"] = float(p.get("cache_read", q["in"] * 0.1))
+    return q
+
+
+def _load_prices():
+    global _PRICES_LOADED
+    if _PRICES_LOADED is not None:
+        return _PRICES_LOADED
+    prices = {k: _with_cache(v) for k, v in PRICES.items()}
+    for src in (os.environ.get("LEOPOLD_PRICES"), os.path.join(LEO, "prices.json")):
+        if not src or not os.path.isfile(src):
+            continue
+        try:
+            with open(src, "r", encoding="utf-8") as f:
+                override = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if isinstance(override, dict):
+            for k, v in override.items():
+                if isinstance(v, dict) and "in" in v and "out" in v:
+                    try:
+                        prices[str(k).lower()] = _with_cache(v)
+                    except (TypeError, ValueError):
+                        pass
+    _PRICES_LOADED = prices
+    return prices
 
 
 def _price(model):
+    prices = _load_prices()
     m = (model or "").lower()
-    for fam, p in PRICES.items():
+    if m in prices:               # exact-model override wins
+        return prices[m]
+    for fam, p in prices.items():  # then family substring (opus / sonnet / haiku / custom)
         if fam in m:
             return p
-    return _DEFAULT_PRICE
+    return _with_cache(_DEFAULT_PRICE)
 
 
 def _projects_dir():
@@ -186,7 +225,7 @@ def _parse_cost(tp):
             cw = int(u.get("cache_creation_input_tokens", 0) or 0)
             cr = int(u.get("cache_read_input_tokens", 0) or 0)
             pr = _price(model)
-            c = (inp * pr["in"] + out * pr["out"] + cw * pr["in"] * 1.25 + cr * pr["in"] * 0.1) / 1e6
+            c = (inp * pr["in"] + out * pr["out"] + cw * pr["cache_write"] + cr * pr["cache_read"]) / 1e6
             tot["input"] += inp; tot["output"] += out
             tot["cache_write"] += cw; tot["cache_read"] += cr
             usd += c; msgs += 1

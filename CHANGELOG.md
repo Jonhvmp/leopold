@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   breakdown (input / output / cache-write / cache-read), **cache-hit %**, per-model, main vs
   subagent, turns and duration (the transcript is found via the run's `transcript_path` or
   the cwd's project slug; cost is cached by file mtime so it's parsed at most once per turn).
+  Prices are an estimate from a built-in per-model map, **configurable** via `$LEOPOLD_PRICES`
+  or `.leopold/prices.json` (override any model/family; cache rates default to 1.25× / 0.1× in).
   Below it: the budget meters (context MB / subagents / forks / iterations / failures vs
   their budgets), the event feed (turns, guard blocks, `subagent_spawn` with size + fork
   flag, stops), the decisions log, and a **Stop** button (the kill switch). Read-only
