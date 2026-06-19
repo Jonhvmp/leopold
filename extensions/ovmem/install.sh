@@ -155,11 +155,16 @@ if [ -d "$VDB" ] && [ -n "$CUR_EMBED_MODEL" ] && { [ "$EMBED_MODEL" != "$CUR_EMB
 fi
 
 # ---- OpenViking (+ boto3 for bedrock) --------------------------------------
+# First install downloads ~140 packages (OpenViking + LiteLLM + deps); warn so the long,
+# quiet uv resolve/download step doesn't look frozen. Re-runs are near-instant.
+ov_hint() { printf "   \033[2m(downloading OpenViking + ~140 packages — up to a few minutes on first install)\033[0m\n"; }
 if [ "$PROVIDER" = bedrock ]; then
   say "ensuring OpenViking + boto3 (Bedrock)"
+  command -v openviking-server >/dev/null 2>&1 || ov_hint
   uv tool install --with boto3 "$OPENVIKING_PIN" || die "uv tool install (with boto3) failed"
 elif ! command -v openviking-server >/dev/null 2>&1; then
-  say "installing OpenViking"; uv tool install "$OPENVIKING_PIN" || die "uv tool install failed"
+  say "installing OpenViking"; ov_hint
+  uv tool install "$OPENVIKING_PIN" || die "uv tool install failed"
 fi
 export PATH="$BIN:$PATH"
 command -v openviking-server >/dev/null 2>&1 || die "openviking-server not on PATH (add $BIN)"

@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - README guard count corrected to **59** red-team cases (was a stale 49); ovmem `manage.sh`
   header no longer describes `install`/`update` as stubs (they run the full installer).
+- ovmem installer now warns that the **first** OpenViking install downloads ~140 packages —
+  the long, quiet `uv` resolve/download step was looking frozen on a fresh machine.
 
 ## [0.4.0] - 2026-06-19
 
