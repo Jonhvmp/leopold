@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (the kill switch). Read-only otherwise, loopback-only — nothing leaves the machine.
   Launch with `/leopold-watch` or `make watch`. The Stop hook now also records `context_mb`
   so the meter is live. Styled to a warm-cream / near-black design system (Geist type stack
-  with system fallback — no web fonts, fully offline) with a light/dark toggle.
+  with system fallback — no web fonts, fully offline) with a light/dark toggle. Also runnable
+  straight from the npm package — **`npx leopold-driver watch`** (the dashboard is bundled in
+  `leopold-driver` 0.1.2; it spawns the same Python server, no repo checkout needed).
 
 ## [0.4.2] - 2026-06-19
 

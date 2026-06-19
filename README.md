@@ -41,7 +41,7 @@ The installer copies the skills + hooks into `~/.claude/`, merges the `settings.
 git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
 # as a Claude Code plugin (auto-wires skills + hooks)
 claude plugin marketplace add Jonhvmp/leopold && claude plugin install leopold@leopold
-# just the external SDK driver
+# just the external SDK driver (also ships the watch dashboard: `leopold-driver watch`)
 npm i -g leopold-driver
 ```
 </details>

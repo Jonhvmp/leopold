@@ -42,6 +42,7 @@ Then tell the user, briefly:
   budgets), the live event feed, the decisions log, and a **Stop** button.
 - It shows real data only while a run is active (`/leopold-run`); otherwise it says
   "no active run" and updates the moment one starts.
-- To stop the dashboard itself: `pkill -f leopold-watch.py`. It also runs via `make watch`.
+- To stop the dashboard itself: `pkill -f leopold-watch.py`. It also runs via `make watch`
+  or, from the npm package, `npx leopold-driver watch`.
 
 Do not do anything else. Start it, report the URL, stop.

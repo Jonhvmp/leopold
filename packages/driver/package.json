@@ -1,6 +1,6 @@
 {
   "name": "leopold-driver",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Leopold SDK driver: a persistent conductor that orchestrates fresh Claude Code workers per task, decides from your charter, and notifies you. Uses your Claude Code auth. Git stays locked.",
   "type": "module",
   "bin": {
@@ -33,7 +33,7 @@
     "anthropic"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-dashboard.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --experimental-strip-types --test test/protocol.test.ts test/guard.test.ts",
     "dev": "tsx src/index.ts",
