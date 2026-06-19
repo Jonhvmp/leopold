@@ -111,13 +111,16 @@ runs on large projects. Leopold has no billing limit of its own.
 
 ### Watching a run (live dashboard)
 
-`/leopold-watch` (or `make watch`) starts a **local** dashboard at `http://127.0.0.1:4179`
-that reads the run's own `.leopold/` files and updates live over SSE. It shows the run
-status, the cost meters above (context MB, subagents, forks, iterations, failures — each
-against its budget), the live event feed (turns, guard blocks, `subagent_spawn` with size +
-fork flag, stops), the decisions log, and a **Stop** button that uses the kill switch. It is
-zero-dependency (Python stdlib), read-only except that one button, and binds to loopback —
-nothing leaves the machine.
+`/leopold-watch` (or `make watch`, or `leopold watch` from the npm CLI) starts a **local**
+dashboard at `http://127.0.0.1:4179` that updates live over SSE. Its headline is the **real
+estimated spend**, parsed from the Claude Code session transcript: dollars, the token
+breakdown (input / output / cache-write / cache-read), cache-hit %, per-model, and main vs
+subagent. Below it: the budget meters above (context MB, subagents, forks, iterations,
+failures — each against its budget), the live event feed (turns, guard blocks,
+`subagent_spawn`, stops), the decisions log, and a **Stop** button that uses the kill switch.
+The cost number is an estimate from a built-in price map. It is zero-dependency (Python
+stdlib), read-only except that one button, and binds to loopback — nothing leaves the
+machine.
 
 ---
 

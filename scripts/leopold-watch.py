@@ -2,23 +2,28 @@
 """Leopold watch — a local, zero-dependency live dashboard for an autonomous run.
 
 It reads the run's own files in `.leopold/` (state.json, PLAN.md, DECISIONS.md,
-events.jsonl) and serves a dashboard on 127.0.0.1 with live (SSE) updates. It is
-read-only except for one action: a Stop button that touches `.leopold/STOP` — the
-same kill switch `/leopold-stop` uses.
+events.jsonl) AND the Claude Code session transcript (for real token/cost data), and
+serves a dashboard on 127.0.0.1 with live (SSE) updates. Read-only except one action:
+a Stop button that touches `.leopold/STOP` — the same kill switch `/leopold-stop` uses.
 
-No dependencies (Python 3.8+ stdlib only). Nothing leaves the machine; it binds to
-loopback and uses no web fonts. The UI follows a warm-cream / near-black design
-system (Geist / Geist Mono type stack with system fallbacks). Usage:
+Cost is parsed from the transcript JSONL (each assistant message carries `usage` +
+`model`); the dashboard finds it via the run state's `transcript_path` or by the cwd's
+project slug under ~/.claude/projects/. Cost is an ESTIMATE from a built-in price map.
+
+No dependencies (Python 3.8+ stdlib). Nothing leaves the machine; it binds to loopback
+and uses no web fonts. Usage:
 
     python3 leopold-watch.py [--project DIR] [--port 4179] [--host 127.0.0.1]
 """
 import argparse
 import json
 import os
+import re
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 LEO = ""          # set in main(): the project's .leopold dir
+PROJECT = ""      # set in main(): the project root (abspath), used to find the transcript
 
 
 # --------------------------------------------------------------------------- readers
@@ -65,8 +70,6 @@ def read_decisions(limit=8):
             cur.append(line)
     if any(x.strip() for x in cur):
         blocks.append("\n".join(cur).strip())
-    # keep only real decision blocks (the protocol writes "Fork:" / "Decision:" lines);
-    # this drops the "# Decisions" heading and the intro line.
     out = [b.replace("**", "") for b in blocks
            if ("Fork:" in b or "Decision:" in b or "Decisão:" in b)]
     return out[-limit:][::-1]
@@ -91,6 +94,147 @@ def read_events(limit=60):
     return out[::-1]  # newest first
 
 
+# --------------------------------------------------------------------------- cost / session
+# Estimated prices, USD per million tokens. cache-write = 1.25x input, cache-read = 0.1x
+# input (Anthropic's standard cache pricing). Matched by model family substring.
+PRICES = {
+    "opus":   {"in": 15.0, "out": 75.0},
+    "sonnet": {"in": 3.0,  "out": 15.0},
+    "haiku":  {"in": 1.0,  "out": 5.0},
+}
+_DEFAULT_PRICE = {"in": 3.0, "out": 15.0}
+
+
+def _price(model):
+    m = (model or "").lower()
+    for fam, p in PRICES.items():
+        if fam in m:
+            return p
+    return _DEFAULT_PRICE
+
+
+def _projects_dir():
+    base = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+    return os.path.join(base, "projects")
+
+
+def find_transcript():
+    # 1) explicit path recorded by the Stop hook (the run's actual session).
+    tp = read_state().get("transcript_path")
+    if tp and os.path.isfile(tp):
+        return tp
+    # 2) auto-discover: Claude Code stores sessions under <config>/projects/<slug>/,
+    #    where <slug> is the project path with non-alphanumerics replaced by '-'.
+    slug = re.sub(r"[^a-zA-Z0-9]", "-", PROJECT or os.getcwd())
+    d = os.path.join(_projects_dir(), slug)
+    try:
+        files = [os.path.join(d, f) for f in os.listdir(d) if f.endswith(".jsonl")]
+    except OSError:
+        return None
+    return max(files, key=os.path.getmtime) if files else None
+
+
+def _iso_delta(a, b):
+    if not a or not b:
+        return 0
+    try:
+        from datetime import datetime
+        def p(s):
+            return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return max(0, int((p(b) - p(a)).total_seconds()))
+    except Exception:
+        return 0
+
+
+_COST_CACHE = {}  # path -> (mtime, size, result)  — avoid re-parsing on every SSE tick
+
+
+def _parse_cost(tp):
+    tot = {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0}
+    usd = main_usd = sub_usd = 0.0
+    msgs = sub_msgs = 0
+    models = {}
+    t_first = t_last = None
+    session = ""
+    try:
+        f = open(tp, "r", encoding="utf-8", errors="replace")
+    except OSError:
+        return {"available": False}
+    with f:
+        for line in f:
+            if '"usage"' not in line:   # cheap pre-filter: only assistant turns carry cost
+                continue
+            try:
+                o = json.loads(line)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            if o.get("type") != "assistant":
+                continue
+            m = o.get("message") or {}
+            u = m.get("usage") or {}
+            if not u:
+                continue
+            ts = o.get("timestamp")
+            if ts:
+                t_first = ts if t_first is None else min(t_first, ts)
+                t_last = ts if t_last is None else max(t_last, ts)
+            if not session:
+                session = o.get("sessionId", "") or ""
+            model = m.get("model", "") or "?"
+            inp = int(u.get("input_tokens", 0) or 0)
+            out = int(u.get("output_tokens", 0) or 0)
+            cw = int(u.get("cache_creation_input_tokens", 0) or 0)
+            cr = int(u.get("cache_read_input_tokens", 0) or 0)
+            pr = _price(model)
+            c = (inp * pr["in"] + out * pr["out"] + cw * pr["in"] * 1.25 + cr * pr["in"] * 0.1) / 1e6
+            tot["input"] += inp; tot["output"] += out
+            tot["cache_write"] += cw; tot["cache_read"] += cr
+            usd += c; msgs += 1
+            if o.get("isSidechain"):
+                sub_usd += c; sub_msgs += 1
+            else:
+                main_usd += c
+            mm = models.setdefault(model, {"usd": 0.0, "msgs": 0})
+            mm["usd"] += c; mm["msgs"] += 1
+    tot["total"] = sum(tot.values())
+    cacheable = tot["input"] + tot["cache_write"] + tot["cache_read"]
+    hit = round(tot["cache_read"] / cacheable * 100) if cacheable else 0
+    model_list = sorted(
+        ({"model": k, "usd": round(v["usd"], 4), "msgs": v["msgs"]} for k, v in models.items()),
+        key=lambda x: -x["usd"],
+    )
+    return {
+        "available": True,
+        "usd": round(usd, 4),
+        "tokens": tot,
+        "cache_hit_pct": hit,
+        "messages": msgs,
+        "sub_msgs": sub_msgs,
+        "main_usd": round(main_usd, 4),
+        "sub_usd": round(sub_usd, 4),
+        "models": model_list[:4],
+        "duration_s": _iso_delta(t_first, t_last),
+        "session": session,
+    }
+
+
+def read_cost():
+    tp = find_transcript()
+    if not tp:
+        return {"available": False}
+    try:
+        st = os.stat(tp)
+    except OSError:
+        return {"available": False}
+    cached = _COST_CACHE.get(tp)
+    if cached and cached[0] == st.st_mtime and cached[1] == st.st_size:
+        return cached[2]
+    result = _parse_cost(tp)
+    _COST_CACHE[tp] = (st.st_mtime, st.st_size, result)
+    return result
+
+
+# --------------------------------------------------------------------------- snapshot
 def _num(state, key, default):
     v = state.get(key, default)
     try:
@@ -102,8 +246,6 @@ def _num(state, key, default):
 def snapshot():
     st = read_state()
     plan = read_plan()
-    active = st.get("active") is True
-    stopped_reason = st.get("stopped_reason", "")
     meters = [
         {"label": "context", "val": round(_num(st, "context_mb", 0), 1),
          "max": _num(st, "max_context_mb", 5), "unit": "MB"},
@@ -119,14 +261,13 @@ def snapshot():
     return {
         "present": bool(st) and not st.get("_invalid"),
         "invalid": bool(st.get("_invalid")),
-        "active": active,
-        "stopped_reason": stopped_reason,
+        "active": st.get("active") is True,
+        "stopped_reason": st.get("stopped_reason", ""),
         "stop_requested": os.path.exists(os.path.join(LEO, "STOP")),
-        "started_at": st.get("started_at", ""),
-        "last_turn": st.get("last_turn", ""),
         "session_id": st.get("session_id", ""),
         "plan": plan,
         "meters": meters,
+        "cost": read_cost(),
         "events": read_events(),
         "decisions": read_decisions(),
         "ts": int(time.time()),
@@ -134,10 +275,8 @@ def snapshot():
 
 
 # --------------------------------------------------------------------------- page
-# Design system: warm cream (light) / near-black (dark), strictly monochrome with
-# semantic green/red + severity tones; Geist / Geist Mono type stack (system fallback,
-# no web fonts so it works fully offline); tactile "pushable" buttons; pill + severity
-# chips; hairline dividers.
+# Design system: warm cream (light) / near-black (dark), monochrome with semantic green/red
+# + severity tones; Geist / Geist Mono type stack (system fallback, no web fonts -> offline).
 PAGE = r"""<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Leopold watch</title>
@@ -170,7 +309,8 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 .tgl:hover{color:var(--fg);border-color:var(--muted-fg)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;
  opacity:0;animation:up .6s cubic-bezier(.22,1,.36,1) forwards}
-.card:nth-child(2){animation-delay:.04s}.card:nth-child(3){animation-delay:.08s}.card:nth-child(4){animation-delay:.12s}
+.card:nth-child(2){animation-delay:.04s}.card:nth-child(3){animation-delay:.08s}
+.card:nth-child(4){animation-delay:.12s}.card:nth-child(5){animation-delay:.16s}
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .sectitle{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px}
 .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -187,7 +327,16 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 .btn:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 rgba(0,0,0,.35)}
 .btn:active{transform:translateY(3px);box-shadow:inset 0 3px 6px rgba(0,0,0,.35)}
 .btn:disabled{opacity:.35;cursor:default;transform:none;box-shadow:0 3px 0 0 rgba(0,0,0,.2)}
-.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:14px}
+.cost{margin-top:16px}
+.cost .big{font-family:var(--mono);font-size:32px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.cost .est{font-family:var(--mono);font-size:10px;color:var(--muted-fg);letter-spacing:.12em;text-transform:uppercase;margin-left:9px}
+.cost .meta{font-family:var(--mono);font-size:11px;color:var(--muted-fg);margin-top:6px}
+.toks{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin-top:16px}
+.tok .k{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-fg)}
+.tok .v{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;margin-top:3px}
+.mrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.mchip{font-family:var(--mono);font-size:10px;letter-spacing:.04em;border:1px solid var(--border);border-radius:9999px;padding:3px 10px;color:var(--muted-fg)}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
 .meter .top{display:flex;justify-content:space-between;align-items:baseline}
 .meter .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-fg)}
 .meter .val{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
@@ -223,12 +372,16 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
   <span class="proj" id="proj"></span><span class="grow"></span>
   <button class="tgl" id="tgl">theme</button>
 </div>
-<div class="card"><div class="row">
-  <span class="pill" id="status"><span class="dot" id="dot"></span><span id="stext">—</span></span>
-  <span class="sub tnum" id="planline" style="font-family:var(--mono);font-size:11px"></span>
-  <span class="grow"></span>
-  <button class="btn" id="stop" disabled>Stop run</button>
-</div><div class="meters" id="meters"></div></div>
+<div class="card">
+  <div class="row">
+    <span class="pill" id="status"><span class="dot" id="dot"></span><span id="stext">—</span></span>
+    <span class="sub tnum" id="planline" style="font-family:var(--mono);font-size:11px"></span>
+    <span class="grow"></span>
+    <button class="btn" id="stop" disabled>Stop run</button>
+  </div>
+  <div class="cost" id="cost"></div>
+</div>
+<div class="card"><div class="sectitle">Budgets</div><div class="meters" id="meters"></div></div>
 <div class="card"><div class="sectitle">Live events</div><div class="feed" id="feed"></div></div>
 <div class="card"><div class="sectitle">Plan</div><div id="plan" class="plan"></div></div>
 <div class="card"><div class="sectitle">Decisions · newest</div><div id="decisions"></div></div>
@@ -236,7 +389,26 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 const $=s=>document.querySelector(s);
 function el(t,c,txt){const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e;}
 function hms(ts){return ts&&ts.length>=19?ts.slice(11,19):"";}
+function fmtUsd(x){if(x==null)return"$0";return x>=1?("$"+x.toFixed(2)):("$"+x.toFixed(x>=0.01?3:4));}
+function fmtTok(n){return n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":(""+(n||0));}
+function fmtDur(s){if(!s)return"0m";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?(h+"h"+m+"m"):(m+"m"+(m?"":(s%60+"s")));}
 const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med"};
+function renderCost(c){
+  const box=$("#cost");box.innerHTML="";
+  if(!c||!c.available){box.append(el("div","meta","waiting for session data… (cost shows once the run has a turn)"));return;}
+  const hero=el("div");hero.append(el("span","big",fmtUsd(c.usd)),el("span","est","est · "+(c.models[0]?c.models[0].model.replace("claude-",""):"")));
+  box.append(hero);
+  const t=c.tokens;
+  box.append(el("div","meta",c.messages+" turns · "+fmtTok(t.total)+" tokens · cache "+c.cache_hit_pct+"% · "+fmtDur(c.duration_s)));
+  const grid=el("div","toks");
+  [["input",t.input],["output",t.output],["cache write",t.cache_write],["cache read",t.cache_read]].forEach(p=>{
+    const d=el("div","tok");d.append(el("div","k",p[0]),el("div","v",fmtTok(p[1])));grid.append(d);
+  });
+  box.append(grid);
+  if(c.models&&c.models.length){const mr=el("div","mrow");
+    c.models.forEach(m=>mr.append(el("span","mchip",m.model.replace("claude-","")+" · "+fmtUsd(m.usd))));box.append(mr);}
+  if(c.sub_msgs)box.append(el("div","meta","main "+fmtUsd(c.main_usd)+" · subagents "+fmtUsd(c.sub_usd)+" ("+c.sub_msgs+" msgs)"));
+}
 function render(s){
   $("#proj").textContent=s.session_id?("· "+s.session_id):"";
   const pill=$("#status"),dot=$("#dot"),tx=$("#stext");
@@ -247,6 +419,7 @@ function render(s){
   else{tx.textContent="stopped"+(s.stopped_reason?(" · "+s.stopped_reason):"");}
   $("#planline").textContent=s.plan.total?("plan "+s.plan.done+"/"+s.plan.total):"";
   const stop=$("#stop");stop.disabled=!s.active;stop.textContent=s.stop_requested?"stop requested…":"Stop run";
+  renderCost(s.cost);
   const m=$("#meters");m.innerHTML="";
   s.meters.forEach(x=>{
     const pct=x.max>0?Math.min(100,Math.round(x.val/x.max*100)):(x.val>0?100:0);
@@ -350,18 +523,19 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    global LEO
+    global LEO, PROJECT
     ap = argparse.ArgumentParser(description="Local live dashboard for a Leopold run.")
     ap.add_argument("--project", default=os.getcwd(), help="project dir containing .leopold/ (default: cwd)")
     ap.add_argument("--port", type=int, default=int(os.environ.get("LEOPOLD_WATCH_PORT", "4179")))
     ap.add_argument("--host", default="127.0.0.1")
     args = ap.parse_args()
-    LEO = os.path.join(os.path.abspath(args.project), ".leopold")
+    PROJECT = os.path.abspath(args.project)
+    LEO = os.path.join(PROJECT, ".leopold")
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     httpd.daemon_threads = True
     url = "http://%s:%d" % (args.host, args.port)
     print("Leopold watch -> %s   (project: %s)" % (url, args.project))
-    print("Reading: %s   ·   Ctrl-C to stop" % LEO)
+    print("Reading: %s + the session transcript   ·   Ctrl-C to stop" % LEO)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

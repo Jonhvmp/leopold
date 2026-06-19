@@ -13,12 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `update`, and `run`. So `npm i -g leopold-driver && leopold install` sets everything up
   and manages it **without cloning the repo or running `make`** — the realistic path for
   most users. Build vendors the harness into `assets/`; `npm pack` ships it. (Driver 0.1.2.)
-- **`/leopold-watch` — local live dashboard.** A zero-dependency (Python stdlib) web
-  dashboard at `http://127.0.0.1:4179` that reads the run's own `.leopold/` files and
-  updates live over SSE: run status, the cost meters (context MB / subagents / forks /
-  iterations / failures vs their budgets), the event feed (turns, guard blocks,
-  `subagent_spawn` with size + fork flag, stops), the decisions log, and a **Stop** button
-  (the kill switch). Read-only otherwise, loopback-only — nothing leaves the machine.
+- **`/leopold-watch` — local live dashboard with real cost.** A zero-dependency (Python
+  stdlib) web dashboard at `http://127.0.0.1:4179`, updating live over SSE. Its headline is
+  **real spend** parsed from the Claude Code session transcript — estimated **$**, token
+  breakdown (input / output / cache-write / cache-read), **cache-hit %**, per-model, main vs
+  subagent, turns and duration (the transcript is found via the run's `transcript_path` or
+  the cwd's project slug; cost is cached by file mtime so it's parsed at most once per turn).
+  Below it: the budget meters (context MB / subagents / forks / iterations / failures vs
+  their budgets), the event feed (turns, guard blocks, `subagent_spawn` with size + fork
+  flag, stops), the decisions log, and a **Stop** button (the kill switch). Read-only
+  otherwise, loopback-only — nothing leaves the machine.
   Launch with `/leopold-watch`, `make watch`, or `leopold watch` (npm CLI above). The Stop
   hook now also records `context_mb` so the meter is live. Styled to a warm-cream / near-black
   design system (Geist type stack with system fallback — no web fonts, fully offline) with a
