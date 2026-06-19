@@ -75,7 +75,7 @@ Because Leopold sells autonomy, guardrails are the product, not an afterthought.
 
 - **Git stays locked.** Commit, push, force-push, `reset --hard`, recursive `rm` (any spelling), `find … -delete`, `gh pr create/merge`, and package publish are blocked while autonomous — regardless of permission mode. You opt in explicitly, per session, or they never run.
 - **Red-teamed.** The guard ships a bypass-attempt test suite — **59 cases run in CI** (`make test-guard`), plus unit tests for the TS driver guard — covering tricks like `git -c user.name=x commit`, `rm --recursive --force`, `/bin/rm -rf`, and `find -exec rm`. Think you can slip one past it? [Open an issue](https://github.com/Jonhvmp/leopold/issues) — break it.
-- **Cost-capped.** Subagent fan-out — the model spawning many `Task` subagents, each re-loading the full session context — is the #1 way an autonomous run runs up a bill. The guard caps it (`max_subagents`, default 8) and the run continues serially past the cap.
+- **Cost-capped (both axes).** An autonomous run runs up a bill two ways: how much context each unit carries, and how many spawn. Leopold caps both — it stops when the transcript passes `max_context_mb` (5, resume fresh from the brief); forks (which clone the whole session) are capped at 2; oversized subagent prompts are denied; and total `Task` spawns are capped at `max_subagents` (8), continuing serially past it.
 - **Fails closed.** A malformed run-state file blocks loudly; it never silently lets autonomy through.
 - **Kill switch + audit.** `/leopold-stop` (or `touch .leopold/STOP`) halts at the next turn boundary; every autonomous decision is logged with its reasoning.
 

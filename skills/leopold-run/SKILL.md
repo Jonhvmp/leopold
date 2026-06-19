@@ -78,7 +78,7 @@ mkdir -p .leopold
 [ -f .leopold/DECISIONS.md ] || printf '# Decisions\n\nAutonomous decisions, newest last.\n\n' > .leopold/DECISIONS.md
 : >> .leopold/events.jsonl
 cat > .leopold/state.json <<JSON
-{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
+{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"max_forks":2,"forks_spawned":0,"max_context_mb":5,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
 JSON
 ```
 
@@ -98,7 +98,14 @@ For this entire run you are an orchestrator-driven session. That means:
   Do each plan item yourself, in your own turn. Only spawn a subagent for a single
   genuinely isolatable sub-task, rarely, and never as a batch — there is a per-run
   budget (`max_subagents`, default 8) the guard hard-enforces; past it, spawns are
-  denied and you continue serially.
+  denied and you continue serially. **Never fork** (a fork clones the entire session
+  context — the most expensive spawn; the guard caps forks at 2). When you do spawn a
+  subagent, hand it a **minimal prompt** — point it at file paths to read, never paste
+  files or the brief in; the guard denies oversized subagent prompts.
+- **Keep your own context lean.** The run also stops when the transcript passes
+  `max_context_mb` (default 5) — a long session re-bills its whole growing context every
+  turn. That stop is normal: the brief persists, so a fresh `/leopold-run` resumes from
+  `PLAN.md` with clean context. Don't fight it by re-reading huge files each turn.
 - When you invoke a **gstack** skill, run it in spawned mode: it should
   auto-pick the recommended option and report, not prompt. If a gstack skill
   shells out to its own bins, prefix that bash with `OPENCLAW_SESSION=1`.

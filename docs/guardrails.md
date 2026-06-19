@@ -76,18 +76,31 @@ in fully autonomous mode.
 
 ---
 
-## Cost — subagent fan-out (the expensive mistake)
+## Cost — the expensive mistakes
 
-The biggest way an autonomous run runs up a bill is **subagent fan-out**: the model
-decides to parallelize, spawns the `Task` tool many times in bursts, and each subagent
-re-loads the parent session's (often multi-MB) context. That is how one session quietly
-spawns 80+ subagents and gets very expensive.
+Cost in an autonomous run blows up on **two axes**, and Leopold caps both. (One reported
+run: 82 subagents and a 5.9MB session over 681 turns.)
 
-Leopold caps it. `max_subagents` (default **8**) is the total subagent-spawn budget per
-run; the guard counts spawns in `state.json` and **denies** past the cap, so the run
-continues serially instead of exploding. The `/leopold-run` protocol also steers the
-agent to work serially and spawn a subagent only for a single, genuinely isolatable
-sub-task — never as a batch.
+**1. How much context each unit carries.**
+
+- **The main session grows every turn.** On a big-context model it never auto-compacts, so
+  each turn re-bills the whole accumulated transcript. `max_context_mb` (default **5**)
+  stops the run when the transcript passes that size — the brief persists, so a fresh
+  `/leopold-run` resumes from `PLAN.md` with clean context. Bounded, resumable runs beat
+  one giant session.
+- **Forks clone the entire session.** A fork carries the full multi-MB context — the most
+  expensive spawn there is. `max_forks` (default **2**) caps them far tighter than fresh
+  subagents.
+- **Oversized subagent prompts** mean context is being pasted into the spawn (billed in
+  full). The guard denies a subagent prompt over ~256KB — point subagents at file *paths*,
+  don't paste files in.
+
+**2. How many subagents are spawned.**
+
+- The model loves to parallelize into bursts of 10+. `max_subagents` (default **8**) is the
+  total spawn budget per run; the guard counts spawns in `state.json` and **denies** past
+  the cap so the run continues serially. The `/leopold-run` protocol also steers it to work
+  serially and never batch-spawn.
 
 Belt and braces: set an **Anthropic spending cap** on your account before long autonomous
 runs on large projects. Leopold has no billing limit of its own.
@@ -108,7 +121,9 @@ true:
    added), the run is thrashing and stops with reason `no_progress`.
 5. **Budget exhausted** — the iteration counter or a token/time budget set in
    `GUARDRAILS.md` is reached.
-6. **Irreversible + ambiguous fork** — the decision protocol routed a fork to
+6. **Context budget** — the transcript passed `max_context_mb` (default 5). Resume
+   with a fresh `/leopold-run`; the brief continues it with clean context.
+7. **Irreversible + ambiguous fork** — the decision protocol routed a fork to
    the human.
 
 Every stop writes a final summary to the run output and a `stop` event to
@@ -154,6 +169,8 @@ reports, you commit and push.
 | Max consecutive fails| 3       | `GUARDRAILS.md`          |
 | Max iterations       | 50      | `GUARDRAILS.md`          |
 | Subagent spawns/run  | 8       | `max_subagents` in `GUARDRAILS.md` |
+| Forks/run            | 2       | `max_forks` in `GUARDRAILS.md` |
+| Context budget       | 5 MB    | `max_context_mb` in `GUARDRAILS.md` |
 | Edits outside root   | never   | not configurable         |
 
 ## Run hygiene and parallel runs

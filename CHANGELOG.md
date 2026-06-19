@@ -7,13 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.1] - 2026-06-19
 
 ### Security
-- **Subagent budget — caps the #1 cost blowup.** Nothing limited subagent fan-out: an
-  autonomous run could spawn the `Task` tool in bursts of 10+, each re-loading the full
-  multi-MB session context (one report: 82 subagents in a single run). The guard now caps
-  total spawns per run (`max_subagents`, default 8), counting them in `state.json` and
-  denying past the cap so the run continues **serially** instead of exploding. The
-  `/leopold-run` protocol also steers the agent to work serially and never batch-spawn.
-  Tested in `make hooks-test`. Docs recommend an Anthropic spending cap for large runs.
+- **Cost guardrails — caps the #1 autonomous-run blowup, on both axes.** Nothing limited
+  cost growth: a run could spawn the `Task` tool in bursts of 10+, each carrying a
+  multi-MB context, while the main session ballooned every turn (one report: 82 subagents
+  and a 5.9MB session over 681 turns). New caps, all in `state.json` / `GUARDRAILS.md` and
+  enforced by the hooks:
+  - **`max_context_mb`** (default 5) — the Stop hook ends the run when the transcript
+    passes this; the brief persists, so a fresh `/leopold-run` resumes from `PLAN.md` with
+    clean context. (A long run re-bills its whole growing context every turn — the biggest
+    money pit.)
+  - **`max_subagents`** (default 8) — total `Task`/subagent spawns per run; denied past it,
+    the run continues **serially**.
+  - **`max_forks`** (default 2) — forks clone the *entire* session context, so they are
+    capped far tighter.
+  - **Oversized subagent prompts** (>~256KB) are denied — that means context is being
+    pasted into the spawn; point subagents at file paths instead.
+
+  The `/leopold-run` protocol also steers the agent to work serially, never fork, and hand
+  subagents minimal prompts. Tested in `make hooks-test`. Docs recommend an Anthropic
+  spending cap for large runs.
 
 ### Added
 - **ovmem provider switching** — re-running the ovmem installer detects the current setup,

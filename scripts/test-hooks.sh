@@ -91,5 +91,24 @@ assert "subagent counter persisted" "2" "$(jq -r '.subagents_spawned' "$T/.leopo
 echo '{"active":false,"max_subagents":2,"subagents_spawned":9}' > "$T/.leopold/state.json"
 out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent free when run inactive" "" "$(perm "$out")"
 
+# --- Fork budget (forks clone the whole context) ---
+echo '{"active":true,"max_subagents":8,"subagents_spawned":0,"max_forks":1,"forks_spawned":0}' > "$T/.leopold/state.json"
+fork='{"cwd":"%s","tool_name":"Task","tool_input":{"subagent_type":"fork","prompt":"x"}}'
+out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork 1/1 allowed" "" "$(perm "$out")"
+out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork over budget denied" "deny" "$(perm "$out")"
+
+# --- Oversized subagent prompt (context dumping) ---
+echo '{"active":true,"max_subagents":8,"subagents_spawned":0}' > "$T/.leopold/state.json"
+head -c 300000 /dev/zero | tr '\0' x > "$T/big.txt"
+jq -cn --rawfile p "$T/big.txt" --arg c "$T" '{cwd:$c,tool_name:"Task",tool_input:{prompt:$p}}' > "$T/bigin.json"
+out="$(bash "$HOOKS/guard-irreversible.sh" < "$T/bigin.json")"; assert "oversized subagent prompt denied" "deny" "$(perm "$out")"
+
+# --- Context budget (transcript over max_context_mb) ---
+echo '{"active":true,"iteration":1,"max_context_mb":1}' > "$T/.leopold/state.json"
+printf '# Plan\n- [ ] open\n' > "$T/.leopold/PLAN.md"
+head -c 1200000 /dev/zero | tr '\0' a > "$T/transcript.jsonl"
+printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
+assert "context budget stops the run" "context_budget" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "all hook behavior tests passed"; else echo "HOOK TESTS FAILED"; exit 1; fi
