@@ -63,8 +63,17 @@ case "${1:-}" in
     else
       echo "hooks:    settings.json not found"
     fi
-    if [ -f "$HOME/.openviking/ov.conf" ]; then
-      echo "ov.conf:  present ($(grep -o '"output_language_override"[^,]*' "$HOME/.openviking/ov.conf" 2>/dev/null || echo 'no language override'))"
+    if [ -f "$HOME/.openviking/ov.conf" ] && command -v jq >/dev/null 2>&1; then
+      prov="$(jq -r '.vlm.provider // "?"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
+      chat="$(jq -r '.vlm.model // "?"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
+      emb="$(jq -r '.embedding.dense.model // "?"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
+      lang="$(jq -r '.output_language_override // "auto"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
+      echo "provider: $prov"
+      echo "chat:     $chat"
+      echo "embed:    $emb"
+      echo "ov.conf:  present (lang=$lang)"
+    elif [ -f "$HOME/.openviking/ov.conf" ]; then
+      echo "ov.conf:  present"
     else
       echo "ov.conf:  missing"
     fi
