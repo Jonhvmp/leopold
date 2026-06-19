@@ -122,10 +122,12 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          V="$(node -p "require('./package.json').version")"
+          # Single source of truth: the npm package version tracks the repo VERSION.
+          V="$(tr -d '[:space:]' < ../../VERSION)"
           if npm view "leopold-driver@$V" version >/dev/null 2>&1; then
             echo "leopold-driver@$V already on npm — skipping publish."
           else
             npm ci
+            npm version "$V" --no-git-tag-version --allow-same-version >/dev/null
             npm publish --access public
           fi
