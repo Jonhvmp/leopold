@@ -23,6 +23,8 @@ jobs:
         run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh scripts/*.sh
       - name: Hook behavior tests
         run: bash scripts/test-hooks.sh
+      - name: Guard red-team tests (bypass attempts must stay blocked)
+        run: bash scripts/test-guard.sh
 
   driver:
     name: driver

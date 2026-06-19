@@ -56,7 +56,9 @@ flowchart LR
 ## Status
 
 Alpha. Verified: typechecks against `@anthropic-ai/claude-agent-sdk`, the CLI and
-dry-run work, the status parser and git guard are tested. Roadmap: a watchdog for
+dry-run work. The TS status parser and `canUseTool` guard typecheck but are not yet
+unit-tested (on the roadmap); the in-session bash guard has a red-team test suite
+(`make test-guard`). Roadmap: a watchdog for
 a worker that ends a turn without a status block, parallel multi-worker waves, and
 a live dashboard.
 

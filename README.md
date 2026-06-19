@@ -6,141 +6,41 @@
 
 **Brief it like a teammate. It conducts Claude Code in your seat.**
 
-Leopold is an autonomous orchestration harness for [Claude Code](https://claude.com/claude-code). You sit down and debate the work with it the way you already debate with Claude Code: goals, constraints, taste, what "done" means. That conversation becomes a durable brief. Then Leopold takes the seat and drives Claude Code continuously, deciding the way you would, instead of stopping to ask you at every fork.
+<p align="center">
+  <a href="https://github.com/Jonhvmp/leopold/actions/workflows/ci.yml"><img src="https://github.com/Jonhvmp/leopold/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://www.npmjs.com/package/leopold-driver"><img src="https://img.shields.io/npm/v/leopold-driver?label=leopold-driver" alt="npm" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Jonhvmp/leopold" alt="license" /></a>
+  <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/works%20with-Claude%20Code-d97757" alt="works with Claude Code" /></a>
+  <a href="https://github.com/Jonhvmp/leopold/stargazers"><img src="https://img.shields.io/github/stars/Jonhvmp/leopold?style=social" alt="stars" /></a>
+</p>
 
-It is built to keep going: think, research, wait on long tasks, pick the next item, decide, log the decision, repeat, until the plan is done or a stop condition fires. Your git stays locked the whole time.
+Leopold is an autonomous orchestration harness for [Claude Code](https://claude.com/claude-code). You debate the work with it — goals, constraints, taste, what "done" means — and that becomes a durable brief. Then it takes the seat and drives Claude Code continuously, deciding the way you would instead of stopping at every fork, until the plan is done or a stop condition fires — **with your git locked the whole time.**
 
-> The name is a tip of the hat to Bugs Bunny. In *Long-Haired Hare* (1949), Bugs takes the podium disguised as the great conductor **Leopold** and runs the whole orchestra with a wave of the baton. That is the job: you are the composer, Leopold is the conductor, Claude Code is the orchestra.
+> The name nods to Bugs Bunny: in *Long-Haired Hare* (1949) he seizes the podium as the conductor **Leopold** and runs the orchestra with a wave of the baton. You are the composer, Leopold the conductor, Claude Code the orchestra.
 
-> Status: **alpha**. The in-session engine (skills + hooks) works today. The external SDK driver (`packages/driver/`) is built and typechecks against the Agent SDK (alpha). See [Roadmap](#roadmap).
-
----
-
-## What is a harness, and why does this one matter
-
-In current usage, an *agent harness* is everything wrapped around the model except the model itself: tool execution, memory and state, orchestration, guardrails, and observability. Put simply, `Agent = Model + Harness`. A good harness is what turns a general LLM into a system that can run long, complex workflows reliably, and it can be the difference between a model that quits after one turn and one that finishes the job.
-
-Claude Code is already a strong harness for a *single interactive turn*. Leopold adds the layer it is missing for *unattended, long-running work*:
-
-- a **decider** (your charter) so the agent has the authority to choose instead of asking, and
-- **continuity** (a stop hook) so a finished turn rolls into the next item instead of halting,
-- behind **guardrails** (a tool-call gate) so autonomy never touches your git.
-
----
-
-## The problem
-
-A normal Claude Code session is a conversation. It pauses at every decision: "approach A or B?", "should I commit?", "do the next item or stop?". That is the right default when a human is watching. It is the wrong default when you want a session to run for an hour while you do something else.
-
-The pauses come from three different places, and each needs a different fix:
-
-1. **Safety defaults** — commit, push, and destructive actions ask first. Correct, and Leopold keeps them locked.
-2. **No designated decider** — "approach A or B" is a *product* call. Without your judgment encoded, the agent has no authority to choose, so it asks.
-3. **No continuity** — when a batch finishes, stopping is the default. Nothing tells the session to pick up the next thing.
-
-Leopold flips levers 2 and 3 while respecting lever 1.
-
----
-
-## How it works
-
-Two phases.
-
-### Phase 1 — Brief (`/leopold-brief`)
-
-A structured debate, not a form. You talk through the mission; Leopold pushes back, asks the sharp questions, and writes four durable artifacts:
-
-- **`MISSION.md`** — what we are building, why, and the definition of done.
-- **`CHARTER.md`** — your decision charter: priorities, taste, hard *never* / *always* rules, risk tolerance. This is the part that "becomes you."
-- **`GUARDRAILS.md`** — what is autonomous vs gated, stop conditions, budgets, the kill switch.
-- **`PLAN.md`** — the backlog the autonomous run will burn down.
-
-You can debate, revise, and re-run this until the brief reflects how you actually think. The quality of the autonomous run is capped by the quality of the brief, so this phase matters.
-
-### Phase 2 — Run (`/leopold-run`)
-
-Leopold enters autonomous mode and conducts Claude Code in a loop:
-
-1. Read `PLAN.md`, pick the next unchecked item.
-2. Do the work, reaching for the right [gstack](https://github.com/garrytan/gstack) skill for the situation (`/spec` before building, `/code-review` after, `/verify` to confirm, `/investigate` when stuck).
-3. Hit a fork? Consult `CHARTER.md`. If the call is reversible and the charter is clear, **decide, log it to `DECISIONS.md`, and keep going**. Only a genuinely irreversible *and* ambiguous fork stops the run.
-4. Mark the item done, pick the next.
-
-A **Stop hook** is what makes it continuous: when Claude finishes a turn, the hook checks the plan and the stop conditions, and if work remains it re-injects "continue". A **PreToolUse hook** keeps commit, push, and destructive commands locked even while autonomous.
-
-Every decision Leopold makes on your behalf lands in `DECISIONS.md`, so you can review what "you" decided while you were away.
-
----
-
-## Why it is built on gstack
-
-[gstack](https://github.com/garrytan/gstack) is a battle-tested library of Claude Code skills (`/spec`, `/code-review`, `/qa`, `/ship`, `/investigate`, and more). Leopold does not replace it. It conducts it.
-
-Two integration points make this clean:
-
-- **Spawned-session protocol.** gstack skills already detect when they run inside an AI orchestrator and switch from "ask the user" to "auto-pick the recommended option and report". Leopold sets that environment, so the entire gstack toolchain runs autonomously without modification.
-- **Decision principles.** gstack's `autoplan` encodes six principles for auto-answering review questions. Leopold generalizes that idea into a project-wide decision protocol grounded in *your* charter. See [`docs/decision-protocol.md`](docs/decision-protocol.md).
-
-gstack is optional. Without it, Leopold still orchestrates plain Claude Code. With it, Leopold plays the full toolchain like a senior engineer would. The situation-to-skill map lives in [`docs/gstack-playbook.md`](docs/gstack-playbook.md).
-
-### Install gstack (optional)
-
-Leopold does **not** bundle gstack — it is a separate MIT project (by Garry Tan) with its own installer and self-update. Leopold conducts it when present; to enable it, install it standalone:
-
-```bash
-make gstack-install
-# or the official one-liner (needs Bun v1.0+):
-git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup
-```
-
-`install.sh` also offers to set it up for you if it is missing (or pass `./install.sh --with-gstack`).
-
-Where it shines is **planning**: with gstack present, Leopold can conduct `/office-hours`, `/spec`, `/autoplan`, and `/plan-ceo-review` / `/plan-eng-review` / `/plan-design-review` to harden the brief before a run.
-
-### Toolchain manager
-
-A small interactive menu manages the toolchain Leopold conducts and its companion extensions, in one place:
-
-```bash
-make menu      # or: bash ~/.claude/leopold/scripts/leopold-menu.sh
-```
-
-It is data-driven: each component lives under [`extensions/`](extensions/) with an `extension.json` and a `manage.sh` that implements `detect | status | install | update | remove | doctor`. Adding a component is dropping in a folder. Current extensions:
-
-- **gstack** — the planning/QA skill suite above.
-- **ovmem** — autonomous RAG long-term memory (OpenViking + 4 Claude Code hooks), so sessions stay optimized without destructive `/compact` or `/clear`. Its installer ships the **OpenAI profile** (the key is validated and stored locally; the server binds to `127.0.0.1` only); a fully-local Ollama profile is on the roadmap.
-
-Everything runs on the user's own device — `127.0.0.1` is loopback, and each install is self-contained. See [`extensions/README.md`](extensions/README.md) for the contract and [Toolchain Manager](docs/getting-started/toolchain-manager.md) for the walkthrough.
+> **Status: alpha.** The in-session engine (skills + hooks) works today; the SDK driver (`packages/driver/`) typechecks against the Agent SDK. See [Roadmap](#roadmap).
 
 ---
 
 ## Quickstart
 
-Install with one command:
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Jonhvmp/leopold/main/install.sh | bash
 ```
 
-Or clone it (more transparent):
+The installer copies the skills + hooks into `~/.claude/`, merges the `settings.json` snippet, and offers to open the toolchain manager.
+
+<details><summary>Other ways to install</summary>
 
 ```bash
+# clone (transparent)
 git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
-```
-
-As a Claude Code plugin (auto-wires skills + hooks):
-
-```bash
+# as a Claude Code plugin (auto-wires skills + hooks)
 claude plugin marketplace add Jonhvmp/leopold && claude plugin install leopold@leopold
-```
-
-The SDK driver from npm:
-
-```bash
+# just the external SDK driver
 npm i -g leopold-driver
 ```
-
-`install.sh` copies the skills into `~/.claude/skills/`, the hooks into `~/.claude/leopold/hooks/`, and prints the `settings.json` snippet to merge (or merges it for you).
+</details>
 
 Then, in any project:
 
@@ -153,22 +53,46 @@ Then, in any project:
 
 ---
 
-## Safety
+## How it works
 
-Leopold is autonomous by design, which makes guardrails the most important part of it, not an afterthought.
+**Phase 1 — Brief (`/leopold-brief`).** A structured debate, not a form. Leopold pushes back and writes four durable artifacts: `MISSION.md` (what + definition of done), `CHARTER.md` (your priorities, taste, hard *never*/*always* rules — the part that "becomes you"), `GUARDRAILS.md` (autonomous vs gated, stop conditions, kill switch), and `PLAN.md` (the backlog). The run's quality is capped by the brief's, so this phase matters.
 
-- **Git stays locked.** Commit, push, force-push, `reset --hard`, `rm -rf`, `gh pr create/merge`, and publish commands are blocked while autonomous, regardless of permission mode. You opt in explicitly, per session, or they never run. See [`docs/guardrails.md`](docs/guardrails.md).
-- **Stop conditions.** The run ends on: plan complete, kill switch, repeated test failures, loop detection, or iteration/token budget exhausted.
-- **Kill switch.** `/leopold-stop` (or `touch .leopold/STOP`) halts the loop at the next turn boundary.
-- **Full audit trail.** Every autonomous decision is logged with its reasoning in `DECISIONS.md`.
+**Phase 2 — Run (`/leopold-run`).** Leopold loops: pick the next `PLAN.md` item → do the work, reaching for the right [gstack](https://github.com/garrytan/gstack) skill → at a fork, consult `CHARTER.md`; if the call is reversible and the charter is clear, **decide, log it to `DECISIONS.md`, and keep going** → mark it done, pick the next. A **Stop hook** re-injects "continue" while work remains; a **PreToolUse guard** keeps git and destructive ops locked. Everything it decided for you is in `DECISIONS.md` to review.
 
-Leopold never weakens Claude Code's own permission system. It adds a second lock on top.
+---
+
+## Safety — autonomy you can trust
+
+Because Leopold sells autonomy, guardrails are the product, not an afterthought.
+
+- **Git stays locked.** Commit, push, force-push, `reset --hard`, recursive `rm` (any spelling), `find … -delete`, `gh pr create/merge`, and package publish are blocked while autonomous — regardless of permission mode. You opt in explicitly, per session, or they never run.
+- **Red-teamed.** The guard ships a bypass-attempt test suite — **49 cases run in CI** (`make test-guard`) — covering tricks like `git -c user.name=x commit`, `rm --recursive --force`, `/bin/rm -rf`, and `find -exec rm`. Think you can slip one past it? [Open an issue](https://github.com/Jonhvmp/leopold/issues) — break it.
+- **Fails closed.** A malformed run-state file blocks loudly; it never silently lets autonomy through.
+- **Kill switch + audit.** `/leopold-stop` (or `touch .leopold/STOP`) halts at the next turn boundary; every autonomous decision is logged with its reasoning.
+
+Leopold never weakens Claude Code's own permissions — it adds a second lock on top. Details: [`docs/guardrails.md`](docs/guardrails.md).
+
+---
+
+## What is a harness?
+
+`Agent = Model + Harness` — everything around the model: orchestration, memory, guardrails, observability. Claude Code is a great harness for one *interactive* turn. Leopold adds the layer it lacks for *unattended* work: a **decider** (your charter, so it chooses instead of asking), **continuity** (a stop hook, so a finished turn rolls into the next item), behind **guardrails** (the gate above). More in [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/).
+
+## gstack + the toolchain manager
+
+[gstack](https://github.com/garrytan/gstack) is a battle-tested suite of Claude Code skills (`/spec`, `/code-review`, `/qa`, `/ship`, `/investigate`, …). Leopold doesn't replace it — it **conducts** it: gstack skills auto-switch to "pick the recommended option and report" inside an orchestrator, so the whole toolchain runs autonomously. Optional, but it's where planning shines (`/autoplan`, `/plan-*-review`).
+
+A small interactive menu installs and manages the toolchain + companion extensions:
+
+```bash
+make menu     # or: bash ~/.claude/leopold/scripts/leopold-menu.sh
+```
+
+Each component lives under [`extensions/`](extensions/) (an `extension.json` + a `manage.sh`). Built in: **gstack**, and **ovmem** — autonomous RAG long-term memory (OpenViking + 4 hooks; OpenAI or AWS Bedrock; runs entirely on `127.0.0.1`). Walkthrough: [Toolchain Manager](docs/getting-started/toolchain-manager.md).
 
 ---
 
 ## Architecture at a glance
-
-Leopold maps onto the standard harness layers. The v0.1 in-session engine implements the orchestration, memory, guardrails, and observability layers entirely through Claude Code's own skills and hooks. The SDK driver (`packages/driver/`) adds the API and sandbox layers.
 
 | Harness layer | v0.1 (in-session) | Roadmap (SDK driver) |
 |---|---|---|
@@ -181,44 +105,30 @@ Leopold maps onto the standard harness layers. The v0.1 in-session engine implem
 
 Full design in [`docs/architecture.md`](docs/architecture.md).
 
----
-
 ## Roadmap
 
-- [x] In-session engine: skills + Stop/PreToolUse hooks (the v0.1 you are reading)
-- [x] `leopold doctor` — verify install, hooks, and gstack wiring (`make doctor` / `/leopold-doctor`)
-- [x] SDK driver (v0.1 built — see `packages/driver/`): an external orchestrator on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk) that spawns Claude Code as a worker, detects "asking" / "waiting" states, and auto-responds from a founder persona built off the charter
-- [ ] gstack playbook router as a first-class config
-- [ ] Multi-worker fan-out for large missions
-- [ ] Web dashboard for the decision log and live run state
+- [x] In-session engine: skills + Stop/PreToolUse hooks
+- [x] `leopold doctor` — verify install, hooks, gstack wiring
+- [x] Guard red-team suite — bypass attempts blocked in CI
+- [x] SDK driver (v0.1 built) — external orchestrator on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk)
+- [ ] SDK driver unit tests (status parser + `canUseTool` guard)
+- [ ] Multi-worker fan-out, web dashboard for the decision log
 
 ---
 
 ## Documentation
 
-Full docs (Material + Mermaid): **https://jonhvmp.github.io/leopold/**
-
-- [Quickstart](https://jonhvmp.github.io/leopold/getting-started/quickstart/)
-- [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/)
-- [Architecture](https://jonhvmp.github.io/leopold/architecture/)
-- [Leopold vs Ralph](https://jonhvmp.github.io/leopold/comparisons/ralph/)
-
-Run the docs locally: `pip install -r requirements-docs.txt && mkdocs serve`
-
----
+Full docs (Material + Mermaid): **https://jonhvmp.github.io/leopold/** — [Quickstart](https://jonhvmp.github.io/leopold/getting-started/quickstart/) · [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/) · [Architecture](https://jonhvmp.github.io/leopold/architecture/) · [Leopold vs Ralph](https://jonhvmp.github.io/leopold/comparisons/ralph/)
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
 
----
-
-## Star History
-
-<a href="https://www.star-history.com/?type=date&repos=Jonhvmp%2Fleopold">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&legend=top-left" />
-  </picture>
-</a>
+<p align="center">
+  <a href="https://www.star-history.com/?type=date&repos=Jonhvmp%2Fleopold">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&theme=dark&legend=top-left" />
+      <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Jonhvmp/leopold&type=date&legend=top-left" width="600" />
+    </picture>
+  </a>
+</p>

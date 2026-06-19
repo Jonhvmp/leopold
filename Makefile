@@ -58,6 +58,10 @@ hooks-check: ## Syntax-check the hooks and the installer
 hooks-test: ## Run the hook behavior tests
 	@bash scripts/test-hooks.sh
 
+.PHONY: test-guard
+test-guard: ## Run the guard red-team suite (bypass attempts must stay blocked)
+	@bash scripts/test-guard.sh
+
 # ---- Driver -----------------------------------------------------------------
 
 .PHONY: driver-install driver-build driver-check driver-clean
@@ -94,7 +98,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test driver-check docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test test-guard driver-check docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

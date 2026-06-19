@@ -23,6 +23,13 @@ STATE="$LEO/state.json"
 
 # Not a Leopold run -> normal stop.
 [ -f "$STATE" ] || exit 0
+# Fail LOUD, not silent: if state.json exists but is malformed, the run cannot read
+# its active flag / budgets. Block the stop with a clear reason so the human notices,
+# instead of the run dying quietly (or looping with a stale budget).
+if ! jq -e . "$STATE" >/dev/null 2>&1; then
+  jq -cn '{decision:"block", reason:"Leopold: .leopold/state.json is malformed (not valid JSON) — the run cannot read its active flag or iteration budget. Fix or delete the file, or run /leopold-stop."}'
+  exit 0
+fi
 active="$(jq -r '.active // false' "$STATE" 2>/dev/null || echo false)"
 [ "$active" = "true" ] || exit 0
 

@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-19
+
+### Security
+- **Hardened the PreToolUse guard.** Replaced loose regexes with real parsing and closed confirmed bypasses: `git -c user.name=x commit` / `git -C /r commit` / `git --git-dir=… commit` (git global options are now skipped to find the real subcommand), `rm --recursive --force` / `rm -r -f` / `/bin/rm -rf` (recursive+force detected in any spelling), and `find … -delete` / `find … -exec rm`. The guard now **fails closed** on a malformed `state.json` instead of silently allowing.
+- **Red-team test suite** (`scripts/test-guard.sh`, `make test-guard`): 49 bypass-attempt cases, run in CI.
+
+### Changed
+- README: tighter, Quickstart moved to the top, badges (CI / npm / license / works-with-Claude-Code / stars), and a Safety section documenting the red-teamed guard.
+- `stop-continuity` blocks loudly (with a clear reason) on a malformed `state.json` rather than stopping silently.
+
+### Fixed
+- Corrected the "status parser and git guard are tested" claim in the driver docs (the TS driver is typechecked, not yet unit-tested; the bash guard now has the red-team suite).
+- `docs/guardrails.md` marks fine-grained loop detection as roadmap (the engine enforces the consecutive-failure and iteration budgets today).
+
 ## [0.3.0] - 2026-06-19
 
 ### Added
