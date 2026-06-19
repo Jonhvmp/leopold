@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "prices": "USD per 1M tokens (input/output for chat; flat for embedding). Approximate, for guidance only.",
+    "source": "LiteLLM model_prices_and_context_window map",
+    "as_of": "2026-06",
+    "note": "ovmem only runs extraction at PreCompact/SessionEnd, so real cost is cents. Verify prices on the provider's pricing page."
+  },
+  "chat": [
+    { "id": "gpt-4o-mini",       "provider": "openai",  "model": "gpt-4o-mini",                                          "in": 0.15, "out": 0.60,  "ctx": "128k", "tag": "cheap default" },
+    { "id": "gpt-4.1-mini",      "provider": "openai",  "model": "gpt-4.1-mini",                                         "in": 0.40, "out": 1.60,  "ctx": "1M" },
+    { "id": "gpt-4o",            "provider": "openai",  "model": "gpt-4o",                                               "in": 2.50, "out": 10.00, "ctx": "128k" },
+    { "id": "nova-lite",         "provider": "bedrock", "model": "bedrock/us.amazon.nova-lite-v1:0",                     "in": 0.06, "out": 0.24,  "ctx": "300k", "tag": "cheapest" },
+    { "id": "claude-3-5-haiku",  "provider": "bedrock", "model": "bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0", "in": 0.80, "out": 4.00,  "ctx": "200k" },
+    { "id": "claude-3-5-sonnet", "provider": "bedrock", "model": "bedrock/us.anthropic.claude-3-5-sonnet-20241022-v2:0","in": 3.00, "out": 15.00, "ctx": "200k" },
+    { "id": "claude-sonnet-4-5", "provider": "bedrock", "model": "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0","in": 3.30, "out": 16.50, "ctx": "200k" }
+  ],
+  "embed": [
+    { "id": "text-embedding-3-small", "provider": "openai",  "model": "text-embedding-3-small",              "price": 0.02, "dim": 1536, "tag": "default" },
+    { "id": "text-embedding-3-large", "provider": "openai",  "model": "text-embedding-3-large",              "price": 0.13, "dim": 3072 },
+    { "id": "titan-embed-v2",         "provider": "bedrock", "model": "bedrock/amazon.titan-embed-text-v2:0","price": 0.02, "dim": 1024 },
+    { "id": "cohere-embed-v3",        "provider": "bedrock", "model": "bedrock/cohere.embed-multilingual-v3","price": 0.10, "dim": 1024 },
+    { "id": "titan-embed-v1",         "provider": "bedrock", "model": "bedrock/amazon.titan-embed-text-v1",  "price": 0.10, "dim": 1536 }
+  ]
+}
