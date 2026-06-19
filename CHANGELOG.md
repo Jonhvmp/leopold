@@ -7,17 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.3] - 2026-06-19
 
 ### Added
+- **Leopold from npm — the `leopold` CLI.** `leopold-driver` now bundles the whole harness
+  (installer, skills, hooks, templates, extensions) and ships a CLI as both `leopold` and
+  `leopold-driver`: `install`, `menu`, `watch`, `serena`/`gstack`/`ovmem`, `doctor`,
+  `update`, and `run`. So `npm i -g leopold-driver && leopold install` sets everything up
+  and manages it **without cloning the repo or running `make`** — the realistic path for
+  most users. Build vendors the harness into `assets/`; `npm pack` ships it. (Driver 0.1.2.)
 - **`/leopold-watch` — local live dashboard.** A zero-dependency (Python stdlib) web
   dashboard at `http://127.0.0.1:4179` that reads the run's own `.leopold/` files and
   updates live over SSE: run status, the cost meters (context MB / subagents / forks /
   iterations / failures vs their budgets), the event feed (turns, guard blocks,
   `subagent_spawn` with size + fork flag, stops), the decisions log, and a **Stop** button
   (the kill switch). Read-only otherwise, loopback-only — nothing leaves the machine.
-  Launch with `/leopold-watch` or `make watch`. The Stop hook now also records `context_mb`
-  so the meter is live. Styled to a warm-cream / near-black design system (Geist type stack
-  with system fallback — no web fonts, fully offline) with a light/dark toggle. Also runnable
-  straight from the npm package — **`npx leopold-driver watch`** (the dashboard is bundled in
-  `leopold-driver` 0.1.2; it spawns the same Python server, no repo checkout needed).
+  Launch with `/leopold-watch`, `make watch`, or `leopold watch` (npm CLI above). The Stop
+  hook now also records `context_mb` so the meter is live. Styled to a warm-cream / near-black
+  design system (Geist type stack with system fallback — no web fonts, fully offline) with a
+  light/dark toggle.
 
 ## [0.4.2] - 2026-06-19
 

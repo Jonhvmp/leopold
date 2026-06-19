@@ -58,25 +58,25 @@ npm run build
 
 ## Usage
 
-From any project that already has a `.leopold/` brief (written by `/leopold-brief`),
-and with Claude Code logged in:
+This package is the whole of Leopold from npm — it bundles the harness (skills, hooks,
+installer, extensions) so the CLI runs everything **without cloning the repo or `make`**.
+The binary is exposed as both `leopold-driver` and `leopold`.
 
 ```bash
-node /path/to/leopold/packages/driver/dist/index.js          # run
-node /path/to/leopold/packages/driver/dist/index.js --dry-run # load brief, show the plan, do nothing
+npm i -g leopold-driver
+
+leopold install              # copy skills + hooks into ~/.claude (also: --with-gstack)
+leopold menu                 # toolchain manager (serena / gstack / ovmem)
+leopold watch [--port N]     # live dashboard at http://127.0.0.1:4179  (needs Python 3)
+leopold serena install       # manage an extension directly (also: gstack, ovmem)
+leopold doctor               # run every extension's doctor
+leopold update               # reinstall from this package
+leopold run [--dry-run]      # conduct the .leopold run (the SDK driver below)
 ```
 
-### Live dashboard
-
-The package also bundles the local watch dashboard, so you can open it without a repo
-checkout (needs Python 3):
-
-```bash
-npx leopold-driver watch            # http://127.0.0.1:4179  (--port to change)
-```
-
-It reads the current project's `.leopold/` and shows run status, cost meters, the event
-feed, decisions, and a Stop button — see the main repo's `/leopold-watch`.
+`watch` reads the current project's `.leopold/` and shows run status, cost meters, the
+event feed, decisions, and a Stop button. `run` needs a `.leopold/` brief (from
+`/leopold-brief`) and your Claude Code login.
 
 ### Environment
 

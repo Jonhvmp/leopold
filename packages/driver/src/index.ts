@@ -1,41 +1,66 @@
 #!/usr/bin/env node
-// leopold-driver: the external conductor. Reads the .leopold brief from the cwd
-// and orchestrates Claude Code workers through the plan, git locked.
+// leopold-driver: Leopold from npm. Install + manage the harness, conduct runs, and
+// watch — without cloning the repo or running `make`. The harness assets are bundled
+// into the package at build time; subcommands run them.
 
 import { runDriver } from "./loop.js";
-import { runWatch } from "./watch.js";
+import { runInstall, runMenu, runWatch, runExt, runDoctor } from "./harness.js";
 
-const arg = process.argv[2] ?? "run";
+const sub = process.argv[2];
+const rest = process.argv.slice(3);
 
-// Live dashboard: `leopold-driver watch [--port N]`. Launches the local web dashboard
-// for the run in the current project (http://127.0.0.1:4179).
-if (arg === "watch" || arg === "watch-web") {
-  runWatch(process.argv.slice(3));
-} else if (arg === "--help" || arg === "-h" || arg === "help") {
-  process.stdout.write(`leopold-driver - conduct Claude Code through the .leopold brief.
+function help(): void {
+  process.stdout.write(`leopold-driver — Leopold from npm. Manage the harness, conduct runs, watch.
 
 Usage:
-  leopold-driver [run] [--dry-run]      conduct the run (default)
-  leopold-driver watch [--port N]       open the live dashboard (http://127.0.0.1:4179)
+  leopold-driver install [--with-gstack]   install skills + hooks into ~/.claude
+  leopold-driver menu                       toolchain manager (serena / gstack / ovmem)
+  leopold-driver watch [--port N]           live dashboard (http://127.0.0.1:4179)
+  leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem)
+  leopold-driver doctor                     run every extension's doctor
+  leopold-driver update                     reinstall from this package
+  leopold-driver run [--dry-run]            conduct the .leopold run (the SDK driver)
 
-Reads .leopold/ (MISSION, CHARTER, GUARDRAILS, PLAN) from the current project.
+Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
+Newer version: npm i -g leopold-driver@latest.
 
-Auth:
-  Uses your existing Claude Code login (your subscription) for BOTH the worker
-  and the conductor. No API key needed. ANTHROPIC_API_KEY is only required in a
-  headless environment that has no Claude Code auth configured.
-
-Env:
-  LEOPOLD_CONDUCTOR_MODEL      conductor model (default: your Claude Code default)
-  LEOPOLD_WORKER_MODEL         worker model (default: your Claude Code default)
-  LEOPOLD_MAX_TURNS_PER_ITEM   max worker turns per item (default: 40)
-  LEOPOLD_WEBHOOK              optional URL for JSON POST notifications
+Conducting a run uses your existing Claude Code login (ANTHROPIC_API_KEY only in headless).
+Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK
 `);
-  process.exit(0);
-} else {
+}
+
+function conduct(): void {
   runDriver(process.cwd(), process.argv.slice(2)).catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("leopold-driver error:", msg);
     process.exit(1);
   });
+}
+
+switch (sub) {
+  case "install":
+  case "update":
+    process.exit(runInstall(rest));
+  case "menu":
+    process.exit(runMenu());
+  case "watch":
+  case "watch-web":
+    process.exit(runWatch(rest));
+  case "serena":
+  case "gstack":
+  case "ovmem":
+    process.exit(runExt(sub, rest));
+  case "doctor":
+    process.exit(runDoctor());
+  case "--help":
+  case "-h":
+  case "help":
+    help();
+    process.exit(0);
+  default:
+    if (sub && sub !== "run" && !sub.startsWith("-")) {
+      console.error(`leopold-driver: unknown command "${sub}". Try: leopold-driver --help`);
+      process.exit(2);
+    }
+    conduct();
 }
