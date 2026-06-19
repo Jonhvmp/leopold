@@ -49,11 +49,28 @@ plus a **region** — that is all the user passes. The installer:
 > implemented against OpenViking's verified config shape but has not been run against a
 > live AWS account in CI — treat it as beta.
 
+## Switching providers / reconfiguring
+
+Run `install` (or `update`) from the toolchain menu again — it is also the reconfigure
+path. It detects the current setup, **offers to reuse the existing credential**, defaults
+every prompt to your current choice, and:
+
+- **Chat-only change** (or new model, same embedding) → just rewrites `ov.conf` and
+  restarts. Your memories are untouched.
+- **Embedding change** (e.g. OpenAI → Bedrock, where the dimension goes 1536 → 1024) →
+  the vector index is **rebuilt**: it backs up and drops the index, lets the server
+  recreate it at the new dimension, then re-embeds every memory (`content/reindex`). Your
+  memory **content is preserved** — only the index is rebuilt. If the rebuild fails, the
+  previous index **and** config are restored automatically.
+
+Server restarts are lock-aware (one OpenViking process per data dir — a kill+restart race
+on the data-dir lock is exactly what breaks otherwise).
+
 ## Notes that bite
 
-- **Embedding dimension is baked in.** The chosen embedding model sets the vector
-  dimension (1536 / 3072 / 1024), written into the vectordb at first run. Switching the
-  embedding model later (different dimension) needs a reindex — pick it at install time.
+- **The embedding model sets the vector dimension** (1536 / 3072 / 1024), baked into the
+  vectordb. Changing it is handled by the reindex above, but it re-embeds the whole store
+  (cents + a few seconds), so don't flip it casually.
 - **`vlm.max_tokens`**: 16384 for OpenAI gpt-4o-mini (its cap), 8192 for Bedrock.
 - **`output_language_override: "en"`** pins memory + summaries to English.
 

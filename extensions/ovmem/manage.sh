@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ovmem extension - autonomous RAG long-term memory (OpenViking + 4 Claude Code hooks).
 #
-# Scope today: detect / status / doctor are real (they probe a live install).
-# install / update / remove are STUBS - the portable installer is WIP because ovmem
-# has real external deps (an OpenViking server + an LLM key or a local model). See
-# README.md in this folder for exactly what the real installer will do.
+# All subcommands are real: detect / status / doctor probe a live install;
+# install / update run the full installer (also the reconfigure / provider-switch path,
+# with credential reuse + a safe index rebuild); remove unwires the hooks and deletes the
+# engine, leaving your OpenViking server + memory data intact. See README.md in this folder.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,7 +29,8 @@ case "${1:-}" in
     ;;
 
   install|update)
-    # Full OpenAI profile (verified). Local/Ollama profiles are still TODO.
+    # install.sh is also the reconfigure/switch path: it detects the current setup,
+    # offers to reuse the credential, and rebuilds the index when the embedding changes.
     bash "$HERE/install.sh"
     ;;
 

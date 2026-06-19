@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-06-19
+
+### Added
+- **ovmem provider switching** — re-running the ovmem installer detects the current setup,
+  offers to reuse the existing credential, and safely **rebuilds the vector index when the
+  embedding model changes** (OpenAI ⇄ Bedrock): memory content is preserved, the old index
+  is backed up and restored if the rebuild fails. Server restarts are data-dir-lock-aware.
+  CI now syntax-checks `extensions/*/*.sh`.
+
+### Fixed
+- README guard count corrected to **59** red-team cases (was a stale 49); ovmem `manage.sh`
+  header no longer describes `install`/`update` as stubs (they run the full installer).
+
 ## [0.4.0] - 2026-06-19
 
 ### Added

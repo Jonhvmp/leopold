@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Syntax-check hooks, installer, and scripts
-        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh scripts/*.sh
+      - name: Syntax-check hooks, installer, scripts, and extensions
+        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh scripts/*.sh extensions/*/*.sh
       - name: Hook behavior tests
         run: bash scripts/test-hooks.sh
       - name: Guard red-team tests (bypass attempts must stay blocked)
