@@ -930,6 +930,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Cost — the expensive mistakes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#watching-a-run-live-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watching a run (live dashboard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1675,6 +1692,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Cost — the expensive mistakes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#watching-a-run-live-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watching a run (live dashboard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1896,6 +1930,19 @@ run: 82 subagents and a 5.9MB session over 681 turns.)</p>
 </ul>
 <p>Belt and braces: set an <strong>Anthropic spending cap</strong> on your account before long autonomous
 runs on large projects. Leopold has no billing limit of its own.</p>
+<h3 id="watching-a-run-live-dashboard">Watching a run (live dashboard)<a class="headerlink" href="#watching-a-run-live-dashboard" title="Permanent link">&para;</a></h3>
+<p><code>/leopold-watch</code> (or <code>make watch</code>, or <code>leopold watch</code> from the npm CLI) starts a <strong>local</strong>
+dashboard at <code>http://127.0.0.1:4179</code> that updates live over SSE. Its headline is the <strong>real
+estimated spend</strong>, parsed from the Claude Code session transcript: dollars, the token
+breakdown (input / output / cache-write / cache-read), cache-hit %, per-model, and main vs
+subagent. Below it: the budget meters above (context MB, subagents, forks, iterations,
+failures — each against its budget), the live event feed (turns, guard blocks,
+<code>subagent_spawn</code>, stops), the decisions log, and a <strong>Stop</strong> button that uses the kill switch.
+The cost number is an estimate from a built-in price map, <strong>configurable</strong> via the
+<code>LEOPOLD_PRICES</code> env var (a JSON file) or a <code>.leopold/prices.json</code> in the project — override
+any model or family, e.g. <code>{"opus": {"in": 15, "out": 75, "cache_write": 18.75, "cache_read":
+1.5}}</code> (cache rates default to 1.25× / 0.1× of input). It is zero-dependency (Python stdlib),
+read-only except that one button, and binds to loopback — nothing leaves the machine.</p>
 <hr />
 <h2 id="stop-conditions">Stop conditions<a class="headerlink" href="#stop-conditions" title="Permanent link">&para;</a></h2>
 <p>The run ends, and the Stop hook allows the session to halt, when any of these is
