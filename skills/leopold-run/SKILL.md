@@ -78,7 +78,7 @@ mkdir -p .leopold
 [ -f .leopold/DECISIONS.md ] || printf '# Decisions\n\nAutonomous decisions, newest last.\n\n' > .leopold/DECISIONS.md
 : >> .leopold/events.jsonl
 cat > .leopold/state.json <<JSON
-{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
+{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"max_forks":0,"forks_spawned":0,"max_context_mb":5,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
 JSON
 ```
 
@@ -92,6 +92,37 @@ For this entire run you are an orchestrator-driven session. That means:
 
 - **Do not use AskUserQuestion** except for a true irreversible-and-ambiguous
   fork (see the decision protocol). Decide everything else yourself.
+- **Work serially. Do NOT fan out into parallel subagents.** Spawning subagents
+  (the `Task` tool) is the biggest cost multiplier there is: each one re-loads the
+  full session context, and a burst of 10 means 10× that context billed at once.
+  Do each plan item yourself, in your own turn. Only spawn a subagent for a single
+  genuinely isolatable sub-task, rarely, and never as a batch — there is a per-run
+  budget (`max_subagents`, default 8) the guard hard-enforces; past it, spawns are
+  denied and you continue serially. **Never fork** (a fork clones the entire session
+  context — the most expensive spawn; the guard caps forks at 2). When you do spawn a
+  subagent, hand it a **minimal prompt** — point it at file paths to read, never paste
+  files or the brief in; the guard denies oversized subagent prompts.
+- **Context discipline — the brief is your memory, not the transcript.** This is the
+  single biggest cost lever: a long session re-bills its whole growing context *every
+  turn*, so keeping your own context flat is what keeps a run cheap. Three rules:
+  1. **Don't pull bulk into your context.** Use targeted reads (offset/limit), grep, and
+     lean on `PLAN.md`/`CHARTER.md` instead of re-reading large files each turn.
+  2. **Delegate bulk-output work to a subagent that writes to a FILE.** For any item that
+     produces a lot of output (authoring content, generating files), spawn one subagent
+     whose prompt is only the spec + input *paths* + the output *path*. The subagent writes
+     the file; you verify it exists and mark the item done — **never read the full output
+     back** into your context. (This is exactly what blew up a real run: the orchestrator
+     held every lesson it generated.)
+  3. **Let it stop and resume.** The run auto-stops at `max_context_mb` (default 5); that
+     is by design — a fresh `/leopold-run` continues from `PLAN.md` with clean context.
+     Bounded, resumable segments beat one giant session.
+- **Prefer Serena's symbolic tools.** If the `mcp__serena__*` tools are present (the
+  Leopold install sets Serena up), use them to read and edit code: `get_symbols_overview`
+  / `find_symbol` / `find_referencing_symbols` to navigate, `replace_symbol_body` /
+  `insert_after_symbol` to edit. They operate on the *symbol*, not the whole file, so they
+  are far more token-efficient than grep + full-file reads — which is the same context-lean
+  discipline above — and far more reliable for cross-file refactors. Fall back to
+  grep/Read only for discovery or non-code files.
 - When you invoke a **gstack** skill, run it in spawned mode: it should
   auto-pick the recommended option and report, not prompt. If a gstack skill
   shells out to its own bins, prefix that bash with `OPENCLAW_SESSION=1`.

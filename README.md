@@ -75,6 +75,7 @@ Because Leopold sells autonomy, guardrails are the product, not an afterthought.
 
 - **Git stays locked.** Commit, push, force-push, `reset --hard`, recursive `rm` (any spelling), `find … -delete`, `gh pr create/merge`, and package publish are blocked while autonomous — regardless of permission mode. You opt in explicitly, per session, or they never run.
 - **Red-teamed.** The guard ships a bypass-attempt test suite — **59 cases run in CI** (`make test-guard`), plus unit tests for the TS driver guard — covering tricks like `git -c user.name=x commit`, `rm --recursive --force`, `/bin/rm -rf`, and `find -exec rm`. Think you can slip one past it? [Open an issue](https://github.com/Jonhvmp/leopold/issues) — break it.
+- **Cost-capped (both axes).** An autonomous run runs up a bill two ways: how much context each unit carries, and how many spawn. Leopold caps both — **forks (which clone the whole session) are forbidden by default**; oversized subagent prompts are denied; the run stops when the transcript passes `max_context_mb` (5, resume fresh from the brief); and total `Task` spawns are capped at `max_subagents` (8). The protocol keeps the orchestrator lean — bulk-output work is delegated to subagents that **write to files**, so output never piles up in the main context.
 - **Fails closed.** A malformed run-state file blocks loudly; it never silently lets autonomy through.
 - **Kill switch + audit.** `/leopold-stop` (or `touch .leopold/STOP`) halts at the next turn boundary; every autonomous decision is logged with its reasoning.
 
@@ -96,7 +97,13 @@ A small interactive menu installs and manages the toolchain + companion extensio
 make menu     # or: bash ~/.claude/leopold/scripts/leopold-menu.sh
 ```
 
-Each component lives under [`extensions/`](extensions/) (an `extension.json` + a `manage.sh`). Built in: **gstack**, and **ovmem** — autonomous RAG long-term memory (OpenViking + 4 hooks; OpenAI or AWS Bedrock; runs entirely on `127.0.0.1`). Walkthrough: [Toolchain Manager](docs/getting-started/toolchain-manager.md).
+Each component lives under [`extensions/`](extensions/) (an `extension.json` + a `manage.sh`). Built in:
+
+- **serena** (mandatory) — [LSP code intelligence](https://github.com/oraios/serena) over MCP: symbol-level retrieval + editing instead of grep/whole-file reads. Set up automatically by the installer (`make serena-install`); it's the biggest lever for both code quality and lean context (fewer tokens per op).
+- **gstack** — the planning/QA skill suite Leopold conducts.
+- **ovmem** — autonomous RAG long-term memory (OpenViking + 4 hooks; OpenAI or AWS Bedrock; runs entirely on `127.0.0.1`).
+
+Walkthrough: [Toolchain Manager](docs/getting-started/toolchain-manager.md).
 
 ---
 

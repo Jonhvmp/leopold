@@ -18,7 +18,7 @@ else
     ( cd "$SRC" && git pull --ff-only -q ) || true
   else
     mkdir -p "$(dirname "$SRC")"
-    git clone --depth 1 https://github.com/Jonhvmp/leopold.git "$SRC"
+    git clone --progress --depth 1 https://github.com/Jonhvmp/leopold.git "$SRC"
   fi
 fi
 CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"
@@ -81,13 +81,26 @@ else
   echo "   merged (backup at $SETTINGS.leopold.bak)"
 fi
 
+# Serena — MANDATORY. LSP-backed code intelligence (MCP): symbol-level retrieval/editing
+# instead of grep + whole-file reads. It is the biggest lever for code quality AND for
+# keeping context lean (fewer tokens per operation), so Leopold sets it up for everyone.
+echo
+echo "-> setting up Serena (LSP code intelligence — mandatory for quality + lean context)"
+SERENA_MGR="$LEO_HOME/extensions/serena/manage.sh"
+if [ -f "$SERENA_MGR" ]; then
+  bash "$SERENA_MGR" install || echo "   Serena setup did not finish; complete it with: make serena-install  (or: make menu)"
+else
+  echo "   (serena extension missing from this build; skipping)"
+fi
+
 echo
 GSTACK_DIR="$SKILLS/gstack"
 gstack_present() { [ -d "$GSTACK_DIR" ] || ls "$SKILLS" 2>/dev/null | grep -q '^spec$'; }
 install_gstack() {
   echo "-> installing gstack (MIT, by Garry Tan: https://github.com/garrytan/gstack)"
   command -v bun >/dev/null 2>&1 || echo "   note: gstack needs Bun v1.0+ (https://bun.sh); its setup will guide you."
-  if git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git "$GSTACK_DIR" && ( cd "$GSTACK_DIR" && ./setup ); then
+  echo "   cloning gstack (shows progress) + running its setup…"
+  if git clone --progress --single-branch --depth 1 https://github.com/garrytan/gstack.git "$GSTACK_DIR" && ( cd "$GSTACK_DIR" && ./setup ); then
     echo "   gstack installed."
   else
     echo "   gstack install did not finish; retry with: make gstack-install"

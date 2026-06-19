@@ -28,9 +28,9 @@ case "${1:-}" in
       exit 0
     fi
     command -v bun >/dev/null 2>&1 || echo "note: gstack needs Bun v1.0+ (https://bun.sh); its setup will guide you."
-    echo "-> cloning gstack into $GSTACK_DIR"
+    echo "-> cloning gstack into $GSTACK_DIR (shows progress; a few seconds)"
     mkdir -p "$SKILLS"
-    git clone --single-branch --depth 1 "$REPO" "$GSTACK_DIR"
+    git clone --progress --single-branch --depth 1 "$REPO" "$GSTACK_DIR"
     echo "-> running gstack setup"
     ( cd "$GSTACK_DIR" && ./setup )
     echo "gstack installed."

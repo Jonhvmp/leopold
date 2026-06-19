@@ -85,6 +85,19 @@ max_fails="$(jq -r '.max_failures // 3' "$STATE" 2>/dev/null || echo 3)"
 if [ "$iter" -ge "$max_iter" ] 2>/dev/null; then allow_stop "iteration_budget"; fi
 if [ "$fails" -ge "$max_fails" ] 2>/dev/null; then allow_stop "repeated_failure"; fi
 
+# Context budget — the real money pit. A long run accumulates context every turn; on a
+# big-context model it never auto-compacts, so each turn re-bills the whole (growing)
+# transcript and any fork clones it (one report: a session ballooned to ~6MB over 681
+# turns). Stop when the transcript passes max_context_mb (default 5) so it cannot silently
+# balloon. The brief persists -> a fresh /leopold-run resumes from PLAN.md with clean context.
+max_ctx_mb="$(jq -r '.max_context_mb // 5' "$STATE" 2>/dev/null || echo 5)"
+case "$max_ctx_mb" in (*[!0-9]*|"") max_ctx_mb=5 ;; esac
+tpath="$(printf '%s' "$input" | jq -r '.transcript_path // empty' 2>/dev/null || true)"
+if [ -n "$tpath" ] && [ -f "$tpath" ]; then
+  ctx_bytes="$(wc -c < "$tpath" 2>/dev/null || echo 0)"
+  [ "$(( ctx_bytes / 1048576 ))" -ge "$max_ctx_mb" ] 2>/dev/null && allow_stop "context_budget"
+fi
+
 # Plan complete? (no unchecked checkboxes remain)
 PLAN="$LEO/PLAN.md"
 open_items="$(grep -cE '^[[:space:]]*- \[ \]' "$PLAN" 2>/dev/null || true)"

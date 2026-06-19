@@ -65,6 +65,48 @@ git_subcmd() {  # $1 = normalized command -> echoes the subcommand (or empty)
 }
 
 case "$tool" in
+  Task|Agent)
+    # Subagent fan-out is the #1 autonomous-run cost blowup, on TWO axes — how MANY are
+    # spawned, and how much CONTEXT each one carries. Guard both.
+    stype="$(printf '%s' "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
+
+    # (a) Context per subagent: an oversized prompt means context is being dumped into the
+    # subagent (each is billed in full). A normal scoped prompt is a few KB; deny the absurd.
+    plen="$(printf '%s' "$input" | jq -r '.tool_input.prompt // .tool_input.description // empty' 2>/dev/null | wc -c | tr -d ' ')"
+    if [ "${plen:-0}" -gt 262144 ] 2>/dev/null; then
+      deny "Leopold guard: this subagent prompt is ~$(( ${plen:-0} / 1024 ))KB — you're handing the subagent a huge context (each spawn is billed in full). Pass a minimal, scoped prompt: point it at files to read, don't paste them in."
+    fi
+
+    # (b) Forks clone the ENTIRE parent session (multi-MB) — they ARE the per-subagent
+    # context leak. Forbidden by default (max_forks 0); a fresh scoped subagent does the
+    # same work with a clean slate. Raise max_forks in GUARDRAILS.md only for a sub-task
+    # that genuinely needs the full conversation.
+    if [ "$stype" = "fork" ]; then
+      max_fk="$(jq -r '.max_forks // 0' "$STATE" 2>/dev/null || echo 0)"; case "$max_fk" in (*[!0-9]*|"") max_fk=0 ;; esac
+      forked="$(jq -r '.forks_spawned // 0' "$STATE" 2>/dev/null || echo 0)"; case "$forked" in (*[!0-9]*|"") forked=0 ;; esac
+      if [ "$forked" -ge "$max_fk" ] 2>/dev/null; then
+        deny "Leopold guard: forks are forbidden in autonomous mode ($forked/$max_fk). A fork clones the WHOLE session context (multi-MB) into the spawn — this is the leak that runs up the bill. Use a regular subagent with a minimal prompt instead (it starts clean). To allow a fork, raise max_forks in GUARDRAILS.md."
+      fi
+      gtmp="$(mktemp 2>/dev/null || echo "$STATE.gtmp")"
+      jq --argjson f "$((forked+1))" '.forks_spawned=$f' "$STATE" > "$gtmp" 2>/dev/null && mv "$gtmp" "$STATE" || rm -f "$gtmp" 2>/dev/null
+    fi
+
+    # (c) Total subagent budget (forks count here too). Past it, deny so the run continues
+    # serially instead of exploding. Counters live in state.json (best-effort).
+    max_sub="$(jq -r '.max_subagents // 8' "$STATE" 2>/dev/null || echo 8)"; case "$max_sub" in (*[!0-9]*|"") max_sub=8 ;; esac
+    spawned="$(jq -r '.subagents_spawned // 0' "$STATE" 2>/dev/null || echo 0)"; case "$spawned" in (*[!0-9]*|"") spawned=0 ;; esac
+    if [ "$spawned" -ge "$max_sub" ] 2>/dev/null; then
+      deny "Leopold guard: subagent budget exhausted ($spawned/$max_sub this run). Spawning many subagents multiplies cost — each re-loads context. Do this task yourself in-turn (work serially). Raise max_subagents in GUARDRAILS.md and restart if you truly must."
+    fi
+    gtmp="$(mktemp 2>/dev/null || echo "$STATE.gtmp")"
+    jq --argjson s "$((spawned+1))" '.subagents_spawned=$s' "$STATE" > "$gtmp" 2>/dev/null && mv "$gtmp" "$STATE" || rm -f "$gtmp" 2>/dev/null
+    # Audit trail: one line per spawn (size + fork flag) so a run's cost is inspectable.
+    sts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')"
+    printf '{"ts":"%s","event":"subagent_spawn","fork":%s,"prompt_kb":%s,"total":%s}\n' \
+      "$sts" "$([ "$stype" = fork ] && echo true || echo false)" "$(( ${plen:-0} / 1024 ))" "$((spawned+1))" \
+      >> "$LEO/events.jsonl" 2>/dev/null || true
+    ;;
+
   Bash)
     cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
     # normalize: newlines/tabs -> space, collapse runs (defeats whitespace/tab evasion).

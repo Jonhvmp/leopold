@@ -14,9 +14,10 @@ bash ~/.claude/leopold/scripts/leopold-menu.sh
 ========================================
   Leopold - toolchain manager
 ========================================
-   1) Leopold   installed (v0.1.1)   — the harness (skills + hooks)
-   2) gstack    installed            — planning / QA skill suite
-   3) ovmem     not installed        — RAG long-term memory
+   1) Leopold   installed             — the harness (skills + hooks)
+   2) serena    installed             — LSP code intelligence (MCP, mandatory)
+   3) gstack    installed             — planning / QA skill suite
+   4) ovmem     not installed         — RAG long-term memory
    d) Doctor all     q) Quit
 ```
 
@@ -34,6 +35,20 @@ folder** — no menu code changes. `detect` is the single source of truth for "i
 Each `manage.sh` must be idempotent, must never touch your git, and must never print secrets.
 
 ## Built-in extensions
+
+### serena (mandatory)
+
+[Serena](https://github.com/oraios/serena) (MIT) gives the agent **LSP-backed, symbol-level
+tools** over MCP — `find_symbol`, `find_referencing_symbols`, `replace_symbol_body` — instead
+of grep + whole-file reads. Leopold's installer sets it up automatically: it installs
+`serena-agent` via uv if missing, registers the MCP server for all projects
+(`claude mcp add --scope user serena -- serena start-mcp-server --context=claude-code
+--project-from-cwd`), and wires Serena's recommended hooks. It is the biggest single lever
+for **code quality** *and* **lean context** (symbol-level reads cost far fewer tokens — the
+same discipline the [cost guardrails](../guardrails.md) enforce),
+which is why it is mandatory rather than optional. Setup uses Serena's official path, not the
+MCP marketplace (which ships stale commands). Manage with `make serena-install` /
+`make serena-doctor`.
 
 ### gstack
 

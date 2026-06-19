@@ -4,6 +4,54 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-06-19
+
+### Security
+- **Cost guardrails — caps the #1 autonomous-run blowup, on both axes.** Nothing limited
+  cost growth: a run could spawn the `Task` tool in bursts of 10+, each carrying a
+  multi-MB context, while the main session ballooned every turn (one report: 82 subagents
+  and a 5.9MB session over 681 turns). New caps, all in `state.json` / `GUARDRAILS.md` and
+  enforced by the hooks:
+  - **`max_context_mb`** (default 5) — the Stop hook ends the run when the transcript
+    passes this; the brief persists, so a fresh `/leopold-run` resumes from `PLAN.md` with
+    clean context. (A long run re-bills its whole growing context every turn — the biggest
+    money pit.)
+  - **`max_subagents`** (default 8) — total `Task`/subagent spawns per run; denied past it,
+    the run continues **serially**.
+  - **`max_forks`** (default **0 — forks forbidden**) — a fork clones the *entire* session
+    context into the spawn (the literal "each subagent got the 5.8MB parent" leak). A fresh
+    subagent does the same work clean. Raise only for a sub-task that needs the full convo.
+  - **Oversized subagent prompts** (>~256KB) are denied — that means context is being
+    pasted into the spawn; point subagents at file paths instead.
+  - **Spawn audit log** — every subagent spawn writes a `subagent_spawn` line to
+    `events.jsonl` (size + fork flag) so a run's cost is inspectable.
+- **Optimization — the lean orchestrator.** The biggest cost lever isn't the subagents, it's
+  the **orchestrator session** re-billing its whole growing context every turn. The
+  `/leopold-run` protocol now mandates context discipline: the brief is the memory (not the
+  transcript); bulk-output work (authoring content, generating files) is delegated to a
+  subagent that **writes to a file**, and the orchestrator verifies the file instead of
+  reading the output back — so its context stays flat. Tested in `make hooks-test`. Docs
+  recommend an Anthropic spending cap for large runs.
+
+### Added
+- **Serena — mandatory LSP code intelligence (MCP).** Leopold's installer now sets up
+  [Serena](https://github.com/oraios/serena) automatically (installs `serena-agent` via uv
+  if absent, registers the MCP server for all projects via `claude mcp add --scope user …
+  --context=claude-code --project-from-cwd`, and wires its recommended hooks). It gives the
+  agent symbol-level tools (`find_symbol` / `find_referencing_symbols` / `replace_symbol_body`)
+  instead of grep + whole-file reads — sharper edits **and** far fewer tokens, which is the
+  same context-lean discipline the cost guards enforce. New `extensions/serena/` (manage via
+  `make serena-install` / `make serena-doctor` / `make menu`); `/leopold-run` prefers Serena's
+  tools. Setup uses the official path, not the MCP marketplace (which ships stale commands).
+
+### Fixed
+- **Live progress on long, silent installer steps** so they never look frozen: a spinner
+  with elapsed seconds wraps the OpenViking download (~140 packages on first install), the
+  server health-wait, the embedding reindex (up to ~10 min), and the verify/extract
+  (up to ~2 min) — on failure the captured output is shown. git clones (Leopold + gstack)
+  now run with `--progress`. (Reported: a fresh Bedrock install looked stuck at
+  "ensuring OpenViking + boto3".)
+
 ## [0.4.1] - 2026-06-19
 
 ### Added
