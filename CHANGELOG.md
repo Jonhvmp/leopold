@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `subagent_spawn` with size + fork flag, stops), the decisions log, and a **Stop** button
   (the kill switch). Read-only otherwise, loopback-only — nothing leaves the machine.
   Launch with `/leopold-watch` or `make watch`. The Stop hook now also records `context_mb`
-  so the meter is live.
+  so the meter is live. Styled to a warm-cream / near-black design system (Geist type stack
+  with system fallback — no web fonts, fully offline) with a light/dark toggle.
 
 ## [0.4.2] - 2026-06-19
 

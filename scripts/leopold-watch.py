@@ -7,7 +7,8 @@ read-only except for one action: a Stop button that touches `.leopold/STOP` — 
 same kill switch `/leopold-stop` uses.
 
 No dependencies (Python 3.8+ stdlib only). Nothing leaves the machine; it binds to
-loopback. Usage:
+loopback and uses no web fonts. The UI follows a warm-cream / near-black design
+system (Geist / Geist Mono type stack with system fallbacks). Usage:
 
     python3 leopold-watch.py [--project DIR] [--port 4179] [--host 127.0.0.1]
 """
@@ -66,7 +67,8 @@ def read_decisions(limit=8):
         blocks.append("\n".join(cur).strip())
     # keep only real decision blocks (the protocol writes "Fork:" / "Decision:" lines);
     # this drops the "# Decisions" heading and the intro line.
-    out = [b for b in blocks if ("Fork:" in b or "Decision:" in b or "Decisão:" in b)]
+    out = [b.replace("**", "") for b in blocks
+           if ("Fork:" in b or "Decision:" in b or "Decisão:" in b)]
     return out[-limit:][::-1]
 
 
@@ -132,105 +134,162 @@ def snapshot():
 
 
 # --------------------------------------------------------------------------- page
-PAGE = r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+# Design system: warm cream (light) / near-black (dark), strictly monochrome with
+# semantic green/red + severity tones; Geist / Geist Mono type stack (system fallback,
+# no web fonts so it works fully offline); tactile "pushable" buttons; pill + severity
+# chips; hairline dividers.
+PAGE = r"""<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Leopold watch</title>
 <style>
-:root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--dim:#8b949e;--fg:#e6edf3;
---green:#3fb950;--yellow:#d29922;--red:#f85149;--cyan:#39c5cf;--accent:#d97757}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
-font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-.wrap{max-width:960px;margin:0 auto;padding:18px}
-h1{font-size:15px;margin:0 0 14px;font-weight:600}.dot{color:var(--accent)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;
-padding:14px;margin-bottom:14px}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.badge{padding:2px 9px;border-radius:99px;font-weight:600;font-size:12px}
-.on{background:rgba(63,185,80,.15);color:var(--green)}
-.off{background:rgba(139,148,158,.15);color:var(--dim)}
-.warn{background:rgba(210,153,34,.15);color:var(--yellow)}
-.sub{color:var(--dim)}.spacer{flex:1}
-button{background:var(--red);color:#fff;border:0;border-radius:6px;padding:7px 14px;
-font:inherit;font-weight:600;cursor:pointer}button:disabled{opacity:.4;cursor:default}
-.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
-.meter .top{display:flex;justify-content:space-between}.meter .lbl{color:var(--dim)}
-.bar{height:6px;background:#21262d;border-radius:4px;margin-top:4px;overflow:hidden}
-.bar>i{display:block;height:100%;background:var(--green);transition:width .3s}
-.bar.hi>i{background:var(--yellow)}.bar.full>i{background:var(--red)}
-.sectitle{color:var(--dim);text-transform:uppercase;font-size:11px;letter-spacing:.06em;margin-bottom:8px}
-.feed{max-height:320px;overflow:auto}.ev{display:flex;gap:10px;padding:3px 0;border-bottom:1px solid #1b2129}
-.ev .t{color:var(--dim);white-space:nowrap}.ev .k{white-space:nowrap}
-.k-turn_start{color:var(--cyan)}.k-guard_block{color:var(--red)}
-.k-subagent_spawn{color:var(--yellow)}.k-stop{color:var(--accent)}.k-state_invalid{color:var(--red)}
-.dec{padding:8px 0;border-bottom:1px solid #1b2129;white-space:pre-wrap}
-.plan li{list-style:none}.plan .d{color:var(--dim);text-decoration:line-through}
-.plan .o{color:var(--fg)}.plan ul{padding-left:0;margin:6px 0 0;max-height:180px;overflow:auto}
-.empty{color:var(--dim);padding:8px 0}
-</style></head><body><div class="wrap">
-<h1><span class="dot">●</span> leopold watch <span class="sub" id="proj"></span></h1>
-<div class="panel"><div class="row">
-  <span id="status" class="badge off">—</span>
-  <span class="sub" id="planline"></span>
-  <span class="spacer"></span>
-  <button id="stop" disabled>Stop run</button>
+:root{
+ --bg:#efe8da;--fg:#141414;--card:#f6f2e9;--secondary:#e3dccc;--muted-fg:#616161;
+ --border:#d7cfbe;--ring:#333;--destructive:#ae1f1f;--dfg:#f7f3ea;--success:#248052;
+ --hairline:rgba(20,20,20,.15);--radius:12px;
+ --sev-crit:#b91c1c;--sev-high:#c2410c;--sev-med:#b45309;--sev-low:#0369a1;--warnbar:#b45309;
+ --sans:"Geist","Neue Montreal","General Sans","Inter",ui-sans-serif,system-ui,sans-serif;
+ --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+html.dark{
+ --bg:#0a0a0a;--fg:#d9d9d9;--card:#0a0a0a;--secondary:#1a1a1a;--muted-fg:#808080;
+ --border:#262626;--ring:#d9d9d9;--destructive:#7d2020;--dfg:#fafafa;--success:#45c98a;
+ --hairline:rgba(217,217,217,.15);
+ --sev-crit:#fecaca;--sev-high:#fed7aa;--sev-med:#fde68a;--sev-low:#bae6fd;--warnbar:#d29922;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+ -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 20px 48px}
+.head{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-fg)}
+.title{font-weight:600;font-size:15px;letter-spacing:-.01em}
+.proj{font-family:var(--mono);font-size:11px;color:var(--muted-fg);letter-spacing:.04em}
+.grow{flex:1}.sub{color:var(--muted-fg)}.tnum{font-variant-numeric:tabular-nums}
+.tgl{background:transparent;border:1px solid var(--border);color:var(--muted-fg);border-radius:9999px;
+ height:28px;padding:0 13px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.tgl:hover{color:var(--fg);border-color:var(--muted-fg)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;
+ opacity:0;animation:up .6s cubic-bezier(.22,1,.36,1) forwards}
+.card:nth-child(2){animation-delay:.04s}.card:nth-child(3){animation-delay:.08s}.card:nth-child(4){animation-delay:.12s}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.sectitle{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9999px;padding:5px 13px;
+ font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg)}
+.pill .dot{width:8px;height:8px;border-radius:9999px;background:currentColor}
+.pill.on{border-color:rgba(36,128,82,.5);color:var(--success)}
+.pill.bad{border-color:rgba(174,31,31,.5);color:var(--destructive)}
+.pulse{animation:pulse 2s ease-in-out infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 16px;font-family:var(--sans);
+ font-weight:500;font-size:13px;border-radius:6px;border:1px solid rgba(0,0,0,.25);cursor:pointer;
+ background:var(--destructive);color:var(--dfg);box-shadow:0 3px 0 0 rgba(0,0,0,.35);
+ transition:transform .1s ease-out,box-shadow .1s ease-out}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 rgba(0,0,0,.35)}
+.btn:active{transform:translateY(3px);box-shadow:inset 0 3px 6px rgba(0,0,0,.35)}
+.btn:disabled{opacity:.35;cursor:default;transform:none;box-shadow:0 3px 0 0 rgba(0,0,0,.2)}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:14px}
+.meter .top{display:flex;justify-content:space-between;align-items:baseline}
+.meter .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-fg)}
+.meter .val{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.bar{height:5px;background:var(--secondary);border-radius:9999px;margin-top:7px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--success);transition:width .3s}
+.bar.warn>i{background:var(--warnbar)}.bar.full>i{background:var(--destructive)}
+.sev{display:inline-flex;align-items:center;border-radius:9999px;border:1px solid;padding:2px 7px;font-family:var(--mono);
+ font-size:10px;letter-spacing:.05em;text-transform:uppercase;line-height:1.4;white-space:nowrap}
+.sev-crit{color:var(--sev-crit);background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.4)}
+.sev-high{color:var(--sev-high);background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.4)}
+.sev-med{color:var(--sev-med);background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.4)}
+.sev-low{color:var(--sev-low);background:rgba(14,165,233,.10);border-color:rgba(14,165,233,.4)}
+.sev-info{color:var(--muted-fg);background:transparent;border-color:var(--border)}
+.feed{max-height:340px;overflow:auto}
+.ev{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--hairline)}
+.ev:last-child{border-bottom:0}
+.ev .t{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted-fg);white-space:nowrap}
+.ev .dt{font-family:var(--mono);font-size:12px;color:var(--muted-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.plan ul{list-style:none;padding:0;margin:0;max-height:200px;overflow:auto}
+.plan li{font-family:var(--mono);font-size:12px;padding:3px 0}
+.plan li.d{color:var(--muted-fg);text-decoration:line-through}.plan .mk{color:var(--muted-fg)}
+.dec{background:var(--secondary);border:1px solid var(--hairline);border-radius:8px;padding:10px 12px;margin-bottom:8px;
+ font-family:var(--mono);font-size:12px;white-space:pre-wrap;line-height:1.5}
+.empty{color:var(--muted-fg);padding:6px 0;font-size:12px}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--hairline);border:2px solid var(--bg);border-radius:9999px}
+::selection{background:var(--fg);color:var(--bg)}
+</style>
+<script>try{document.documentElement.className=localStorage.getItem("leo-theme")||"dark"}catch(e){}</script>
+</head><body><div class="wrap">
+<div class="head">
+  <span class="eyebrow">Leopold</span><span class="title">watch</span>
+  <span class="proj" id="proj"></span><span class="grow"></span>
+  <button class="tgl" id="tgl">theme</button>
+</div>
+<div class="card"><div class="row">
+  <span class="pill" id="status"><span class="dot" id="dot"></span><span id="stext">—</span></span>
+  <span class="sub tnum" id="planline" style="font-family:var(--mono);font-size:11px"></span>
+  <span class="grow"></span>
+  <button class="btn" id="stop" disabled>Stop run</button>
 </div><div class="meters" id="meters"></div></div>
-<div class="panel"><div class="sectitle">Live events</div><div class="feed" id="feed"></div></div>
-<div class="panel"><div class="sectitle">Plan</div><div id="plan"></div></div>
-<div class="panel"><div class="sectitle">Decisions (newest)</div><div id="decisions"></div></div>
+<div class="card"><div class="sectitle">Live events</div><div class="feed" id="feed"></div></div>
+<div class="card"><div class="sectitle">Plan</div><div id="plan" class="plan"></div></div>
+<div class="card"><div class="sectitle">Decisions · newest</div><div id="decisions"></div></div>
 <script>
 const $=s=>document.querySelector(s);
 function el(t,c,txt){const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e;}
-function hms(ts){const d=ts&&ts.length>=19?ts.slice(11,19):"";return d;}
+function hms(ts){return ts&&ts.length>=19?ts.slice(11,19):"";}
+const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med"};
 function render(s){
-  $("#proj").textContent = s.session_id ? "· "+s.session_id : "";
-  const st=$("#status");
-  if(!s.present){st.className="badge off";st.textContent="no active run";}
-  else if(s.invalid){st.className="badge warn";st.textContent="state invalid";}
-  else if(s.active){st.className="badge on";st.textContent="● RUN ACTIVE";}
-  else{st.className="badge off";st.textContent="stopped"+(s.stopped_reason?" · "+s.stopped_reason:"");}
-  $("#planline").textContent = s.plan.total ? ("plan "+s.plan.done+"/"+s.plan.total+" done") : "";
-  $("#stop").disabled = !(s.active);
-  $("#stop").textContent = s.stop_requested ? "stop requested…" : "Stop run";
-  // meters
+  $("#proj").textContent=s.session_id?("· "+s.session_id):"";
+  const pill=$("#status"),dot=$("#dot"),tx=$("#stext");
+  pill.className="pill";dot.classList.remove("pulse");
+  if(!s.present){tx.textContent="no active run";}
+  else if(s.invalid){pill.className="pill bad";tx.textContent="state invalid";}
+  else if(s.active){pill.className="pill on";dot.classList.add("pulse");tx.textContent="run active";}
+  else{tx.textContent="stopped"+(s.stopped_reason?(" · "+s.stopped_reason):"");}
+  $("#planline").textContent=s.plan.total?("plan "+s.plan.done+"/"+s.plan.total):"";
+  const stop=$("#stop");stop.disabled=!s.active;stop.textContent=s.stop_requested?"stop requested…":"Stop run";
   const m=$("#meters");m.innerHTML="";
   s.meters.forEach(x=>{
     const pct=x.max>0?Math.min(100,Math.round(x.val/x.max*100)):(x.val>0?100:0);
-    const d=el("div","meter");
-    const top=el("div","top");top.append(el("span","lbl",x.label),el("span",null,x.val+(x.unit?x.unit:"")+" / "+x.max+(x.unit?x.unit:"")));
-    const bar=el("div","bar"+(pct>=100?" full":pct>=75?" hi":""));const i=el("i");i.style.width=pct+"%";bar.append(i);
+    const d=el("div","meter"),top=el("div","top");
+    top.append(el("span","lbl",x.label),el("span","val tnum",x.val+x.unit+" / "+x.max+x.unit));
+    const bar=el("div","bar"+(pct>=100?" full":pct>=75?" warn":"")),i=el("i");i.style.width=pct+"%";bar.append(i);
     d.append(top,bar);m.append(d);
   });
-  // feed
   const f=$("#feed");f.innerHTML="";
   if(!s.events.length)f.append(el("div","empty","no events yet"));
   s.events.forEach(e=>{
-    const r=el("div","ev");r.append(el("span","t",hms(e.ts)||""));
-    r.append(el("span","k k-"+(e.event||""),e.event||"?"));
+    const r=el("div","ev");r.append(el("span","t",hms(e.ts)));
+    let sev=SEV[e.event]||"sev-info";
+    if(e.event==="subagent_spawn"&&e.fork)sev="sev-high";
+    r.append(el("span","sev "+sev,(e.event||"?").replace(/_/g," ")));
     let d="";
-    if(e.event==="turn_start")d="iter "+e.iteration+" · open "+e.open_items+(e.no_progress?" · no_progress "+e.no_progress:"");
+    if(e.event==="turn_start")d="iter "+e.iteration+" · open "+e.open_items+(e.no_progress?(" · stuck "+e.no_progress):"");
     else if(e.event==="guard_block")d=e.tool||"";
-    else if(e.event==="subagent_spawn")d=(e.prompt_kb||0)+"KB"+(e.fork?" · FORK":"")+" · total "+(e.total||"");
+    else if(e.event==="subagent_spawn")d=(e.prompt_kb||0)+"KB"+(e.fork?" · FORK":"")+" · #"+(e.total||"");
     else if(e.event==="stop")d="reason: "+(e.reason||"");
     else if(e.event==="state_invalid")d=e.reason||"";
-    r.append(el("span","sub",d));f.append(r);
+    r.append(el("span","dt",d));f.append(r);
   });
-  // plan
   const p=$("#plan");p.innerHTML="";
   if(!s.plan.items.length)p.append(el("div","empty","no PLAN.md items"));
-  else{const ul=el("ul");s.plan.items.forEach(it=>{const li=el("li",null);li.append(el("span",it.done?"d":"o",(it.done?"[x] ":"[ ] ")+it.text));ul.append(li);});p.className="plan";p.append(ul);}
-  // decisions
+  else{const ul=el("ul");s.plan.items.forEach(it=>{const li=el("li",it.done?"d":null);
+    li.append(el("span","mk",it.done?"[x] ":"[ ] "));li.append(document.createTextNode(it.text));ul.append(li);});p.append(ul);}
   const dc=$("#decisions");dc.innerHTML="";
   if(!s.decisions.length)dc.append(el("div","empty","none yet"));
   s.decisions.forEach(b=>dc.append(el("div","dec",b)));
 }
 $("#stop").addEventListener("click",()=>{
   if(!confirm("Stop the run at the next turn boundary? (touches .leopold/STOP)"))return;
-  fetch("/api/stop",{method:"POST"}).then(()=>{$("#stop").textContent="stop requested…";$("#stop").disabled=true;});
+  fetch("/api/stop",{method:"POST"}).then(()=>{const b=$("#stop");b.textContent="stop requested…";b.disabled=true;});
+});
+$("#tgl").addEventListener("click",()=>{
+  const d=document.documentElement.className!=="dark";document.documentElement.className=d?"dark":"light";
+  try{localStorage.setItem("leo-theme",d?"dark":"light")}catch(e){}
 });
 fetch("/api/state").then(r=>r.json()).then(render).catch(()=>{});
 const es=new EventSource("/api/events");
-es.onmessage=ev=>{try{render(JSON.parse(ev.data));}catch(_){}};
-</script></div></body></html>"""
+es.onmessage=ev=>{try{render(JSON.parse(ev.data))}catch(_){}};
+</script></body></html>"""
 
 
 # --------------------------------------------------------------------------- server
