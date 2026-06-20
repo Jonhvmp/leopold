@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-06-19
+
+### Added
+- **Uninstall in the toolchain menu (`u`), granular and data-safe.** A new `Uninstall`
+  option asks **exactly what to remove** and confirms each pick: Leopold core (skills +
+  hooks + `~/.claude/leopold`), the `leopold` npm CLI, serena (MCP + hooks), gstack, and
+  ovmem's engine — all of which **keep your data**. Deleting the OpenViking long-term
+  memory (`~/.openviking`) + server is a separate item that requires typing `DELETE`. So
+  nothing precious goes away by accident. (`leopold menu` → `u`.)
+
 ## [0.4.5] - 2026-06-19
 
 ### Changed
