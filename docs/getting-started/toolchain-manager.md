@@ -34,6 +34,15 @@ The menu discovers everything in that folder, so **adding a component is droppin
 folder** — no menu code changes. `detect` is the single source of truth for "installed?".
 Each `manage.sh` must be idempotent, must never touch your git, and must never print secrets.
 
+## Uninstall
+
+The menu's **`u`** option removes Leopold, granularly and **data-safe**. It asks exactly
+what to take out and confirms each pick — Leopold core (skills + hooks + `~/.claude/leopold`),
+the `leopold` CLI, serena, gstack, and ovmem's engine all **keep your data**. Deleting
+ovmem's long-term memory (`~/.openviking`) is a separate item that requires typing `DELETE`,
+so nothing precious is removed by accident. Each extension's own `remove` (used here) unwires
+its hooks and deletes its engine while leaving your data and any shared server in place.
+
 ## Built-in extensions
 
 ### serena (mandatory)

@@ -77,7 +77,8 @@ main_menu() {
       "$C_BOLD" "$i" "$C_RESET" "$C_BOLD" "$title" "$C_RESET" "$st" "$C_DIM" "$summary" "$C_RESET"
     i=$((i + 1))
   done < <(list_exts)
-  printf "   %sd%s) Doctor all     %sq%s) Quit\n\n" "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET"
+  printf "   %sd%s) Doctor all     %su%s) Uninstall     %sq%s) Quit\n\n" \
+    "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET"
 }
 
 component_menu() {
@@ -113,6 +114,92 @@ doctor_all() {
   pause
 }
 
+# ---- uninstall (granular, data-safe) ---------------------------------------
+
+confirm() { # prompt -> 0 if yes
+  printf "%s [y/N] " "$1"
+  local a; read -r a || a=""
+  case "$a" in [yY]*) return 0 ;; *) echo "  skipped." ; return 1 ;; esac
+}
+ext_path() { [ -d "$EXT_DIR/$1" ] && printf "%s" "$EXT_DIR/$1"; }
+CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"
+
+remove_core() {
+  local settings="$CLAUDE/settings.json" tmp d
+  if [ -f "$settings" ] && command -v jq >/dev/null 2>&1; then
+    cp "$settings" "$settings.leopold.bak"
+    tmp="$(mktemp)"
+    jq 'if .hooks then .hooks |= ( to_entries
+          | map(.value |= ( map(.hooks |= map(select((.command // "") | test("leopold/hooks/") | not)))
+                            | map(select((.hooks | length) > 0)) ))
+          | from_entries ) else . end' "$settings" > "$tmp" && mv "$tmp" "$settings"
+    echo "  unwired Leopold's Stop/PreToolUse hooks (backup at $settings.leopold.bak)"
+  fi
+  for d in "$CLAUDE"/skills/leopold-*; do [ -d "$d" ] && rm -rf "$d"; done
+  rm -rf "$CLAUDE/leopold" 2>/dev/null || true
+  echo "  removed the leopold-* skills and $CLAUDE/leopold"
+}
+
+remove_cli() {
+  if command -v npm >/dev/null 2>&1; then
+    npm uninstall -g leopold-driver >/dev/null 2>&1 \
+      && echo "  uninstalled the leopold CLI (npm)" \
+      || echo "  (leopold CLI not installed via npm, or it needs sudo)"
+  else
+    echo "  npm not found — nothing to do for the CLI"
+  fi
+}
+
+remove_ext() { # name
+  local d; d="$(ext_path "$1")"
+  [ -n "$d" ] && ext_run "$d" remove || echo "  ($1 extension not found in this build)"
+}
+
+remove_ovmem_data() {
+  printf "%s  This DELETES ~/.openviking — your ENTIRE long-term memory — and uninstalls\n" "$C_YELLOW"
+  printf "  the OpenViking server. There is no undo.%s\n" "$C_RESET"
+  printf "  Type %sDELETE%s to confirm: " "$C_BOLD" "$C_RESET"
+  local a; read -r a || a=""
+  [ "$a" = "DELETE" ] || { echo "  skipped (not confirmed)."; return; }
+  pkill -f "openviking-server" 2>/dev/null || true
+  command -v uv >/dev/null 2>&1 && uv tool uninstall openviking >/dev/null 2>&1 && echo "  uninstalled the openviking server" || true
+  rm -rf "$HOME/.openviking" 2>/dev/null && echo "  deleted ~/.openviking (long-term memory)" || true
+}
+
+uninstall_menu() {
+  header
+  printf "  %sUninstall Leopold%s — pick exactly what to remove.\n" "$C_BOLD" "$C_RESET"
+  printf "  %sYour data is KEPT unless you pick a DATA item; each pick is confirmed.%s\n\n" "$C_DIM" "$C_RESET"
+  printf "   1) Leopold core        skills + hooks + %s/leopold (the harness)\n" "$CLAUDE"
+  printf "   2) leopold CLI         npm uninstall -g leopold-driver\n"
+  printf "   3) serena              unregister MCP + unwire hooks (keeps the serena CLI)\n"
+  printf "   4) gstack              remove the skill suite\n"
+  printf "   5) ovmem               unwire hooks + remove engine %s(keeps your memory)%s\n" "$C_DIM" "$C_RESET"
+  printf "   6) %sovmem DATA + server   ~/.openviking + OpenViking — DELETES memory!%s\n\n" "$C_YELLOW" "$C_RESET"
+  printf "   a) everything except DATA (1-5)      q) cancel\n\n"
+  printf "pick (space-separated, e.g. \"1 2 5\"): "
+  local picks p; read -r picks || picks="q"
+  case "$picks" in q|Q|"") return ;; a|A) picks="1 2 3 4 5" ;; esac
+  echo
+  printf "%sSelected: %s%s\n" "$C_BOLD" "$picks" "$C_RESET"
+  confirm "Proceed with the removals above?" || { pause; return; }
+  echo
+  for p in $picks; do
+    case "$p" in
+      1) confirm "Remove Leopold core (skills + hooks)?"        && remove_core ;;
+      2) confirm "Uninstall the leopold CLI (npm -g)?"          && remove_cli ;;
+      3) confirm "Remove serena (MCP + hooks)?"                 && remove_ext serena ;;
+      4) confirm "Remove gstack?"                               && remove_ext gstack ;;
+      5) confirm "Remove ovmem engine (keeps your memory)?"     && remove_ext ovmem ;;
+      6) remove_ovmem_data ;;
+      *) echo "  ignored: '$p'" ;;
+    esac
+  done
+  echo
+  printf "%sUninstall done.%s\n" "$C_GREEN" "$C_RESET"
+  pause
+}
+
 # ---- main loop --------------------------------------------------------------
 
 while true; do
@@ -121,6 +208,7 @@ while true; do
   case "$choice" in
     q|Q) echo; exit 0 ;;
     d|D) doctor_all ;;
+    u|U) uninstall_menu ;;
     ''|*[!0-9]*) ;;  # ignore non-numeric
     *)
       idx=$((choice - 1))
