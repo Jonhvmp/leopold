@@ -700,6 +700,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#uninstall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstall
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#built-in-extensions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1523,6 +1534,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#uninstall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uninstall
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#built-in-extensions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1619,6 +1641,13 @@
 <p>The menu discovers everything in that folder, so <strong>adding a component is dropping in a
 folder</strong> — no menu code changes. <code>detect</code> is the single source of truth for "installed?".
 Each <code>manage.sh</code> must be idempotent, must never touch your git, and must never print secrets.</p>
+<h2 id="uninstall">Uninstall<a class="headerlink" href="#uninstall" title="Permanent link">&para;</a></h2>
+<p>The menu's <strong><code>u</code></strong> option removes Leopold, granularly and <strong>data-safe</strong>. It asks exactly
+what to take out and confirms each pick — Leopold core (skills + hooks + <code>~/.claude/leopold</code>),
+the <code>leopold</code> CLI, serena, gstack, and ovmem's engine all <strong>keep your data</strong>. Deleting
+ovmem's long-term memory (<code>~/.openviking</code>) is a separate item that requires typing <code>DELETE</code>,
+so nothing precious is removed by accident. Each extension's own <code>remove</code> (used here) unwires
+its hooks and deletes its engine while leaving your data and any shared server in place.</p>
 <h2 id="built-in-extensions">Built-in extensions<a class="headerlink" href="#built-in-extensions" title="Permanent link">&para;</a></h2>
 <h3 id="serena-mandatory">serena (mandatory)<a class="headerlink" href="#serena-mandatory" title="Permanent link">&para;</a></h3>
 <p><a href="https://github.com/oraios/serena">Serena</a> (MIT) gives the agent <strong>LSP-backed, symbol-level
