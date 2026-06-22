@@ -54,34 +54,42 @@ case "${1:-}" in
     echo "to purge those too: uv tool uninstall openviking ; rm -rf ~/.openviking"
     ;;
 
+  watch)
+    # open the standalone ovmem dashboard (http://127.0.0.1:1934)
+    [ -f "$OVMEM_DIR/dashboard.py" ] || { echo "dashboard not installed (run: manage.sh install)" >&2; exit 1; }
+    shift 2>/dev/null || true
+    exec python3 "$OVMEM_DIR/dashboard.py" "$@"
+    ;;
+
   doctor)
-    echo "engine:   $([ -f "$OVMEM_DIR/ovmem.py" ] && echo "$OVMEM_DIR/ovmem.py" || echo missing)"
-    echo "cleanup:  $([ -f "$OVMEM_DIR/ovmem-cleanup.py" ] && echo present || echo missing)"
-    echo "server:   $(server_up && echo "up (127.0.0.1:1933)" || echo "down")"
+    echo "engine:    $([ -f "$OVMEM_DIR/ovmem.py" ] && echo "$OVMEM_DIR/ovmem.py" || echo missing)"
+    echo "cleanup:   $([ -f "$OVMEM_DIR/ovmem-cleanup.py" ] && echo present || echo missing)"
+    echo "dashboard: $([ -f "$OVMEM_DIR/dashboard.py" ] && echo "present (127.0.0.1:1934)" || echo missing)"
+    echo "server:    $(server_up && echo "up (127.0.0.1:1933)" || echo "down")"
     if [ -f "$SETTINGS" ]; then
       local_hooks="$(grep -c 'ovmem.py --event' "$SETTINGS" 2>/dev/null || echo 0)"
-      echo "hooks:    $local_hooks/4 wired in settings.json"
+      echo "hooks:     $local_hooks/4 wired in settings.json"
     else
-      echo "hooks:    settings.json not found"
+      echo "hooks:     settings.json not found"
     fi
     if [ -f "$HOME/.openviking/ov.conf" ] && command -v jq >/dev/null 2>&1; then
       prov="$(jq -r '.vlm.provider // "?"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
       chat="$(jq -r '.vlm.model // "?"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
       emb="$(jq -r '.embedding.dense.model // "?"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
       lang="$(jq -r '.output_language_override // "auto"' "$HOME/.openviking/ov.conf" 2>/dev/null)"
-      echo "provider: $prov"
-      echo "chat:     $chat"
-      echo "embed:    $emb"
-      echo "ov.conf:  present (lang=$lang)"
+      echo "provider:  $prov"
+      echo "chat:      $chat"
+      echo "embed:     $emb"
+      echo "ov.conf:   present (lang=$lang)"
     elif [ -f "$HOME/.openviking/ov.conf" ]; then
-      echo "ov.conf:  present"
+      echo "ov.conf:   present"
     else
-      echo "ov.conf:  missing"
+      echo "ov.conf:   missing"
     fi
     ;;
 
   *)
-    echo "usage: manage.sh {detect|status|install|update|remove|doctor}" >&2
+    echo "usage: manage.sh {detect|status|install|update|remove|doctor|watch}" >&2
     exit 2
     ;;
 esac

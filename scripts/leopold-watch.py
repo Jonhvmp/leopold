@@ -16,10 +16,12 @@ and uses no web fonts. Usage:
     python3 leopold-watch.py [--project DIR] [--port 4179] [--host 127.0.0.1]
 """
 import argparse
+import importlib.util
 import json
 import os
 import re
 import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 LEO = ""          # set in main(): the project's .leopold dir
@@ -313,6 +315,77 @@ def snapshot():
     }
 
 
+# --------------------------------------------------------------------------- extension dashboards
+# A small plugin system: any installed extension whose extension.json carries a
+# `dashboard` block contributes a tab. The block names a Python module + a `view`
+# callable returning a declarative card/widget view ({"cards":[...]}), and an optional
+# `search` callable. The watch imports the module and renders the view with its own
+# design system. Any failure drops that extension silently — the tab just won't appear.
+_EXT_CACHE = None
+
+
+def _ext_dirs():
+    here = os.path.dirname(os.path.abspath(__file__))
+    out = []
+    for cand in (os.path.join(here, "..", "extensions"),
+                 os.path.expanduser("~/.claude/leopold/extensions")):
+        cand = os.path.abspath(cand)
+        if os.path.isdir(cand) and cand not in out:
+            out.append(cand)
+    return out
+
+
+def ext_dashboards():
+    """Discover installed extensions that contribute a dashboard tab (memoized)."""
+    global _EXT_CACHE
+    if _EXT_CACHE is not None:
+        return _EXT_CACHE
+    found, seen = [], set()
+    for base in _ext_dirs():
+        try:
+            names = sorted(os.listdir(base))
+        except OSError:
+            continue
+        for name in names:
+            meta = os.path.join(base, name, "extension.json")
+            if name in seen or not os.path.isfile(meta):
+                continue
+            try:
+                with open(meta, encoding="utf-8") as f:
+                    cfg = json.load(f)
+                dash = cfg.get("dashboard")
+                if not isinstance(dash, dict):
+                    continue
+                mod_path = os.path.expanduser(dash.get("module", ""))
+                if not mod_path or not os.path.isfile(mod_path):
+                    continue
+                spec = importlib.util.spec_from_file_location("ext_dash_%s" % name, mod_path)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                view_fn = getattr(mod, dash.get("view", "dashboard_view"), None)
+                if not callable(view_fn):
+                    continue
+                search_fn = getattr(mod, dash.get("search", ""), None)
+                found.append({
+                    "name": cfg.get("name", name),
+                    "label": dash.get("label", cfg.get("title", name)),
+                    "view": view_fn,
+                    "search": search_fn if callable(search_fn) else None,
+                })
+                seen.add(name)
+            except Exception:
+                continue
+    _EXT_CACHE = found
+    return found
+
+
+def ext_by_name(name):
+    for e in ext_dashboards():
+        if e["name"] == name:
+            return e
+    return None
+
+
 # --------------------------------------------------------------------------- page
 # Design system: warm cream (light) / near-black (dark), monochrome with semantic green/red
 # + severity tones; Geist / Geist Mono type stack (system fallback, no web fonts -> offline).
@@ -400,6 +473,31 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 .dec{background:var(--secondary);border:1px solid var(--hairline);border-radius:8px;padding:10px 12px;margin-bottom:8px;
  font-family:var(--mono);font-size:12px;white-space:pre-wrap;line-height:1.5}
 .empty{color:var(--muted-fg);padding:6px 0;font-size:12px}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{background:transparent;border:1px solid var(--border);color:var(--muted-fg);border-radius:9999px;
+ height:28px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.tab:hover{color:var(--fg);border-color:var(--muted-fg)}
+.tab.active{color:var(--fg);border-color:var(--fg)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.kv .k{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-fg)}
+.kv .v{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;margin-top:3px;word-break:break-word}
+.kv .v.good{color:var(--success)}.kv .v.bad{color:var(--destructive)}.kv .v.warn{color:var(--warnbar)}
+.xtab{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+.xtab th,.xtab td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--hairline);
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+.xtab th{color:var(--muted-fg);font-weight:500;text-transform:uppercase;letter-spacing:.06em;font-size:10px}
+.xtab td.n{text-align:right;font-variant-numeric:tabular-nums}
+.xsearch{display:flex;gap:8px;margin-bottom:10px}
+.xsearch input{flex:1;background:var(--secondary);border:1px solid var(--border);color:var(--fg);
+ border-radius:6px;padding:7px 11px;font-family:var(--mono);font-size:12px}
+.xsearch button{background:var(--fg);color:var(--bg);border:0;border-radius:6px;padding:7px 14px;
+ font-family:var(--sans);font-weight:500;font-size:12px;cursor:pointer}
+.xhit{padding:7px 0;border-bottom:1px solid var(--hairline)}.xhit:last-child{border:0}
+.xhit .sc{font-family:var(--mono);font-size:11px;color:var(--success);font-weight:600}
+.xhit .u{font-family:var(--mono);font-size:10px;color:var(--muted-fg);margin-left:8px}
+.xhit .tx{font-size:12px;margin-top:3px;color:var(--fg);opacity:.85}
+.xlog{margin:0;font-family:var(--mono);font-size:11px;color:var(--muted-fg);white-space:pre-wrap;max-height:160px;overflow:auto}
+.hide{display:none}
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--hairline);border:2px solid var(--bg);border-radius:9999px}
 ::selection{background:var(--fg);color:var(--bg)}
@@ -411,6 +509,8 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
   <span class="proj" id="proj"></span><span class="grow"></span>
   <button class="tgl" id="tgl">theme</button>
 </div>
+<div class="tabs" id="tabs"></div>
+<div id="tab-run">
 <div class="card">
   <div class="row">
     <span class="pill" id="status"><span class="dot" id="dot"></span><span id="stext">—</span></span>
@@ -424,6 +524,8 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 <div class="card"><div class="sectitle">Live events</div><div class="feed" id="feed"></div></div>
 <div class="card"><div class="sectitle">Plan</div><div id="plan" class="plan"></div></div>
 <div class="card"><div class="sectitle">Decisions · newest</div><div id="decisions"></div></div>
+</div><!-- /tab-run -->
+<div id="extviews"></div>
 <script>
 const $=s=>document.querySelector(s);
 function el(t,c,txt){const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e;}
@@ -501,6 +603,86 @@ $("#tgl").addEventListener("click",()=>{
 fetch("/api/state").then(r=>r.json()).then(render).catch(()=>{});
 const es=new EventSource("/api/events");
 es.onmessage=ev=>{try{render(JSON.parse(ev.data))}catch(_){}};
+
+// ---- tabs: Run (SSE) + one per extension dashboard (polled) ----
+let curTab="run",extTimer=null;
+function setTab(name){
+  curTab=name;
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+  $("#tab-run").classList.toggle("hide",name!=="run");
+  document.querySelectorAll("[data-extview]").forEach(v=>v.classList.toggle("hide",v.dataset.extview!==name));
+  try{localStorage.setItem("leo-tab",name)}catch(e){}
+  if(extTimer){clearInterval(extTimer);extTimer=null;}
+  if(name!=="run"){loadExt(name);extTimer=setInterval(()=>loadExt(name),5000);}
+}
+async function loadExt(name){
+  const host=document.querySelector('[data-extview="'+name+'"]');if(!host)return;
+  const inp=host.querySelector(".xsearch input");        // don't clobber an in-progress search
+  if(inp&&(inp===document.activeElement||inp.value.trim()))return;
+  let v;try{v=await (await fetch("/api/ext/"+encodeURIComponent(name)+"/stats")).json();}catch(e){return;}
+  renderView(host,name,v);
+}
+function widgetEl(name,w){
+  if(w.kind==="kpis"){
+    const g=el("div","kv");
+    (w.items||[]).forEach(it=>{const d=el("div");d.append(el("div","k",it.label));
+      const v=el("div","v"+(it.tone&&it.tone!=="none"?(" "+it.tone):""));v.textContent=it.value;d.append(v);g.append(d);});
+    return g;
+  }
+  if(w.kind==="bars"){
+    const wrap=el("div","meters"),items=w.items||[],mx=Math.max(1,...items.map(x=>x.max||x.value||0));
+    items.forEach(it=>{const m=el("div","meter"),top=el("div","top");
+      top.append(el("span","lbl",it.label),el("span","val tnum",""+it.value));
+      const bar=el("div","bar"),i=el("i");i.style.width=Math.round(100*(it.value||0)/(it.max||mx))+"%";bar.append(i);
+      m.append(top,bar);wrap.append(m);});
+    return wrap;
+  }
+  if(w.kind==="table"){
+    const t=el("table","xtab"),cols=w.columns||[],rows=w.rows||[];
+    if(cols.length){const tr=el("tr");cols.forEach((c,i)=>tr.append(el("th",i>0?"n":null,c)));
+      const th=el("thead");th.append(tr);t.append(th);}
+    const tb=el("tbody");
+    rows.forEach(row=>{const tr=el("tr");row.forEach((cell,i)=>{
+      const td=el("td",(i>0&&typeof cell==="number")?"n":null);td.textContent=cell;tr.append(td);});tb.append(tr);});
+    if(!rows.length){const tr=el("tr"),td=el("td","empty","empty");td.colSpan=Math.max(1,cols.length);tr.append(td);tb.append(tr);}
+    t.append(tb);return t;
+  }
+  if(w.kind==="search"){
+    const box=el("div"),row=el("div","xsearch"),inp=el("input"),btn=el("button",null,"Search"),res=el("div");
+    inp.placeholder=w.placeholder||"search…";
+    const go=async()=>{const q=inp.value.trim();if(!q)return;res.textContent="searching…";
+      let r;try{r=await (await fetch("/api/ext/"+encodeURIComponent(name)+"/search?q="+encodeURIComponent(q))).json();}
+      catch(e){res.textContent="failed";return;}
+      res.innerHTML="";if(r.error){res.append(el("div","empty",r.error));return;}
+      if(!(r.hits||[]).length){res.append(el("div","empty","no results"));return;}
+      r.hits.forEach(h=>{const d=el("div","xhit"),t=el("div");
+        t.append(el("span","sc",h.score!=null?h.score.toFixed(3):""),el("span","u",h.uri||""));
+        d.append(t);if(h.text)d.append(el("div","tx",h.text));res.append(d);});};
+    btn.onclick=go;inp.addEventListener("keydown",e=>{if(e.key==="Enter")go();});
+    row.append(inp,btn);box.append(row,res);return box;
+  }
+  if(w.kind==="log"){const pre=el("pre","xlog");pre.textContent=(w.lines||[]).join("\n");return pre;}
+  return el("div");
+}
+function renderView(host,name,v){
+  host.innerHTML="";
+  const cards=(v&&v.cards)||[];
+  if(v&&v.error){const c=el("div","card");c.append(el("div","empty","error: "+v.error));host.append(c);}
+  cards.forEach(card=>{const c=el("div","card");c.append(el("div","sectitle",card.title||""));
+    (card.widgets||[]).forEach(w=>c.append(widgetEl(name,w)));host.append(c);});
+  if(!cards.length&&!(v&&v.error)){const c=el("div","card");c.append(el("div","empty","no data"));host.append(c);}
+}
+(async()=>{
+  let exts=[];try{exts=await (await fetch("/api/ext")).json();}catch(e){}
+  const nav=$("#tabs"),views=$("#extviews");
+  const mk=(tab,label)=>{const b=el("button","tab",label);b.dataset.tab=tab;b.onclick=()=>setTab(tab);nav.append(b);};
+  mk("run","Run");
+  exts.forEach(e=>{mk(e.name,e.label);const v=el("div","hide");v.dataset.extview=e.name;views.append(v);});
+  if(!exts.length)nav.classList.add("hide");                // no extensions -> plain single page
+  let start="run";try{start=localStorage.getItem("leo-tab")||"run";}catch(e){}
+  if(start!=="run"&&!exts.some(e=>e.name===start))start="run";
+  setTab(start);
+})();
 </script></body></html>"""
 
 
@@ -525,6 +707,43 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, "application/json", json.dumps(snapshot()).encode())
         elif path == "/api/events":
             self._sse()
+        elif path == "/api/ext":
+            tabs = [{"name": e["name"], "label": e["label"], "search": bool(e["search"])}
+                    for e in ext_dashboards()]
+            self._send(200, "application/json", json.dumps(tabs).encode())
+        elif path.startswith("/api/ext/"):
+            self._ext_route(path)
+        else:
+            self._send(404, "text/plain", b"not found")
+
+    def _ext_route(self, path):
+        parts = path.split("/")  # ['', 'api', 'ext', '<name>', 'stats'|'search']
+        if len(parts) != 5:
+            self._send(404, "text/plain", b"not found")
+            return
+        name, action = urllib.parse.unquote(parts[3]), parts[4]
+        e = ext_by_name(name)
+        if not e:
+            self._send(404, "application/json", b'{"error":"unknown extension"}')
+            return
+        if action == "stats":
+            try:
+                body = json.dumps(e["view"]())
+            except Exception as ex:
+                body = json.dumps({"cards": [], "error": str(ex)})
+            self._send(200, "application/json", body.encode())
+        elif action == "search":
+            if not e["search"]:
+                self._send(404, "application/json", b'{"hits":[]}')
+                return
+            q = ""
+            if "?" in self.path:
+                q = urllib.parse.parse_qs(self.path.split("?", 1)[1]).get("q", [""])[0]
+            try:
+                body = json.dumps(e["search"](q))
+            except Exception as ex:
+                body = json.dumps({"hits": [], "error": str(ex)})
+            self._send(200, "application/json", body.encode())
         else:
             self._send(404, "text/plain", b"not found")
 
@@ -575,6 +794,9 @@ def main():
     url = "http://%s:%d" % (args.host, args.port)
     print("Leopold watch -> %s   (project: %s)" % (url, args.project))
     print("Reading: %s + the session transcript   ·   Ctrl-C to stop" % LEO)
+    tabs = ext_dashboards()  # warm the cache once (single-threaded) + surface what's wired
+    if tabs:
+        print("Extension tabs: %s" % ", ".join(e["label"] for e in tabs))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

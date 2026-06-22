@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-06-22
+
+### Added
+- **Extension dashboards in `leopold watch` — a tab per extension.** The run dashboard is
+  no longer a single page: it now has a tab bar (`Run` + one tab per extension that ships a
+  dashboard). An extension opts in by adding a `dashboard` block to its `extension.json`
+  (`label`, `module`, `view`, optional `search`); the watch discovers every installed
+  extension with one, imports its module, and renders the declarative card/widget view it
+  returns (`{"cards":[...]}`) in Leopold's own design system. It's fail-open — a missing or
+  broken module just drops the tab and the run view is untouched. `Run` keeps its live SSE;
+  extension tabs poll their own `/api/ext/<name>/stats` (and `/api/ext/<name>/search`) only
+  while active.
+- **ovmem ships the first dashboard: a `Memory` tab.** OpenViking server health, recall
+  hotness, server-side usage (requests / latency / tokens / errors), tracked sessions, a
+  live memory search, and the hook log — all read-only. The same panel runs standalone via
+  `make ovmem-watch`, `leopold menu → ovmem → w) Watch`, or `manage.sh watch`
+  (http://127.0.0.1:1934). The dashboard now ships in the extension payload and is vendored
+  into `~/.claude/ovmem/` on install.
+
 ## [0.4.6] - 2026-06-19
 
 ### Added

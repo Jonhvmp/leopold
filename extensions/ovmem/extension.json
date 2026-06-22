@@ -4,5 +4,11 @@
   "summary": "Autonomous RAG long-term memory (OpenViking + 4 hooks). Provider + model picker (OpenAI / AWS Bedrock) with prices.",
   "homepage": "https://github.com/Jonhvmp/leopold",
   "license": "MIT",
-  "order": 30
+  "order": 30,
+  "dashboard": {
+    "label": "Memory",
+    "module": "~/.claude/ovmem/dashboard.py",
+    "view": "dashboard_view",
+    "search": "dashboard_search"
+  }
 }

@@ -293,6 +293,7 @@ fi
 say "installing ovmem engine + hooks"
 mkdir -p "$OVMEM_DIR/state"
 cp "$PAYLOAD/ovmem.py" "$OVMEM_DIR/ovmem.py"; cp "$PAYLOAD/ovmem-cleanup.py" "$OVMEM_DIR/ovmem-cleanup.py"
+cp "$PAYLOAD/dashboard.py" "$OVMEM_DIR/dashboard.py" 2>/dev/null || true
 cp "$PAYLOAD/RUNTIME.md" "$OVMEM_DIR/README.md" 2>/dev/null || true
 [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"; cp "$SETTINGS" "$SETTINGS.ovmem.bak"
 SS="python3 $OVMEM_DIR/ovmem.py --event session-start"; UP="python3 $OVMEM_DIR/ovmem.py --event user-prompt"
