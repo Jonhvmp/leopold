@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-06-22
+
+### Fixed
+- **`leopold watch` extension tabs: bar widget overflow.** In an extension dashboard tab
+  (e.g. ovmem's `Memory`), long bar labels (memory URIs) overran their value and bled into
+  the next column. The `.meter` row is now responsive — the label flexes and truncates with
+  an ellipsis (full text on hover via `title`), the value never shrinks, and a gap separates
+  them. Affects the rendered `bars` widget only; the run's own budgets render identically.
+
 ## [0.7.0] - 2026-06-22
 
 ### Added
