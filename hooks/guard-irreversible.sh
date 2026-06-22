@@ -149,8 +149,14 @@ case "$tool" in
                 deny "Leopold guard: 'git reset --hard' is forbidden in autonomous mode." ;;
       clean)  matches "$norm" '(--force|(^|[[:space:]])-[a-z]*f)' && \
                 deny "Leopold guard: 'git clean -f' is forbidden in autonomous mode." ;;
-      branch) matches "$norm" '(^|[[:space:]])-D([[:space:]]|$)' && \
-                deny "Leopold guard: 'git branch -D' is forbidden in autonomous mode." ;;
+      branch)
+        if matches "$norm" '(^|[[:space:]])-D([[:space:]]|$)'; then
+          # Exception: Leopold's own throwaway run-worktree branches are deletable
+          # (cleanup of `leopold/run-*`); every other forced branch delete stays denied.
+          matches "$norm" 'leopold/run-' || \
+            deny "Leopold guard: 'git branch -D' is forbidden in autonomous mode."
+        fi ;;
+      worktree) : ;;  # allowed: Leopold isolates a run in a dedicated git worktree
       push)
         matches "$norm" '(--force|--force-with-lease|(^|[[:space:]])-f([[:space:]]|$))' && \
           deny "Leopold guard: force-push is forbidden in autonomous mode."

@@ -41,9 +41,15 @@ export interface Brief {
   planPath: string;
   root: string;
   leoDir: string;
+  /** When the run is isolated in a git worktree, the worker's cwd points here
+   *  instead of `root`. Set by the driver when --worktree is on. */
+  worktreeRoot?: string;
 }
 
-/** Mutable run state mirrored to .leopold/state.json. */
+/** Mutable run state mirrored to .leopold/state.json.
+ *  NOTE: the on-disk state.json is a superset of this — the bash skill/Stop-hook
+ *  write extra fields (session_id, max_subagents, …). `writeState` merges rather
+ *  than overwrites so those survive; only declare here what the driver owns. */
 export interface RunState {
   active: boolean;
   iteration: number;
@@ -52,6 +58,11 @@ export interface RunState {
   max_failures: number;
   started_at: string;
   stopped_reason?: string;
+  /** PID of the orchestrator process, for the orphan reaper's liveness probe. */
+  orchestrator_pid?: number;
+  /** Isolated worktree for this run (absolute path) and its throwaway branch. */
+  worktree_path?: string;
+  worktree_branch?: string;
 }
 
 export interface DriverConfig {
@@ -60,4 +71,6 @@ export interface DriverConfig {
   maxTurnsPerItem: number;
   webhookUrl?: string;
   dryRun: boolean;
+  /** Isolate the run in a dedicated git worktree (opt-in). */
+  worktree: boolean;
 }

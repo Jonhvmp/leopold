@@ -48,7 +48,7 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
   const q = query({
     prompt: channel,
     options: {
-      cwd: brief.root,
+      cwd: brief.worktreeRoot ?? brief.root,
       maxTurns: cfg.maxTurnsPerItem,
       permissionMode: "default",
       canUseTool: guard as never,
