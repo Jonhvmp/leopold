@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-06-22
+
+### Added
+- **USD budget hard-stop** (SDK driver). `leopold-driver run --budget-usd N` (or
+  `LEOPOLD_BUDGET_USD`) stops the run once accumulated real spend crosses the cap. The CLI
+  already reports `total_cost_usd` per session, so there's no price map: the driver
+  accumulates it into `state.spent_usd`, logs a `cost` event per item, and stops with
+  `budget_exceeded` before the next item — the dollar ceiling a count cap can't give you.
+- **Encrypted secret vault — secrets out of the prompt.** `leopold-driver secrets set NAME`
+  (value via stdin, so it never hits shell history) encrypts into `.leopold/secrets.env`
+  with AES-256-GCM; the 32-byte master key lives at `~/.claude/leopold/secrets.key`
+  (mode 0600, generated on demand). During a run the worker gets the secrets as `$NAME`
+  environment variables — never in the prompt/transcript — restored after each item.
+  `secrets list` shows names only. The guard forbids the worker from reading or editing the
+  vault and key (driver `guard.ts` + bash hook).
+- **Capability-gating for extensions.** `extension.json` gains a `capabilities` array
+  (declared for leopold, serena, gstack, ovmem); the toolchain menu shows them and requires
+  consent before `Install`/`Update` grants them.
+
 ## [0.6.0] - 2026-06-22
 
 ### Added

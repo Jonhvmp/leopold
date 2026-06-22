@@ -5,6 +5,7 @@
 
 import { runDriver } from "./loop.js";
 import { runInstall, runMenu, runWatch, runExt, runDoctor } from "./harness.js";
+import { runSecrets } from "./secrets.js";
 
 const sub = process.argv[2];
 const rest = process.argv.slice(3);
@@ -19,13 +20,17 @@ Usage:
   leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem)
   leopold-driver doctor                     run every extension's doctor
   leopold-driver update                     reinstall from this package
-  leopold-driver run [--dry-run]            conduct the .leopold run (the SDK driver)
+  leopold-driver run [--worktree] [--budget-usd N] [--dry-run]
+                                            conduct the .leopold run (the SDK driver)
+  leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
 Newer version: npm i -g leopold-driver@latest.
 
 Conducting a run uses your existing Claude Code login (ANTHROPIC_API_KEY only in headless).
-Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK
+--worktree isolates the run in a git worktree; --budget-usd stops it at a USD cap.
+Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK,
+     LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD
 `);
 }
 
@@ -52,6 +57,8 @@ switch (sub) {
     process.exit(runExt(sub, rest));
   case "doctor":
     process.exit(runDoctor());
+  case "secrets":
+    process.exit(runSecrets(rest));
   case "--help":
   case "-h":
   case "help":

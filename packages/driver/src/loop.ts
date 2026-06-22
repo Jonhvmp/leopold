@@ -10,6 +10,7 @@ import { logEvent, logDecision, markItemDone, openItems, nextOpenItem } from "./
 import { notify } from "./notify.js";
 import { createWorktree, cleanupWorktree, type Worktree } from "./worktree.js";
 import { reapOrphan } from "./reaper.js";
+import { overBudget } from "./budget.js";
 import type { WorkerStatus } from "./types.js";
 
 export async function runDriver(cwd: string, argv: string[]): Promise<void> {
@@ -38,14 +39,19 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   }
 
   const state = initState(brief);
+  state.budget_usd = cfg.budgetUsd;
+  state.spent_usd = 0;
   if (worktree) {
     state.worktree_path = worktree.path;
     state.worktree_branch = worktree.branch;
-    writeState(brief.leoDir, state);
   }
+  writeState(brief.leoDir, state);
   const recent: string[] = [];
 
-  logEvent(brief.leoDir, { event: "run_start", conductor: cfg.conductorModel, worktree: worktree?.path ?? null });
+  logEvent(brief.leoDir, {
+    event: "run_start", conductor: cfg.conductorModel,
+    worktree: worktree?.path ?? null, budget_usd: cfg.budgetUsd ?? null,
+  });
   console.log(`Leopold is conducting "${brief.root}". Git is locked. touch .leopold/STOP to halt.\n`);
 
   const stop = (reason: string) => {
@@ -61,6 +67,12 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     if (killSwitch(brief.leoDir)) {
       stop("kill_switch");
       await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped", "Kill switch hit.");
+      return;
+    }
+    if (overBudget(state.spent_usd ?? 0, cfg.budgetUsd)) {
+      stop("budget_exceeded");
+      await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped",
+        `Budget reached: $${(state.spent_usd ?? 0).toFixed(2)} of $${cfg.budgetUsd?.toFixed(2)}. Work so far is staged for your review.`);
       return;
     }
     if (state.iteration >= state.max_iterations) {
@@ -100,6 +112,10 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
       item,
       workerPrompt,
       onBlock: (tool, reason) => logEvent(brief.leoDir, { event: "guard_block", tool, reason }),
+      onCost: (usd) => {
+        state.spent_usd = (state.spent_usd ?? 0) + usd;
+        logEvent(brief.leoDir, { event: "cost", item, usd, spent_usd: state.spent_usd });
+      },
       onTurn: async (status: WorkerStatus): Promise<string | null> => {
         logEvent(brief.leoDir, { event: "worker_turn", kind: status.kind, item: status.item || item });
         const verdict = await decide(cfg, brief, status, recent.slice(-5).join("\n"));
