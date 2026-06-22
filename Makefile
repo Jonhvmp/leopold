@@ -37,6 +37,10 @@ menu: ## Open the toolchain manager (install/manage gstack, ovmem, ...)
 watch: ## Live dashboard for the run in this project (http://127.0.0.1:4179, Ctrl-C to stop)
 	@python3 scripts/leopold-watch.py --project .
 
+.PHONY: ovmem-watch
+ovmem-watch: ## Live dashboard for ovmem long-term memory (http://127.0.0.1:1934, Ctrl-C to stop)
+	@bash extensions/ovmem/manage.sh watch
+
 .PHONY: serena-install serena-doctor
 serena-install: ## Install + register Serena (LSP code intelligence MCP) — mandatory for quality
 	@bash extensions/serena/manage.sh install

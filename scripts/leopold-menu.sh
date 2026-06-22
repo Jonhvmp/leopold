@@ -90,13 +90,19 @@ component_menu() {
     ext_installed "$d" && st="installed${C_RESET} ${C_DIM}($(ext_status "$d"))"
     printf "  %s%s%s\n  status: %s%s\n\n" "$C_BOLD" "$title" "$C_RESET" "$C_GREEN" "$st"
     printf "  %s%s%s\n\n" "$C_DIM" "$(_jget "$d/extension.json" summary)" "$C_RESET"
-    printf "   1) Install    2) Update    3) Remove    4) Doctor    b) Back\n\n"
+    local has_dash=""; [ -n "$(_jget "$d/extension.json" dashboard)" ] && has_dash=1
+    if [ -n "$has_dash" ]; then
+      printf "   1) Install    2) Update    3) Remove    4) Doctor    w) Watch    b) Back\n\n"
+    else
+      printf "   1) Install    2) Update    3) Remove    4) Doctor    b) Back\n\n"
+    fi
     printf "select: "; read -r a || a="b"
     case "$a" in
       1) ext_run "$d" install || echo "${C_YELLOW}install returned non-zero${C_RESET}"; pause ;;
       2) ext_run "$d" update  || echo "${C_YELLOW}update returned non-zero${C_RESET}";  pause ;;
       3) ext_run "$d" remove  || echo "${C_YELLOW}remove returned non-zero${C_RESET}";  pause ;;
       4) ext_run "$d" doctor  || true; pause ;;
+      w|W) [ -n "$has_dash" ] && { ext_run "$d" watch || true; }; pause ;;
       b|B|"") return ;;
       *) ;;
     esac
