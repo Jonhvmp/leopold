@@ -1,6 +1,6 @@
 {
   "name": "leopold-driver",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Leopold SDK driver: a persistent conductor that orchestrates fresh Claude Code workers per task, decides from your charter, and notifies you. Uses your Claude Code auth. Git stays locked.",
   "type": "module",
   "bin": {

@@ -449,9 +449,9 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 .mrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .mchip{font-family:var(--mono);font-size:10px;letter-spacing:.04em;border:1px solid var(--border);border-radius:9999px;padding:3px 10px;color:var(--muted-fg)}
 .meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
-.meter .top{display:flex;justify-content:space-between;align-items:baseline}
-.meter .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-fg)}
-.meter .val{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.meter .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.meter .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-fg);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meter .val{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;flex-shrink:0}
 .bar{height:5px;background:var(--secondary);border-radius:9999px;margin-top:7px;overflow:hidden}
 .bar>i{display:block;height:100%;background:var(--success);transition:width .3s}
 .bar.warn>i{background:var(--warnbar)}.bar.full>i{background:var(--destructive)}
@@ -632,7 +632,8 @@ function widgetEl(name,w){
   if(w.kind==="bars"){
     const wrap=el("div","meters"),items=w.items||[],mx=Math.max(1,...items.map(x=>x.max||x.value||0));
     items.forEach(it=>{const m=el("div","meter"),top=el("div","top");
-      top.append(el("span","lbl",it.label),el("span","val tnum",""+it.value));
+      const lbl=el("span","lbl",it.label);lbl.title=it.label;
+      top.append(lbl,el("span","val tnum",""+it.value));
       const bar=el("div","bar"),i=el("i");i.style.width=Math.round(100*(it.value||0)/(it.max||mx))+"%";bar.append(i);
       m.append(top,bar);wrap.append(m);});
     return wrap;
