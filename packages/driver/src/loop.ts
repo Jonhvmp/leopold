@@ -2,11 +2,14 @@
 // per item, deciding from the charter, with git locked, until the plan is done
 // or a stop condition fires. It notifies the human on completion or escalation.
 
+import { randomUUID } from "node:crypto";
 import { loadBrief, initState, writeState, killSwitch, loadConfig, clearRunTokens } from "./config.js";
 import { runItem } from "./worker.js";
 import { decide } from "./conductor.js";
 import { logEvent, logDecision, markItemDone, openItems, nextOpenItem } from "./log.js";
 import { notify } from "./notify.js";
+import { createWorktree, cleanupWorktree, type Worktree } from "./worktree.js";
+import { reapOrphan } from "./reaper.js";
 import type { WorkerStatus } from "./types.js";
 
 export async function runDriver(cwd: string, argv: string[]): Promise<void> {
@@ -21,10 +24,28 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     return;
   }
 
+  // Preflight: reap a prior run that crashed leaving state.active === true.
+  reapOrphan(brief.root, brief.leoDir);
+
+  // Optional isolation: run inside a dedicated git worktree (the worker's cwd).
+  let worktree: Worktree | null = null;
+  if (cfg.worktree) {
+    worktree = createWorktree(brief.root, brief.leoDir, randomUUID().slice(0, 8));
+    if (worktree) {
+      brief.worktreeRoot = worktree.path;
+      console.log(`Isolated in worktree: ${worktree.path}  (branch ${worktree.branch})`);
+    }
+  }
+
   const state = initState(brief);
+  if (worktree) {
+    state.worktree_path = worktree.path;
+    state.worktree_branch = worktree.branch;
+    writeState(brief.leoDir, state);
+  }
   const recent: string[] = [];
 
-  logEvent(brief.leoDir, { event: "run_start", conductor: cfg.conductorModel });
+  logEvent(brief.leoDir, { event: "run_start", conductor: cfg.conductorModel, worktree: worktree?.path ?? null });
   console.log(`Leopold is conducting "${brief.root}". Git is locked. touch .leopold/STOP to halt.\n`);
 
   const stop = (reason: string) => {
@@ -33,6 +54,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     writeState(brief.leoDir, state);
     clearRunTokens(brief.leoDir);
     logEvent(brief.leoDir, { event: "stop", reason });
+    if (worktree) cleanupWorktree(brief.root, worktree, brief.leoDir);
   };
 
   for (;;) {

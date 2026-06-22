@@ -65,8 +65,11 @@ in **parallel**, use a separate git worktree (one run per worktree):
 
     git worktree add ../<proj>-leopold-2 && cd ../<proj>-leopold-2
 
-Otherwise wait for the other run, or `/leopold-stop` it first. A run idle for
-over 10 minutes is treated as stale and may be taken over.
+The SDK driver automates this: `leopold-driver run --worktree` isolates the run in
+its own `leopold/run-<id>` worktree and, on the next start, reaps an orphaned prior
+run (a dead process that left `active:true`) and prunes its leftover worktree.
+Otherwise wait for the other run, or `/leopold-stop` it first. A run idle for over
+10 minutes is treated as stale and may be taken over.
 
 ## Step 1 — Activate the run
 

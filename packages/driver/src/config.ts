@@ -47,13 +47,23 @@ export function initState(brief: Brief): RunState {
     consecutive_failures: 0,
     max_failures: intFrom(brief.guardrails, "max_failures", 3),
     started_at: new Date().toISOString(),
+    orchestrator_pid: process.pid,
   };
   writeState(brief.leoDir, state);
   return state;
 }
 
+/** Persist run state by MERGING over what's already on disk. The bash skill and
+ *  Stop-hook write fields the driver's RunState doesn't model (session_id,
+ *  max_subagents, …); a full overwrite would drop them (and they'd drop ours).
+ *  Read-merge-write keeps both writers' fields intact. */
 export function writeState(leoDir: string, state: RunState): void {
-  fs.writeFileSync(path.join(leoDir, "state.json"), JSON.stringify(state, null, 2));
+  const p = path.join(leoDir, "state.json");
+  let onDisk: Record<string, unknown> = {};
+  try {
+    if (fs.existsSync(p)) onDisk = JSON.parse(fs.readFileSync(p, "utf8")) as Record<string, unknown>;
+  } catch { /* corrupt/absent — fall back to a clean write */ }
+  fs.writeFileSync(p, JSON.stringify({ ...onDisk, ...state }, null, 2));
 }
 
 export function killSwitch(leoDir: string): boolean {
@@ -75,5 +85,6 @@ export function loadConfig(argv: string[]): DriverConfig {
     maxTurnsPerItem: parseInt(process.env.LEOPOLD_MAX_TURNS_PER_ITEM ?? "40", 10),
     webhookUrl: process.env.LEOPOLD_WEBHOOK || undefined,
     dryRun: argv.includes("--dry-run"),
+    worktree: argv.includes("--worktree") || process.env.LEOPOLD_WORKTREE === "1",
   };
 }

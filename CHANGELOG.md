@@ -4,6 +4,31 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-22
+
+### Added
+- **Run isolation in a git worktree + an orphan reaper** (SDK driver). A native port of two
+  things paperclip does well, no Postgres or daemon — state stays in `.leopold/`, the
+  orchestrator runs git itself, signals go to process groups.
+  - `leopold-driver run --worktree` (or `LEOPOLD_WORKTREE=1`) provisions a dedicated worktree
+    on a throwaway branch `leopold/run-<id>` and points the worker's cwd at it, so a run (and
+    its subagents, which inherit the cwd) is isolated from your working tree and from other
+    runs. The driver runs git directly, so the worker's git lock is unaffected. Falls back to
+    the repo root when the project isn't a git repo.
+  - On startup the driver reaps a prior run that crashed leaving `state.active: true` — if its
+    `orchestrator_pid` is dead (`process.kill(pid, 0)` → ESRCH) it flips the run inactive,
+    logs `run_reaped`, and prunes the leftover worktree. It never touches a live run, nor a
+    pid-less in-session run.
+  - Cleanup is non-destructive: git is locked so a run *stages* but never *commits*, so a
+    worktree with uncommitted work is **preserved** (logged `worktree_preserved`) for review;
+    only a clean worktree is removed.
+- **State write hardening.** `writeState` is now read-merge-write, so the TS driver and the
+  bash skill/Stop-hook (two writers, different schemas) stop clobbering each other's fields.
+
+### Changed
+- The guard explicitly allows `git worktree`, and `git branch -D` gains a narrow exception for
+  the harness's own throwaway `leopold/run-*` branches (every other forced delete stays denied).
+
 ## [0.5.0] - 2026-06-22
 
 ### Added
