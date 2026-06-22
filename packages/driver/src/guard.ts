@@ -12,7 +12,10 @@ export type PermissionResult = Allow | Deny;
 
 const GH_PR = /(^|[^\w-])gh(\s.*)?\s(pr\s+(create|merge)|release\s+create)/i;
 const PUBLISH = /(npm|pnpm|yarn)\s+publish|cargo\s+publish|twine\s+upload|pip\s+.*upload/i;
-const PROTECTED_PATH = /(GUARDRAILS\.md|settings\.json|settings\.local\.json|leopold\/hooks\/|\.leopold\/state\.json)/;
+const PROTECTED_PATH = /(GUARDRAILS\.md|settings\.json|settings\.local\.json|leopold\/hooks\/|\.leopold\/state\.json|secrets\.key|secrets\.env)/;
+// The secret vault (.leopold/secrets.env) and master key (~/.claude/leopold/secrets.key)
+// are off-limits to the worker — secrets reach it only as $NAME env vars.
+const SECRET_FILE = /secrets\.key|secrets\.env/;
 
 // git global options that consume the following token as their value.
 const GIT_VALUE_OPTS = new Set([
@@ -72,9 +75,17 @@ export function makeGuard(
       return { behavior: "deny", message };
     };
 
+    if (toolName === "Read") {
+      const p = String((input as { file_path?: unknown }).file_path ?? "");
+      if (SECRET_FILE.test(p))
+        return deny("Leopold guard: reading the secret vault or master key is forbidden. Secrets are pre-loaded as $NAME env vars.");
+    }
+
     if (toolName === "Bash") {
       const c = norm(String((input as { command?: unknown }).command ?? ""));
 
+      if (SECRET_FILE.test(c))
+        return deny("Leopold guard: touching the secret vault/key via shell is forbidden. Secrets are pre-loaded as $NAME env vars.");
       if (isRecursiveForceRm(c))
         return deny("Leopold guard: recursive+forced rm is forbidden in autonomous mode.");
       if (isFindDelete(c))

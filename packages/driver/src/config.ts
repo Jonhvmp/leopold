@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { parseBudgetUsd } from "./budget.js";
 import type { Brief, RunState, DriverConfig } from "./types.js";
 
 export function findLeoDir(cwd: string): string {
@@ -78,6 +79,12 @@ export function clearRunTokens(leoDir: string): void {
   }
 }
 
+/** Read `--flag value` from argv (the value is the next token). */
+function flagValue(argv: string[], name: string): string | undefined {
+  const i = argv.indexOf(name);
+  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined;
+}
+
 export function loadConfig(argv: string[]): DriverConfig {
   return {
     conductorModel: process.env.LEOPOLD_CONDUCTOR_MODEL || undefined,
@@ -86,5 +93,6 @@ export function loadConfig(argv: string[]): DriverConfig {
     webhookUrl: process.env.LEOPOLD_WEBHOOK || undefined,
     dryRun: argv.includes("--dry-run"),
     worktree: argv.includes("--worktree") || process.env.LEOPOLD_WORKTREE === "1",
+    budgetUsd: parseBudgetUsd(flagValue(argv, "--budget-usd") ?? process.env.LEOPOLD_BUDGET_USD),
   };
 }

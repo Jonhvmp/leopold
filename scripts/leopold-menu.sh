@@ -47,6 +47,25 @@ ext_installed() { bash "$1/manage.sh" detect >/dev/null 2>&1; }
 ext_status()    { bash "$1/manage.sh" status 2>/dev/null || true; }
 ext_run()       { bash "$1/manage.sh" "$2"; }
 
+ext_caps() { # extension.json -> space-separated capabilities (empty if none)
+  if command -v jq >/dev/null 2>&1; then
+    jq -r '(.capabilities // []) | join(" ")' "$1" 2>/dev/null
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c "import json,sys;print(' '.join(json.load(open(sys.argv[1])).get('capabilities',[])))" "$1" 2>/dev/null
+  fi
+}
+
+# Show an extension's declared capabilities and require explicit consent before
+# install/update grants them. No declaration -> nothing to gate, proceed.
+ext_consent() { # dir -> 0 if the user consents
+  local caps; caps="$(ext_caps "$1/extension.json")"
+  [ -n "$caps" ] || return 0
+  printf "\n  %sThis extension requests:%s %s%s%s\n" "$C_BOLD" "$C_RESET" "$C_YELLOW" "$caps" "$C_RESET"
+  printf "  Install/update grants these. Proceed? [y/N] "
+  local a; read -r a || a=""
+  case "$a" in [yY]*) return 0 ;; *) echo "  cancelled."; return 1 ;; esac
+}
+
 pause() { printf "\n%spress Enter to continue%s " "$C_DIM" "$C_RESET"; read -r _ || true; }
 
 # ---- screens ----------------------------------------------------------------
@@ -90,6 +109,8 @@ component_menu() {
     ext_installed "$d" && st="installed${C_RESET} ${C_DIM}($(ext_status "$d"))"
     printf "  %s%s%s\n  status: %s%s\n\n" "$C_BOLD" "$title" "$C_RESET" "$C_GREEN" "$st"
     printf "  %s%s%s\n\n" "$C_DIM" "$(_jget "$d/extension.json" summary)" "$C_RESET"
+    local caps; caps="$(ext_caps "$d/extension.json")"
+    [ -n "$caps" ] && printf "  %scapabilities:%s %s\n\n" "$C_DIM" "$C_RESET" "$caps"
     local has_dash=""; [ -n "$(_jget "$d/extension.json" dashboard)" ] && has_dash=1
     if [ -n "$has_dash" ]; then
       printf "   1) Install    2) Update    3) Remove    4) Doctor    w) Watch    b) Back\n\n"
@@ -98,8 +119,8 @@ component_menu() {
     fi
     printf "select: "; read -r a || a="b"
     case "$a" in
-      1) ext_run "$d" install || echo "${C_YELLOW}install returned non-zero${C_RESET}"; pause ;;
-      2) ext_run "$d" update  || echo "${C_YELLOW}update returned non-zero${C_RESET}";  pause ;;
+      1) ext_consent "$d" && { ext_run "$d" install || echo "${C_YELLOW}install returned non-zero${C_RESET}"; }; pause ;;
+      2) ext_consent "$d" && { ext_run "$d" update  || echo "${C_YELLOW}update returned non-zero${C_RESET}"; }; pause ;;
       3) ext_run "$d" remove  || echo "${C_YELLOW}remove returned non-zero${C_RESET}";  pause ;;
       4) ext_run "$d" doctor  || true; pause ;;
       w|W) [ -n "$has_dash" ] && { ext_run "$d" watch || true; }; pause ;;

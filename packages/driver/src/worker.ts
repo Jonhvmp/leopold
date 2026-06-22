@@ -9,12 +9,14 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { InputChannel } from "./channel.js";
 import { parseStatus, isTurnComplete } from "./protocol.js";
 import { makeGuard } from "./guard.js";
+import { applySecretsEnv } from "./secrets.js";
 import type { Brief, WorkerStatus, DriverConfig } from "./types.js";
 
 const WORKER_APPEND = `You are a Leopold worker, conducted by an autonomous orchestrator. No human is watching live. Rules for this session:
 - Do NOT ask the human anything. Decide reversible or charter-clear calls yourself and keep going.
 - Spawned mode: if you invoke gstack skills, auto-pick the recommended option; never prompt.
 - git commit/push/publish are LOCKED by a guard. Never attempt them. Stage with "git add" and report instead.
+- Secrets you may need are pre-loaded as environment variables; use them as $NAME, and never ask for, echo, or print their values.
 - Close EVERY turn with a fenced status block, then stop and wait for the conductor's reply:
 
 \`\`\`leopold-status
@@ -37,6 +39,8 @@ export interface RunItemOpts {
   /** Called when the worker completes a turn. Return the next instruction to
    *  push, or null to end the item. */
   onTurn: (status: WorkerStatus, text: string) => Promise<string | null>;
+  /** Called once with the item's real USD cost (from the CLI's total_cost_usd). */
+  onCost?: (usd: number) => void;
 }
 
 export async function runItem(opts: RunItemOpts): Promise<void> {
@@ -44,11 +48,16 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
   const channel = new InputChannel();
   channel.push(workerPrompt);
   const guard = makeGuard(brief.leoDir, onBlock);
+  // Inject the run's secrets as env vars for this item: they reach the worker's Bash
+  // tool as $NAME but never enter the prompt. Restored after the loop (runs are
+  // sequential, so there is no env overlap between items).
+  const { restore: restoreSecrets } = applySecretsEnv(brief.leoDir);
 
   const q = query({
     prompt: channel,
     options: {
       cwd: brief.worktreeRoot ?? brief.root,
+      env: { ...process.env },
       maxTurns: cfg.maxTurnsPerItem,
       permissionMode: "default",
       canUseTool: guard as never,
@@ -73,6 +82,9 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
         channel.push(next);
       }
     } else if (msg.type === "result") {
+      // The CLI reports the item's real cost here — accumulate it for the budget.
+      const cost = (msg as { total_cost_usd?: unknown }).total_cost_usd;
+      if (typeof cost === "number" && Number.isFinite(cost)) opts.onCost?.(cost);
       // Session ended (channel closed, or the worker stopped on its own). Flush
       // whatever we have so the conductor can make a final call.
       if (turnText.trim()) {
@@ -84,4 +96,5 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
       break;
     }
   }
+  restoreSecrets();
 }

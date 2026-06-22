@@ -5,6 +5,7 @@
   "homepage": "https://github.com/Jonhvmp/leopold",
   "license": "MIT",
   "order": 30,
+  "capabilities": ["network", "settings.write", "filesystem.home", "package.install", "process.spawn"],
   "dashboard": {
     "label": "Memory",
     "module": "~/.claude/ovmem/dashboard.py",

@@ -112,6 +112,10 @@ case "$tool" in
     # normalize: newlines/tabs -> space, collapse runs (defeats whitespace/tab evasion).
     norm="$(printf '%s' "$cmd" | tr '\n\t' '  ' | tr -s ' ')"
 
+    # secret vault / master key are off-limits to the worker (secrets arrive as env vars)
+    matches "$norm" 'secrets\.(key|env)' && \
+      deny "Leopold guard: touching the secret vault/key via shell is forbidden. Secrets are pre-loaded as environment variables."
+
     # Opt-in deny-by-default (LEOPOLD_PARANOID=1): only a small allowlist of
     # read/build/test/lint commands passes; everything else is denied. Best-effort
     # (it keys off the first command word), kept off by default in favor of the
@@ -184,6 +188,7 @@ case "$tool" in
       */GUARDRAILS.md)             deny "Leopold guard: GUARDRAILS.md is immutable during an autonomous run." ;;
       */settings.json|*/settings.local.json) deny "Leopold guard: editing Claude Code settings is forbidden in autonomous mode." ;;
       */leopold/hooks/*|*/.leopold/state.json) deny "Leopold guard: the guardrail hooks and run state are immutable during an autonomous run." ;;
+      */secrets.key|*/.leopold/secrets.env) deny "Leopold guard: the secret vault and master key are off-limits. Secrets are pre-loaded as env vars." ;;
     esac
     ;;
 esac

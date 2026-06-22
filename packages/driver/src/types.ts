@@ -63,6 +63,9 @@ export interface RunState {
   /** Isolated worktree for this run (absolute path) and its throwaway branch. */
   worktree_path?: string;
   worktree_branch?: string;
+  /** USD budget hard-stop: accumulated real spend and the cap (when set). */
+  spent_usd?: number;
+  budget_usd?: number;
 }
 
 export interface DriverConfig {
@@ -73,4 +76,6 @@ export interface DriverConfig {
   dryRun: boolean;
   /** Isolate the run in a dedicated git worktree (opt-in). */
   worktree: boolean;
+  /** USD hard-stop: stop the run once accumulated spend reaches this. */
+  budgetUsd?: number;
 }
