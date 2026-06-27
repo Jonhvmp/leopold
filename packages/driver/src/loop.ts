@@ -3,6 +3,7 @@
 // or a stop condition fires. It notifies the human on completion or escalation.
 
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { loadBrief, initState, writeState, killSwitch, loadConfig, clearRunTokens } from "./config.js";
 import { runItem } from "./worker.js";
 import { decide } from "./conductor.js";
@@ -11,7 +12,15 @@ import { notify } from "./notify.js";
 import { createWorktree, cleanupWorktree, type Worktree } from "./worktree.js";
 import { reapOrphan } from "./reaper.js";
 import { overBudget } from "./budget.js";
+import { classifyItem } from "./classify.js";
+import { reviewItem, diffIsSensitive } from "./review.js";
 import type { WorkerStatus } from "./types.js";
+
+/** The item's uncommitted change set (file list), for sensitivity detection. */
+function diffStat(cwd: string): string {
+  const r = spawnSync("git", ["--no-pager", "diff", "--stat", "HEAD"], { cwd, encoding: "utf8" });
+  return r.status === 0 ? (r.stdout ?? "") : "";
+}
 
 export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   const cfg = loadConfig(argv);
@@ -51,8 +60,10 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   logEvent(brief.leoDir, {
     event: "run_start", conductor: cfg.conductorModel,
     worktree: worktree?.path ?? null, budget_usd: cfg.budgetUsd ?? null,
+    review: cfg.review, parallel: cfg.parallel,
   });
-  console.log(`Leopold is conducting "${brief.root}". Git is locked. touch .leopold/STOP to halt.\n`);
+  const gate = cfg.review ? `Review gate on (${cfg.maxReviewRounds} rounds/item).` : "Review gate off.";
+  console.log(`Leopold is conducting "${brief.root}". Git is locked. ${gate} touch .leopold/STOP to halt.\n`);
 
   const stop = (reason: string) => {
     state.active = false;
@@ -96,8 +107,11 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
 
     state.iteration += 1;
     writeState(brief.leoDir, state);
-    logEvent(brief.leoDir, { event: "item_start", iteration: state.iteration, item });
-    console.log(`\n--- turn ${state.iteration}: ${item} ---`);
+    // Classify the item: drives the worker's reasoning effort, and whether it
+    // earns a second-opinion review (the advisor analog).
+    const klass = classifyItem(item, brief.charter);
+    logEvent(brief.leoDir, { event: "item_start", iteration: state.iteration, item, effort: klass.effort, critical: klass.critical });
+    console.log(`\n--- turn ${state.iteration}: ${item}  [effort=${klass.effort}${klass.critical ? ", critical" : ""}] ---`);
 
     const workerPrompt =
       `Work on this plan item now:\n\n${item}\n\n` +
@@ -105,12 +119,14 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
 
     let escalated = false;
     let itemDone = false;
+    let reviewRounds = 0;
 
     await runItem({
       brief,
       cfg,
       item,
       workerPrompt,
+      effort: klass.effort,
       onBlock: (tool, reason) => logEvent(brief.leoDir, { event: "guard_block", tool, reason }),
       onCost: (usd) => {
         state.spent_usd = (state.spent_usd ?? 0) + usd;
@@ -123,6 +139,24 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
         if (verdict.logTitle) recent.push(`${verdict.logTitle}: ${verdict.reply ?? "(finish)"}`);
 
         if (verdict.action === "finish") {
+          // Review gate: an independent pass over the item's diff before it closes.
+          // Blocking findings are handed back to the worker (up to maxReviewRounds).
+          if (cfg.review && reviewRounds < cfg.maxReviewRounds) {
+            const cwd = brief.worktreeRoot ?? brief.root;
+            const sensitive = klass.critical || diffIsSensitive(diffStat(cwd));
+            const r = await reviewItem(cfg, brief, { sensitive, secondOpinion: klass.critical });
+            logEvent(brief.leoDir, { event: "review", item, round: reviewRounds + 1, ok: r.ok, blocking: r.blocking.length, sensitive, second_opinion: klass.critical });
+            if (!r.ok) {
+              reviewRounds += 1;
+              console.log(`  review -> ${r.blocking.length} blocking (round ${reviewRounds}/${cfg.maxReviewRounds})`);
+              return (
+                `A Leopold review gate found blocking issues; the item is NOT done yet:\n` +
+                r.blocking.map((f, i) => `${i + 1}. [${f.file}] ${f.issue}`).join("\n") +
+                `\n\nFix every one, re-verify (build/lint/test), then report status again.`
+              );
+            }
+            console.log(`  review -> clean`);
+          }
           itemDone = true;
           return null;
         }

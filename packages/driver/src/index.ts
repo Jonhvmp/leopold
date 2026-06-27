@@ -20,7 +20,7 @@ Usage:
   leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem)
   leopold-driver doctor                     run every extension's doctor
   leopold-driver update                     reinstall from this package
-  leopold-driver run [--worktree] [--budget-usd N] [--dry-run]
+  leopold-driver run [--worktree] [--budget-usd N] [--no-review] [--dry-run]
                                             conduct the .leopold run (the SDK driver)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
@@ -29,8 +29,11 @@ Newer version: npm i -g leopold-driver@latest.
 
 Conducting a run uses your existing Claude Code login (ANTHROPIC_API_KEY only in headless).
 --worktree isolates the run in a git worktree; --budget-usd stops it at a USD cap.
+Each item is risk-classified (sets reasoning effort) and, before it closes, an independent
+review gate runs /code-review (+ /security-review on sensitive diffs) — critical items get a
+second reviewer. --no-review turns the gate off; --max-review-rounds N caps fix rounds (2).
 Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK,
-     LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD
+     LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD, LEOPOLD_REVIEW, LEOPOLD_MAX_REVIEW_ROUNDS
 `);
 }
 

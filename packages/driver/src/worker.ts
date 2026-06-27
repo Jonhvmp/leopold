@@ -11,6 +11,7 @@ import { parseStatus, isTurnComplete } from "./protocol.js";
 import { makeGuard } from "./guard.js";
 import { applySecretsEnv } from "./secrets.js";
 import type { Brief, WorkerStatus, DriverConfig } from "./types.js";
+import type { Effort } from "./classify.js";
 
 const WORKER_APPEND = `You are a Leopold worker, conducted by an autonomous orchestrator. No human is watching live. Rules for this session:
 - Do the item COMPLETELY. No placeholders, no TODOs, no "left as an exercise", no partial passes. Build it, wire it, verify it (build/lint/test), and only then close out. Bias hard toward finishing, not toward stopping.
@@ -42,6 +43,11 @@ export interface RunItemOpts {
   onTurn: (status: WorkerStatus, text: string) => Promise<string | null>;
   /** Called once with the item's real USD cost (from the CLI's total_cost_usd). */
   onCost?: (usd: number) => void;
+  /** Reasoning effort for this item (classify.ts). Omitted = inherit. */
+  effort?: Effort;
+  /** Override the worker's cwd (the parallel scheduler gives each item its own
+   *  worktree). Defaults to the run's worktree, then the repo root. */
+  cwd?: string;
 }
 
 export async function runItem(opts: RunItemOpts): Promise<void> {
@@ -57,12 +63,13 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
   const q = query({
     prompt: channel,
     options: {
-      cwd: brief.worktreeRoot ?? brief.root,
+      cwd: opts.cwd ?? brief.worktreeRoot ?? brief.root,
       env: { ...process.env },
       maxTurns: cfg.maxTurnsPerItem,
       permissionMode: "default",
       canUseTool: guard as never,
       settingSources: ["user", "project"] as never,
+      ...(opts.effort ? { effort: opts.effort } : {}),
       ...(cfg.workerModel ? { model: cfg.workerModel } : {}),
       systemPrompt: { type: "preset", preset: "claude_code", append: WORKER_APPEND } as never,
     } as never,

@@ -78,4 +78,11 @@ export interface DriverConfig {
   worktree: boolean;
   /** USD hard-stop: stop the run once accumulated spend reaches this. */
   budgetUsd?: number;
+  /** Review gate: run an independent /code-review pass before an item closes. */
+  review: boolean;
+  /** Max review→fix rounds per item before the item is allowed to close anyway. */
+  maxReviewRounds: number;
+  /** Parallel scheduler: run this many independent plan items concurrently
+   *  (each in its own worktree). 1 = the default serial loop. */
+  parallel: number;
 }

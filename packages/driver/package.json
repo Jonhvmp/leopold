@@ -37,7 +37,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-runtime.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test test/protocol.test.ts test/guard.test.ts test/worktree.test.ts test/reaper.test.ts test/budget.test.ts test/secrets.test.ts",
+    "test": "node --import tsx --test test/protocol.test.ts test/guard.test.ts test/worktree.test.ts test/reaper.test.ts test/budget.test.ts test/secrets.test.ts test/classify.test.ts test/review.test.ts",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build"
