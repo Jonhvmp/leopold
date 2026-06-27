@@ -150,11 +150,20 @@ Each turn:
 2. Complete it. Reach for the gstack playbook skill that fits the situation
    (`/spec` before non-trivial builds, `/code-review` after changes, `/verify`
    to confirm behavior, `/investigate` when something breaks, `/find-docs`
-   before guessing an API). Verify your work (build, lint, tests) before moving on.
+   before guessing an API). Verify your work (build, lint, tests) before moving on —
+   and if a run-skill exists for this project, `/verify` the change in the running app,
+   not just via tests.
 3. Resolve forks with the decision protocol; log non-mechanical decisions.
 4. Mark the item done (`[x]`) in `PLAN.md`.
 5. Finish your turn. Do not ask "should I continue?" The Stop hook decides that
    from the plan and the stop conditions.
+
+**The review gate (SDK driver).** When the run is conducted by `leopold-driver`, each
+item you close is independently reviewed (`/code-review`, plus `/security-review` on
+sensitive diffs) before it counts as done; blocking findings come back to you to fix.
+Don't fight it — self-review with `/code-review` *before* you report done, so the gate
+passes first try. Critical items (billing, auth, migrations) are reviewed twice and run
+at higher reasoning effort automatically; expect and welcome the extra scrutiny.
 
 If the same thing fails repeatedly, increment `consecutive_failures` in
 `state.json`; the stop condition will catch a stuck run.

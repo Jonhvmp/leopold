@@ -4,6 +4,34 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-06-27
+
+### Added
+- **Review gate per item.** Before an item can close, an independent reviewer (its own
+  Claude Code session, so it can invoke `/code-review` and `/security-review`) passes over
+  the item's uncommitted diff. Blocking findings are handed back to the worker to fix, up to
+  `--max-review-rounds` (2); sensitive diffs (auth/billing/secrets/.env) get security rigor;
+  unparseable verdicts fail closed. On by default (`--no-review` / `LEOPOLD_REVIEW=0` off).
+- **Per-item reasoning effort + advisor analog.** A deterministic keyword pass over the item
+  and charter sets the worker's native SDK `effort` — `low` for cosmetic work, `high`/`max`
+  for money/identity/data-integrity/migrations. Critical items also get a second independent
+  reviewer (the advisor analog; the SDK has no advisor).
+- **Parallel scheduler (`--parallel N`).** Independent plan items run concurrently, each in
+  its own worktree; each finished item's diff is replayed onto the main tree as a staged
+  patch (serialized, never committed). Declare order in `PLAN.md` with `- [ ] (after: 2) …`;
+  conflicting patches preserve the worktree for manual merge. Default stays serial.
+- **`leopold up`** — one-command setup: installs the harness and seeds a per-project
+  permissions allowlist; pairs with the new **`/leopold-up`** skill (Phase 0) that runs
+  `/init`, `/run-skill-generator`, and MCP/effort checks, then hands off to `/leopold-brief`.
+- **`leopold insights`** — summarize a run from `events.jsonl`: items done/incomplete/
+  conflicted, effort mix, review pass-rate, decisions, escalations, guard blocks, spend
+  (`--json` for machine output).
+
+### Changed
+- `/leopold-brief` now writes parallel-ready plans (documents the `(after: N)` dependency
+  marker) and points fresh projects at `/leopold-up`. `/leopold-run` documents the review
+  gate and tells the worker to self-`/code-review` and `/verify` against the app run-skill.
+
 ## [0.8.0] - 2026-06-27
 
 ### Changed

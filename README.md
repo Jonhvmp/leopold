@@ -29,8 +29,8 @@ Leopold is an autonomous orchestration harness for [Claude Code](https://claude.
 ## Quickstart
 
 ```bash
-# from npm — no clone, no make. Installs the harness, then `leopold` manages everything.
-npm i -g leopold-driver && leopold install
+# from npm — no clone, no make. `leopold up` installs the harness + sets up the project.
+npm i -g leopold-driver && leopold up
 ```
 
 ```bash
@@ -43,9 +43,11 @@ merged. With the npm package, the bundled `leopold` CLI runs the whole toolchain
 the repo**:
 
 ```bash
+leopold up                   # install + project setup in one (then /leopold-up in a session)
 leopold menu                 # toolchain manager (serena / gstack / ovmem)
 leopold watch                # live dashboard at http://127.0.0.1:4179
-leopold serena install       # set up an extension (also: gstack, ovmem)
+leopold run --parallel 3     # conduct the run, independent items in parallel
+leopold insights             # summarize a run (effort mix, review pass-rate, spend)
 leopold doctor               # health check
 ```
 
@@ -80,6 +82,18 @@ Then, in any project:
 **Phase 1 — Brief (`/leopold-brief`).** A structured debate, not a form. Leopold pushes back and writes four durable artifacts: `MISSION.md` (what + definition of done), `CHARTER.md` (your priorities, taste, hard *never*/*always* rules — the part that "becomes you"), `GUARDRAILS.md` (autonomous vs gated, stop conditions, kill switch), and `PLAN.md` (the backlog). The run's quality is capped by the brief's, so this phase matters.
 
 **Phase 2 — Run (`/leopold-run`).** Leopold loops: pick the next `PLAN.md` item → do the work, reaching for the right [gstack](https://github.com/garrytan/gstack) skill → at a fork, consult `CHARTER.md`; if the call is reversible and the charter is clear, **decide, log it to `DECISIONS.md`, and keep going** → mark it done, pick the next. A **Stop hook** re-injects "continue" while work remains; a **PreToolUse guard** keeps `git commit`/`push` locked. Everything it decided for you is in `DECISIONS.md` to review.
+
+---
+
+## Quality & orchestration
+
+Leopold extracts the most from Claude Code's native power, in one command. See [Quality & Orchestration](docs/quality-and-orchestration.md).
+
+- **Review gate on every item.** Before an item closes, an independent reviewer runs `/code-review` (and `/security-review` on sensitive diffs) over its diff; blocking findings go back to the worker until it's clean. Critical items get a second reviewer.
+- **Effort by risk.** Each item is classified and the worker's reasoning effort is set automatically — `low` for a typo, `max` for a migration or payment change. No wasted thinking on trivia, full depth where it's dangerous.
+- **Parallel items.** `leopold-driver run --parallel N` runs independent plan items at once, each in its own worktree, replaying each diff onto the main tree (staged, never committed). Declare order with `- [ ] (after: 2) …`.
+- **One-command setup.** `leopold up` + `/leopold-up` wire the things people skip — `CLAUDE.md` (`/init`), an app run-skill (`/run-skill-generator`), a permissions allowlist, MCP — so a project starts at full power.
+- **Insights.** `leopold-driver insights` summarizes a run: effort mix, review pass-rate, decisions, escalations, real spend.
 
 ---
 

@@ -4,8 +4,9 @@
 // into the package at build time; subcommands run them.
 
 import { runDriver } from "./loop.js";
-import { runInstall, runMenu, runWatch, runExt, runDoctor } from "./harness.js";
+import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harness.js";
 import { runSecrets } from "./secrets.js";
+import { runInsights } from "./insights.js";
 
 const sub = process.argv[2];
 const rest = process.argv.slice(3);
@@ -14,7 +15,9 @@ function help(): void {
   process.stdout.write(`leopold-driver — Leopold from npm. Manage the harness, conduct runs, watch.
 
 Usage:
+  leopold-driver up                         one-shot setup: install + permissions + extensions
   leopold-driver install [--with-gstack]   install skills + hooks into ~/.claude
+  leopold-driver insights [--json]          summarize the current run (events.jsonl)
   leopold-driver menu                       toolchain manager (serena / gstack / ovmem)
   leopold-driver watch [--port N]           live dashboard (http://127.0.0.1:4179)
   leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem)
@@ -49,9 +52,13 @@ function conduct(): void {
 }
 
 switch (sub) {
+  case "up":
+    process.exit(runUp(rest));
   case "install":
   case "update":
     process.exit(runInstall(rest));
+  case "insights":
+    process.exit(runInsights(rest));
   case "menu":
     process.exit(runMenu());
   case "watch":
