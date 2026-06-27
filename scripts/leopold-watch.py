@@ -73,7 +73,7 @@ def read_decisions(limit=8):
     if any(x.strip() for x in cur):
         blocks.append("\n".join(cur).strip())
     out = [b.replace("**", "") for b in blocks
-           if ("Fork:" in b or "Decision:" in b or "Decisão:" in b)]
+           if ("Fork:" in b or "Decision:" in b)]
     return out[-limit:][::-1]
 
 

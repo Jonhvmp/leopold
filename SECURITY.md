@@ -5,11 +5,16 @@ not an afterthought.
 
 ## The guarantee
 
-While a run is active, Leopold blocks `git commit`, `git push`, force-push,
-`reset --hard`, `rm -rf`, PR/release creation, and package publishing at the
-tool-call layer (a hook in-session, a `canUseTool` gate in the driver). These are
-unlocked only by explicit per-session opt-in tokens that the human creates. A
-change that weakens this without an explicit opt-in is a security bug.
+While a run is active, Leopold blocks exactly two actions at the tool-call layer
+(a hook in-session, a `canUseTool` gate in the driver): `git commit` and `git push`
+(force-push always). These are unlocked only by explicit per-run opt-in tokens that
+the human creates (`.leopold/ALLOW_GIT`, `.leopold/ALLOW_PUSH`); force-push stays
+denied regardless. The run stages its work and the human owns the commit/push.
+A change that lets a run commit or push without the opt-in token is a security bug.
+
+Everything else — including `rm -rf`, `reset --hard`, and package publishing — is
+intentionally the run's own call. Isolate a run with `--worktree` if you want a
+filesystem boundary around it.
 
 ## Reporting a vulnerability
 
@@ -22,7 +27,8 @@ We aim to acknowledge reports within a few days.
 
 ## Scope
 
-In scope: any path that lets an autonomous run perform a gated or forbidden
-action (commit, push, destructive command, outbound publish) without the
-documented opt-in. Out of scope: actions a user explicitly opted into via a
-token, and Claude Code's own permission system.
+In scope: any path that lets an autonomous run `git commit` or `git push`
+without the documented opt-in token, or that lands a force-push at all. Out of
+scope: every other action (the run is meant to perform those autonomously),
+actions a user explicitly opted into via a token, and Claude Code's own
+permission system.

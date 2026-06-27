@@ -4,6 +4,33 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-06-27
+
+### Changed
+- **Guard scope narrowed to git commit/push only.** The autonomous guard (both the
+  in-session `PreToolUse` hook and the driver's `canUseTool` gate) now locks exactly two
+  actions: `git commit` (token `ALLOW_GIT`) and `git push` (token `ALLOW_PUSH`); force-push
+  is always denied. Everything else the run used to block — `rm -rf`, `find -delete`,
+  `git reset --hard`, `git clean -f`, `git branch -D`, `gh pr create/merge`, package
+  publish, secret-file reads, and edits to guardrails/settings/hooks/state — is now the
+  run's own call. Isolate a run with `--worktree` for a filesystem boundary. The git match
+  stays hardened against evasion (global options, abs paths, `env git`, whitespace/tabs)
+  and red-teamed (`make test-guard`). **Rationale:** the broad denylist blocked work without
+  improving the autonomy guarantee that actually matters — code never leaves the machine or
+  lands in history without you — which is fully covered by the commit/push lock.
+- **Conductor and worker biased hard toward finishing.** The conductor now defaults to
+  "answer/keep going", treats `escalate` as a rare last resort (genuinely irreversible AND
+  unsettleable forks only), and never tells the worker to stop and ask. The worker prompt
+  pushes complete, verified work — no placeholders, no early stops — and reserves
+  `needs-decision` for true blockers. Subagent/fork/context-size caps were removed from the
+  guard; spawn freely, just keep prompts lean. Fixes runs that stalled, over-escalated, or
+  left items half-done.
+
+### Removed
+- Guard enforcement of `max_subagents` / `max_forks` / `max_context_mb` and the
+  `LEOPOLD_PARANOID` allowlist mode. Cost is bounded by the `--budget` USD hard-stop and
+  `max_iterations` instead. The `ALLOW_PUBLISH` token is gone (publishing is no longer gated).
+
 ## [0.7.1] - 2026-06-22
 
 ### Fixed

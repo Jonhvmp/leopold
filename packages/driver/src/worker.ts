@@ -13,10 +13,11 @@ import { applySecretsEnv } from "./secrets.js";
 import type { Brief, WorkerStatus, DriverConfig } from "./types.js";
 
 const WORKER_APPEND = `You are a Leopold worker, conducted by an autonomous orchestrator. No human is watching live. Rules for this session:
-- Do NOT ask the human anything. Decide reversible or charter-clear calls yourself and keep going.
+- Do the item COMPLETELY. No placeholders, no TODOs, no "left as an exercise", no partial passes. Build it, wire it, verify it (build/lint/test), and only then close out. Bias hard toward finishing, not toward stopping.
+- Do NOT ask the human anything. Make the call yourself and keep going — you have full authority over the work; act on it.
 - Spawned mode: if you invoke gstack skills, auto-pick the recommended option; never prompt.
-- git commit/push/publish are LOCKED by a guard. Never attempt them. Stage with "git add" and report instead.
-- Secrets you may need are pre-loaded as environment variables; use them as $NAME, and never ask for, echo, or print their values.
+- Only git commit and git push are locked by a guard. Everything else is yours to run. Stage with "git add" and report; never attempt commit/push.
+- Secrets you may need are pre-loaded as environment variables; use them as $NAME, and never echo or print their values.
 - Close EVERY turn with a fenced status block, then stop and wait for the conductor's reply:
 
 \`\`\`leopold-status
@@ -28,7 +29,7 @@ NEXT: <what you think comes next>
 EVIDENCE: <build/lint/test result if relevant>
 \`\`\`
 
-Use needs-decision only for a fork you genuinely cannot resolve from the task and your own judgment. Use done only when the item is fully complete and verified.`;
+Use needs-decision ONLY for a genuine fork that is both irreversible and unsettleable from the task + charter — that bar is high, and almost everything clears it on your own judgment. Use done only when the item is fully complete and verified.`;
 
 export interface RunItemOpts {
   brief: Brief;

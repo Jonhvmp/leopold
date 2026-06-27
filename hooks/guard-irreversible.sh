@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Leopold PreToolUse guard: keeps irreversible / outbound actions locked while a
-# Leopold autonomous run is active. This is defense-in-depth on top of Claude
-# Code's own permission system. It never loosens anything; it only adds denials.
+# Leopold PreToolUse guard: keeps git commit and git push locked while a Leopold
+# autonomous run is active. That is the ENTIRE scope — the run stages work and the
+# human commits/pushes. Nothing else is blocked; the worker is free to run, edit,
+# delete, refactor and spawn as it sees fit. It never loosens Claude Code's own
+# permission system; it only adds the two git denials.
 #
 # Hook contract (Claude Code PreToolUse): read JSON on stdin. To block, print a
 # hookSpecificOutput object with permissionDecision "deny" and exit 0. To allow,
-# exit 0 with no output. Detection is intentionally over-broad: when in doubt it
-# blocks, because a blocked-but-safe op just means the human runs it.
+# exit 0 with no output.
 #
 # Each denial below has a matching case in scripts/test-guard.sh (red-team suite).
 
@@ -30,6 +31,9 @@ fi
 [ "$active" = "true" ] || exit 0
 
 tool="$(printf '%s' "$input" | jq -r '.tool_name // empty' 2>/dev/null || true)"
+
+# git commit/push are the only guarded tools, so anything but Bash is allowed.
+[ "$tool" = "Bash" ] || exit 0
 
 deny() {
   local r="$1" ts
@@ -64,133 +68,20 @@ git_subcmd() {  # $1 = normalized command -> echoes the subcommand (or empty)
   done
 }
 
-case "$tool" in
-  Task|Agent)
-    # Subagent fan-out is the #1 autonomous-run cost blowup, on TWO axes — how MANY are
-    # spawned, and how much CONTEXT each one carries. Guard both.
-    stype="$(printf '%s' "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
+cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
+# normalize: newlines/tabs -> space, collapse runs (defeats whitespace/tab evasion).
+norm="$(printf '%s' "$cmd" | tr '\n\t' '  ' | tr -s ' ')"
 
-    # (a) Context per subagent: an oversized prompt means context is being dumped into the
-    # subagent (each is billed in full). A normal scoped prompt is a few KB; deny the absurd.
-    plen="$(printf '%s' "$input" | jq -r '.tool_input.prompt // .tool_input.description // empty' 2>/dev/null | wc -c | tr -d ' ')"
-    if [ "${plen:-0}" -gt 262144 ] 2>/dev/null; then
-      deny "Leopold guard: this subagent prompt is ~$(( ${plen:-0} / 1024 ))KB — you're handing the subagent a huge context (each spawn is billed in full). Pass a minimal, scoped prompt: point it at files to read, don't paste them in."
-    fi
-
-    # (b) Forks clone the ENTIRE parent session (multi-MB) — they ARE the per-subagent
-    # context leak. Forbidden by default (max_forks 0); a fresh scoped subagent does the
-    # same work with a clean slate. Raise max_forks in GUARDRAILS.md only for a sub-task
-    # that genuinely needs the full conversation.
-    if [ "$stype" = "fork" ]; then
-      max_fk="$(jq -r '.max_forks // 0' "$STATE" 2>/dev/null || echo 0)"; case "$max_fk" in (*[!0-9]*|"") max_fk=0 ;; esac
-      forked="$(jq -r '.forks_spawned // 0' "$STATE" 2>/dev/null || echo 0)"; case "$forked" in (*[!0-9]*|"") forked=0 ;; esac
-      if [ "$forked" -ge "$max_fk" ] 2>/dev/null; then
-        deny "Leopold guard: forks are forbidden in autonomous mode ($forked/$max_fk). A fork clones the WHOLE session context (multi-MB) into the spawn — this is the leak that runs up the bill. Use a regular subagent with a minimal prompt instead (it starts clean). To allow a fork, raise max_forks in GUARDRAILS.md."
-      fi
-      gtmp="$(mktemp 2>/dev/null || echo "$STATE.gtmp")"
-      jq --argjson f "$((forked+1))" '.forks_spawned=$f' "$STATE" > "$gtmp" 2>/dev/null && mv "$gtmp" "$STATE" || rm -f "$gtmp" 2>/dev/null
-    fi
-
-    # (c) Total subagent budget (forks count here too). Past it, deny so the run continues
-    # serially instead of exploding. Counters live in state.json (best-effort).
-    max_sub="$(jq -r '.max_subagents // 8' "$STATE" 2>/dev/null || echo 8)"; case "$max_sub" in (*[!0-9]*|"") max_sub=8 ;; esac
-    spawned="$(jq -r '.subagents_spawned // 0' "$STATE" 2>/dev/null || echo 0)"; case "$spawned" in (*[!0-9]*|"") spawned=0 ;; esac
-    if [ "$spawned" -ge "$max_sub" ] 2>/dev/null; then
-      deny "Leopold guard: subagent budget exhausted ($spawned/$max_sub this run). Spawning many subagents multiplies cost — each re-loads context. Do this task yourself in-turn (work serially). Raise max_subagents in GUARDRAILS.md and restart if you truly must."
-    fi
-    gtmp="$(mktemp 2>/dev/null || echo "$STATE.gtmp")"
-    jq --argjson s "$((spawned+1))" '.subagents_spawned=$s' "$STATE" > "$gtmp" 2>/dev/null && mv "$gtmp" "$STATE" || rm -f "$gtmp" 2>/dev/null
-    # Audit trail: one line per spawn (size + fork flag) so a run's cost is inspectable.
-    sts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')"
-    printf '{"ts":"%s","event":"subagent_spawn","fork":%s,"prompt_kb":%s,"total":%s}\n' \
-      "$sts" "$([ "$stype" = fork ] && echo true || echo false)" "$(( ${plen:-0} / 1024 ))" "$((spawned+1))" \
-      >> "$LEO/events.jsonl" 2>/dev/null || true
-    ;;
-
-  Bash)
-    cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
-    # normalize: newlines/tabs -> space, collapse runs (defeats whitespace/tab evasion).
-    norm="$(printf '%s' "$cmd" | tr '\n\t' '  ' | tr -s ' ')"
-
-    # secret vault / master key are off-limits to the worker (secrets arrive as env vars)
-    matches "$norm" 'secrets\.(key|env)' && \
-      deny "Leopold guard: touching the secret vault/key via shell is forbidden. Secrets are pre-loaded as environment variables."
-
-    # Opt-in deny-by-default (LEOPOLD_PARANOID=1): only a small allowlist of
-    # read/build/test/lint commands passes; everything else is denied. Best-effort
-    # (it keys off the first command word), kept off by default in favor of the
-    # hardened denylist below. Documented in docs/guardrails.md.
-    if [ "${LEOPOLD_PARANOID:-0}" = "1" ]; then
-      first="$(printf '%s' "$norm" | awk '{print $1}')"; base="${first##*/}"; ok=0
-      case "$base" in
-        ls|cat|head|tail|wc|grep|rg|awk|sed|find|file|stat|tree|pwd|cd|echo|printf|true|jq|make|node|npx|tsc|mkdir|cp|touch|test|diff|cmp) ok=1 ;;
-        git) case "$(git_subcmd "$norm")" in add|status|diff|log|show|rev-parse|branch|fetch|remote|config) ok=1 ;; esac ;;
-        npm|pnpm|yarn) matches "$norm" '[[:space:]](run|test|ci|pack|install|build|typecheck|lint)([[:space:]]|$)' && ok=1 ;;
-      esac
-      [ "$ok" = 1 ] || deny "Leopold PARANOID: '$base' is not on the allowlist (read/build/test/lint/git add). Unset LEOPOLD_PARANOID to use the default denylist."
-    fi
-
-    # --- destructive deletes (rm recursive+force, in any spelling) ----------
-    if matches "$norm" '(^|[^[:alnum:]_-])rm([[:space:]]|$)'; then
-      rec=0; force=0
-      matches "$norm" '(--recursive|(^|[[:space:]])-[a-z]*r)' && rec=1
-      matches "$norm" '(--force|(^|[[:space:]])-[a-z]*f)'     && force=1
-      [ "$rec" = 1 ] && [ "$force" = 1 ] && \
-        deny "Leopold guard: recursive+forced rm is forbidden in autonomous mode (any spelling). Stop and let the human run it."
-    fi
-    # find-based deletion
-    if matches "$norm" '(^|[^[:alnum:]_-])find([[:space:]]|$)'; then
-      matches "$norm" '[[:space:]]-delete([[:space:]]|$)' && \
-        deny "Leopold guard: 'find ... -delete' is forbidden in autonomous mode."
-      matches "$norm" '-exec[[:space:]]+rm([[:space:]]|$)' && \
-        deny "Leopold guard: 'find ... -exec rm' is forbidden in autonomous mode."
-    fi
-
-    # --- git, by resolved subcommand (bypass-resistant) ---------------------
-    gsub="$(git_subcmd "$norm")"
-    case "$gsub" in
-      reset)  matches "$norm" '(^|[[:space:]])--hard([[:space:]]|$)' && \
-                deny "Leopold guard: 'git reset --hard' is forbidden in autonomous mode." ;;
-      clean)  matches "$norm" '(--force|(^|[[:space:]])-[a-z]*f)' && \
-                deny "Leopold guard: 'git clean -f' is forbidden in autonomous mode." ;;
-      branch)
-        if matches "$norm" '(^|[[:space:]])-D([[:space:]]|$)'; then
-          # Exception: Leopold's own throwaway run-worktree branches are deletable
-          # (cleanup of `leopold/run-*`); every other forced branch delete stays denied.
-          matches "$norm" 'leopold/run-' || \
-            deny "Leopold guard: 'git branch -D' is forbidden in autonomous mode."
-        fi ;;
-      worktree) : ;;  # allowed: Leopold isolates a run in a dedicated git worktree
-      push)
-        matches "$norm" '(--force|--force-with-lease|(^|[[:space:]])-f([[:space:]]|$))' && \
-          deny "Leopold guard: force-push is forbidden in autonomous mode."
-        has_token ALLOW_PUSH || \
-          deny "Leopold guard: git push is locked. Pushing is the user's call; report readiness instead." ;;
-      commit)
-        has_token ALLOW_GIT || \
-          deny "Leopold guard: git commit is locked. Stage the work (git add) and report instead. To allow this session: touch .leopold/ALLOW_GIT" ;;
-    esac
-
-    # --- outbound: PRs / releases / publishing ------------------------------
-    if matches "$norm" '(^|[^[:alnum:]_-])gh([[:space:]].*)?(pr[[:space:]]+(create|merge)|release[[:space:]]+create)'; then
-      has_token ALLOW_PUSH || \
-        deny "Leopold guard: opening/merging PRs and creating releases is locked. Report readiness instead."
-    fi
-    if matches "$norm" '(npm|pnpm|yarn)[[:space:]]+publish|cargo[[:space:]]+publish|twine[[:space:]]+upload|pip[[:space:]].*upload'; then
-      has_token ALLOW_PUBLISH || \
-        deny "Leopold guard: publishing packages is locked in autonomous mode."
-    fi
-    ;;
-
-  Edit|Write|MultiEdit|NotebookEdit)
-    path="$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null || true)"
-    case "$path" in
-      */GUARDRAILS.md)             deny "Leopold guard: GUARDRAILS.md is immutable during an autonomous run." ;;
-      */settings.json|*/settings.local.json) deny "Leopold guard: editing Claude Code settings is forbidden in autonomous mode." ;;
-      */leopold/hooks/*|*/.leopold/state.json) deny "Leopold guard: the guardrail hooks and run state are immutable during an autonomous run." ;;
-      */secrets.key|*/.leopold/secrets.env) deny "Leopold guard: the secret vault and master key are off-limits. Secrets are pre-loaded as env vars." ;;
-    esac
-    ;;
+# --- git commit / push, by resolved subcommand (bypass-resistant) -----------
+case "$(git_subcmd "$norm")" in
+  push)
+    matches "$norm" '(--force|--force-with-lease|(^|[[:space:]])-f([[:space:]]|$))' && \
+      deny "Leopold guard: force-push is forbidden in autonomous mode."
+    has_token ALLOW_PUSH || \
+      deny "Leopold guard: git push is locked. Pushing is the user's call; report readiness instead. To allow this run: touch .leopold/ALLOW_PUSH" ;;
+  commit)
+    has_token ALLOW_GIT || \
+      deny "Leopold guard: git commit is locked. Stage the work (git add) and report instead. To allow this run: touch .leopold/ALLOW_GIT" ;;
 esac
 
 exit 0

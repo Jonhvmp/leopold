@@ -74,7 +74,7 @@ export function killSwitch(leoDir: string): boolean {
 /** Safety hygiene on stop: clear the kill switch and per-session git opt-in
  *  tokens so the next run re-locks git and does not halt on a stale STOP. */
 export function clearRunTokens(leoDir: string): void {
-  for (const t of ["STOP", "ALLOW_GIT", "ALLOW_PUSH", "ALLOW_PUBLISH"]) {
+  for (const t of ["STOP", "ALLOW_GIT", "ALLOW_PUSH"]) {
     try { fs.rmSync(path.join(leoDir, t), { force: true }); } catch { /* ignore */ }
   }
 }

@@ -66,5 +66,5 @@ cannot switch its own cwd — worktree automation is Path A only. Both paths sha
   worktree pruned on next startup; a live pid is left untouched.
 - `writeState` merge: a field written by bash (`max_subagents`) survives a subsequent driver
   write, and vice-versa.
-- Guard: `git worktree add/remove` allowed; `git branch -D leopold/run-x` allowed;
-  `git branch -D main` still denied; `git reset --hard` still denied.
+- Guard: `git worktree add/remove`, `git branch -D`, and `git reset --hard` are all
+  allowed — only `git commit` and `git push` are locked, so worktree cleanup is unguarded.

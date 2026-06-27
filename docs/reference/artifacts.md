@@ -66,4 +66,4 @@ Reversal:    swap the cache module for a Redis client; interface unchanged
 | `state.json` | `active`, `iteration`, `max_iterations`, `consecutive_failures`, `max_failures`, timestamps |
 | `events.jsonl` | structured event stream |
 | `STOP` | kill switch (presence halts the loop) |
-| `ALLOW_GIT` / `ALLOW_PUSH` / `ALLOW_PUBLISH` | per-session opt-in tokens, absent by default |
+| `ALLOW_GIT` / `ALLOW_PUSH` | per-run git opt-in tokens, absent by default |
