@@ -669,6 +669,8 @@
       
         
       
+        
+      
     
     
     
@@ -757,6 +759,34 @@
     
   
     The Two Phases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality-and-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality & Orchestration
   
 
     
@@ -1645,19 +1675,14 @@ token is present.</p>
 <td><code>.leopold/ALLOW_PUSH</code></td>
 </tr>
 <tr>
-<td>force-push, <code>reset --hard</code>, <code>rm -rf</code></td>
+<td>force-push</td>
 <td>denied</td>
-<td>none (forbidden)</td>
+<td>none (always denied)</td>
 </tr>
 <tr>
-<td><code>gh pr create/merge</code>, release</td>
-<td>denied</td>
-<td><code>.leopold/ALLOW_PUSH</code></td>
-</tr>
-<tr>
-<td>publish (<code>npm</code>/<code>cargo</code>/...)</td>
-<td>denied</td>
-<td><code>.leopold/ALLOW_PUBLISH</code></td>
+<td>everything else (<code>rm -rf</code>, <code>reset --hard</code>, <code>gh pr</code>, publish, …)</td>
+<td>allowed</td>
+<td>— (the run's own call)</td>
 </tr>
 </tbody>
 </table>

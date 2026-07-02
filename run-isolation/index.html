@@ -663,6 +663,8 @@
       
         
       
+        
+      
     
     
     
@@ -751,6 +753,34 @@
     
   
     The Two Phases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quality-and-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality & Orchestration
   
 
     
@@ -1551,8 +1581,8 @@ cannot switch its own cwd — worktree automation is Path A only. Both paths sha
   worktree pruned on next startup; a live pid is left untouched.</li>
 <li><code>writeState</code> merge: a field written by bash (<code>max_subagents</code>) survives a subsequent driver
   write, and vice-versa.</li>
-<li>Guard: <code>git worktree add/remove</code> allowed; <code>git branch -D leopold/run-x</code> allowed;
-  <code>git branch -D main</code> still denied; <code>git reset --hard</code> still denied.</li>
+<li>Guard: <code>git worktree add/remove</code>, <code>git branch -D</code>, and <code>git reset --hard</code> are all
+  allowed — only <code>git commit</code> and <code>git push</code> are locked, so worktree cleanup is unguarded.</li>
 </ul>
 
 

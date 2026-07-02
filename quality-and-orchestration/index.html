@@ -12,11 +12,13 @@
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/contributing/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/quality-and-orchestration/">
       
       
-        <link rel="prev" href="../roadmap/">
+        <link rel="prev" href="../concepts/two-phases/">
       
+      
+        <link rel="next" href="../decision-protocol/">
       
       
         
@@ -27,7 +29,7 @@
     
     
       
-        <title>Contributing - Leopold</title>
+        <title>Quality & Orchestration - Leopold</title>
       
     
     
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributing" class="md-skip">
+        <a href="#quality-orchestration" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              Quality & Orchestration
             
           </span>
         </div>
@@ -265,10 +267,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../concepts/harness/" class="md-tabs__link">
           
   
@@ -372,11 +376,9 @@
   
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../contributing/" class="md-tabs__link">
         
   
   
@@ -652,8 +654,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -673,19 +677,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
             
   
   
@@ -703,7 +710,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -774,10 +781,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../quality-and-orchestration/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality & Orchestration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -793,6 +827,83 @@
   
 
       </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-review-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The review gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-item-effort-the-advisor-analog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-item effort + the advisor analog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parallel-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parallel execution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-command-setup-leopold-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One-command setup — leopold up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#insights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Insights
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1373,37 +1484,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributing
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1419,94 +1503,6 @@
   
 
       </a>
-      
-        
-
-  
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#ground-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ground rules
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#working-on-hooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Working on hooks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#working-on-the-driver" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Working on the driver
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#working-on-the-docs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Working on the docs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#style" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Style
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pull-requests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pull requests
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1540,10 +1536,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#ground-rules" class="md-nav__link">
+  <a href="#the-review-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ground rules
+        The review gate
       
     </span>
   </a>
@@ -1551,10 +1547,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#working-on-hooks" class="md-nav__link">
+  <a href="#per-item-effort-the-advisor-analog" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Working on hooks
+        Per-item effort + the advisor analog
       
     </span>
   </a>
@@ -1562,10 +1558,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#working-on-the-driver" class="md-nav__link">
+  <a href="#parallel-execution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Working on the driver
+        Parallel execution
       
     </span>
   </a>
@@ -1573,10 +1569,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#working-on-the-docs" class="md-nav__link">
+  <a href="#one-command-setup-leopold-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Working on the docs
+        One-command setup — leopold up
       
     </span>
   </a>
@@ -1584,21 +1580,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#style" class="md-nav__link">
+  <a href="#insights" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Style
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pull-requests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pull requests
+        Insights
       
     </span>
   </a>
@@ -1625,45 +1610,105 @@
   
 
 
-<h1 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h1>
-<p>Thanks for wanting to help conduct the orchestra.</p>
-<h2 id="ground-rules">Ground rules<a class="headerlink" href="#ground-rules" title="Permanent link">&para;</a></h2>
+<h1 id="quality-orchestration">Quality &amp; orchestration<a class="headerlink" href="#quality-orchestration" title="Permanent link">&para;</a></h1>
+<p>Leopold doesn't just keep Claude Code running — it makes each item land at a higher
+quality, runs independent work in parallel, and tunes how hard the model thinks per
+item. These are the levers that turn "an agent that keeps going" into "an agent worth
+trusting with the seat." They all lean on native Claude Code capabilities.</p>
+<h2 id="the-review-gate">The review gate<a class="headerlink" href="#the-review-gate" title="Permanent link">&para;</a></h2>
+<p>The worker reporting <code>done</code> after build/lint/test isn't enough — nothing has <em>reviewed</em>
+the change. So before an item can close, an <strong>independent reviewer</strong> (its own Claude Code
+session, so it can invoke the native <code>/code-review</code> and <code>/security-review</code> skills) reads the
+item's uncommitted diff and returns a verdict:</p>
 <ul>
-<li>Leopold conducts Claude Code through its public surfaces (skills, hooks,
-  environment). It does <strong>not</strong> fork Claude Code or patch gstack skills. Keep
-  contributions inside that boundary.</li>
-<li><strong>Guardrails are sacred.</strong> Any change that could let an autonomous run commit,
-  push, or run a destructive command without an explicit opt-in is a bug, not a
-  feature. Such changes need a test that proves the lock still holds.</li>
-<li>Prefer model-driven design: behavior lives in prompts, the charter, and
-  natural-language tool descriptions, not rigid coded routers.</li>
+<li><strong>Clean</strong> → the item closes.</li>
+<li><strong>Blocking findings</strong> → handed straight back to the worker to fix, then re-reviewed. Up to
+  <code>--max-review-rounds</code> (default 2) before the item is allowed through anyway (so a stubborn
+  reviewer can't wedge the run).</li>
 </ul>
-<h2 id="working-on-hooks">Working on hooks<a class="headerlink" href="#working-on-hooks" title="Permanent link">&para;</a></h2>
-<p>The hooks are POSIX-ish bash with one dependency (<code>jq</code>). They must:</p>
-<ul>
-<li>fail <strong>open</strong> for continuity (a broken Stop hook must never trap a session), and</li>
-<li>fail <strong>safe</strong> for guarding (when in doubt about a destructive command, deny).</li>
-</ul>
-<p>Validate syntax with <code>bash -n hooks/*.sh</code>.</p>
-<h2 id="working-on-the-driver">Working on the driver<a class="headerlink" href="#working-on-the-driver" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">cd</span><span class="w"> </span>packages/driver
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>npm<span class="w"> </span>install
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>npm<span class="w"> </span>run<span class="w"> </span>typecheck
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>npm<span class="w"> </span>run<span class="w"> </span>build
+<p>Sensitive diffs (paths matching <code>auth|login|session|secret|token|billing|payment|.env|…</code>)
+are reviewed with security rigor. An unparseable verdict <strong>fails closed</strong> — it never silently
+passes the gate. The gate is on by default; <code>--no-review</code> (or <code>LEOPOLD_REVIEW=0</code>) turns it off.</p>
+<blockquote>
+<p>Tip for the worker: self-review with <code>/code-review</code> <em>before</em> reporting done, so the gate
+passes first try. The <code>/leopold-run</code> skill tells it exactly that.</p>
+</blockquote>
+<h2 id="per-item-effort-the-advisor-analog">Per-item effort + the advisor analog<a class="headerlink" href="#per-item-effort-the-advisor-analog" title="Permanent link">&para;</a></h2>
+<p>Every item is risk-classified by a cheap, deterministic keyword pass over the item text and
+the charter (no extra LLM call). The class sets the worker's native SDK <strong>reasoning effort</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Item looks like</th>
+<th>Effort</th>
+<th>Extra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>typo, rename, docs, formatting</td>
+<td><code>low</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>ordinary feature work</td>
+<td><code>medium</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>billing, auth, secrets, permissions, deploy</td>
+<td><code>high</code></td>
+<td><strong>critical</strong></td>
+</tr>
+<tr>
+<td>migrations, schema, payment, crypto (sharp edges)</td>
+<td><code>max</code></td>
+<td><strong>critical</strong></td>
+</tr>
+<tr>
+<td>(any item, if the charter declares the project high-risk)</td>
+<td><code>high</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical</strong> items also get a <strong>second, independent reviewer</strong> and the union of both reviewers'
+blocking findings. The Agent SDK has no "advisor"; criticality buys a real second opinion
+instead — the cheap items stay cheap, the dangerous ones get scrutiny.</p>
+<h2 id="parallel-execution">Parallel execution<a class="headerlink" href="#parallel-execution" title="Permanent link">&para;</a></h2>
+<p>Independent plan items don't have to wait in line. Declare order in <code>PLAN.md</code> with an
+<code>(after: N)</code> marker (1-based item position); items with no marker are independent:</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Add the API layer
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">- [ ]</span> Refresh the docs
 </span></code></pre></div>
-<h2 id="working-on-the-docs">Working on the docs<a class="headerlink" href="#working-on-the-docs" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements-docs.txt
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mkdocs<span class="w"> </span>serve<span class="w">         </span><span class="c1"># live preview at http://127.0.0.1:8000</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict<span class="w">  </span><span class="c1"># what CI runs</span>
-</span></code></pre></div>
-<h2 id="style">Style<a class="headerlink" href="#style" title="Permanent link">&para;</a></h2>
+<p>With <code>leopold-driver run --parallel 3</code>, a dependency-aware scheduler dispatches up to 3 ready
+items at once, <strong>each in its own git worktree</strong> off the main tree. When an item finishes (and
+passes the review gate), the driver <strong>replays its diff onto the main tree as a staged patch</strong> —
+serialized so the shared tree stays consistent, and <strong>never committed</strong>, so the "human owns
+git" guarantee holds exactly as in serial mode. Two items that touched the same lines produce a
+conflict: that item's worktree is <strong>preserved for manual merge</strong> instead of losing the work.</p>
+<p>Default is serial (<code>--parallel 1</code>). Split work so more items are independent, and only add
+<code>(after: …)</code> for real dependencies — items that all edit the same files should depend on each
+other (or be a single item) to avoid conflicts.</p>
+<h2 id="one-command-setup-leopold-up">One-command setup — <code>leopold up</code><a class="headerlink" href="#one-command-setup-leopold-up" title="Permanent link">&para;</a></h2>
+<p>Most people use a fraction of Claude Code. <code>leopold up</code> (CLI) plus <code>/leopold-up</code> (in-session)
+closes that gap in one move:</p>
 <ul>
-<li>English only for code, comments, docs, and commit messages.</li>
-<li>Lead with the point. Name files and commands. No filler.</li>
+<li><strong><code>leopold up</code></strong> (shell): installs the harness and seeds a sane per-project permissions
+  allowlist so routine dev work stops prompt-flooding.</li>
+<li><strong><code>/leopold-up</code></strong> (skill, Phase 0): generates project memory with <code>/init</code>, teaches Claude to
+  build and run the app with <code>/run-skill-generator</code> (which makes the run-time <code>/verify</code> real),
+  checks MCP/extensions (Serena, ovmem, gstack), suggests a default <code>/effort</code>, then hands off
+  to <code>/leopold-brief</code>.</li>
 </ul>
-<h2 id="pull-requests">Pull requests<a class="headerlink" href="#pull-requests" title="Permanent link">&para;</a></h2>
-<p>Keep them focused. Describe what changed, why, and how you verified it. If it
-touches guardrails, show the test.</p>
+<h2 id="insights">Insights<a class="headerlink" href="#insights" title="Permanent link">&para;</a></h2>
+<p>After a run, <code>leopold-driver insights</code> turns <code>events.jsonl</code> into a report: items done vs.
+incomplete vs. conflicted, the effort mix, review-gate pass rate (and how many were
+security-sensitive or got a second opinion), decisions logged, escalations, guard blocks, and
+real spend. <code>--json</code> for machine output. It's the same data the watch dashboard streams live —
+read it back to write sharper briefs next time.</p>
 
 
 
@@ -1701,7 +1746,7 @@ touches guardrails, show the test.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../roadmap/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Roadmap">
+          <a href="../concepts/two-phases/" class="md-footer__link md-footer__link--prev" aria-label="Previous: The Two Phases">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1711,11 +1756,27 @@ touches guardrails, show the test.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Roadmap
+                The Two Phases
               </div>
             </div>
           </a>
         
+        
+          
+          <a href="../decision-protocol/" class="md-footer__link md-footer__link--next" aria-label="Next: Decision Protocol">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Decision Protocol
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
         
       </nav>
     

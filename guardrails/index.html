@@ -671,6 +671,8 @@
       
         
       
+        
+      
     
     
     
@@ -762,6 +764,34 @@
     
   
     The Two Phases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quality-and-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality & Orchestration
   
 
     
@@ -895,21 +925,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#gated-require-an-explicit-per-session-opt-in-token" class="md-nav__link">
+  <a href="#gated-require-an-explicit-per-run-opt-in-token" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gated (require an explicit per-session opt-in token)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#forbidden-never-even-with-opt-in-autonomously" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Forbidden (never, even with opt-in, autonomously)
+        Gated (require an explicit per-run opt-in token)
       
     </span>
   </a>
@@ -922,15 +941,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cost-the-expensive-mistakes" class="md-nav__link">
+  <a href="#cost-the-expensive-axis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Cost — the expensive mistakes
+        Cost — the expensive axis
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Cost — the expensive mistakes">
+    <nav class="md-nav" aria-label="Cost — the expensive axis">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1657,21 +1676,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#gated-require-an-explicit-per-session-opt-in-token" class="md-nav__link">
+  <a href="#gated-require-an-explicit-per-run-opt-in-token" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gated (require an explicit per-session opt-in token)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#forbidden-never-even-with-opt-in-autonomously" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Forbidden (never, even with opt-in, autonomously)
+        Gated (require an explicit per-run opt-in token)
       
     </span>
   </a>
@@ -1684,15 +1692,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cost-the-expensive-mistakes" class="md-nav__link">
+  <a href="#cost-the-expensive-axis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Cost — the expensive mistakes
+        Cost — the expensive axis
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Cost — the expensive mistakes">
+    <nav class="md-nav" aria-label="Cost — the expensive axis">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1837,112 +1845,82 @@
 
 
 <h1 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h1>
-<p>Autonomy is only safe when the dangerous actions cannot happen by accident. This
-document defines what Leopold may do on its own, what it may never do without an
-explicit human opt-in, and how a run ends.</p>
+<p>Autonomy is safe when the one action you never want to happen by accident — code
+leaving the machine or landing in history without you — cannot happen on its own.
+That is the whole job of Leopold's lock: <strong>a run may do anything except <code>git commit</code>
+and <code>git push</code>.</strong> It stages the work; you own the commit and the push.</p>
 <p>Guardrails are enforced two ways:
 - <strong>By hook</strong> (cannot be rationalized past): the <code>PreToolUse</code> gate
-  (<code>guard-irreversible.sh</code>) blocks forbidden commands at the tool-call layer.
+  (<code>guard-irreversible.sh</code>) denies <code>git commit</code> / <code>git push</code> at the tool-call layer.
 - <strong>By protocol</strong> (the agent's own discipline): the decision protocol and the
-  stop conditions.</p>
+  stop conditions keep the run finishing work instead of stalling.</p>
 <p>The hook is the real lock. The protocol is the steering.</p>
-<p><strong>Default vs paranoid.</strong> By default the hook is a <strong>denylist</strong> — everything is allowed
-except the forbidden/gated ops below. That list is hardened against evasion (git global
-options, absolute paths, long-form and split <code>rm</code> flags, <code>find -delete</code>/<code>-exec</code>,
-whitespace/tab tricks) and covered by a red-team suite (<code>make test-guard</code>). For maximum
-caution, set <strong><code>LEOPOLD_PARANOID=1</code></strong> to flip the hook into a <strong>deny-by-default
-allowlist</strong>: only read/build/test/lint commands and <code>git add</code> / read-only <code>git</code> pass;
-everything else is denied. Paranoid mode is opt-in and best-effort (it keys off the
-leading command word); the hardened denylist is the default because it is the more
-predictable lock.</p>
+<p>The git match is hardened against evasion — global options (<code>git -c x=y commit</code>),
+absolute paths (<code>/usr/bin/git</code>), <code>env git</code>, and whitespace/tab tricks all resolve
+to the real subcommand — and is covered by a red-team suite (<code>make test-guard</code>).</p>
 <hr />
 <pre class="mermaid"><code>flowchart TD
-    Cmd["tool call during an active run"] --&gt; Type{kind?}
-    Type -- "read / edit / build / test / stage" --&gt; Allow([allow])
-    Type -- "commit / push / publish" --&gt; Token{opt-in token?}
+    Cmd["tool call during an active run"] --&gt; Type{git commit / push?}
+    Type -- no --&gt; Allow([allow])
+    Type -- "commit / push" --&gt; Token{opt-in token?}
     Token -- yes --&gt; Allow
-    Token -- no --&gt; Deny["deny · log guard_block"]
-    Type -- "rm -rf / force-push / reset --hard" --&gt; Deny
+    Token -- "no" --&gt; Deny["deny · log guard_block"]
+    Type -- "force-push" --&gt; Deny
     classDef deny fill:#e63946,stroke:#9d0208,color:#fff;
     class Deny deny;</code></pre>
 <h2 id="action-classes">Action classes<a class="headerlink" href="#action-classes" title="Permanent link">&para;</a></h2>
 <h3 id="autonomous-decide-and-do">Autonomous (decide and do)<a class="headerlink" href="#autonomous-decide-and-do" title="Permanent link">&para;</a></h3>
-<p>Reversible work inside the repo working tree:</p>
+<p>Everything that is not a gated git op. The run has full authority over the work:</p>
 <ul>
-<li>Read, search, analyze any file.</li>
-<li>Create, edit, delete <em>untracked</em> working-tree files the run itself produced.</li>
+<li>Read, search, analyze, create, edit, and delete files.</li>
 <li>Run builds, linters, type checkers, formatters, and test suites.</li>
 <li>Run any gstack skill that does not itself commit or push.</li>
-<li>Stage changes (<code>git add</code>) — staging is reversible and does not leave the
-  machine.</li>
+<li>Run shell commands, including destructive ones (<code>rm -rf</code>, <code>reset --hard</code>) — these
+  are the run's call. Isolate with <code>--worktree</code> if you want a filesystem boundary.</li>
+<li>Stage changes (<code>git add</code>).</li>
+<li>Spawn subagents as the work needs them.</li>
 </ul>
-<h3 id="gated-require-an-explicit-per-session-opt-in-token">Gated (require an explicit per-session opt-in token)<a class="headerlink" href="#gated-require-an-explicit-per-session-opt-in-token" title="Permanent link">&para;</a></h3>
-<p>Irreversible or outbound actions. Blocked by the hook unless <code>.leopold/ALLOW_GIT</code>
-(or the relevant token) is present, which only the human creates:</p>
+<h3 id="gated-require-an-explicit-per-run-opt-in-token">Gated (require an explicit per-run opt-in token)<a class="headerlink" href="#gated-require-an-explicit-per-run-opt-in-token" title="Permanent link">&para;</a></h3>
+<p>Only two, blocked by the hook unless the matching token (which only the human
+creates) is present:</p>
 <ul>
-<li><code>git commit</code></li>
-<li><code>git push</code> (and force-push)</li>
-<li><code>git reset --hard</code>, <code>git clean -fdx</code>, branch deletion</li>
-<li><code>gh pr create</code>, <code>gh pr merge</code>, release creation</li>
-<li>Package publish (<code>npm publish</code>, <code>cargo publish</code>, <code>pip upload</code>, etc.)</li>
-<li>Deploy commands</li>
+<li><code>git commit</code> — unlock with <code>.leopold/ALLOW_GIT</code></li>
+<li><code>git push</code> — unlock with <code>.leopold/ALLOW_PUSH</code></li>
 </ul>
-<p>This is the default-locked set. The user's standing rule — <em>never commit or push
-without explicit confirmation</em> — is encoded here and enforced by the hook even
-in fully autonomous mode.</p>
-<h3 id="forbidden-never-even-with-opt-in-autonomously">Forbidden (never, even with opt-in, autonomously)<a class="headerlink" href="#forbidden-never-even-with-opt-in-autonomously" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>rm -rf</code> on anything outside the run's own scratch.</li>
-<li>Editing files outside the target project root.</li>
-<li>Disabling or editing the guardrail hook, <code>GUARDRAILS.md</code>, or the permission
-  settings.</li>
-<li>Writing secrets, tokens, or credentials to disk or to any outbound request.</li>
-<li>Sending project content to an external service not named in the brief.</li>
-</ul>
+<p>Force-push (<code>--force</code> / <code>--force-with-lease</code> / <code>-f</code>) is denied even with
+<code>ALLOW_PUSH</code>. The user's standing rule — <em>never commit or push without explicit
+confirmation</em> — is encoded here and enforced even in fully autonomous mode. Nothing
+else is gated: PR creation, publishing, and deploys are the run's own call.</p>
 <hr />
-<h2 id="cost-the-expensive-mistakes">Cost — the expensive mistakes<a class="headerlink" href="#cost-the-expensive-mistakes" title="Permanent link">&para;</a></h2>
-<p>Cost in an autonomous run blows up on <strong>two axes</strong>, and Leopold caps both. (One reported
-run: 82 subagents and a 5.9MB session over 681 turns.)</p>
-<p><strong>1. How much context each unit carries.</strong></p>
+<h2 id="cost-the-expensive-axis">Cost — the expensive axis<a class="headerlink" href="#cost-the-expensive-axis" title="Permanent link">&para;</a></h2>
+<p>Cost in a long autonomous run blows up because the main session grows every turn:
+on a big-context model it never auto-compacts, so each turn re-bills the whole
+accumulated transcript. The defenses that matter:</p>
 <ul>
-<li><strong>The main session grows every turn.</strong> On a big-context model it never auto-compacts, so
-  each turn re-bills the whole accumulated transcript. <code>max_context_mb</code> (default <strong>5</strong>)
-  stops the run when the transcript passes that size — the brief persists, so a fresh
-  <code>/leopold-run</code> resumes from <code>PLAN.md</code> with clean context. Bounded, resumable runs beat
-  one giant session. The protocol also keeps the orchestrator lean: bulk-output work
-  (authoring content, generating files) is delegated to a subagent that <strong>writes to a
-  file</strong>, so the output never accumulates in the orchestrator's context — the exact thing
-  that blew up a real run (the orchestrator held every lesson it generated).</li>
-<li><strong>Forks clone the entire session — they ARE the per-subagent leak.</strong> A fork carries the
-  full multi-MB parent context into the spawn. <code>max_forks</code> is <strong>0 by default (forbidden)</strong>;
-  a fresh subagent does the same work with a clean slate. Raise it only for a sub-task that
-  genuinely needs the whole conversation.</li>
-<li><strong>Oversized subagent prompts</strong> mean context is being pasted into the spawn (billed in
-  full). The guard denies a subagent prompt over ~256KB — point subagents at file <em>paths</em>,
-  don't paste files in.</li>
+<li><strong>USD budget hard-stop.</strong> Pass <code>--budget &lt;usd&gt;</code> to the driver; the run stops the
+  moment accumulated spend (from the CLI's real <code>total_cost_usd</code>) crosses it, with
+  work staged for review. This is the dependable ceiling.</li>
+<li><strong>Bounded, resumable runs.</strong> A run ends on <code>max_iterations</code> (default 50) so it
+  can't spin forever; the brief persists, so a fresh <code>/leopold-run</code> resumes from
+  <code>PLAN.md</code> with clean context. Bounded + resumable beats one giant session.</li>
+<li><strong>Lean orchestrator.</strong> The protocol delegates bulk-output work (authoring content,
+  generating files) to a subagent that <strong>writes to a file</strong>, so the output never
+  accumulates in the orchestrator's context.</li>
 </ul>
-<p><strong>2. How many subagents are spawned.</strong></p>
-<ul>
-<li>The model loves to parallelize into bursts of 10+. <code>max_subagents</code> (default <strong>8</strong>) is the
-  total spawn budget per run; the guard counts spawns in <code>state.json</code> and <strong>denies</strong> past
-  the cap so the run continues serially. The <code>/leopold-run</code> protocol also steers it to work
-  serially and never batch-spawn.</li>
-</ul>
-<p>Belt and braces: set an <strong>Anthropic spending cap</strong> on your account before long autonomous
-runs on large projects. Leopold has no billing limit of its own.</p>
+<p>Belt and braces: set an <strong>Anthropic spending cap</strong> on your account before long
+autonomous runs on large projects.</p>
 <h3 id="watching-a-run-live-dashboard">Watching a run (live dashboard)<a class="headerlink" href="#watching-a-run-live-dashboard" title="Permanent link">&para;</a></h3>
 <p><code>/leopold-watch</code> (or <code>make watch</code>, or <code>leopold watch</code> from the npm CLI) starts a <strong>local</strong>
 dashboard at <code>http://127.0.0.1:4179</code> that updates live over SSE. Its headline is the <strong>real
 estimated spend</strong>, parsed from the Claude Code session transcript: dollars, the token
 breakdown (input / output / cache-write / cache-read), cache-hit %, per-model, and main vs
-subagent. Below it: the budget meters above (context MB, subagents, forks, iterations,
-failures — each against its budget), the live event feed (turns, guard blocks,
-<code>subagent_spawn</code>, stops), the decisions log, and a <strong>Stop</strong> button that uses the kill switch.
-The cost number is an estimate from a built-in price map, <strong>configurable</strong> via the
-<code>LEOPOLD_PRICES</code> env var (a JSON file) or a <code>.leopold/prices.json</code> in the project — override
-any model or family, e.g. <code>{"opus": {"in": 15, "out": 75, "cache_write": 18.75, "cache_read":
-1.5}}</code> (cache rates default to 1.25× / 0.1× of input). It is zero-dependency (Python stdlib),
-read-only except that one button, and binds to loopback — nothing leaves the machine.</p>
+subagent. Below it: the live event feed (turns, guard blocks, stops), the decisions log, and
+a <strong>Stop</strong> button that uses the kill switch. The cost number is an estimate from a built-in
+price map, <strong>configurable</strong> via the <code>LEOPOLD_PRICES</code> env var (a JSON file) or a
+<code>.leopold/prices.json</code> in the project — override any model or family, e.g. <code>{"opus": {"in":
+15, "out": 75, "cache_write": 18.75, "cache_read": 1.5}}</code> (cache rates default to 1.25× /
+0.1× of input). It is zero-dependency (Python stdlib), read-only except that one button, and
+binds to loopback — nothing leaves the machine.</p>
 <hr />
 <h2 id="stop-conditions">Stop conditions<a class="headerlink" href="#stop-conditions" title="Permanent link">&para;</a></h2>
 <p>The run ends, and the Stop hook allows the session to halt, when any of these is
@@ -1950,17 +1928,11 @@ true:</p>
 <ol>
 <li><strong>Plan complete</strong> — no unchecked items remain in <code>PLAN.md</code>.</li>
 <li><strong>Kill switch</strong> — <code>.leopold/STOP</code> exists (<code>/leopold-stop</code> or <code>touch</code>).</li>
-<li><strong>Repeated failure</strong> — the same test or build has failed N consecutive turns
-   (default 3). Escalate, do not keep hammering.</li>
-<li><strong>Loop detection</strong> — if the set of open <code>PLAN.md</code> items is byte-identical for
-   <code>max_no_progress</code> consecutive turns (default 6 — nothing checked off, nothing
-   added), the run is thrashing and stops with reason <code>no_progress</code>.</li>
-<li><strong>Budget exhausted</strong> — the iteration counter or a token/time budget set in
-   <code>GUARDRAILS.md</code> is reached.</li>
-<li><strong>Context budget</strong> — the transcript passed <code>max_context_mb</code> (default 5). Resume
-   with a fresh <code>/leopold-run</code>; the brief continues it with clean context.</li>
-<li><strong>Irreversible + ambiguous fork</strong> — the decision protocol routed a fork to
-   the human.</li>
+<li><strong>Repeated failure</strong> — the same kind of failure N consecutive turns (default 3).</li>
+<li><strong>Iteration budget</strong> — the iteration counter reached <code>max_iterations</code> (default 50).</li>
+<li><strong>USD budget</strong> — accumulated spend crossed <code>--budget</code>, if set.</li>
+<li><strong>Escalation</strong> — the decision protocol routed a genuinely irreversible + unsettleable
+   fork to the human (rare; the conductor is biased hard toward deciding itself).</li>
 </ol>
 <p>Every stop writes a final summary to the run output and a <code>stop</code> event to
 <code>events.jsonl</code>, naming which condition fired.</p>
@@ -1976,14 +1948,12 @@ true:</p>
 finishes, so nothing is left half-done.</p>
 <hr />
 <h2 id="opting-in-to-git-when-you-actually-want-commits">Opting in to git (when you actually want commits)<a class="headerlink" href="#opting-in-to-git-when-you-actually-want-commits" title="Permanent link">&para;</a></h2>
-<p>If you want a run to commit checkpoints on its own, you opt in explicitly and
-per session:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>touch<span class="w"> </span>.leopold/ALLOW_GIT<span class="w">      </span><span class="c1"># allow commit only</span>
+<p>If you want a run to commit or push on its own, you opt in explicitly and per run:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>touch<span class="w"> </span>.leopold/ALLOW_GIT<span class="w">      </span><span class="c1"># allow commit</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>touch<span class="w"> </span>.leopold/ALLOW_PUSH<span class="w">     </span><span class="c1"># allow push (force-push stays denied)</span>
 </span></code></pre></div>
-<p>Push, force-push, PR creation, and publish remain blocked even with
-<code>ALLOW_GIT</code>; those require their own tokens (<code>ALLOW_PUSH</code>, etc.) and are off by
-default. The default posture, and the recommended one, is: Leopold stages and
-reports, you commit and push.</p>
+<p>The default posture, and the recommended one, is: Leopold stages and reports, you
+commit and push.</p>
 <hr />
 <h2 id="defaults">Defaults<a class="headerlink" href="#defaults" title="Permanent link">&para;</a></h2>
 <table>
@@ -2001,9 +1971,14 @@ reports, you commit and push.</p>
 <td><code>touch .leopold/ALLOW_GIT</code></td>
 </tr>
 <tr>
-<td>Push / PR / publish</td>
+<td>Push</td>
 <td>locked</td>
-<td>per-token, off by default</td>
+<td><code>touch .leopold/ALLOW_PUSH</code></td>
+</tr>
+<tr>
+<td>Force-push</td>
+<td>never</td>
+<td>not configurable</td>
 </tr>
 <tr>
 <td>Max consecutive fails</td>
@@ -2016,33 +1991,18 @@ reports, you commit and push.</p>
 <td><code>GUARDRAILS.md</code></td>
 </tr>
 <tr>
-<td>Subagent spawns/run</td>
-<td>8</td>
-<td><code>max_subagents</code> in <code>GUARDRAILS.md</code></td>
-</tr>
-<tr>
-<td>Forks/run</td>
-<td>0 (off)</td>
-<td><code>max_forks</code> in <code>GUARDRAILS.md</code></td>
-</tr>
-<tr>
-<td>Context budget</td>
-<td>5 MB</td>
-<td><code>max_context_mb</code> in <code>GUARDRAILS.md</code></td>
-</tr>
-<tr>
-<td>Edits outside root</td>
-<td>never</td>
-<td>not configurable</td>
+<td>USD budget</td>
+<td>none</td>
+<td><code>--budget</code> on the driver</td>
 </tr>
 </tbody>
 </table>
 <h2 id="run-hygiene-and-parallel-runs">Run hygiene and parallel runs<a class="headerlink" href="#run-hygiene-and-parallel-runs" title="Permanent link">&para;</a></h2>
 <h3 id="what-is-cleared-when-a-run-stops">What is cleared when a run stops<a class="headerlink" href="#what-is-cleared-when-a-run-stops" title="Permanent link">&para;</a></h3>
 <p>On every stop, Leopold clears the kill switch (<code>STOP</code>) and the git opt-in tokens
-(<code>ALLOW_GIT</code> / <code>ALLOW_PUSH</code> / <code>ALLOW_PUBLISH</code>). This is a safety property: the
-next run starts with git <strong>re-locked</strong> and is not halted by a stale <code>STOP</code>. The
-durable record (the brief, <code>DECISIONS.md</code>, <code>events.jsonl</code>) is never deleted.</p>
+(<code>ALLOW_GIT</code> / <code>ALLOW_PUSH</code>). This is a safety property: the next run starts with
+git <strong>re-locked</strong> and is not halted by a stale <code>STOP</code>. The durable record (the
+brief, <code>DECISIONS.md</code>, <code>events.jsonl</code>) is never deleted.</p>
 <h3 id="on_finish-keep-or-archive">on_finish: keep or archive<a class="headerlink" href="#on_finish-keep-or-archive" title="Permanent link">&para;</a></h3>
 <p>Set in <code>GUARDRAILS.md</code>:</p>
 <ul>
@@ -2067,9 +2027,7 @@ parallel, give each run its own git worktree:</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># now /leopold-brief + /leopold-run here, fully isolated from the first run</span>
 </span></code></pre></div>
 <p>Each worktree has its own checkout and its own <code>.leopold/</code>, so N runs proceed
-concurrently without collision. The SDK driver's coordinated multi-worker fan-out
-(one worktree or sandbox per worker) is the roadmap path for automated parallel
-execution.</p>
+concurrently without collision.</p>
 
 
 

@@ -663,6 +663,8 @@
       
         
       
+        
+      
     
     
     
@@ -751,6 +753,34 @@
     
   
     The Two Phases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quality-and-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality & Orchestration
   
 
     
@@ -1473,8 +1503,7 @@ secrets encrypted on disk, consent at the CLI.</p>
 <h2 id="1-usd-budget-hard-stop-sdk-driver">1. USD budget hard-stop (SDK driver)<a class="headerlink" href="#1-usd-budget-hard-stop-sdk-driver" title="Permanent link">&para;</a></h2>
 <p>The Claude Code CLI already reports <code>total_cost_usd</code> per session, so there is no model
 price map: the driver accumulates the real cost per item and stops the run when it
-crosses the cap. A count cap (<code>max_subagents</code>) says nothing about dollars — this is the
-dollar ceiling.</p>
+crosses the cap. This is the dependable dollar ceiling for an autonomous run.</p>
 <ul>
 <li><code>leopold-driver run --budget-usd 5</code> (or <code>LEOPOLD_BUDGET_USD=5</code>) sets a $5 cap.</li>
 <li><code>worker.ts</code> reads <code>total_cost_usd</code> from the <code>result</code> event; <code>loop.ts</code> accumulates it
@@ -1496,8 +1525,9 @@ instead: they reach the worker's Bash tool as <code>$NAME</code> but never enter
 <li><code>worker.ts</code> decrypts the vault and sets the values into <code>process.env</code> for the item
   (and passes them as <code>options.env</code>), restoring the environment afterward. The worker is
   told to use <code>$NAME</code> and never echo a value.</li>
-<li>The guard protects the vault and key: the worker may not <code>Read</code>, <code>Bash</code>-<code>cat</code>, or
-  <code>Edit</code> either file (driver <code>guard.ts</code> + bash <code>guard-irreversible.sh</code>).</li>
+<li>Protection is <strong>encryption at rest</strong>, not a read guard: the vault is an AES-256-GCM
+  blob and the master key is <code>0600</code> outside the project, so reading <code>secrets.env</code> yields
+  ciphertext with no key. The worker never needs the file — it gets the values as <code>$NAME</code>.</li>
 </ul>
 <h2 id="3-capability-gating-for-extensions">3. Capability-gating for extensions<a class="headerlink" href="#3-capability-gating-for-extensions" title="Permanent link">&para;</a></h2>
 <p>An extension declares what it does up front, and the toolchain menu requires consent
@@ -1536,8 +1566,7 @@ before granting it on install/update.</p>
 <h2 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>make driver-test</code> (unit): budget decisions; secret round-trip + on-disk encryption (no
-  plaintext) + <code>0600</code> key + env apply/restore; the guard suite (unchanged behavior + new
-  secret-file denials).</li>
+  plaintext) + <code>0600</code> key + env apply/restore; the guard suite (git commit/push lock only).</li>
 <li>CLI smoke: <code>secrets set</code> via stdin encrypts (no plaintext in the vault), <code>secrets list</code>,
   key is <code>0600</code>, invalid names rejected. <code>leopold menu</code> shows capabilities and gates
   install/update on consent.</li>
