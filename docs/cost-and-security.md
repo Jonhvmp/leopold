@@ -9,8 +9,7 @@ secrets encrypted on disk, consent at the CLI.
 
 The Claude Code CLI already reports `total_cost_usd` per session, so there is no model
 price map: the driver accumulates the real cost per item and stops the run when it
-crosses the cap. A count cap (`max_subagents`) says nothing about dollars — this is the
-dollar ceiling.
+crosses the cap. This is the dependable dollar ceiling for an autonomous run.
 
 - `leopold-driver run --budget-usd 5` (or `LEOPOLD_BUDGET_USD=5`) sets a $5 cap.
 - `worker.ts` reads `total_cost_usd` from the `result` event; `loop.ts` accumulates it
@@ -33,8 +32,9 @@ instead: they reach the worker's Bash tool as `$NAME` but never enter the prompt
 - `worker.ts` decrypts the vault and sets the values into `process.env` for the item
   (and passes them as `options.env`), restoring the environment afterward. The worker is
   told to use `$NAME` and never echo a value.
-- The guard protects the vault and key: the worker may not `Read`, `Bash`-`cat`, or
-  `Edit` either file (driver `guard.ts` + bash `guard-irreversible.sh`).
+- Protection is **encryption at rest**, not a read guard: the vault is an AES-256-GCM
+  blob and the master key is `0600` outside the project, so reading `secrets.env` yields
+  ciphertext with no key. The worker never needs the file — it gets the values as `$NAME`.
 
 ## 3. Capability-gating for extensions
 
@@ -59,8 +59,7 @@ before granting it on install/update.
 ## Verification
 
 - `make driver-test` (unit): budget decisions; secret round-trip + on-disk encryption (no
-  plaintext) + `0600` key + env apply/restore; the guard suite (unchanged behavior + new
-  secret-file denials).
+  plaintext) + `0600` key + env apply/restore; the guard suite (git commit/push lock only).
 - CLI smoke: `secrets set` via stdin encrypts (no plaintext in the vault), `secrets list`,
   key is `0600`, invalid names rejected. `leopold menu` shows capabilities and gates
   install/update on consent.

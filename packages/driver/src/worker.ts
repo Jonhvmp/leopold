@@ -11,12 +11,14 @@ import { parseStatus, isTurnComplete } from "./protocol.js";
 import { makeGuard } from "./guard.js";
 import { applySecretsEnv } from "./secrets.js";
 import type { Brief, WorkerStatus, DriverConfig } from "./types.js";
+import type { Effort } from "./classify.js";
 
 const WORKER_APPEND = `You are a Leopold worker, conducted by an autonomous orchestrator. No human is watching live. Rules for this session:
-- Do NOT ask the human anything. Decide reversible or charter-clear calls yourself and keep going.
+- Do the item COMPLETELY. No placeholders, no TODOs, no "left as an exercise", no partial passes. Build it, wire it, verify it (build/lint/test), and only then close out. Bias hard toward finishing, not toward stopping.
+- Do NOT ask the human anything. Make the call yourself and keep going — you have full authority over the work; act on it.
 - Spawned mode: if you invoke gstack skills, auto-pick the recommended option; never prompt.
-- git commit/push/publish are LOCKED by a guard. Never attempt them. Stage with "git add" and report instead.
-- Secrets you may need are pre-loaded as environment variables; use them as $NAME, and never ask for, echo, or print their values.
+- Only git commit and git push are locked by a guard. Everything else is yours to run. Stage with "git add" and report; never attempt commit/push.
+- Secrets you may need are pre-loaded as environment variables; use them as $NAME, and never echo or print their values.
 - Close EVERY turn with a fenced status block, then stop and wait for the conductor's reply:
 
 \`\`\`leopold-status
@@ -28,7 +30,7 @@ NEXT: <what you think comes next>
 EVIDENCE: <build/lint/test result if relevant>
 \`\`\`
 
-Use needs-decision only for a fork you genuinely cannot resolve from the task and your own judgment. Use done only when the item is fully complete and verified.`;
+Use needs-decision ONLY for a genuine fork that is both irreversible and unsettleable from the task + charter — that bar is high, and almost everything clears it on your own judgment. Use done only when the item is fully complete and verified.`;
 
 export interface RunItemOpts {
   brief: Brief;
@@ -41,6 +43,11 @@ export interface RunItemOpts {
   onTurn: (status: WorkerStatus, text: string) => Promise<string | null>;
   /** Called once with the item's real USD cost (from the CLI's total_cost_usd). */
   onCost?: (usd: number) => void;
+  /** Reasoning effort for this item (classify.ts). Omitted = inherit. */
+  effort?: Effort;
+  /** Override the worker's cwd (the parallel scheduler gives each item its own
+   *  worktree). Defaults to the run's worktree, then the repo root. */
+  cwd?: string;
 }
 
 export async function runItem(opts: RunItemOpts): Promise<void> {
@@ -56,12 +63,13 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
   const q = query({
     prompt: channel,
     options: {
-      cwd: brief.worktreeRoot ?? brief.root,
+      cwd: opts.cwd ?? brief.worktreeRoot ?? brief.root,
       env: { ...process.env },
       maxTurns: cfg.maxTurnsPerItem,
       permissionMode: "default",
       canUseTool: guard as never,
       settingSources: ["user", "project"] as never,
+      ...(opts.effort ? { effort: opts.effort } : {}),
       ...(cfg.workerModel ? { model: cfg.workerModel } : {}),
       systemPrompt: { type: "preset", preset: "claude_code", append: WORKER_APPEND } as never,
     } as never,

@@ -44,9 +44,8 @@ token is present.
 | --- | --- | --- |
 | `git commit` | denied | `.leopold/ALLOW_GIT` |
 | `git push` | denied | `.leopold/ALLOW_PUSH` |
-| force-push, `reset --hard`, `rm -rf` | denied | none (forbidden) |
-| `gh pr create/merge`, release | denied | `.leopold/ALLOW_PUSH` |
-| publish (`npm`/`cargo`/...) | denied | `.leopold/ALLOW_PUBLISH` |
+| force-push | denied | none (always denied) |
+| everything else (`rm -rf`, `reset --hard`, `gh pr`, publish, …) | allowed | — (the run's own call) |
 
 ## The skills
 

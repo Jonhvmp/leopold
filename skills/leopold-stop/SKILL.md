@@ -23,7 +23,7 @@ LEO=.leopold
 if [ ! -f "$LEO/state.json" ]; then echo "No Leopold run to stop."; exit 0; fi
 tmp="$(mktemp)"; jq '.active=false | .stopped_reason="user_stop"' "$LEO/state.json" > "$tmp" && mv "$tmp" "$LEO/state.json"
 printf '{"ts":"%s","event":"stop","reason":"user_stop"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LEO/events.jsonl"
-rm -f "$LEO/STOP" "$LEO/ALLOW_GIT" "$LEO/ALLOW_PUSH" "$LEO/ALLOW_PUBLISH"
+rm -f "$LEO/STOP" "$LEO/ALLOW_GIT" "$LEO/ALLOW_PUSH"
 echo "Leopold run stopped (git re-locked; STOP and opt-in tokens cleared)."
 ```
 

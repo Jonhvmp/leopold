@@ -85,9 +85,10 @@ cat > .leopold/state.json <<JSON
 JSON
 ```
 
-Once `state.json` has `active:true`, the guardrail hook is live: git
-commit/push/publish and destructive ops are blocked. The Stop hook will
-re-engage you after each turn until the plan is done.
+Once `state.json` has `active:true`, the guardrail hook is live: `git commit` and
+`git push` (force-push always) are blocked — that is the entire lock. Everything
+else is yours to run. The Stop hook will re-engage you after each turn until the
+plan is done.
 
 ## Step 2 — Adopt spawned-session behavior
 
@@ -95,16 +96,13 @@ For this entire run you are an orchestrator-driven session. That means:
 
 - **Do not use AskUserQuestion** except for a true irreversible-and-ambiguous
   fork (see the decision protocol). Decide everything else yourself.
-- **Work serially. Do NOT fan out into parallel subagents.** Spawning subagents
-  (the `Task` tool) is the biggest cost multiplier there is: each one re-loads the
-  full session context, and a burst of 10 means 10× that context billed at once.
-  Do each plan item yourself, in your own turn. Only spawn a subagent for a single
-  genuinely isolatable sub-task, rarely, and never as a batch — there is a per-run
-  budget (`max_subagents`, default 8) the guard hard-enforces; past it, spawns are
-  denied and you continue serially. **Never fork** (a fork clones the entire session
-  context — the most expensive spawn; the guard caps forks at 2). When you do spawn a
-  subagent, hand it a **minimal prompt** — point it at file paths to read, never paste
-  files or the brief in; the guard denies oversized subagent prompts.
+- **Spawn subagents when they genuinely help the work — just keep them lean.** Nothing
+  blocks you from fanning out; use your own judgment on parallelism. The only real cost is
+  context: each subagent re-loads context, so hand each one a **minimal prompt** — point it
+  at file *paths* to read, don't paste files or the brief in — and prefer a fresh scoped
+  subagent over a fork (a fork clones the entire session context, the most expensive spawn).
+  Default to doing straightforward items in your own turn; reach for subagents for isolatable
+  sub-tasks and bulk-output work (next bullet).
 - **Context discipline — the brief is your memory, not the transcript.** This is the
   single biggest cost lever: a long session re-bills its whole growing context *every
   turn*, so keeping your own context flat is what keeps a run cheap. Three rules:
@@ -116,9 +114,9 @@ For this entire run you are an orchestrator-driven session. That means:
      the file; you verify it exists and mark the item done — **never read the full output
      back** into your context. (This is exactly what blew up a real run: the orchestrator
      held every lesson it generated.)
-  3. **Let it stop and resume.** The run auto-stops at `max_context_mb` (default 5); that
-     is by design — a fresh `/leopold-run` continues from `PLAN.md` with clean context.
-     Bounded, resumable segments beat one giant session.
+  3. **Let it stop and resume.** The run is bounded by `max_iterations` (and a `--budget`
+     USD cap if set); when it stops, a fresh `/leopold-run` continues from `PLAN.md` with
+     clean context. Bounded, resumable segments beat one giant session.
 - **Prefer Serena's symbolic tools.** If the `mcp__serena__*` tools are present (the
   Leopold install sets Serena up), use them to read and edit code: `get_symbols_overview`
   / `find_symbol` / `find_referencing_symbols` to navigate, `replace_symbol_body` /
@@ -152,21 +150,29 @@ Each turn:
 2. Complete it. Reach for the gstack playbook skill that fits the situation
    (`/spec` before non-trivial builds, `/code-review` after changes, `/verify`
    to confirm behavior, `/investigate` when something breaks, `/find-docs`
-   before guessing an API). Verify your work (build, lint, tests) before moving on.
+   before guessing an API). Verify your work (build, lint, tests) before moving on —
+   and if a run-skill exists for this project, `/verify` the change in the running app,
+   not just via tests.
 3. Resolve forks with the decision protocol; log non-mechanical decisions.
 4. Mark the item done (`[x]`) in `PLAN.md`.
 5. Finish your turn. Do not ask "should I continue?" The Stop hook decides that
    from the plan and the stop conditions.
+
+**The review gate (SDK driver).** When the run is conducted by `leopold-driver`, each
+item you close is independently reviewed (`/code-review`, plus `/security-review` on
+sensitive diffs) before it counts as done; blocking findings come back to you to fix.
+Don't fight it — self-review with `/code-review` *before* you report done, so the gate
+passes first try. Critical items (billing, auth, migrations) are reviewed twice and run
+at higher reasoning effort automatically; expect and welcome the extra scrutiny.
 
 If the same thing fails repeatedly, increment `consecutive_failures` in
 `state.json`; the stop condition will catch a stuck run.
 
 ## Hard rules (never break, even if a turn seems to want it)
 
-- git commit/push/publish stay locked. Stage and report; do not commit. (The
-  hook enforces this; do not try to route around it.)
-- Never edit files outside this project root.
-- Never edit `.leopold/GUARDRAILS.md`, the hooks, or Claude Code settings.
+- `git commit` and `git push` stay locked (force-push always). Stage and report;
+  do not commit. (The hook enforces this; do not try to route around it.) Everything
+  else is yours — act on it.
 - When the plan is complete or a stop condition is hit, write a short final
   summary (what shipped, key decisions, what is ready for the human to commit)
   and stop.

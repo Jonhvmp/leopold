@@ -50,8 +50,14 @@ assert "guard allows git add" "" "$out"
 out="$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git push origin main"}}' "$T" | bash "$HOOKS/guard-irreversible.sh")"
 assert "guard denies git push" "deny" "$(perm "$out")"
 
+out="$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git push --force origin main"}}' "$T" | bash "$HOOKS/guard-irreversible.sh")"
+assert "guard denies force-push" "deny" "$(perm "$out")"
+
 out="$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"rm -rf build"}}' "$T" | bash "$HOOKS/guard-irreversible.sh")"
-assert "guard denies rm -rf" "deny" "$(perm "$out")"
+assert "guard allows rm -rf (only git is locked)" "" "$out"
+
+out="$(printf '{"cwd":"%s","tool_name":"Task","tool_input":{"description":"x"}}' "$T" | bash "$HOOKS/guard-irreversible.sh")"
+assert "guard allows subagents (no cap)" "" "$out"
 
 echo '{"active":false}' > "$T/.leopold/state.json"
 out="$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' "$T" | bash "$HOOKS/guard-irreversible.sh")"
@@ -80,35 +86,6 @@ assert "non-numeric budget field stops the run" "state_invalid" "$(jq -r '.stopp
 printf 'not json {' > "$T/.leopold/state.json"
 printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "malformed state.json stops the run" "state_invalid" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
-
-# --- Subagent budget (cost guard) ---
-task='{"cwd":"%s","tool_name":"Task","tool_input":{"description":"x"}}'
-echo '{"active":true,"max_subagents":2,"subagents_spawned":0}' > "$T/.leopold/state.json"
-out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent 1/2 allowed" "" "$(perm "$out")"
-out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent 2/2 allowed" "" "$(perm "$out")"
-out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent over budget denied" "deny" "$(perm "$out")"
-assert "subagent counter persisted" "2" "$(jq -r '.subagents_spawned' "$T/.leopold/state.json" 2>/dev/null)"
-echo '{"active":false,"max_subagents":2,"subagents_spawned":9}' > "$T/.leopold/state.json"
-out="$(printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "subagent free when run inactive" "" "$(perm "$out")"
-
-# --- Fork budget (forks clone the whole context) ---
-echo '{"active":true,"max_subagents":8,"subagents_spawned":0,"max_forks":1,"forks_spawned":0}' > "$T/.leopold/state.json"
-fork='{"cwd":"%s","tool_name":"Task","tool_input":{"subagent_type":"fork","prompt":"x"}}'
-out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork 1/1 allowed" "" "$(perm "$out")"
-out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork over budget denied" "deny" "$(perm "$out")"
-echo '{"active":true,"max_subagents":8,"subagents_spawned":0}' > "$T/.leopold/state.json"
-out="$(printf "$fork" "$T" | bash "$HOOKS/guard-irreversible.sh")"; assert "fork forbidden by default (max_forks absent)" "deny" "$(perm "$out")"
-
-# --- Spawn audit log ---
-echo '{"active":true,"max_subagents":8,"subagents_spawned":0}' > "$T/.leopold/state.json"; : > "$T/.leopold/events.jsonl"
-printf "$task" "$T" | bash "$HOOKS/guard-irreversible.sh" >/dev/null
-assert "spawn logged to events.jsonl" "1" "$(grep -c subagent_spawn "$T/.leopold/events.jsonl" 2>/dev/null || echo 0)"
-
-# --- Oversized subagent prompt (context dumping) ---
-echo '{"active":true,"max_subagents":8,"subagents_spawned":0}' > "$T/.leopold/state.json"
-head -c 300000 /dev/zero | tr '\0' x > "$T/big.txt"
-jq -cn --rawfile p "$T/big.txt" --arg c "$T" '{cwd:$c,tool_name:"Task",tool_input:{prompt:$p}}' > "$T/bigin.json"
-out="$(bash "$HOOKS/guard-irreversible.sh" < "$T/bigin.json")"; assert "oversized subagent prompt denied" "deny" "$(perm "$out")"
 
 # --- Context budget (transcript over max_context_mb) ---
 echo '{"active":true,"iteration":1,"max_context_mb":1}' > "$T/.leopold/state.json"

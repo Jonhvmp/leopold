@@ -46,6 +46,11 @@ Run: `mkdir -p .leopold`
 If `.leopold/MISSION.md` already exists, read all existing artifacts and offer to
 revise rather than overwrite.
 
+If this looks like a fresh project — no `CLAUDE.md`, no app run-skill, a thin
+permissions allowlist — suggest running **/leopold-up** first (Phase 0): it generates
+project memory, teaches Claude to run the app, and configures permissions/MCP so the
+brief and run start from a strong footing. Don't block on it; just point it out once.
+
 ## Step 1 — Understand the mission (debate it)
 
 Through conversation (use AskUserQuestion for real forks), establish:
@@ -84,6 +89,15 @@ LOCKED; the run stages and reports, the human commits. Confirm or adjust:
 Decompose the mission into an ordered, checkbox backlog in `PLAN.md`. Each item
 should be independently completable and verifiable. Order by dependency, then by
 value. Keep items small enough that one is a reasonable unit of autonomous work.
+
+**Make it parallel-ready.** The run can execute independent items concurrently
+(`leopold-driver run --parallel N`, each item in its own worktree). Help it: when an
+item genuinely needs an earlier one finished first, declare it with an `(after: N)`
+marker referencing the earlier item's 1-based position — `- [ ] (after: 2, 3) Wire
+the UI to the API`. Items with no marker are treated as independent and may run at
+the same time, so only add `(after: …)` for real dependencies, and prefer to split
+work so that more items are independent. Items that all touch the same files should
+depend on each other (or be one item) to avoid merge conflicts.
 
 ## Step 4b — Harden the plan with gstack (optional)
 

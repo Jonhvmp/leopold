@@ -23,8 +23,9 @@ loop" into a real harness you brief and walk away from.
   pings you. You get a notification on completion or escalation, not a screen to
   babysit.
 - **Git stays locked.** The worker runs under a `canUseTool` guard with the same
-  policy as the in-session hook: commit, push, force-push, `rm -rf`, PR/release,
-  and publish are blocked unless you drop an explicit opt-in token.
+  policy as the in-session hook: `git commit` and `git push` (force-push always)
+  are blocked unless you drop an explicit opt-in token (`ALLOW_GIT` / `ALLOW_PUSH`).
+  That is the whole lock — everything else is the worker's own call.
 
 ## Auth: it uses YOUR Claude Code, not a separate API key
 

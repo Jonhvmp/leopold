@@ -29,8 +29,8 @@ Leopold is an autonomous orchestration harness for [Claude Code](https://claude.
 ## Quickstart
 
 ```bash
-# from npm — no clone, no make. Installs the harness, then `leopold` manages everything.
-npm i -g leopold-driver && leopold install
+# from npm — no clone, no make. `leopold up` installs the harness + sets up the project.
+npm i -g leopold-driver && leopold up
 ```
 
 ```bash
@@ -43,9 +43,11 @@ merged. With the npm package, the bundled `leopold` CLI runs the whole toolchain
 the repo**:
 
 ```bash
+leopold up                   # install + project setup in one (then /leopold-up in a session)
 leopold menu                 # toolchain manager (serena / gstack / ovmem)
 leopold watch                # live dashboard at http://127.0.0.1:4179
-leopold serena install       # set up an extension (also: gstack, ovmem)
+leopold run --parallel 3     # conduct the run, independent items in parallel
+leopold insights             # summarize a run (effort mix, review pass-rate, spend)
 leopold doctor               # health check
 ```
 
@@ -79,7 +81,19 @@ Then, in any project:
 
 **Phase 1 — Brief (`/leopold-brief`).** A structured debate, not a form. Leopold pushes back and writes four durable artifacts: `MISSION.md` (what + definition of done), `CHARTER.md` (your priorities, taste, hard *never*/*always* rules — the part that "becomes you"), `GUARDRAILS.md` (autonomous vs gated, stop conditions, kill switch), and `PLAN.md` (the backlog). The run's quality is capped by the brief's, so this phase matters.
 
-**Phase 2 — Run (`/leopold-run`).** Leopold loops: pick the next `PLAN.md` item → do the work, reaching for the right [gstack](https://github.com/garrytan/gstack) skill → at a fork, consult `CHARTER.md`; if the call is reversible and the charter is clear, **decide, log it to `DECISIONS.md`, and keep going** → mark it done, pick the next. A **Stop hook** re-injects "continue" while work remains; a **PreToolUse guard** keeps git and destructive ops locked. Everything it decided for you is in `DECISIONS.md` to review.
+**Phase 2 — Run (`/leopold-run`).** Leopold loops: pick the next `PLAN.md` item → do the work, reaching for the right [gstack](https://github.com/garrytan/gstack) skill → at a fork, consult `CHARTER.md`; if the call is reversible and the charter is clear, **decide, log it to `DECISIONS.md`, and keep going** → mark it done, pick the next. A **Stop hook** re-injects "continue" while work remains; a **PreToolUse guard** keeps `git commit`/`push` locked. Everything it decided for you is in `DECISIONS.md` to review.
+
+---
+
+## Quality & orchestration
+
+Leopold extracts the most from Claude Code's native power, in one command. See [Quality & Orchestration](docs/quality-and-orchestration.md).
+
+- **Review gate on every item.** Before an item closes, an independent reviewer runs `/code-review` (and `/security-review` on sensitive diffs) over its diff; blocking findings go back to the worker until it's clean. Critical items get a second reviewer.
+- **Effort by risk.** Each item is classified and the worker's reasoning effort is set automatically — `low` for a typo, `max` for a migration or payment change. No wasted thinking on trivia, full depth where it's dangerous.
+- **Parallel items.** `leopold-driver run --parallel N` runs independent plan items at once, each in its own worktree, replaying each diff onto the main tree (staged, never committed). Declare order with `- [ ] (after: 2) …`.
+- **One-command setup.** `leopold up` + `/leopold-up` wire the things people skip — `CLAUDE.md` (`/init`), an app run-skill (`/run-skill-generator`), a permissions allowlist, MCP — so a project starts at full power.
+- **Insights.** `leopold-driver insights` summarizes a run: effort mix, review pass-rate, decisions, escalations, real spend.
 
 ---
 
@@ -87,9 +101,9 @@ Then, in any project:
 
 Because Leopold sells autonomy, guardrails are the product, not an afterthought.
 
-- **Git stays locked.** Commit, push, force-push, `reset --hard`, recursive `rm` (any spelling), `find … -delete`, `gh pr create/merge`, and package publish are blocked while autonomous — regardless of permission mode. You opt in explicitly, per session, or they never run.
-- **Red-teamed.** The guard ships a bypass-attempt test suite — **59 cases run in CI** (`make test-guard`), plus unit tests for the TS driver guard — covering tricks like `git -c user.name=x commit`, `rm --recursive --force`, `/bin/rm -rf`, and `find -exec rm`. Think you can slip one past it? [Open an issue](https://github.com/Jonhvmp/leopold/issues) — break it.
-- **Cost-capped (both axes).** An autonomous run runs up a bill two ways: how much context each unit carries, and how many spawn. Leopold caps both — **forks (which clone the whole session) are forbidden by default**; oversized subagent prompts are denied; the run stops when the transcript passes `max_context_mb` (5, resume fresh from the brief); and total `Task` spawns are capped at `max_subagents` (8). The protocol keeps the orchestrator lean — bulk-output work is delegated to subagents that **write to files**, so output never piles up in the main context.
+- **Git stays locked.** `git commit` and `git push` (force-push always) are blocked while autonomous — regardless of permission mode. That's the whole lock: the run stages and reports, you commit and push. You opt in explicitly, per run (`ALLOW_GIT` / `ALLOW_PUSH`), or they never run. Everything else — edits, builds, tests, `rm`, refactors, subagents — is the run's own call; isolate with `--worktree` if you want a filesystem boundary.
+- **Red-teamed.** The guard ships a bypass-attempt test suite (`make test-guard`), plus unit tests for the TS driver guard, covering evasion tricks like `git -c user.name=x commit`, `/usr/bin/git push`, `env git commit`, and whitespace/tab splitting. Think you can slip a commit or push past it? [Open an issue](https://github.com/Jonhvmp/leopold/issues) — break it.
+- **Cost-capped.** A long autonomous run runs up a bill because the main session re-bills its growing context every turn. Leopold's dependable ceiling is the **`--budget <usd>` hard-stop** (stops the moment real spend crosses it), backed by a bounded, resumable loop (`max_iterations`, resume fresh from the brief). The protocol keeps the orchestrator lean — bulk-output work is delegated to subagents that **write to files**, so output never piles up in the main context.
 - **Fails closed.** A malformed run-state file blocks loudly; it never silently lets autonomy through.
 - **Kill switch + audit.** `/leopold-stop` (or `touch .leopold/STOP`) halts at the next turn boundary; every autonomous decision is logged with its reasoning.
 

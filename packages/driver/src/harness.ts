@@ -38,6 +38,14 @@ export function runInstall(args: string[]): number {
   return run("bash", [join(assetRoot(), "install.sh"), ...args]);
 }
 
+/** One-shot project setup: install the harness, seed a sane permissions allowlist,
+ *  and point at the in-session /leopold-up skill for the rest (CLAUDE.md, run-skill). */
+export function runUp(args: string[]): number {
+  const script = join(assetRoot(), "scripts", "leopold-up.sh");
+  if (!existsSync(script)) return runInstall(args); // fallback: at least install
+  return run("bash", [script, ...args]);
+}
+
 export function runMenu(): number {
   return run("bash", [join(assetRoot(), "scripts", "leopold-menu.sh")]);
 }

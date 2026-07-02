@@ -74,7 +74,7 @@ export function killSwitch(leoDir: string): boolean {
 /** Safety hygiene on stop: clear the kill switch and per-session git opt-in
  *  tokens so the next run re-locks git and does not halt on a stale STOP. */
 export function clearRunTokens(leoDir: string): void {
-  for (const t of ["STOP", "ALLOW_GIT", "ALLOW_PUSH", "ALLOW_PUBLISH"]) {
+  for (const t of ["STOP", "ALLOW_GIT", "ALLOW_PUSH"]) {
     try { fs.rmSync(path.join(leoDir, t), { force: true }); } catch { /* ignore */ }
   }
 }
@@ -85,7 +85,16 @@ function flagValue(argv: string[], name: string): string | undefined {
   return i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined;
 }
 
+/** Parse a positive integer flag/env, clamped to >=1, with a fallback. */
+function intArg(argv: string[], name: string, env: string | undefined, fallback: number): number {
+  const raw = flagValue(argv, name) ?? env;
+  const n = raw ? parseInt(raw, 10) : NaN;
+  return Number.isFinite(n) && n >= 1 ? n : fallback;
+}
+
 export function loadConfig(argv: string[]): DriverConfig {
+  // Review gate is on by default; --no-review or LEOPOLD_REVIEW=0 turns it off.
+  const review = !argv.includes("--no-review") && process.env.LEOPOLD_REVIEW !== "0";
   return {
     conductorModel: process.env.LEOPOLD_CONDUCTOR_MODEL || undefined,
     workerModel: process.env.LEOPOLD_WORKER_MODEL || undefined,
@@ -94,5 +103,8 @@ export function loadConfig(argv: string[]): DriverConfig {
     dryRun: argv.includes("--dry-run"),
     worktree: argv.includes("--worktree") || process.env.LEOPOLD_WORKTREE === "1",
     budgetUsd: parseBudgetUsd(flagValue(argv, "--budget-usd") ?? process.env.LEOPOLD_BUDGET_USD),
+    review,
+    maxReviewRounds: intArg(argv, "--max-review-rounds", process.env.LEOPOLD_MAX_REVIEW_ROUNDS, 2),
+    parallel: intArg(argv, "--parallel", process.env.LEOPOLD_PARALLEL, 1),
   };
 }
