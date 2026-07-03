@@ -60,6 +60,14 @@ flowchart LR
 
     [:octicons-arrow-right-24: Architecture](architecture.md)
 
+-   :material-source-branch:{ .lg .middle } __The plan runs as code__
+
+    ---
+
+    The brief compiles into a dynamic workflow: dependency waves, an adversarial verify panel per item, a live phase tree.
+
+    [:octicons-arrow-right-24: Dynamic Workflows](concepts/dynamic-workflows.md)
+
 </div>
 
 ## The problem it solves

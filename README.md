@@ -162,8 +162,10 @@ Full design in [`docs/architecture.md`](docs/architecture.md).
 - [x] `leopold doctor` — verify install, hooks, gstack wiring
 - [x] Guard red-team suite — bypass attempts blocked in CI
 - [x] SDK driver — external orchestrator on the [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk), shipped on npm as `leopold-driver`
-- [x] SDK driver unit tests (status parser + `canUseTool` guard)
-- [ ] Multi-worker fan-out, web dashboard for the decision log
+- [x] Multi-worker fan-out (`run --parallel N`, one worktree per item) + `leopold watch` web dashboard (cost meters, decision log, workflow phase tree)
+- [x] Dynamic-workflow engine: `/leopold-workflow`, `leopold workflow` (compiler as tested code), `/leopold-learn`, `/leopold-triage`, plan-by-tournament
+- [x] Quality panels: diverse-lens review, root-cause hypotheses, smart routing; 113 driver tests + CLI smoke in CI (Ubuntu + macOS)
+- [ ] Headless `workflow --run` exercised end to end; sandboxed workers (E2B/Daytona) — see the [full roadmap](docs/roadmap.md)
 
 ---
 

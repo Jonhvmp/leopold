@@ -33,7 +33,17 @@ This is *how you would choose* — the part that "becomes you".
 ## `GUARDRAILS.md`
 
 The autonomy boundary: action classes, the git posture (locked by default), stop
-conditions (`max_iterations`, `max_failures`, budgets), and the kill switch.
+conditions (`max_iterations`, `max_failures`, budgets), and the kill switch. It can
+also set the SDK driver's orchestration toggles so the posture lives with the brief
+(a CLI flag or env var overrides it):
+
+```markdown
+## Quality & orchestration (SDK driver)
+- review: on            # diverse-lens review panel before an item closes
+- hypotheses: on        # root-cause panel hands a stuck retry a concrete lead
+- smart_routing: off    # research each item's blast radius before routing effort
+- learn_on_finish: off  # mine a clean finish into proposed charter amendments
+```
 
 ## `PLAN.md`
 
@@ -59,11 +69,28 @@ Why:         charter rule + principle 5 (explicit over clever)
 Reversal:    swap the cache module for a Redis client; interface unchanged
 ```
 
+## `CHARTER-amendments.md` (proposal, not brief)
+
+Written by `/leopold-learn` or the driver's `learn_on_finish`: rules mined from your
+recorded decisions, session corrections, and git history, each verified by a
+kill-biased skeptic. It is a **proposal** — `CHARTER.md` is never edited by a run.
+Review it, fold what sounds like you into the charter, delete the rest. Safe to
+delete entirely.
+
+## `workflow-args.json` (compiled brief)
+
+Written by `leopold-driver workflow`: the brief compiled into the exact `args` the
+canonical workflow script consumes — mission, charter, `maxReviewRounds`, and
+`PLAN.md` as dependency waves with per-item classification (`effort` / `critical` /
+`sensitive`). Pairs with `.claude/workflows/leopold-run.js`. Deterministic: recompile
+any time with `leopold-driver workflow`. See
+[Dynamic Workflows](../concepts/dynamic-workflows.md).
+
 ## Runtime state
 
 | File | Holds |
 | --- | --- |
 | `state.json` | `active`, `iteration`, `max_iterations`, `consecutive_failures`, `max_failures`, timestamps |
-| `events.jsonl` | structured event stream |
+| `events.jsonl` | structured event stream (incl. `review`, `hypothesis`, `learn`, `cost` events) |
 | `STOP` | kill switch (presence halts the loop) |
 | `ALLOW_GIT` / `ALLOW_PUSH` | per-run git opt-in tokens, absent by default |

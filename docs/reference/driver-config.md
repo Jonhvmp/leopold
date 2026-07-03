@@ -6,28 +6,72 @@ Configuration for the [SDK driver](../architecture/driver.md). It reads the
 ## Usage
 
 ```bash
-cd packages/driver && npm install && npm run build
+npm i -g leopold-driver      # or: cd packages/driver && npm install && npm run build
 
 # from a project that has a .leopold/ brief, with Claude Code logged in:
-node /path/to/leopold/packages/driver/dist/index.js            # run
-node /path/to/leopold/packages/driver/dist/index.js --dry-run  # load brief, show plan, do nothing
+leopold run                          # conduct the run (serial)
+leopold run --dry-run                # load the brief, show the plan, do nothing
+leopold run --parallel 3             # independent plan items concurrently, one worktree each
+leopold run --worktree               # isolate the whole run in a git worktree
+leopold run --budget-usd 5           # hard-stop at a USD cap
+leopold workflow                     # compile the brief into a dynamic workflow (emit)
+leopold workflow --print             # dump the compiled args JSON
+leopold workflow --run               # execute it headlessly (experimental runtime)
+leopold insights                     # summarize the run's events.jsonl
 ```
 
 ## Auth
 
-Uses your existing Claude Code login for both the worker and the conductor. **No
-API key required.** `ANTHROPIC_API_KEY` is only needed in a headless environment
-with no Claude Code auth.
+Uses your existing Claude Code login for the worker, the conductor, and every
+panel agent. **No API key required.** `ANTHROPIC_API_KEY` is only needed in a
+headless environment with no Claude Code auth.
+
+## Flags
+
+| Flag | Default | Purpose |
+| --- | --- | --- |
+| `--parallel N` | `1` | run up to N independent plan items at once, each in its own worktree, replaying each diff onto the main tree as a staged patch |
+| `--worktree` | off | isolate a serial run in a dedicated git worktree |
+| `--budget-usd N` | none | stop the run once accumulated real spend reaches N |
+| `--no-review` | review on | turn off the diverse-lens review panel |
+| `--max-review-rounds N` | `2` | review→fix rounds per item before it closes anyway |
+| `--no-hypotheses` | panel on | turn off the root-cause panel on retried items |
+| `--smart-routing` | off | research each item's real blast radius before routing effort (falls back to keywords; never lowers a critical floor) |
+| `--learn-on-finish` | off | on a clean finish, mine the run into proposed charter amendments |
+| `--dry-run` | — | load the brief and report; run nothing |
 
 ## Environment variables
 
 | Var | Default | Purpose |
 | --- | --- | --- |
-| `LEOPOLD_CONDUCTOR_MODEL` | your Claude Code default | the conductor's model |
+| `LEOPOLD_CONDUCTOR_MODEL` | your Claude Code default | the conductor's (and panels') model |
 | `LEOPOLD_WORKER_MODEL` | your Claude Code default | the worker's model |
 | `LEOPOLD_MAX_TURNS_PER_ITEM` | `40` | worker turn budget per item |
 | `LEOPOLD_WEBHOOK` | none | URL for JSON POST notifications (Slack/Discord/etc.) |
+| `LEOPOLD_WORKTREE` | `0` | `1` = same as `--worktree` |
+| `LEOPOLD_BUDGET_USD` | none | same as `--budget-usd` |
+| `LEOPOLD_REVIEW` | `1` | `0` = same as `--no-review` |
+| `LEOPOLD_MAX_REVIEW_ROUNDS` | `2` | same as `--max-review-rounds` |
+| `LEOPOLD_PARALLEL` | `1` | same as `--parallel` |
+| `LEOPOLD_HYPOTHESES` | `1` | `0` = same as `--no-hypotheses` |
+| `LEOPOLD_SMART_ROUTING` | `0` | `1` = same as `--smart-routing` |
+| `LEOPOLD_LEARN_ON_FINISH` | `0` | `1` = same as `--learn-on-finish` |
 | `ANTHROPIC_API_KEY` | none | only for headless environments without Claude Code auth |
+
+## Toggles in the brief (GUARDRAILS.md)
+
+The orchestration posture can live with the brief instead of the command line.
+`GUARDRAILS.md` may set any of these as `key: on|off`:
+
+```markdown
+## Quality & orchestration (SDK driver)
+- review: on
+- hypotheses: on
+- smart_routing: off
+- learn_on_finish: off
+```
+
+Precedence: **explicit CLI flag / env var → GUARDRAILS.md → built-in default.**
 
 ## Stop conditions
 
@@ -42,3 +86,7 @@ and POSTs JSON to `LEOPOLD_WEBHOOK` if set:
 ```json
 { "title": "Leopold finished", "body": "Plan complete; everything staged.", "source": "leopold" }
 ```
+
+When `learn_on_finish` is on, the completion notice also lists any proposed
+charter amendments (written to `.leopold/CHARTER-amendments.md`; the charter
+itself is never edited).
