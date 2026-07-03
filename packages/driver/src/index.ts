@@ -3,6 +3,9 @@
 // watch — without cloning the repo or running `make`. The harness assets are bundled
 // into the package at build time; subcommands run them.
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { runDriver } from "./loop.js";
 import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harness.js";
 import { runSecrets } from "./secrets.js";
@@ -12,10 +15,21 @@ import { runWorkflowCommand } from "./workflow-cmd.js";
 const sub = process.argv[2];
 const rest = process.argv.slice(3);
 
+/** The driver's own version, read from its package.json (dist/ lives next to it). */
+function version(): string {
+  try {
+    const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+    return (JSON.parse(readFileSync(pkg, "utf8")) as { version?: string }).version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 function help(): void {
   process.stdout.write(`leopold-driver — Leopold from npm. Manage the harness, conduct runs, watch.
 
 Usage:
+  leopold-driver --version                  print the leopold-driver version
   leopold-driver up                         one-shot setup: install + permissions + extensions
   leopold-driver install [--with-gstack]   install skills + hooks into ~/.claude
   leopold-driver insights [--json]          summarize the current run (events.jsonl)
@@ -96,7 +110,15 @@ switch (sub) {
   case "help":
     help();
     process.exit(0);
+  case "--version":
+  case "-v":
+  case "version":
+    console.log(version());
+    process.exit(0);
   default:
+    // A non-flag unknown command is an error. Bare invocation, `run`, and run's flags
+    // (`leopold --dry-run`, `--parallel N`, …) fall through to conducting a run —
+    // `--version`/`--help` are caught above, so they no longer leak into a run.
     if (sub && sub !== "run" && !sub.startsWith("-")) {
       console.error(`leopold-driver: unknown command "${sub}". Try: leopold-driver --help`);
       process.exit(2);
