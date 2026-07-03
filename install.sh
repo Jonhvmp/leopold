@@ -13,13 +13,25 @@ if [ -n "$_self" ] && [ -d "$(dirname "$_self")/skills" ]; then
   SRC="$(cd "$(dirname "$_self")" && pwd)"
 else
   SRC="${LEOPOLD_SRC:-$HOME/.local/share/leopold}"
-  echo "-> fetching Leopold into $SRC"
+  BRANCH="${LEOPOLD_BRANCH:-main}"
+  REPO="https://github.com/Jonhvmp/leopold.git"
+  echo "-> fetching Leopold ($BRANCH) into $SRC"
+  # A cached shallow clone can't always `pull --ff-only` (and the old code swallowed
+  # the failure, leaving a STALE tree — the reason a re-install kept reporting an old
+  # version). Force the working tree to the exact tip of the branch; re-clone if that
+  # can't be done, so the source is always current.
   if [ -d "$SRC/.git" ]; then
-    ( cd "$SRC" && git pull --ff-only -q ) || true
+    if ( cd "$SRC" && git fetch --depth 1 -q origin "$BRANCH" && git reset --hard -q FETCH_HEAD && git clean -qfd ); then
+      :
+    else
+      echo "   couldn't update the cached clone — re-cloning fresh"
+      rm -rf "$SRC" && git clone --progress --depth 1 --branch "$BRANCH" "$REPO" "$SRC"
+    fi
   else
     mkdir -p "$(dirname "$SRC")"
-    git clone --progress --depth 1 https://github.com/Jonhvmp/leopold.git "$SRC"
+    git clone --progress --depth 1 --branch "$BRANCH" "$REPO" "$SRC"
   fi
+  [ -f "$SRC/VERSION" ] && echo "   at v$(tr -d '[:space:]' < "$SRC/VERSION")"
 fi
 CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"
 SKILLS="$CLAUDE/skills"
@@ -156,7 +168,8 @@ echo
 echo "-> verifying"
 v_warn=0
 sc=0; for d in "$SKILLS"/leopold-*; do [ -e "$d" ] && sc=$((sc+1)); done
-[ "${sc:-0}" -ge 4 ] 2>/dev/null && echo "   ok   $sc leopold skills installed" || { echo "   warn: leopold skills not found in $SKILLS"; v_warn=$((v_warn+1)); }
+hv="$( [ -f "$LEO_HOME/VERSION" ] && tr -d '[:space:]' < "$LEO_HOME/VERSION" || echo '?' )"
+[ "${sc:-0}" -ge 4 ] 2>/dev/null && echo "   ok   $sc leopold skills installed (harness v$hv)" || { echo "   warn: leopold skills not found in $SKILLS"; v_warn=$((v_warn+1)); }
 if command -v jq >/dev/null 2>&1 && [ -f "$SETTINGS" ] && jq -e '(.hooks.Stop|length>0) and (.hooks.PreToolUse|length>0)' "$SETTINGS" >/dev/null 2>&1; then
   echo "   ok   Stop + PreToolUse hooks wired in settings.json"
 else echo "   warn: hooks not detected in settings.json"; v_warn=$((v_warn+1)); fi
