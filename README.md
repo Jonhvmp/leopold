@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/demo.svg" alt="Leopold conducting a run: brief → run → decisions logged → staged, awaiting your commit" width="760" />
+  <img src="assets/demo.svg" alt="Leopold conducting a run: brief → compiled into a dynamic workflow → adversarial verify panel → charter amendments proposed → staged, awaiting your commit" width="760" />
 </p>
 
 # Leopold
@@ -45,8 +45,9 @@ the repo**:
 ```bash
 leopold up                   # install + project setup in one (then /leopold-up in a session)
 leopold menu                 # toolchain manager (serena / gstack / ovmem)
-leopold watch                # live dashboard at http://127.0.0.1:4179
+leopold watch                # live dashboard at http://127.0.0.1:4179 (incl. workflow phase tree)
 leopold run --parallel 3     # conduct the run, independent items in parallel
+leopold workflow             # compile the brief into a dynamic workflow (--run: headless, exp.)
 leopold insights             # summarize a run (effort mix, review pass-rate, spend)
 leopold doctor               # health check
 ```

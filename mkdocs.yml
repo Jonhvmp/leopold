@@ -106,6 +106,8 @@ nav:
       - Quality & Orchestration: quality-and-orchestration.md
       - Decision Protocol: decision-protocol.md
       - Guardrails: guardrails.md
+      - Cost & Security: cost-and-security.md
+      - Run Isolation: run-isolation.md
       - gstack Playbook: gstack-playbook.md
   - Architecture:
       - Overview: architecture.md

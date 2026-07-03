@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A new demo that shows the workflow engine.** `scripts/record-demo.sh` now
+  *synthesizes* the asciinema cast deterministically (v2 is just JSONL — no recorder
+  needed, byte-stable reruns) and renders it with agg / svg-term / `npx svg-term-cli`.
+  The walkthrough covers the current story: the brief, `leopold workflow` compiling it
+  into waves, the adversarial verify panel catching a blocking finding on a critical
+  item, the root-cause panel, and learn-on-finish proposing charter amendments. Still
+  honest by design — a scripted walkthrough, never a faked model session.
+- **Docs polish.** Cost & Security and Run Isolation joined the mkdocs nav (they were
+  orphaned); the Quickstart points large plans at `/leopold-workflow`; the README
+  quickstart block lists `leopold workflow`.
 - **`leopold-driver workflow` — the brief→workflow compiler as tested code.** The
   compilation the `/leopold-workflow` skill described in prose is now deterministic TS
   (`compile.ts`): parse `PLAN.md` into dependency waves, risk-classify each item, and emit
