@@ -24,7 +24,7 @@ Usage:
   leopold-driver doctor                     run every extension's doctor
   leopold-driver update                     reinstall from this package
   leopold-driver run [--worktree] [--parallel N] [--budget-usd N] [--no-review]
-                     [--no-hypotheses] [--smart-routing] [--dry-run]
+                     [--no-hypotheses] [--smart-routing] [--learn-on-finish] [--dry-run]
                                             conduct the .leopold run (the SDK driver)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
@@ -43,9 +43,13 @@ When an item is retried after a failure, a root-cause panel (3 investigators ove
 evidence + refuters) hands the next attempt a concrete lead (--no-hypotheses turns it off).
 --smart-routing replaces keyword classification with a short read-only session that researches
 the item's real blast radius (always falls back to keywords; never lowers a critical floor).
+--learn-on-finish mines the finished run (its decisions + git history) into proposed charter
+amendments at .leopold/CHARTER-amendments.md — it never edits CHARTER.md. Each of these toggles
+can also be set in the brief's GUARDRAILS.md (review / hypotheses / smart_routing /
+learn_on_finish: on|off); a CLI flag or env var overrides the brief.
 Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK,
      LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD, LEOPOLD_REVIEW, LEOPOLD_MAX_REVIEW_ROUNDS,
-     LEOPOLD_HYPOTHESES, LEOPOLD_SMART_ROUTING
+     LEOPOLD_HYPOTHESES, LEOPOLD_SMART_ROUTING, LEOPOLD_LEARN_ON_FINISH
 `);
 }
 

@@ -83,6 +83,10 @@ LOCKED; the run stages and reports, the human commits. Confirm or adjust:
 - Which action classes are autonomous vs gated (default: all git write ops gated).
 - Stop conditions: max consecutive failures (default 3), max iterations
   (default 50), token/time budget if any.
+- Quality & orchestration toggles the SDK driver reads from GUARDRAILS.md:
+  `review` (on), `hypotheses` (on), `smart_routing` (off), and `learn_on_finish`
+  (off — when on, a clean finish mines the run into proposed charter amendments via
+  `/leopold-learn`'s logic, without touching CHARTER.md). A CLI flag overrides the brief.
 
 ## Step 4 — Build the plan
 

@@ -91,4 +91,7 @@ export interface DriverConfig {
   /** LLM router that researches the repo before setting an item's effort and
    *  criticality (falls back to the deterministic keyword classifier). */
   smartRouting: boolean;
+  /** On a clean finish, mine the run's decisions + git history into proposed
+   *  charter amendments (.leopold/CHARTER-amendments.md). Never edits the charter. */
+  learnOnFinish: boolean;
 }

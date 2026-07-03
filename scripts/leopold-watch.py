@@ -534,7 +534,7 @@ function fmtUsd(x){if(x==null)return"$0";return x>=1?("$"+x.toFixed(2)):("$"+x.t
 function fmtTok(n){return n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":(""+(n||0));}
 function fmtDur(s){if(!s)return"0m";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?(h+"h"+m+"m"):(m+"m"+(m?"":(s%60+"s")));}
 const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med",
-  review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low"};
+  review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high"};
 function renderCost(c){
   const box=$("#cost");box.innerHTML="";
   if(!c||!c.available){box.append(el("div","meta","waiting for session data… (cost shows once the run has a turn)"));return;}
@@ -591,6 +591,7 @@ function render(s){
     else if(e.event==="item_incomplete")d=(e.item||"").slice(0,80)+" · fails "+(e.fails||"?");
     else if(e.event==="merge_conflict")d=(e.item||"").slice(0,60)+" · worktree kept";
     else if(e.event==="cost")d=(e.usd!=null?("+$"+Number(e.usd).toFixed(3)):"")+(e.spent_usd!=null?(" · total $"+Number(e.spent_usd).toFixed(2)):"");
+    else if(e.event==="learn")d=(e.proposed>0?(e.proposed+" charter amendment"+(e.proposed==1?"":"s")+" proposed"):"no amendments")+(e.out?(" · "+e.out.split("/").pop()):"");
     r.append(el("span","dt",d));f.append(r);
   });
   const p=$("#plan");p.innerHTML="";

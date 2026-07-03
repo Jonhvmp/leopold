@@ -22,6 +22,7 @@ export interface InsightsReport {
   critical: number;
   reviews: { total: number; blocked: number; clean: number; sensitive: number; panel: number };
   hypotheses: { runs: number; survivors: number };
+  learnProposed?: number;
   guardBlocks: number;
   escalations: number;
   decisions: number;
@@ -68,6 +69,9 @@ export function summarize(lines: string[], state: Record<string, unknown> = {}):
       case "hypothesis":
         r.hypotheses.runs += 1;
         if (typeof e.theory === "string" && e.theory) r.hypotheses.survivors += 1;
+        break;
+      case "learn":
+        r.learnProposed = num(e.proposed);
         break;
       case "guard_block": r.guardBlocks += 1; break;
       case "cost": r.costUsd += num(e.usd); break;
@@ -120,6 +124,7 @@ export function renderInsights(r: InsightsReport): string {
     `Review gate      ${r.reviews.total} run · ${r.reviews.clean} clean · ${r.reviews.blocked} sent back  (${reviewRate}% first-pass clean)`,
     `                 ${r.reviews.sensitive} security-sensitive · ${r.reviews.panel} multi-lens panel`,
     `Root-cause panel ${r.hypotheses.runs} run · ${r.hypotheses.survivors} produced a lead`,
+    ...(r.learnProposed !== undefined ? [`Charter amendments ${r.learnProposed} proposed (learn-on-finish)`] : []),
     `Decisions logged ${r.decisions}     Escalations ${r.escalations}     Guard blocks ${r.guardBlocks}`,
   ].join("\n");
 }

@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Learn-on-finish closes the loop.** The SDK driver can now mine a run the moment it
+  finishes cleanly and propose charter amendments — `learnFromRun` reads the just-written
+  `DECISIONS.md` (plus archived runs) and the repo's git history, runs two miners, a
+  cluster pass, and one kill-biased skeptic per candidate, then writes
+  `.leopold/CHARTER-amendments.md`. It never edits `CHARTER.md`. Opt-in via
+  `--learn-on-finish` / `LEOPOLD_LEARN_ON_FINISH=1` / `learn_on_finish: on` in GUARDRAILS.
+  The completion notice and `leopold insights` report the proposed count; the dashboard
+  renders the `learn` event.
+- **GUARDRAILS.md drives the orchestration toggles.** `review`, `hypotheses`,
+  `smart_routing`, and `learn_on_finish` can be set in the brief's GUARDRAILS.md
+  (`key: on|off`), so the posture lives with the brief. Precedence is explicit CLI flag /
+  env var > GUARDRAILS > built-in default (`boolFrom` + `resolveBool`, unit-tested).
+
 ## [0.10.0] - 2026-07-03
 
 ### Added

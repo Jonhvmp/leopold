@@ -20,6 +20,7 @@ import { classifyItem } from "./classify.js";
 import { smartRoute } from "./route.js";
 import { reviewItem, diffIsSensitive, lensesFor } from "./review.js";
 import { rootCausePanel, formatLead } from "./hypotheses.js";
+import { learnFromRun } from "./learn.js";
 import { parsePlanFile, readyItems, allDone, setItemDone, type PlanItem } from "./plan.js";
 import { headSha, diffAgainst, applyStaged } from "./git.js";
 import type { Brief, DriverConfig, RunState, WorkerStatus } from "./types.js";
@@ -55,6 +56,23 @@ async function leadForRetry(
     ? `  panel -> survivor (${panel.survivor?.angle}, ${panel.survivor?.confidence}/10): ${panel.survivor?.theory}`
     : `  panel -> no hypothesis survived refutation (${panel.considered} considered)`);
   return lead;
+}
+
+/** On a clean finish, optionally mine the run into proposed charter amendments.
+ *  Returns a human-facing note to append to the completion message (empty if off
+ *  or nothing survived). Best-effort — never throws into the finish path. */
+async function maybeLearn(cfg: DriverConfig, brief: Brief): Promise<string> {
+  if (!cfg.learnOnFinish) return "";
+  console.log("learn-on-finish: mining this run for charter amendments…");
+  const r = await learnFromRun(cfg, brief);
+  logEvent(brief.leoDir, { event: "learn", proposed: r.proposed, out: r.outPath });
+  if (r.proposed === 0) {
+    console.log("  learn -> no amendments proposed (the charter already covers this run).");
+    return "\n\nlearn-on-finish: no charter amendments — the charter already fits how this run decided.";
+  }
+  console.log(`  learn -> ${r.proposed} amendment(s) proposed in ${r.outPath}`);
+  return `\n\nlearn-on-finish proposed ${r.proposed} charter amendment(s) in .leopold/CHARTER-amendments.md:\n` +
+    r.rules.map((x) => `  • ${x}`).join("\n") + `\nReview and fold in what sounds like you; the charter itself was not touched.`;
 }
 
 /** Run one plan item to completion in `cwd`: classify → conduct → review gate.
@@ -129,8 +147,10 @@ async function processItem(
 }
 
 export async function runDriver(cwd: string, argv: string[]): Promise<void> {
-  const cfg = loadConfig(argv);
   const brief = loadBrief(cwd);
+  // Config honors the brief's GUARDRAILS.md for its toggles (review, hypotheses,
+  // smart_routing, learn_on_finish), with CLI/env taking precedence.
+  const cfg = loadConfig(argv, brief.guardrails);
 
   if (cfg.dryRun) {
     console.log("DRY RUN — brief loaded, no workers will run.\n");
@@ -217,9 +237,10 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
 
     const item = nextOpenItem(brief.planPath);
     if (!item) {
+      const learnNote = await maybeLearn(cfg, brief);
       stop("plan_complete");
       await notify(brief.leoDir, cfg.webhookUrl, "Leopold finished",
-        `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.`);
+        `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.${learnNote}`);
       return;
     }
 
@@ -358,6 +379,9 @@ async function runParallel(
 
   // Let in-flight items settle before tearing down.
   await Promise.allSettled(running.values());
+
+  // Mine the run BEFORE stop() — on_finish:archive moves DECISIONS.md out of place.
+  const learnNote = stopReason === "plan_complete" ? await maybeLearn(cfg, brief) : "";
   stop(stopReason ?? "plan_complete");
 
   const tail = conflicts ? ` ${conflicts} item(s) need manual merge (worktrees kept).` : "";
@@ -367,7 +391,7 @@ async function runParallel(
       `The run is paused. Make the call, adjust PLAN.md or CHARTER.md, then re-run.${tail}`);
   } else if (stopReason === "plan_complete") {
     await notify(brief.leoDir, cfg.webhookUrl, "Leopold finished",
-      `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.${tail}`);
+      `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.${tail}${learnNote}`);
   } else if (stopReason === "budget_exceeded") {
     await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped",
       `Budget reached: $${(state.spent_usd ?? 0).toFixed(2)} of $${cfg.budgetUsd?.toFixed(2)}. Work so far is staged.${tail}`);
