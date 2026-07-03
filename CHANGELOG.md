@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Dynamic-workflow phase tree in `leopold-watch`.** The dashboard now discovers the
+  native dynamic-workflow runs for the project (`~/.claude/projects/<slug>/<session>/
+  workflows/wf_*.json`) and renders a live phase tree: each run with its status, agent
+  count, token and tool totals, and duration; each phase with its done/running counts
+  and token sum; each agent with a status dot (running pulses), label, tokens, tool
+  calls, and its last tool summary. Read-only, cached by mtime, best-effort (a missing
+  or malformed run is skipped), and the card hides itself when there are no workflow
+  runs — so a plain `/leopold-run` dashboard is unchanged.
 - **Learn-on-finish closes the loop.** The SDK driver can now mine a run the moment it
   finishes cleanly and propose charter amendments — `learnFromRun` reads the just-written
   `DECISIONS.md` (plus archived runs) and the repo's git history, runs two miners, a
