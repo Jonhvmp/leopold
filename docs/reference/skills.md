@@ -1,7 +1,8 @@
 # Skills
 
-Leopold ships four Claude Code skills, installed to `~/.claude/skills/`. They are
-authored in the gstack-compatible format (frontmatter + markdown body).
+Leopold ships a family of Claude Code skills, installed to `~/.claude/skills/`. They
+are authored in the gstack-compatible format (frontmatter + markdown body). The core
+skills are documented below.
 
 ```mermaid
 flowchart LR

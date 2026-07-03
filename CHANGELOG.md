@@ -4,9 +4,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2026-07-03
 
 ### Added
+- **Mock-runtime test harness for the workflow scripts.** The four reference
+  `*.workflow.js` scripts (leopold-run, leopold-learn, leopold-triage,
+  plan-tournament) are now executed against deterministic `agent`/`pipeline`/
+  `parallel` stubs that record every call, so their real control flow is asserted —
+  dependency-wave order and lens escalation (leopold-run), disjoint-source miner
+  fan-out and the kill-biased skeptic (leopold-learn), the quarantine boundary
+  (leopold-triage: an injection marker reaches the classifier but never the
+  repo-capable fix planner), and tournament scoring/synthesis. A static validator
+  additionally asserts every script has a pure-literal `meta` and no filesystem/shell/
+  module access. Driver suite: 63 → 93 tests.
 - **Diverse-lens review panel (driver).** The per-item review gate is now a panel of
   independent skeptics with distinct lenses instead of 1–2 identical reviewers:
   correctness always; +security on sensitive diffs; +does-it-actually-work on critical
@@ -44,6 +54,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard: the new events render.** `leopold-watch` now shows `review` (clean/blocking
   + panel composition), `hypothesis` (surviving theory + confidence), `item_start/done/
   incomplete`, `merge_conflict`, and `cost` with real detail lines and severities.
+
+### Changed
+- **`leopold insights` tracks the panel, not the old second-opinion flag.** The review
+  summary now counts multi-lens panels (`lenses>=2`, with the archived `second_opinion`
+  flag still honored) and adds a root-cause panel line (runs / leads produced).
 - **`/leopold-workflow` — the brief, compiled into a dynamic workflow.** A new Phase-2
   engine that turns the durable brief into a [dynamic workflow](https://code.claude.com/docs/en/workflows):
   a JavaScript harness Claude Code's runtime executes in the background. `PLAN.md` is

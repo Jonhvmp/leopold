@@ -12,9 +12,10 @@ const EVENTS = [
   '{"ts":"2026-06-27T10:00:05Z","event":"item_start","item":"b","effort":"max","critical":true}',
   '{"ts":"2026-06-27T10:00:06Z","event":"review","item":"b","ok":false,"blocking":2,"sensitive":true,"second_opinion":true}',
   '{"ts":"2026-06-27T10:00:07Z","event":"cost","item":"b","usd":0.40}',
-  '{"ts":"2026-06-27T10:00:08Z","event":"review","item":"b","ok":true,"blocking":0,"sensitive":true,"second_opinion":true}',
-  '{"ts":"2026-06-27T10:00:09Z","event":"item_done","item":"b","applied":false}',
-  '{"ts":"2026-06-27T10:00:10Z","event":"guard_block","tool":"Bash"}',
+  '{"ts":"2026-06-27T10:00:08Z","event":"review","item":"b","ok":true,"blocking":0,"sensitive":true,"lenses":3,"panel":"correctness+security+does-it-actually-work"}',
+  '{"ts":"2026-06-27T10:00:09Z","event":"hypothesis","item":"b","considered":3,"survived":1,"angle":"verify","confidence":8,"theory":"the flag was off"}',
+  '{"ts":"2026-06-27T10:00:10Z","event":"item_done","item":"b","applied":false}',
+  '{"ts":"2026-06-27T10:00:11Z","event":"guard_block","tool":"Bash"}',
 ];
 
 test("summarize aggregates items, effort, reviews, cost", () => {
@@ -29,7 +30,10 @@ test("summarize aggregates items, effort, reviews, cost", () => {
   assert.equal(r.reviews.clean, 2);
   assert.equal(r.reviews.blocked, 1);
   assert.equal(r.reviews.sensitive, 2);
-  assert.equal(r.reviews.secondOpinion, 2);
+  // Panel counts both the old `second_opinion` flag and the new `lenses>=2` shape.
+  assert.equal(r.reviews.panel, 2);
+  assert.equal(r.hypotheses.runs, 1);
+  assert.equal(r.hypotheses.survivors, 1);
   assert.equal(r.guardBlocks, 1);
   assert.equal(r.costUsd, 0.52); // state spend wins when higher
   assert.equal(r.stoppedReason, "plan_complete");
