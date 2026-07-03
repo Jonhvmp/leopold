@@ -12,31 +12,31 @@
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/gstack-playbook/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/concepts/dynamic-workflows/">
       
       
-        <link rel="prev" href="../run-isolation/">
+        <link rel="prev" href="../two-phases/">
       
       
-        <link rel="next" href="../architecture/">
+        <link rel="next" href="../../quality-and-orchestration/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>gstack Playbook - Leopold</title>
+        <title>Dynamic Workflows - Leopold</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -55,7 +55,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gstack-playbook" class="md-skip">
+        <a href="#dynamic-workflows" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href="../.." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              gstack Playbook
+              Dynamic Workflows
             
           </span>
         </div>
@@ -228,7 +228,7 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -249,7 +249,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../getting-started/install/" class="md-tabs__link">
+        <a href="../../getting-started/install/" class="md-tabs__link">
           
   
   
@@ -273,7 +273,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../concepts/harness/" class="md-tabs__link">
+        <a href="../harness/" class="md-tabs__link">
           
   
   
@@ -295,7 +295,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
+        <a href="../../architecture/" class="md-tabs__link">
           
   
   
@@ -317,7 +317,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../reference/skills/" class="md-tabs__link">
+        <a href="../../reference/skills/" class="md-tabs__link">
           
   
   
@@ -339,7 +339,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../comparisons/ralph/" class="md-tabs__link">
+        <a href="../../comparisons/ralph/" class="md-tabs__link">
           
   
   
@@ -359,7 +359,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../roadmap/" class="md-tabs__link">
+      <a href="../../roadmap/" class="md-tabs__link">
         
   
   
@@ -378,7 +378,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../contributing/" class="md-tabs__link">
+      <a href="../../contributing/" class="md-tabs__link">
         
   
   
@@ -419,7 +419,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href="../.." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -449,7 +449,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -538,7 +538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/install/" class="md-nav__link">
+      <a href="../../getting-started/install/" class="md-nav__link">
         
   
   
@@ -566,7 +566,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
@@ -594,7 +594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/first-run/" class="md-nav__link">
+      <a href="../../getting-started/first-run/" class="md-nav__link">
         
   
   
@@ -622,7 +622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/toolchain-manager/" class="md-nav__link">
+      <a href="../../getting-started/toolchain-manager/" class="md-nav__link">
         
   
   
@@ -734,7 +734,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/harness/" class="md-nav__link">
+      <a href="../harness/" class="md-nav__link">
         
   
   
@@ -762,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/two-phases/" class="md-nav__link">
+      <a href="../two-phases/" class="md-nav__link">
         
   
   
@@ -770,174 +770,6 @@
     
   
     The Two Phases
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../concepts/dynamic-workflows/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dynamic Workflows
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../quality-and-orchestration/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quality & Orchestration
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../decision-protocol/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Decision Protocol
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../guardrails/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Guardrails
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cost-and-security/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cost & Security
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../run-isolation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Run Isolation
   
 
     
@@ -974,7 +806,7 @@
   <span class="md-ellipsis">
     
   
-    gstack Playbook
+    Dynamic Workflows
   
 
     
@@ -992,7 +824,7 @@
   <span class="md-ellipsis">
     
   
-    gstack Playbook
+    Dynamic Workflows
   
 
     
@@ -1020,10 +852,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install-gstack-optional" class="md-nav__link">
+  <a href="#the-brief-compiled" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install gstack (optional)
+        The brief, compiled
       
     </span>
   </a>
@@ -1031,10 +863,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-leopold-uses-it" class="md-nav__link">
+  <a href="#three-ways-to-run-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How Leopold uses it
+        Three ways to run it
       
     </span>
   </a>
@@ -1042,10 +874,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-map" class="md-nav__link">
+  <a href="#watching-a-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The map
+        Watching a run
       
     </span>
   </a>
@@ -1053,21 +885,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#decision-review-skills-as-a-decide-for-me-tool" class="md-nav__link">
+  <a href="#related-patterns-as-skills" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision-review skills as a "decide for me" tool
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#gating" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gating
+        Related patterns as skills
       
     </span>
   </a>
@@ -1078,6 +899,174 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality-and-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality & Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decision-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guardrails/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cost-and-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../run-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gstack-playbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    gstack Playbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1159,7 +1148,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   
@@ -1187,7 +1176,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/in-session/" class="md-nav__link">
+      <a href="../../architecture/in-session/" class="md-nav__link">
         
   
   
@@ -1215,7 +1204,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/driver/" class="md-nav__link">
+      <a href="../../architecture/driver/" class="md-nav__link">
         
   
   
@@ -1243,7 +1232,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/protocol/" class="md-nav__link">
+      <a href="../../architecture/protocol/" class="md-nav__link">
         
   
   
@@ -1340,7 +1329,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/skills/" class="md-nav__link">
+      <a href="../../reference/skills/" class="md-nav__link">
         
   
   
@@ -1368,7 +1357,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/hooks/" class="md-nav__link">
+      <a href="../../reference/hooks/" class="md-nav__link">
         
   
   
@@ -1396,7 +1385,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/artifacts/" class="md-nav__link">
+      <a href="../../reference/artifacts/" class="md-nav__link">
         
   
   
@@ -1424,7 +1413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/driver-config/" class="md-nav__link">
+      <a href="../../reference/driver-config/" class="md-nav__link">
         
   
   
@@ -1515,7 +1504,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../comparisons/ralph/" class="md-nav__link">
+      <a href="../../comparisons/ralph/" class="md-nav__link">
         
   
   
@@ -1550,7 +1539,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../roadmap/" class="md-nav__link">
+      <a href="../../roadmap/" class="md-nav__link">
         
   
   
@@ -1577,7 +1566,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1626,10 +1615,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install-gstack-optional" class="md-nav__link">
+  <a href="#the-brief-compiled" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install gstack (optional)
+        The brief, compiled
       
     </span>
   </a>
@@ -1637,10 +1626,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-leopold-uses-it" class="md-nav__link">
+  <a href="#three-ways-to-run-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How Leopold uses it
+        Three ways to run it
       
     </span>
   </a>
@@ -1648,10 +1637,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-map" class="md-nav__link">
+  <a href="#watching-a-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The map
+        Watching a run
       
     </span>
   </a>
@@ -1659,21 +1648,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#decision-review-skills-as-a-decide-for-me-tool" class="md-nav__link">
+  <a href="#related-patterns-as-skills" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decision-review skills as a "decide for me" tool
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#gating" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gating
+        Related patterns as skills
       
     </span>
   </a>
@@ -1700,147 +1678,93 @@
   
 
 
-<h1 id="gstack-playbook">gstack Playbook<a class="headerlink" href="#gstack-playbook" title="Permanent link">&para;</a></h1>
-<p>The playbook is how Leopold orchestrates the gstack skill library like a senior
-engineer: the right skill, at the right moment, without being told. The run
-skill consults this map; it is data, not hardcoded control flow, so you can edit
-it for your own workflow.</p>
-<p>If gstack is not installed, Leopold falls back to plain Claude Code and skips
-the skill column. Everything still runs; it just uses built-in tools instead of
-the gstack workflows.</p>
-<hr />
-<pre class="mermaid"><code>flowchart LR
-    Item["plan item"] --&gt; Kind{situation}
-    Kind -- "fuzzy build" --&gt; Spec["/spec"]
-    Kind -- "after a change" --&gt; Review["/code-review"]
-    Kind -- "behavior change" --&gt; Verify["/verify"]
-    Kind -- "UI change" --&gt; QA["/qa"]
-    Kind -- "something broke" --&gt; Inv["/investigate"]
-    Kind -- "unknown API" --&gt; Docs["/find-docs"]
-    Kind -- "ready to ship" --&gt; Ship["/ship · GATED"]
-    classDef gated fill:#e63946,stroke:#9d0208,color:#fff;
-    class Ship gated;</code></pre>
-<h2 id="install-gstack-optional">Install gstack (optional)<a class="headerlink" href="#install-gstack-optional" title="Permanent link">&para;</a></h2>
-<p>Leopold does not bundle gstack; it is a separate <a href="https://github.com/garrytan/gstack">MIT project by Garry Tan</a> with its own installer and self-update. Install it standalone so Leopold can conduct it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>gstack-install
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or the official one-liner (needs Bun v1.0+):</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git<span class="w"> </span>clone<span class="w"> </span>--single-branch<span class="w"> </span>--depth<span class="w"> </span><span class="m">1</span><span class="w"> </span>https://github.com/garrytan/gstack.git<span class="w"> </span>~/.claude/skills/gstack<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>~/.claude/skills/gstack<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./setup
+<h1 id="dynamic-workflows">Dynamic Workflows<a class="headerlink" href="#dynamic-workflows" title="Permanent link">&para;</a></h1>
+<p>Leopold sits on top of Claude Code's <a href="https://code.claude.com/docs/en/workflows">dynamic workflows</a>.
+A dynamic workflow is a JavaScript script that orchestrates subagents at scale: the
+plan lives in <strong>code</strong>, not in one growing context window, so a long run doesn't drift
+into the failure modes a single context is prone to — agentic laziness (stopping at 35
+of 50 items), self-preferential bias (grading its own work), and goal drift (losing the
+charter across compactions). Leopold stays the governed autonomy layer — a durable
+brief, a charter that decides, a locked git — and uses workflows as an execution
+substrate.</p>
+<p>There are three ways to run a Leopold brief as a workflow, sharing one compiled shape.</p>
+<h2 id="the-brief-compiled">The brief, compiled<a class="headerlink" href="#the-brief-compiled" title="Permanent link">&para;</a></h2>
+<p><code>PLAN.md</code> becomes <strong>dependency waves</strong>: wave 1 is every item with no unmet dependency,
+wave 2 is every item whose <code>(after: N)</code> dependencies are all in wave 1, and so on. Each
+item is risk-classified with the same keyword rules the driver uses everywhere —
+<code>effort</code> (<code>low</code> for a typo, <code>max</code> for a migration), <code>critical</code> (billing/auth/migrations,
+which earn a wider review panel), and <code>sensitive</code> (security-touching diffs). The result
+is the <code>args</code> the canonical workflow script consumes:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;mission&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;…&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;charter&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;…&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;maxReviewRounds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">&quot;waves&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;i1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Add a health endpoint&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;effort&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;medium&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;critical&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;sensitive&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">}],</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;i2&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Migrate the payments table&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;effort&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;max&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;critical&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;sensitive&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}]</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="p">]</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">}</span>
 </span></code></pre></div>
-<p><code>install.sh</code> offers to set it up if it is missing (or run <code>./install.sh --with-gstack</code>). It shines for planning: <code>/office-hours</code>, <code>/spec</code>, <code>/autoplan</code>, <code>/plan-ceo-review</code>, <code>/plan-eng-review</code>, <code>/plan-design-review</code>.</p>
-<h2 id="how-leopold-uses-it">How Leopold uses it<a class="headerlink" href="#how-leopold-uses-it" title="Permanent link">&para;</a></h2>
-<p>During a turn, after picking a plan item, Leopold matches the item's <em>situation</em>
-to a row below and reaches for that skill. Skills run under the gstack
-spawned-session protocol (see <code>setup</code>), so they auto-decide instead of prompting.</p>
-<p>The match is by intent, not keyword. "Add a settings page" is a <em>build</em> situation
-even if it never says "build".</p>
-<hr />
-<h2 id="the-map">The map<a class="headerlink" href="#the-map" title="Permanent link">&para;</a></h2>
+<p>The canonical script runs each item <strong>implement → diverse-lens adversarial verify →
+fix</strong>, looping up to <code>maxReviewRounds</code>, with the items in a wave run serially (safe on a
+single working tree) and each item's review fan-out run in parallel (read-only). Git is
+locked for free — a workflow can't commit; it stages, you commit.</p>
+<h2 id="three-ways-to-run-it">Three ways to run it<a class="headerlink" href="#three-ways-to-run-it" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Situation</th>
-<th>gstack skill</th>
-<th>When in the loop</th>
+<th>Path</th>
+<th>Who runs it</th>
+<th>When</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>About to build something non-trivial, scope still fuzzy</td>
-<td><code>/spec</code></td>
-<td>Before writing code, to turn intent into an executable spec</td>
+<td><strong><code>/leopold-workflow</code></strong> (skill)</td>
+<td>The native runtime, from a Claude Code session</td>
+<td>Interactive; you watch it in <code>/workflows</code></td>
 </tr>
 <tr>
-<td>Implementing a planned item</td>
-<td>(plain Claude Code)</td>
-<td>The work itself</td>
+<td><strong><code>leopold-driver workflow</code></strong></td>
+<td>Emits <code>.claude/workflows/leopold-run.js</code> + <code>.leopold/workflow-args.json</code>, deterministically</td>
+<td>CI/scripts that compile now and run later</td>
 </tr>
 <tr>
-<td>Just finished a code change</td>
-<td><code>/code-review</code></td>
-<td>Right after, to catch bugs and reuse/efficiency issues</td>
-</tr>
-<tr>
-<td>Want quality cleanup without bug hunting</td>
-<td><code>/simplify</code></td>
-<td>After review, optional</td>
-</tr>
-<tr>
-<td>Need to confirm a change actually works</td>
-<td><code>/verify</code></td>
-<td>After implementing a behavior change</td>
-</tr>
-<tr>
-<td>UI / frontend change</td>
-<td><code>/qa</code></td>
-<td>After building user-facing behavior</td>
-</tr>
-<tr>
-<td>Hit a bug or unexplained failure</td>
-<td><code>/investigate</code></td>
-<td>The moment something breaks</td>
-</tr>
-<tr>
-<td>Stuck on the same failure 2+ turns</td>
-<td><code>/investigate</code> (deeper)</td>
-<td>Before the repeated-failure stop condition fires</td>
-</tr>
-<tr>
-<td>Plan/architecture decision is heavy</td>
-<td><code>/plan-eng-review</code></td>
-<td>At a fork the charter does not cover (and it is reversible)</td>
-</tr>
-<tr>
-<td>Product/scope decision is heavy</td>
-<td><code>/plan-ceo-review</code></td>
-<td>Same, for product-shaped forks</td>
-</tr>
-<tr>
-<td>Design/UX decision is heavy</td>
-<td><code>/plan-design-review</code></td>
-<td>Same, for design-shaped forks</td>
-</tr>
-<tr>
-<td>Researching an unfamiliar library/API</td>
-<td><code>/find-docs</code></td>
-<td>Before guessing at an API</td>
-</tr>
-<tr>
-<td>Multi-source research needed</td>
-<td><code>/deep-research</code></td>
-<td>When the item needs external investigation</td>
-</tr>
-<tr>
-<td>Item is done and human wants it shipped</td>
-<td><code>/ship</code></td>
-<td><strong>Gated</strong> — never autonomous; only after opt-in</td>
-</tr>
-<tr>
-<td>Need to checkpoint progress</td>
-<td>(stage only)</td>
-<td><strong>Gated</strong> — staging is fine, commit needs <code>ALLOW_GIT</code></td>
+<td><strong><code>leopold-driver workflow --run</code></strong></td>
+<td>The experimental in-driver runtime, headless</td>
+<td>Cron/CI, no interactive session (alpha)</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="decision-review-skills-as-a-decide-for-me-tool">Decision-review skills as a "decide for me" tool<a class="headerlink" href="#decision-review-skills-as-a-decide-for-me-tool" title="Permanent link">&para;</a></h2>
-<p>A useful trick: when Leopold hits a reversible fork the charter does not directly
-cover, it can run the relevant <code>/plan-*-review</code> skill in spawned mode. Those
-skills auto-decide using their own principles and report a recommendation.
-Leopold takes the recommendation, logs it as a taste decision in <code>DECISIONS.md</code>,
-and continues. This is how Leopold "asks itself" instead of asking you.</p>
-<p>For genuinely irreversible-and-ambiguous forks, the review's recommendation is
-<strong>not</strong> enough; the decision protocol still routes those to the human.</p>
-<hr />
-<h2 id="gating">Gating<a class="headerlink" href="#gating" title="Permanent link">&para;</a></h2>
-<p>Two playbook rows are gated and never run autonomously, no matter how well they
-fit the situation:</p>
+<p>The <code>/leopold-workflow</code> skill compiles the brief and launches it on the native runtime.
+<code>leopold-driver workflow</code> does the <strong>same compilation as tested code</strong> (not model-driven)
+and emits the script + args so the compilation is reproducible and CI-checkable. Its
+<code>--run</code> flag executes the emitted script through an experimental SDK-side runtime that
+implements the same <code>agent</code>/<code>pipeline</code>/<code>parallel</code>/<code>phase</code>/<code>log</code>/<code>budget</code> globals with a
+real concurrency cap — the orchestration engine is unit-tested; the agent call is a thin
+query-backed shim.</p>
+<div class="admonition note">
+<p class="admonition-title">Status</p>
+<p><code>--run</code> is experimental, consistent with the SDK driver's alpha posture: the
+orchestration is unit-tested, but the query-backed agent is not yet exercised
+end-to-end. The compile/emit path is deterministic and fully tested.</p>
+</div>
+<h2 id="watching-a-run">Watching a run<a class="headerlink" href="#watching-a-run" title="Permanent link">&para;</a></h2>
+<p>The <a href="../../getting-started/first-run/">watch dashboard</a> discovers the native runtime's own
+run files and renders a live <strong>phase tree</strong>: each run with its status, agent count, and
+token/tool totals; each phase with its done/running counts; each agent with a status dot
+(running pulses), label, tokens, tool calls, and its last tool. When a project has no
+workflow runs, the panel hides itself.</p>
+<h2 id="related-patterns-as-skills">Related patterns as skills<a class="headerlink" href="#related-patterns-as-skills" title="Permanent link">&para;</a></h2>
+<p>Leopold ships other dynamic-workflow harnesses beyond the run engine:</p>
 <ul>
-<li><code>/ship</code> — it commits, pushes, and opens PRs. Blocked by the guardrail hook.</li>
-<li>any commit/push step — staging is autonomous; committing needs <code>ALLOW_GIT</code>.</li>
+<li><strong><code>/leopold-learn</code></strong> — mine a run's decisions, session transcripts, and git history for
+  recurring judgment calls; a skeptic kills the weak candidates; survivors become proposed
+  charter amendments. The SDK driver can run this automatically on a clean finish
+  (<code>learn_on_finish</code>).</li>
+<li><strong><code>/leopold-triage</code></strong> — triage a backlog with the <em>quarantine</em> pattern: agents that read
+  untrusted content have no repo access and only emit structured fields.</li>
+<li><strong>Plan by tournament</strong> in <code>/leopold-brief</code> — three drafters, two judges, one synthesizer.</li>
 </ul>
-<p>If the plan reaches a point where shipping is the next logical step, Leopold
-stops with a "ready to ship" summary and hands the seat back. Shipping is your
-call.</p>
+<p>See <a href="../../reference/skills/">Skills</a> for each.</p>
 
 
 
@@ -1878,7 +1802,7 @@ call.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../run-isolation/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Run Isolation">
+          <a href="../two-phases/" class="md-footer__link md-footer__link--prev" aria-label="Previous: The Two Phases">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1888,20 +1812,20 @@ call.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Run Isolation
+                The Two Phases
               </div>
             </div>
           </a>
         
         
           
-          <a href="../architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+          <a href="../../quality-and-orchestration/" class="md-footer__link md-footer__link--next" aria-label="Next: Quality &amp; Orchestration">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Overview
+                Quality & Orchestration
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1953,10 +1877,10 @@ call.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

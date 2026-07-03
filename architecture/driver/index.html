@@ -671,6 +671,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -779,6 +785,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../concepts/dynamic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../quality-and-orchestration/" class="md-nav__link">
         
   
@@ -843,6 +877,62 @@
     
   
     Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cost-and-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../run-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Isolation
   
 
     
@@ -1109,6 +1199,28 @@
     <span class="md-ellipsis">
       
         Auth: your Claude Code, not an API key
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quality-machinery-around-each-item" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality machinery around each item
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-workflow-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The workflow path
       
     </span>
   </a>
@@ -1558,6 +1670,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quality-machinery-around-each-item" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality machinery around each item
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-workflow-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The workflow path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1618,7 +1752,7 @@ both worlds — fresh context per task, plus a conductor holding the thread.</p>
 <tbody>
 <tr>
 <td><code>loop.ts</code></td>
-<td>the orchestration loop; burns down the plan, applies stop conditions</td>
+<td>the orchestration loop; burns down the plan (serial or <code>--parallel</code>), applies stop conditions</td>
 </tr>
 <tr>
 <td><code>worker.ts</code></td>
@@ -1627,6 +1761,46 @@ both worlds — fresh context per task, plus a conductor holding the thread.</p>
 <tr>
 <td><code>conductor.ts</code></td>
 <td>reads a worker status, decides from the charter (structured verdict)</td>
+</tr>
+<tr>
+<td><code>review.ts</code></td>
+<td>the diverse-lens review panel (correctness / security / does-it-actually-work)</td>
+</tr>
+<tr>
+<td><code>hypotheses.ts</code></td>
+<td>the root-cause panel: disjoint-evidence investigators + refuters on a retry</td>
+</tr>
+<tr>
+<td><code>classify.ts</code></td>
+<td>deterministic per-item risk → effort / critical / sensitive</td>
+</tr>
+<tr>
+<td><code>route.ts</code></td>
+<td>opt-in smart routing: research the item's real blast radius (keyword fallback)</td>
+</tr>
+<tr>
+<td><code>learn.ts</code></td>
+<td>learn-on-finish: mine the run into proposed charter amendments</td>
+</tr>
+<tr>
+<td><code>compile.ts</code></td>
+<td>brief→workflow compiler: <code>PLAN.md</code> → dependency waves + classified <code>args</code></td>
+</tr>
+<tr>
+<td><code>runtime.ts</code></td>
+<td>experimental in-driver workflow runtime (<code>agent</code>/<code>pipeline</code>/<code>parallel</code>/<code>budget</code>)</td>
+</tr>
+<tr>
+<td><code>workflow-cmd.ts</code></td>
+<td>the <code>leopold workflow</code> subcommand (emit / <code>--print</code> / <code>--run</code>)</td>
+</tr>
+<tr>
+<td><code>plan.ts</code></td>
+<td><code>PLAN.md</code> as a dependency-aware work list</td>
+</tr>
+<tr>
+<td><code>worktree.ts</code> / <code>git.ts</code></td>
+<td>per-item worktree isolation + staged-patch replay</td>
 </tr>
 <tr>
 <td><code>channel.ts</code></td>
@@ -1642,7 +1816,15 @@ both worlds — fresh context per task, plus a conductor holding the thread.</p>
 </tr>
 <tr>
 <td><code>config.ts</code></td>
-<td>loads the brief and run config</td>
+<td>loads the brief and run config (CLI/env &gt; GUARDRAILS &gt; defaults)</td>
+</tr>
+<tr>
+<td><code>budget.ts</code> / <code>secrets.ts</code> / <code>reaper.ts</code></td>
+<td>USD hard-stop, encrypted vault, orphan-run reaper</td>
+</tr>
+<tr>
+<td><code>insights.ts</code></td>
+<td><code>events.jsonl</code> → post-run report</td>
 </tr>
 <tr>
 <td><code>log.ts</code></td>
@@ -1664,13 +1846,34 @@ Claude Code auth.</p>
     SDK --&gt; Auth["your Claude Code login&lt;br/&gt;(subscription)"]
     Auth --&gt; Worker["worker"]
     Auth --&gt; Conductor["conductor"]</code></pre>
+<h2 id="quality-machinery-around-each-item">Quality machinery around each item<a class="headerlink" href="#quality-machinery-around-each-item" title="Permanent link">&para;</a></h2>
+<p>An item doesn't just run — it is classified, conducted, and gated:</p>
+<ol>
+<li><strong>Classify</strong> (<code>classify.ts</code>, or <code>route.ts</code> with <code>--smart-routing</code>) sets the worker's
+   reasoning effort and marks critical/sensitive items.</li>
+<li><strong>Conduct</strong> — the persistent conductor answers every worker status from the charter.</li>
+<li><strong>Review panel</strong> (<code>review.ts</code>) — independent skeptics with distinct lenses read the
+   diff; blocking findings go back to the worker, unparseable verdicts fail closed.</li>
+<li><strong>On a retry</strong> (<code>hypotheses.ts</code>) — a root-cause panel forms hypotheses over disjoint
+   evidence and hands the next attempt a concrete lead.</li>
+<li><strong>On a clean finish</strong> (<code>learn.ts</code>, opt-in) — the run is mined into proposed charter
+   amendments; <code>CHARTER.md</code> itself is never edited.</li>
+</ol>
+<h2 id="the-workflow-path">The workflow path<a class="headerlink" href="#the-workflow-path" title="Permanent link">&para;</a></h2>
+<p><code>leopold workflow</code> compiles the same brief into a <a href="../../concepts/dynamic-workflows/">dynamic
+workflow</a>: <code>compile.ts</code> turns <code>PLAN.md</code> into dependency
+waves with per-item classification (deterministic, unit-tested), emits
+<code>.claude/workflows/leopold-run.js</code> + <code>.leopold/workflow-args.json</code>, and <code>--run</code> executes it
+headlessly through <code>runtime.ts</code> — an experimental executor for the workflow globals with a
+real concurrency cap and the same git guard.</p>
 <h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
-<p>Alpha. Verified: typechecks against <code>@anthropic-ai/claude-agent-sdk</code>, the CLI and
-dry-run work, and the status parser + <code>canUseTool</code> guard have unit tests
-(<code>make driver-test</code>) covering the same bypass attempts as the bash guard's red-team
-suite. Roadmap: a watchdog for
-a worker that ends a turn without a status block, parallel multi-worker waves, and
-a live dashboard.</p>
+<p>Alpha. Verified: typechecks against <code>@anthropic-ai/claude-agent-sdk</code>; 113 unit tests
+(<code>make driver-test</code>) cover the status parser, the <code>canUseTool</code> guard (same bypass attempts
+as the bash red-team suite), classification, review-panel helpers, the hypothesis and learn
+parsers, the brief→workflow compiler, and the experimental runtime's orchestration; and a
+CLI smoke test (<code>make driver-smoke</code>) executes the built binary end to end against a fixture
+brief on every CI run (Ubuntu + macOS). The <code>workflow --run</code> query shim is the one path not
+exercised end to end — experimental by design.</p>
 <p>See <a href="../../reference/driver-config/">Driver Config</a> to run it, and the
 <a href="../protocol/">Conductor &amp; Worker Protocol</a> for the exchange.</p>
 

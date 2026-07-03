@@ -769,6 +769,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -877,6 +883,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../concepts/dynamic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../quality-and-orchestration/" class="md-nav__link">
         
   
@@ -941,6 +975,62 @@
     
   
     Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cost-and-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../run-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Isolation
   
 
     
@@ -1615,6 +1705,13 @@ this brief, so take your time here.</p>
 </span></code></pre></div>
 <p>Leopold flips into autonomous mode, picks the first open plan item, and starts
 working. From here it decides forks from your charter and keeps going on its own.</p>
+<div class="admonition tip">
+<p class="admonition-title">Large or parallelizable plan? Compile it into a workflow</p>
+<p><code>/leopold-workflow</code> runs the same brief as a
+<a href="../../concepts/dynamic-workflows/">dynamic workflow</a>: the plan lives in code,
+every item gets an independent adversarial review, and the run streams a live
+phase tree into <code>/workflows</code>. Use <code>/leopold-run</code> for short or interactive plans.</p>
+</div>
 <h2 id="3-watch-optional">3. Watch (optional)<a class="headerlink" href="#3-watch-optional" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>/leopold-status
 </span></code></pre></div>

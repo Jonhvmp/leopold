@@ -671,6 +671,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -779,6 +785,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../concepts/dynamic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../quality-and-orchestration/" class="md-nav__link">
         
   
@@ -843,6 +877,62 @@
     
   
     Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cost-and-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../run-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Isolation
   
 
     
@@ -1230,6 +1320,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#leopold-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leopold-learn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-learn
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leopold-triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-triage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#leopold-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1547,6 +1670,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#leopold-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leopold-learn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-learn
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leopold-triage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-triage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#leopold-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1589,12 +1745,17 @@
 
 
 <h1 id="skills">Skills<a class="headerlink" href="#skills" title="Permanent link">&para;</a></h1>
-<p>Leopold ships four Claude Code skills, installed to <code>~/.claude/skills/</code>. They are
-authored in the gstack-compatible format (frontmatter + markdown body).</p>
+<p>Leopold ships a family of Claude Code skills, installed to <code>~/.claude/skills/</code>. They
+are authored in the gstack-compatible format (frontmatter + markdown body). The core
+skills are documented below.</p>
 <pre class="mermaid"><code>flowchart LR
-    B["/leopold-brief&lt;br/&gt;&lt;small&gt;Phase 1&lt;/small&gt;"] --&gt; R["/leopold-run&lt;br/&gt;&lt;small&gt;Phase 2&lt;/small&gt;"]
+    B["/leopold-brief&lt;br/&gt;&lt;small&gt;Phase 1&lt;/small&gt;"] --&gt; R["/leopold-run&lt;br/&gt;&lt;small&gt;Phase 2 · loop&lt;/small&gt;"]
+    B --&gt; W["/leopold-workflow&lt;br/&gt;&lt;small&gt;Phase 2 · workflow&lt;/small&gt;"]
     R --&gt; S["/leopold-status&lt;br/&gt;&lt;small&gt;watch&lt;/small&gt;"]
-    R --&gt; X["/leopold-stop&lt;br/&gt;&lt;small&gt;take back&lt;/small&gt;"]</code></pre>
+    R --&gt; X["/leopold-stop&lt;br/&gt;&lt;small&gt;take back&lt;/small&gt;"]
+    R --&gt; L["/leopold-learn&lt;br/&gt;&lt;small&gt;charter learns&lt;/small&gt;"]
+    W --&gt; L
+    T["/leopold-triage&lt;br/&gt;&lt;small&gt;backlog → plan&lt;/small&gt;"] --&gt; B</code></pre>
 <h2 id="leopold-brief"><code>/leopold-brief</code><a class="headerlink" href="#leopold-brief" title="Permanent link">&para;</a></h2>
 <p>Phase 1. A structured debate that captures the mission and your decision-making,
 then writes the brief (<code>MISSION</code>, <code>CHARTER</code>, <code>GUARDRAILS</code>, <code>PLAN</code>) to <code>.leopold/</code>.</p>
@@ -1608,6 +1769,51 @@ the turn loop. The Stop hook carries it forward; the guard hook locks git.</p>
 <ul>
 <li><strong>Preflight</strong> aborts if the brief is missing — run <code>/leopold-brief</code> first.</li>
 <li><strong>Behavior</strong> adopts spawned-session mode so gstack skills auto-decide.</li>
+</ul>
+<h2 id="leopold-workflow"><code>/leopold-workflow</code><a class="headerlink" href="#leopold-workflow" title="Permanent link">&para;</a></h2>
+<p>Phase 2, the workflow way. Compiles the same brief into a
+<a href="https://code.claude.com/docs/en/workflows">dynamic workflow</a> — a JavaScript harness
+Claude Code's runtime executes in the background — and runs it. The plan lives in code
+instead of one context window, so a long run doesn't drift into agentic laziness,
+self-preferential bias, or goal drift; each item gets an independent adversarial review.</p>
+<ul>
+<li><strong>Compiles</strong> <code>PLAN.md</code> into dependency-ordered waves and risk-classifies each item
+  (effort + <code>critical</code> + <code>sensitive</code>) with the driver's keyword rules, then launches the
+  canonical script (<code>reference/leopold-run.workflow.js</code>) via the <code>Workflow</code> tool.</li>
+<li><strong>Preflight</strong> needs Dynamic workflows enabled (<code>/config</code>) and an existing brief.</li>
+<li><strong>Git stays locked for free</strong> — a workflow can't commit; it stages, you commit.</li>
+<li><strong>Resumable</strong> and visible in <code>/workflows</code>; saving the compiled script to
+  <code>.claude/workflows/leopold-run.js</code> makes the brief a re-runnable harness.</li>
+<li><strong>When to reach for it</strong> vs <code>/leopold-run</code>: large or parallelizable plans → workflow;
+  short or interactive plans → the loop.</li>
+</ul>
+<h2 id="leopold-learn"><code>/leopold-learn</code><a class="headerlink" href="#leopold-learn" title="Permanent link">&para;</a></h2>
+<p>The self-improving charter. Mines the decision log (<code>DECISIONS.md</code> + archived runs),
+this project's session transcripts, and git history with three miners over <strong>disjoint</strong>
+sources; clusters the recurring signals (a pattern surfacing in more than one
+independent source is the strongest); puts a kill-biased skeptic on every candidate;
+and distills the survivors into <code>.leopold/CHARTER-amendments.md</code>.</p>
+<ul>
+<li><strong>Hard boundary:</strong> it never edits <code>CHARTER.md</code> itself — the charter is the user's
+  identity. The human reviews the proposal and applies what sounds like them.</li>
+<li><strong>Cadence:</strong> after each substantial run, or whenever you notice yourself repeating
+  the same correction. Each pass compounds: a sharper charter means fewer escalations
+  and fewer wrong-direction decisions next run.</li>
+<li>Requires Dynamic workflows enabled.</li>
+</ul>
+<h2 id="leopold-triage"><code>/leopold-triage</code><a class="headerlink" href="#leopold-triage" title="Permanent link">&para;</a></h2>
+<p>Backlog triage as a workflow, with the <strong>quarantine</strong> pattern: the agents that read
+untrusted item content (issue bodies) have no repo access and only emit structured
+classifications; the agents that touch the repo (fix planners) see only those
+structured fields. A prompt injection in an issue can distort at most its own item's
+classification.</p>
+<ul>
+<li><strong>Input:</strong> GitHub issues (<code>gh issue list</code>), a file/directory of reports, or pasted
+  content; dedupes against open PRs and <code>PLAN.md</code>.</li>
+<li><strong>Output:</strong> a severity-ranked actionable list, duplicate groups, already-tracked
+  items, and (in <code>fix</code> mode) grounded fix plans for quick wins — which can become
+  <code>PLAN.md</code> items for a <code>/leopold-workflow</code> run.</li>
+<li><strong>Continuous:</strong> pair with <code>/loop</code> (e.g. every 6h) for a standing queue.</li>
 </ul>
 <h2 id="leopold-status"><code>/leopold-status</code><a class="headerlink" href="#leopold-status" title="Permanent link">&para;</a></h2>
 <p>Read-only dashboard: active or not, plan progress, decisions logged, recent

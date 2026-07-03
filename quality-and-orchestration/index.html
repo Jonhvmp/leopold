@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://jonhvmp.github.io/leopold/quality-and-orchestration/">
       
       
-        <link rel="prev" href="../concepts/two-phases/">
+        <link rel="prev" href="../concepts/dynamic-workflows/">
       
       
         <link rel="next" href="../decision-protocol/">
@@ -673,6 +673,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -781,6 +787,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/dynamic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -846,10 +880,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-review-gate" class="md-nav__link">
+  <a href="#the-review-gate-a-panel-of-skeptics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The review gate
+        The review gate — a panel of skeptics
       
     </span>
   </a>
@@ -857,10 +891,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#per-item-effort-the-advisor-analog" class="md-nav__link">
+  <a href="#per-item-effort-keywords-or-research" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Per-item effort + the advisor analog
+        Per-item effort — keywords or research
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-root-cause-panel-no-doubling-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The root-cause panel — no doubling down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-charter-that-learns-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The charter that learns you
       
     </span>
   </a>
@@ -952,6 +1008,62 @@
     
   
     Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cost-and-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Isolation
   
 
     
@@ -1536,10 +1648,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-review-gate" class="md-nav__link">
+  <a href="#the-review-gate-a-panel-of-skeptics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The review gate
+        The review gate — a panel of skeptics
       
     </span>
   </a>
@@ -1547,10 +1659,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#per-item-effort-the-advisor-analog" class="md-nav__link">
+  <a href="#per-item-effort-keywords-or-research" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Per-item effort + the advisor analog
+        Per-item effort — keywords or research
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-root-cause-panel-no-doubling-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The root-cause panel — no doubling down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-charter-that-learns-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The charter that learns you
       
     </span>
   </a>
@@ -1615,25 +1749,51 @@
 quality, runs independent work in parallel, and tunes how hard the model thinks per
 item. These are the levers that turn "an agent that keeps going" into "an agent worth
 trusting with the seat." They all lean on native Claude Code capabilities.</p>
-<h2 id="the-review-gate">The review gate<a class="headerlink" href="#the-review-gate" title="Permanent link">&para;</a></h2>
+<h2 id="the-review-gate-a-panel-of-skeptics">The review gate — a panel of skeptics<a class="headerlink" href="#the-review-gate-a-panel-of-skeptics" title="Permanent link">&para;</a></h2>
 <p>The worker reporting <code>done</code> after build/lint/test isn't enough — nothing has <em>reviewed</em>
-the change. So before an item can close, an <strong>independent reviewer</strong> (its own Claude Code
-session, so it can invoke the native <code>/code-review</code> and <code>/security-review</code> skills) reads the
-item's uncommitted diff and returns a verdict:</p>
+the change. And a single reviewer shares one failure mode with the worker: it can be
+plausible-and-wrong in the same direction. So before an item can close, a <strong>panel of
+independent skeptics</strong> (each its own Claude Code session, so it can invoke the native
+<code>/code-review</code> and <code>/security-review</code> skills) reads the item's uncommitted diff — each
+through a <strong>distinct lens</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Panel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ordinary</td>
+<td>correctness</td>
+</tr>
+<tr>
+<td>sensitive diff (<code>auth\|secret\|billing\|payment\|.env\|…</code>)</td>
+<td>correctness + security</td>
+</tr>
+<tr>
+<td>critical (billing, auth, migrations, …)</td>
+<td>correctness + security + does-it-actually-work</td>
+</tr>
+</tbody>
+</table>
+<p>Diversity beats redundancy: three identical reviewers re-find the same bugs; three
+different lenses catch failure modes the others structurally miss. The verdicts are
+<strong>unioned</strong> (deduped by file+issue):</p>
 <ul>
-<li><strong>Clean</strong> → the item closes.</li>
+<li><strong>Clean panel</strong> → the item closes.</li>
 <li><strong>Blocking findings</strong> → handed straight back to the worker to fix, then re-reviewed. Up to
   <code>--max-review-rounds</code> (default 2) before the item is allowed through anyway (so a stubborn
-  reviewer can't wedge the run).</li>
+  panel can't wedge the run).</li>
 </ul>
-<p>Sensitive diffs (paths matching <code>auth|login|session|secret|token|billing|payment|.env|…</code>)
-are reviewed with security rigor. An unparseable verdict <strong>fails closed</strong> — it never silently
-passes the gate. The gate is on by default; <code>--no-review</code> (or <code>LEOPOLD_REVIEW=0</code>) turns it off.</p>
+<p>An unparseable verdict <strong>fails closed</strong> — it never silently passes the gate. The gate is on
+by default; <code>--no-review</code> / <code>LEOPOLD_REVIEW=0</code> / <code>review: off</code> in GUARDRAILS turns it off.</p>
 <blockquote>
 <p>Tip for the worker: self-review with <code>/code-review</code> <em>before</em> reporting done, so the gate
 passes first try. The <code>/leopold-run</code> skill tells it exactly that.</p>
 </blockquote>
-<h2 id="per-item-effort-the-advisor-analog">Per-item effort + the advisor analog<a class="headerlink" href="#per-item-effort-the-advisor-analog" title="Permanent link">&para;</a></h2>
+<h2 id="per-item-effort-keywords-or-research">Per-item effort — keywords or research<a class="headerlink" href="#per-item-effort-keywords-or-research" title="Permanent link">&para;</a></h2>
 <p>Every item is risk-classified by a cheap, deterministic keyword pass over the item text and
 the charter (no extra LLM call). The class sets the worker's native SDK <strong>reasoning effort</strong>:</p>
 <table>
@@ -1672,9 +1832,31 @@ the charter (no extra LLM call). The class sets the worker's native SDK <strong>
 </tr>
 </tbody>
 </table>
-<p><strong>Critical</strong> items also get a <strong>second, independent reviewer</strong> and the union of both reviewers'
-blocking findings. The Agent SDK has no "advisor"; criticality buys a real second opinion
-instead — the cheap items stay cheap, the dangerous ones get scrutiny.</p>
+<p><strong>Critical</strong> items face the full three-lens review panel — the cheap items stay cheap, the
+dangerous ones get scrutiny.</p>
+<p>Keywords only see the item's <em>wording</em>. Opt into <strong>smart routing</strong> (<code>--smart-routing</code> or
+<code>smart_routing: on</code> in GUARDRAILS) and a short read-only session researches the item's <em>real</em>
+blast radius — which files, how many callers — before routing. It always falls back to the
+deterministic classifier on any failure, and it can never lower a keyword-critical item below
+critical (a safety floor: money/auth/migrations stay guarded even if the router relaxes).</p>
+<h2 id="the-root-cause-panel-no-doubling-down">The root-cause panel — no doubling down<a class="headerlink" href="#the-root-cause-panel-no-doubling-down" title="Permanent link">&para;</a></h2>
+<p>When the same item fails repeatedly, a single context tends to double down on its own theory
+(self-preferential bias). On a retry, Leopold instead convenes a <strong>root-cause panel</strong>: three
+investigators form hypotheses over <strong>disjoint evidence</strong> — the diff itself, the verification
+output taken literally, and the item's assumptions checked against the codebase — then a
+refuter tries to kill each one (unparseable refutations fail closed). The strongest surviving
+hypothesis is handed to the next attempt as a <strong>concrete lead</strong>, with an explicit instruction
+to verify the theory quickly and abandon it if wrong. On by default; <code>--no-hypotheses</code> /
+<code>hypotheses: off</code> turns it off.</p>
+<h2 id="the-charter-that-learns-you">The charter that learns you<a class="headerlink" href="#the-charter-that-learns-you" title="Permanent link">&para;</a></h2>
+<p>Your recorded behavior beats your self-description. With <code>--learn-on-finish</code> (or
+<code>learn_on_finish: on</code> in GUARDRAILS), a clean finish mines the run — the decision log it just
+wrote, archived runs, and the repo's git history — for recurring judgment calls, puts a
+kill-biased skeptic on every candidate, and writes the survivors to
+<code>.leopold/CHARTER-amendments.md</code> as a <strong>proposal</strong>. It never edits <code>CHARTER.md</code>: you review and
+fold in what sounds like you. The <code>/leopold-learn</code> skill is the richer, workflow-powered version
+(it also mines your session transcripts). Each pass compounds — a sharper charter means fewer
+escalations next run.</p>
 <h2 id="parallel-execution">Parallel execution<a class="headerlink" href="#parallel-execution" title="Permanent link">&para;</a></h2>
 <p>Independent plan items don't have to wait in line. Declare order in <code>PLAN.md</code> with an
 <code>(after: N)</code> marker (1-based item position); items with no marker are independent:</p>
@@ -1705,10 +1887,11 @@ closes that gap in one move:</p>
 </ul>
 <h2 id="insights">Insights<a class="headerlink" href="#insights" title="Permanent link">&para;</a></h2>
 <p>After a run, <code>leopold-driver insights</code> turns <code>events.jsonl</code> into a report: items done vs.
-incomplete vs. conflicted, the effort mix, review-gate pass rate (and how many were
-security-sensitive or got a second opinion), decisions logged, escalations, guard blocks, and
-real spend. <code>--json</code> for machine output. It's the same data the watch dashboard streams live —
-read it back to write sharper briefs next time.</p>
+incomplete vs. conflicted, the effort mix, review-panel pass rate (and how many were
+security-sensitive or faced a multi-lens panel), root-cause panels run and leads produced,
+charter amendments proposed, decisions logged, escalations, guard blocks, and real spend.
+<code>--json</code> for machine output. It's the same data the watch dashboard streams live — read it
+back to write sharper briefs next time.</p>
 
 
 
@@ -1746,7 +1929,7 @@ read it back to write sharper briefs next time.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../concepts/two-phases/" class="md-footer__link md-footer__link--prev" aria-label="Previous: The Two Phases">
+          <a href="../concepts/dynamic-workflows/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Dynamic Workflows">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1756,7 +1939,7 @@ read it back to write sharper briefs next time.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                The Two Phases
+                Dynamic Workflows
               </div>
             </div>
           </a>

@@ -671,6 +671,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -779,6 +785,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../concepts/dynamic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../quality-and-orchestration/" class="md-nav__link">
         
   
@@ -843,6 +877,62 @@
     
   
     Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cost-and-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Isolation
   
 
     
@@ -1541,31 +1631,48 @@
 
 <h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
 <pre class="mermaid"><code>flowchart LR
-    V01["v0.1 · in-session engine&lt;br/&gt;&lt;small&gt;shipped&lt;/small&gt;"] --&gt; DRV["SDK driver&lt;br/&gt;&lt;small&gt;alpha&lt;/small&gt;"]
-    DRV --&gt; WD["worker watchdog"]
-    WD --&gt; FAN["multi-worker waves"]
-    FAN --&gt; DASH["live dashboard"]
+    V01["v0.1 · in-session engine&lt;br/&gt;&lt;small&gt;shipped&lt;/small&gt;"] --&gt; DRV["SDK driver&lt;br/&gt;&lt;small&gt;shipped · alpha&lt;/small&gt;"]
+    DRV --&gt; FAN["parallel waves&lt;br/&gt;&lt;small&gt;shipped&lt;/small&gt;"]
+    FAN --&gt; DASH["live dashboard&lt;br/&gt;&lt;small&gt;shipped&lt;/small&gt;"]
+    DASH --&gt; WF["dynamic-workflow engine&lt;br/&gt;&lt;small&gt;shipped&lt;/small&gt;"]
+    WF --&gt; E2E["headless runtime E2E"]
+    E2E --&gt; SBX["sandboxed workers"]
     classDef done fill:#2a9d8f,stroke:#1b6b5f,color:#fff;
-    class V01 done;</code></pre>
+    class V01,DRV,FAN,DASH,WF done;</code></pre>
 <h2 id="shipped">Shipped<a class="headerlink" href="#shipped" title="Permanent link">&para;</a></h2>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> In-session engine: <code>/leopold-brief</code>, <code>/leopold-run</code>, <code>/leopold-status</code>,
       <code>/leopold-stop</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Stop hook (continuity) and PreToolUse hook (git lock), behavior-tested</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Stop hook (continuity) and PreToolUse hook (git lock), behavior-tested +
+      red-teamed</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Brief artifact templates and <code>install.sh</code> with idempotent settings merge</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> SDK driver (alpha): persistent conductor + fresh workers, conductor/worker
       status protocol, charter-grounded decisions, git-locked <code>canUseTool</code>,
       notifications — uses your Claude Code auth, no API key</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>leopold doctor</code>, toolchain manager (<code>leopold menu</code>), <code>leopold up</code> (Phase 0)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Parallel waves</strong> — <code>run --parallel N</code>: dependency-aware scheduler, one
+      worktree per item, staged-patch replay onto the main tree</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Live dashboard</strong> — <code>leopold watch</code>: SSE event stream, cost meters, the
+      decision log, and the native dynamic-workflow <strong>phase tree</strong></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Dynamic-workflow engine</strong> — <code>/leopold-workflow</code> (brief compiled into a
+      workflow), <code>leopold workflow</code> (the compiler as tested code; <code>--run</code>
+      experimental headless runtime), <code>/leopold-learn</code> (the self-improving
+      charter + <code>learn_on_finish</code>), <code>/leopold-triage</code> (quarantined backlog
+      triage), plan-by-tournament in the brief</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Quality panels in the driver</strong> — diverse-lens review panel, root-cause
+      hypothesis panel on retries, opt-in smart routing</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Hardcore CI</strong> — CLI smoke of the built binary, shellcheck gate,
+      macOS + Ubuntu matrix, npm provenance, Dependabot, CodeQL</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>leopold doctor</code> — verify install, hooks, and gstack wiring</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Toolchain manager (<code>make menu</code>): acceptance-test the ovmem installer on a clean Linux box + macOS</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ovmem extension: fully-local Ollama/GGUF provider profile (no API key)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> End-to-end exercise of the experimental <code>workflow --run</code> query shim (a
+      manual <code>workflow_dispatch</code> CI job with a real key — it spends tokens)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Worker watchdog for turns that end without a status block</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Toolchain manager: acceptance-test the ovmem installer on a clean Linux
+      box + macOS</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ovmem extension: fully-local Ollama/GGUF provider profile (no API key)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> gstack playbook router as first-class config</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Multi-worker fan-out for independent plan items (parallel waves)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> SSE event stream and a web dashboard for live run state and the decision log</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Sandboxed workers (E2B / Daytona) for isolated parallel execution</li>
 </ul>
 <p>Have an idea? Open an issue or a discussion on
