@@ -4,7 +4,15 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.1] - 2026-07-03
+
+### Fixed
+- **`leopold --version` now works.** It printed "Missing MISSION.md" — the dispatcher
+  sent any leading-dash argument straight to conducting a run, so version/help-style
+  flags tried to start one. Added `version` / `--version` / `-v` (printing the driver's
+  own package.json version), handled before the fall-through so they can't leak into a
+  run; bare invocation and `run`-with-flags still conduct as before. Covered by the CLI
+  smoke test.
 
 ### Added
 - **Hardcore CI.** (1) A **CLI smoke test** (`scripts/test-cli-smoke.sh`, also
