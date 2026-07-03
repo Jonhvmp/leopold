@@ -45,6 +45,13 @@ EOF
 echo "-> help"
 run --help | grep -q "leopold-driver workflow" || fail "--help must document the workflow subcommand"
 
+echo "-> version (must print a semver, not fall through to a run)"
+for form in --version -v version; do
+  v="$(run $form)"
+  echo "$v" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+' || fail "'$form' must print a semver, got: $v"
+  echo "$v" | grep -qi "MISSION.md" && fail "'$form' must not leak into a run" || true
+done
+
 echo "-> unknown subcommand exits non-zero"
 node "$CLI" definitely-not-a-command >/dev/null 2>&1 && fail "unknown subcommand must exit non-zero" || true
 
