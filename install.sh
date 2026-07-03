@@ -94,23 +94,30 @@ else
 fi
 
 # The `leopold` CLI — so `leopold menu / watch / doctor / serena` work from anywhere,
-# no repo and no `make`. Skip if it's already here (e.g. you ran `leopold install`).
+# no repo and no `make`. Always install/UPGRADE to the latest so re-running the
+# installer keeps an existing CLI current (the old code stopped at "already installed"
+# and left stale binaries in place — including the one missing `leopold --version`).
 echo
-if command -v leopold >/dev/null 2>&1; then
-  echo "-> leopold CLI already installed"
-elif command -v npm >/dev/null 2>&1; then
-  echo "-> installing the leopold CLI (npm i -g leopold-driver)"
-  if npm i -g leopold-driver >/dev/null 2>&1; then
+if command -v npm >/dev/null 2>&1; then
+  had="$(command -v leopold >/dev/null 2>&1 && leopold --version 2>/dev/null || echo '')"
+  echo "-> installing/updating the leopold CLI (npm i -g leopold-driver@latest)"
+  if npm i -g leopold-driver@latest >/dev/null 2>&1; then
+    hash -r 2>/dev/null || true
     if command -v leopold >/dev/null 2>&1; then
-      echo "   ok   'leopold' command ready (leopold menu · watch · doctor)"
+      now="$(leopold --version 2>/dev/null || echo '?')"
+      if [ -n "$had" ] && [ "$had" != "$now" ]; then
+        echo "   ok   'leopold' updated $had -> $now"
+      else
+        echo "   ok   'leopold' ready ($now) — leopold menu · watch · doctor"
+      fi
     else
       echo "   installed, but 'leopold' isn't on PATH yet — open a new shell (or: hash -r)"
     fi
   else
-    echo "   warn: 'npm i -g leopold-driver' failed (permissions?) — run it yourself, maybe with sudo"
+    echo "   warn: 'npm i -g leopold-driver@latest' failed (permissions?) — run it yourself, maybe with sudo"
   fi
 else
-  echo "-> npm not found — the 'leopold' CLI needs Node/npm. Then: npm i -g leopold-driver"
+  echo "-> npm not found — the 'leopold' CLI needs Node/npm. Then: npm i -g leopold-driver@latest"
 fi
 
 echo
