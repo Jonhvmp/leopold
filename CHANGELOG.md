@@ -17,8 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   surfaced in `install.sh` and the gstack extension were fixed with proper globs.
   (3) The driver job runs on a **macOS + Ubuntu matrix**. (4) npm publish now ships
   **`--provenance`** (supply-chain attestation). (5) **Dependabot** keeps npm, pip, and
-  Actions pins fresh weekly. (6) A **CodeQL** workflow scans JS/TS, Python, and the
-  Actions themselves on every PR to main/develop plus a weekly sweep.
+  Actions pins fresh weekly. (6) A **CodeQL node** scans JS/TS, Python, and the Actions
+  themselves on every run plus a weekly sweep — all inside the single `ci` pipeline:
+  one workflow, parallel validation nodes (hooks / driver-matrix / docs / codeql), and
+  delivery (docs-deploy / release) that only fires on main after every node is green.
+  The weekly cron re-runs just the codeql node.
 - **A new demo that shows the workflow engine.** `scripts/record-demo.sh` now
   *synthesizes* the asciinema cast deterministically (v2 is just JSONL — no recorder
   needed, byte-stable reruns) and renders it with agg / svg-term / `npx svg-term-cli`.

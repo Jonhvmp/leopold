@@ -1,9 +1,16 @@
 name: ci
 
+# One pipeline, many nodes: validation (hooks / driver / docs / codeql) fans out in
+# parallel, then delivery (docs-deploy / release) runs on main only, after everything
+# passes. The weekly cron re-runs ONLY the codeql node (the build nodes gate on
+# `github.event_name != 'schedule'`).
+
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 6 * * 1" # weekly security sweep (codeql only)
 
 permissions:
   contents: write
@@ -16,6 +23,7 @@ jobs:
   # ---- validation (runs on every push + PR) --------------------------------
   hooks:
     name: hooks
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +40,7 @@ jobs:
 
   driver:
     name: driver (${{ matrix.os }})
+    if: github.event_name != 'schedule'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -57,6 +66,7 @@ jobs:
 
   docs:
     name: docs
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,10 +78,29 @@ jobs:
       - run: pip install -r requirements-docs.txt
       - run: mkdocs build --strict
 
+  codeql:
+    name: codeql (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python, actions]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
   # ---- delivery (only on main, after validation passes) --------------------
   docs-deploy:
     name: docs-deploy
-    needs: [hooks, driver, docs]
+    needs: [hooks, driver, docs, codeql]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -86,7 +115,7 @@ jobs:
 
   release:
     name: release
-    needs: [hooks, driver, docs]
+    needs: [hooks, driver, docs, codeql]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
