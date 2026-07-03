@@ -79,7 +79,7 @@ test-guard: ## Run the guard red-team suite (bypass attempts must stay blocked)
 
 # ---- Driver -----------------------------------------------------------------
 
-.PHONY: driver-install driver-build driver-check driver-test driver-clean
+.PHONY: driver-install driver-build driver-check driver-test driver-smoke driver-clean
 driver-install: ## Install the SDK driver dependencies
 	@cd $(DRIVER) && $(NPM) install
 
@@ -91,6 +91,10 @@ driver-check: ## Typecheck the SDK driver
 
 driver-test: ## Run the SDK driver unit tests (parser + guard; needs Node 22.6+)
 	@cd $(DRIVER) && $(NPM) test
+
+driver-smoke: ## Build the driver, then smoke the built CLI end to end (no network)
+	@cd $(DRIVER) && $(NPM) run build
+	@bash scripts/test-cli-smoke.sh
 
 driver-clean: ## Remove driver build output and dependencies
 	@rm -rf $(DRIVER)/dist $(DRIVER)/node_modules
@@ -116,7 +120,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test test-guard driver-check driver-test docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test test-guard driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

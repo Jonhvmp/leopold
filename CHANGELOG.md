@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Hardcore CI.** (1) A **CLI smoke test** (`scripts/test-cli-smoke.sh`, also
+  `make driver-smoke`) exercises the *built* binary end to end against a fixture brief —
+  help, unknown-command exit code, `run --dry-run`, `workflow --print` (waves +
+  classification + guardrails verified), the emit path (files written, script parses,
+  args valid JSON), and `insights` — closing the gap where unit tests covered modules
+  but nothing executed the dist entry. Wired into `make test` and CI. (2) **Shellcheck**
+  (warning level) now gates every shell entrypoint — the two `ls | grep` findings it
+  surfaced in `install.sh` and the gstack extension were fixed with proper globs.
+  (3) The driver job runs on a **macOS + Ubuntu matrix**. (4) npm publish now ships
+  **`--provenance`** (supply-chain attestation). (5) **Dependabot** keeps npm, pip, and
+  Actions pins fresh weekly. (6) A **CodeQL** workflow scans JS/TS, Python, and the
+  Actions themselves on every PR to main/develop plus a weekly sweep.
 - **A new demo that shows the workflow engine.** `scripts/record-demo.sh` now
   *synthesizes* the asciinema cast deterministically (v2 is just JSONL — no recorder
   needed, byte-stable reruns) and renders it with agg / svg-term / `npx svg-term-cli`.

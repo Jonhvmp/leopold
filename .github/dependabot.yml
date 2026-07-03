@@ -1,0 +1,23 @@
+# Keep the driver's npm deps and the Actions pins fresh, weekly, low-noise.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /packages/driver
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
