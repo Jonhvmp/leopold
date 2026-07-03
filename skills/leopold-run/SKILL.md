@@ -159,11 +159,13 @@ Each turn:
    from the plan and the stop conditions.
 
 **The review gate (SDK driver).** When the run is conducted by `leopold-driver`, each
-item you close is independently reviewed (`/code-review`, plus `/security-review` on
-sensitive diffs) before it counts as done; blocking findings come back to you to fix.
-Don't fight it — self-review with `/code-review` *before* you report done, so the gate
-passes first try. Critical items (billing, auth, migrations) are reviewed twice and run
-at higher reasoning effort automatically; expect and welcome the extra scrutiny.
+item you close faces a diverse-lens panel of independent reviewers before it counts as
+done — correctness always, +security on sensitive diffs, +does-it-actually-work on
+critical items (billing, auth, migrations), which also run at higher reasoning effort
+automatically. Blocking findings come back to you to fix. Don't fight it — self-review
+with `/code-review` *before* you report done, so the panel passes first try. And if an
+item of yours failed before, the driver may hand you a root-cause lead from its
+hypothesis panel: verify the theory quickly, and say so in your status if it's wrong.
 
 If the same thing fails repeatedly, increment `consecutive_failures` in
 `state.json`; the stop condition will catch a stuck run.

@@ -99,6 +99,27 @@ the same time, so only add `(after: …)` for real dependencies, and prefer to s
 work so that more items are independent. Items that all touch the same files should
 depend on each other (or be one item) to avoid merge conflicts.
 
+## Step 4a — Draft the plan by tournament (optional, workflow)
+
+For a substantial mission (roughly: 6+ items, or architectural choices baked into
+the ordering), a single draft inherits your first framing. If the `Workflow` tool
+is available, offer to draft the plan by **tournament** instead:
+
+- Copy `~/.claude/skills/leopold-brief/reference/plan-tournament.workflow.js` to
+  `.claude/workflows/leopold-plan-tournament.js` and launch it with `args`:
+  `{ mission, charter, projectDir, constraints }` — where `constraints` restates
+  the format rules from Step 4 (checkbox lines, `(after: N)` markers, sizing,
+  same-file items depend on each other).
+- Three independent drafters plan from deliberate stances (MVP-first, risk-first,
+  user-journey-first), each grounding items in the real repo; two judges score all
+  drafts comparatively (delivery realism, mission fit); a synthesizer builds the
+  final plan from the winner grafted with the runners-up's best ideas.
+- The result comes back as an ordered item list — show the user the winning angle
+  and ranking, then fold the list into `PLAN.md` as the Step 4 backlog.
+
+Skip silently for small missions or when workflows are unavailable; the Step 4
+plan is enough.
+
 ## Step 4b — Harden the plan with gstack (optional)
 
 If gstack is installed (check for `~/.claude/skills/gstack/`, or whether the
@@ -132,4 +153,13 @@ Summarize the brief to the user in a few lines: mission, the 3 sharpest charter
 rules, the guardrail posture, and the first 3 plan items. Ask if it reflects how
 they actually think. Iterate until they confirm.
 
-End by telling them: when ready, run `/leopold-run` to hand over the seat.
+End by telling them how to hand over the seat, and which engine fits:
+
+- `/leopold-run` — the single-context conductor loop. Good for a short or highly
+  interactive plan.
+- `/leopold-workflow` — compiles this brief into a **dynamic workflow**: the plan runs
+  as code (no context drift on a long plan), each item gets an independent adversarial
+  review, and the run is resumable and visible in `/workflows`. Reach for it when the
+  plan is large or parallelizable. Requires Dynamic workflows enabled (`/config`).
+
+Both read the same `.leopold/` brief and keep git locked.
