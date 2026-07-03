@@ -7,6 +7,7 @@ import { runDriver } from "./loop.js";
 import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harness.js";
 import { runSecrets } from "./secrets.js";
 import { runInsights } from "./insights.js";
+import { runWorkflowCommand } from "./workflow-cmd.js";
 
 const sub = process.argv[2];
 const rest = process.argv.slice(3);
@@ -26,6 +27,8 @@ Usage:
   leopold-driver run [--worktree] [--parallel N] [--budget-usd N] [--no-review]
                      [--no-hypotheses] [--smart-routing] [--learn-on-finish] [--dry-run]
                                             conduct the .leopold run (the SDK driver)
+  leopold-driver workflow [--print] [--run] compile the brief into a dynamic workflow
+                                            (emit by default; --run executes it, experimental)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
@@ -69,6 +72,12 @@ switch (sub) {
     process.exit(runInstall(rest));
   case "insights":
     process.exit(runInsights(rest));
+  case "workflow":
+    runWorkflowCommand(process.cwd(), rest).then((c) => process.exit(c)).catch((err: unknown) => {
+      console.error("leopold-driver workflow error:", err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    });
+    break;
   case "menu":
     process.exit(runMenu());
   case "watch":

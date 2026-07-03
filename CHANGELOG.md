@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`leopold-driver workflow` — the brief→workflow compiler as tested code.** The
+  compilation the `/leopold-workflow` skill described in prose is now deterministic TS
+  (`compile.ts`): parse `PLAN.md` into dependency waves, risk-classify each item, and emit
+  the exact `args` the canonical workflow script consumes. `leopold-driver workflow` writes
+  `.claude/workflows/leopold-run.js` + `.leopold/workflow-args.json` (reproducible,
+  CI-checkable); `--print` dumps the compiled args; `--run` executes headlessly through an
+  **experimental** in-driver runtime (`runtime.ts`) that implements the workflow globals —
+  `agent`/`pipeline`/`parallel`/`phase`/`log`/`budget` — with a real concurrency cap and an
+  injected, query-backed agent (git stays locked via the worker guard). The orchestration
+  engine is unit-tested (concurrency cap, budget stop, error-to-null); the query-backed
+  agent is a thin shim, not exercised end-to-end (alpha, like the rest of the SDK driver).
+  New docs: a Dynamic Workflows concept page. Driver suite: 103 → 113 tests.
 - **Dynamic-workflow phase tree in `leopold-watch`.** The dashboard now discovers the
   native dynamic-workflow runs for the project (`~/.claude/projects/<slug>/<session>/
   workflows/wf_*.json`) and renders a live phase tree: each run with its status, agent

@@ -102,6 +102,7 @@ nav:
   - Concepts:
       - What Is a Harness: concepts/harness.md
       - The Two Phases: concepts/two-phases.md
+      - Dynamic Workflows: concepts/dynamic-workflows.md
       - Quality & Orchestration: quality-and-orchestration.md
       - Decision Protocol: decision-protocol.md
       - Guardrails: guardrails.md
