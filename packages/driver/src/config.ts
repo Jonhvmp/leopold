@@ -106,5 +106,9 @@ export function loadConfig(argv: string[]): DriverConfig {
     review,
     maxReviewRounds: intArg(argv, "--max-review-rounds", process.env.LEOPOLD_MAX_REVIEW_ROUNDS, 2),
     parallel: intArg(argv, "--parallel", process.env.LEOPOLD_PARALLEL, 1),
+    // Hypothesis panel is on by default; --no-hypotheses or LEOPOLD_HYPOTHESES=0 turns it off.
+    hypotheses: !argv.includes("--no-hypotheses") && process.env.LEOPOLD_HYPOTHESES !== "0",
+    // Smart routing is opt-in; it spends a short session per item to research blast radius.
+    smartRouting: argv.includes("--smart-routing") || process.env.LEOPOLD_SMART_ROUTING === "1",
   };
 }

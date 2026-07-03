@@ -23,7 +23,8 @@ Usage:
   leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem)
   leopold-driver doctor                     run every extension's doctor
   leopold-driver update                     reinstall from this package
-  leopold-driver run [--worktree] [--parallel N] [--budget-usd N] [--no-review] [--dry-run]
+  leopold-driver run [--worktree] [--parallel N] [--budget-usd N] [--no-review]
+                     [--no-hypotheses] [--smart-routing] [--dry-run]
                                             conduct the .leopold run (the SDK driver)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
@@ -35,11 +36,16 @@ Conducting a run uses your existing Claude Code login (ANTHROPIC_API_KEY only in
 --parallel N runs up to N independent plan items at once, each in its own worktree, replaying
 each item's diff onto the main tree (staged, never committed). Declare order in PLAN.md with
 "- [ ] (after: 2, 3) ...". Items with no deps run concurrently.
-Each item is risk-classified (sets reasoning effort) and, before it closes, an independent
-review gate runs /code-review (+ /security-review on sensitive diffs) — critical items get a
-second reviewer. --no-review turns the gate off; --max-review-rounds N caps fix rounds (2).
+Each item is risk-classified (sets reasoning effort) and, before it closes, a diverse-lens
+review panel gates it: correctness always; +security on sensitive diffs; +does-it-actually-work
+on critical items. --no-review turns the gate off; --max-review-rounds N caps fix rounds (2).
+When an item is retried after a failure, a root-cause panel (3 investigators over disjoint
+evidence + refuters) hands the next attempt a concrete lead (--no-hypotheses turns it off).
+--smart-routing replaces keyword classification with a short read-only session that researches
+the item's real blast radius (always falls back to keywords; never lowers a critical floor).
 Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK,
-     LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD, LEOPOLD_REVIEW, LEOPOLD_MAX_REVIEW_ROUNDS
+     LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD, LEOPOLD_REVIEW, LEOPOLD_MAX_REVIEW_ROUNDS,
+     LEOPOLD_HYPOTHESES, LEOPOLD_SMART_ROUTING
 `);
 }
 
