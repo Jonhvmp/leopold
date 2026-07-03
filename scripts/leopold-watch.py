@@ -16,6 +16,7 @@ and uses no web fonts. Usage:
     python3 leopold-watch.py [--project DIR] [--port 4179] [--host 127.0.0.1]
 """
 import argparse
+import glob
 import importlib.util
 import json
 import os
@@ -175,6 +176,96 @@ def find_transcript():
     return max(files, key=os.path.getmtime) if files else None
 
 
+_WF_CACHE = {}  # path -> (mtime, parsed-compact-run)
+
+
+def _compact_workflow(raw):
+    """Reduce a wf_<id>.json into the phase-tree the dashboard renders."""
+    progress = raw.get("workflowProgress") or []
+    # Phase order comes from the workflow_phase markers (and meta.phases as a fallback).
+    order, seen = [], set()
+    for it in progress:
+        if it.get("type") == "workflow_phase":
+            t = it.get("title") or "(phase)"
+            if t not in seen:
+                seen.add(t); order.append(t)
+    for ph in (raw.get("phases") or []):
+        t = ph.get("title")
+        if t and t not in seen:
+            seen.add(t); order.append(t)
+    buckets = {t: [] for t in order}
+    for it in progress:
+        if it.get("type") != "workflow_agent":
+            continue
+        title = it.get("phaseTitle") or "(unphased)"
+        if title not in buckets:
+            buckets[title] = []; order.append(title)
+        st = it.get("state")
+        state = "done" if st == "done" else (st if st else ("running" if it.get("startedAt") else "queued"))
+        buckets[title].append({
+            "label": it.get("label") or ("agent " + str(it.get("index", "?"))),
+            "state": state,
+            "tokens": it.get("tokens") or 0,
+            "toolCalls": it.get("toolCalls") or 0,
+            "model": (it.get("model") or "").replace("claude-", ""),
+            "lastTool": it.get("lastToolSummary") or it.get("lastToolName") or "",
+            "durationMs": it.get("durationMs") or 0,
+        })
+    phases = []
+    for t in order:
+        ags = buckets.get(t, [])
+        phases.append({
+            "title": t, "agents": ags,
+            "tokens": sum(a["tokens"] for a in ags),
+            "running": sum(1 for a in ags if a["state"] in ("running", "queued")),
+            "done": sum(1 for a in ags if a["state"] == "done"),
+        })
+    return {
+        "runId": raw.get("runId", ""),
+        "name": raw.get("workflowName") or raw.get("runId", "workflow"),
+        "status": raw.get("status", ""),
+        "summary": (raw.get("summary") or "")[:200],
+        "agentCount": raw.get("agentCount", 0),
+        "totalTokens": raw.get("totalTokens", 0),
+        "totalToolCalls": raw.get("totalToolCalls", 0),
+        "durationMs": raw.get("durationMs", 0),
+        "ts": raw.get("timestamp", ""),
+        "startTime": raw.get("startTime", 0),
+        "phases": phases,
+    }
+
+
+def read_workflows(limit=8):
+    """Dynamic-workflow runs for this project, newest first, with their phase tree.
+    The native runtime writes <projects>/<slug>/<session>/workflows/wf_*.json."""
+    slug = re.sub(r"[^a-zA-Z0-9]", "-", PROJECT or os.getcwd())
+    root = os.path.join(_projects_dir(), slug)
+    try:
+        paths = glob.glob(os.path.join(root, "*", "workflows", "wf_*.json"))
+    except Exception:
+        return []
+    runs = []
+    for p in paths:
+        try:
+            mtime = os.path.getmtime(p)
+        except OSError:
+            continue
+        cached = _WF_CACHE.get(p)
+        if cached and cached[0] == mtime:
+            runs.append(cached[1]); continue
+        try:
+            with open(p, "r", encoding="utf-8", errors="replace") as f:
+                raw = json.load(f)
+            run = _compact_workflow(raw)
+        except Exception:
+            continue
+        _WF_CACHE[p] = (mtime, run)
+        runs.append(run)
+    # Active runs first, then newest by timestamp.
+    runs.sort(key=lambda r: (r.get("status") == "running", r.get("ts", "")), reverse=True)
+    return runs[:limit]
+
+
 def _iso_delta(a, b):
     if not a or not b:
         return 0
@@ -311,6 +402,7 @@ def snapshot():
         "cost": read_cost(),
         "events": read_events(),
         "decisions": read_decisions(),
+        "workflows": read_workflows(),
         "ts": int(time.time()),
     }
 
@@ -472,6 +564,28 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 .plan li.d{color:var(--muted-fg);text-decoration:line-through}.plan .mk{color:var(--muted-fg)}
 .dec{background:var(--secondary);border:1px solid var(--hairline);border-radius:8px;padding:10px 12px;margin-bottom:8px;
  font-family:var(--mono);font-size:12px;white-space:pre-wrap;line-height:1.5}
+.wf{border:1px solid var(--hairline);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--secondary)}
+.wf:last-child{margin-bottom:0}
+.wf-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:8px}
+.wf-name{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--fg)}
+.wf-badge{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;border-radius:9999px;border:1px solid var(--border);padding:2px 8px;color:var(--muted-fg)}
+.wf-badge.wf-run{color:var(--sev-low);border-color:rgba(14,165,233,.4);background:rgba(14,165,233,.10)}
+.wf-badge.wf-done{color:var(--sev-med);border-color:var(--border)}
+.wf-badge.wf-err{color:var(--sev-crit);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.10)}
+.wf-meta{font-family:var(--mono);font-size:10px;color:var(--muted-fg);margin-left:auto}
+.wf-phase{border-left:2px solid var(--border);padding:2px 0 2px 10px;margin:6px 0 6px 3px}
+.wf-ptitle{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.wf-pname{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg)}
+.wf-pmeta{font-family:var(--mono);font-size:10px;color:var(--muted-fg)}
+.wf-agent{display:flex;align-items:center;gap:8px;padding:2px 0}
+.wf-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--muted-fg)}
+.wf-dot.wf-done{background:var(--sev-med)}
+.wf-dot.wf-run{background:var(--sev-low);box-shadow:0 0 0 3px rgba(14,165,233,.18);animation:wfpulse 1.4s ease-in-out infinite}
+.wf-dot.wf-queue{background:transparent;border:1px solid var(--muted-fg)}
+.wf-dot.wf-err{background:var(--sev-crit)}
+@keyframes wfpulse{50%{opacity:.4}}
+.wf-alabel{font-family:var(--mono);font-size:11px;color:var(--fg);white-space:nowrap}
+.wf-adetail{font-family:var(--mono);font-size:10px;color:var(--muted-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .empty{color:var(--muted-fg);padding:6px 0;font-size:12px}
 .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .tab{background:transparent;border:1px solid var(--border);color:var(--muted-fg);border-radius:9999px;
@@ -523,6 +637,7 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 <div class="card"><div class="sectitle">Budgets</div><div class="meters" id="meters"></div></div>
 <div class="card"><div class="sectitle">Live events</div><div class="feed" id="feed"></div></div>
 <div class="card"><div class="sectitle">Plan</div><div id="plan" class="plan"></div></div>
+<div class="card" id="wfcard" style="display:none"><div class="sectitle">Dynamic workflows · phase tree</div><div id="workflows"></div></div>
 <div class="card"><div class="sectitle">Decisions · newest</div><div id="decisions"></div></div>
 </div><!-- /tab-run -->
 <div id="extviews"></div>
@@ -533,7 +648,8 @@ function hms(ts){return ts&&ts.length>=19?ts.slice(11,19):"";}
 function fmtUsd(x){if(x==null)return"$0";return x>=1?("$"+x.toFixed(2)):("$"+x.toFixed(x>=0.01?3:4));}
 function fmtTok(n){return n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":(""+(n||0));}
 function fmtDur(s){if(!s)return"0m";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?(h+"h"+m+"m"):(m+"m"+(m?"":(s%60+"s")));}
-const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med"};
+const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med",
+  review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high"};
 function renderCost(c){
   const box=$("#cost");box.innerHTML="";
   if(!c||!c.available){box.append(el("div","meta","waiting for session data… (cost shows once the run has a turn)"));return;}
@@ -575,6 +691,7 @@ function render(s){
     const r=el("div","ev");r.append(el("span","t",hms(e.ts)));
     let sev=SEV[e.event]||"sev-info";
     if(e.event==="subagent_spawn"&&e.fork)sev="sev-high";
+    if(e.event==="review"&&e.ok===false)sev="sev-high";
     r.append(el("span","sev "+sev,(e.event||"?").replace(/_/g," ")));
     let d="";
     if(e.event==="turn_start")d="iter "+e.iteration+" · open "+e.open_items+(e.no_progress?(" · stuck "+e.no_progress):"");
@@ -582,6 +699,14 @@ function render(s){
     else if(e.event==="subagent_spawn")d=(e.prompt_kb||0)+"KB"+(e.fork?" · FORK":"")+" · #"+(e.total||"");
     else if(e.event==="stop")d="reason: "+(e.reason||"");
     else if(e.event==="state_invalid")d=e.reason||"";
+    else if(e.event==="review")d=(e.ok?"clean":(e.blocking+" blocking"))+" · round "+(e.round||1)+(e.panel?(" · panel "+e.panel):(e.lenses?(" · "+e.lenses+" lens"):""));
+    else if(e.event==="hypothesis")d=e.theory?("survivor ("+(e.angle||"?")+", "+(e.confidence==null?"?":e.confidence)+"/10): "+e.theory):("no survivor · "+(e.considered||0)+" considered");
+    else if(e.event==="item_start")d=(e.item||"").slice(0,80)+" · effort "+(e.effort||"?")+(e.critical?" · CRITICAL":"");
+    else if(e.event==="item_done")d=(e.item||"").slice(0,80)+" · "+(e.open_left==null?"":(e.open_left+" left"));
+    else if(e.event==="item_incomplete")d=(e.item||"").slice(0,80)+" · fails "+(e.fails||"?");
+    else if(e.event==="merge_conflict")d=(e.item||"").slice(0,60)+" · worktree kept";
+    else if(e.event==="cost")d=(e.usd!=null?("+$"+Number(e.usd).toFixed(3)):"")+(e.spent_usd!=null?(" · total $"+Number(e.spent_usd).toFixed(2)):"");
+    else if(e.event==="learn")d=(e.proposed>0?(e.proposed+" charter amendment"+(e.proposed==1?"":"s")+" proposed"):"no amendments")+(e.out?(" · "+e.out.split("/").pop()):"");
     r.append(el("span","dt",d));f.append(r);
   });
   const p=$("#plan");p.innerHTML="";
@@ -591,6 +716,40 @@ function render(s){
   const dc=$("#decisions");dc.innerHTML="";
   if(!s.decisions.length)dc.append(el("div","empty","none yet"));
   s.decisions.forEach(b=>dc.append(el("div","dec",b)));
+  renderWorkflows(s.workflows||[]);
+}
+function wfDur(ms){if(!ms)return"";const s=Math.round(ms/1000);return s<60?(s+"s"):(Math.floor(s/60)+"m"+(s%60)+"s");}
+const WFST={done:"wf-done",running:"wf-run",queued:"wf-queue",error:"wf-err",failed:"wf-err"};
+function renderWorkflows(runs){
+  const card=$("#wfcard"),box=$("#workflows");
+  if(!runs.length){card.style.display="none";return;}
+  card.style.display="";box.innerHTML="";
+  runs.forEach(r=>{
+    const w=el("div","wf");
+    const head=el("div","wf-head");
+    head.append(el("span","wf-name",r.name));
+    const stCls=r.status==="running"?"wf-run":(r.status==="completed"?"wf-done":(r.status?"wf-err":""));
+    head.append(el("span","wf-badge "+stCls,r.status||"—"));
+    head.append(el("span","wf-meta",r.agentCount+" agents · "+fmtTok(r.totalTokens)+" tok · "+(r.totalToolCalls||0)+" tools"+(r.durationMs?(" · "+wfDur(r.durationMs)):"")));
+    w.append(head);
+    (r.phases||[]).forEach(ph=>{
+      const pe=el("div","wf-phase");
+      const pt=el("div","wf-ptitle");
+      pt.append(el("span","wf-pname",ph.title));
+      pt.append(el("span","wf-pmeta",ph.done+"✓"+(ph.running?(" · "+ph.running+"⋯"):"")+" · "+fmtTok(ph.tokens)+" tok"));
+      pe.append(pt);
+      (ph.agents||[]).forEach(a=>{
+        const ae=el("div","wf-agent");
+        ae.append(el("span","wf-dot "+(WFST[a.state]||"wf-queue")));
+        ae.append(el("span","wf-alabel",a.label));
+        const detail=(a.lastTool?(" · "+a.lastTool):"");
+        ae.append(el("span","wf-adetail",fmtTok(a.tokens)+"tok · "+a.toolCalls+"tc"+detail));
+        pe.append(ae);
+      });
+      w.append(pe);
+    });
+    box.append(w);
+  });
 }
 $("#stop").addEventListener("click",()=>{
   if(!confirm("Stop the run at the next turn boundary? (touches .leopold/STOP)"))return;

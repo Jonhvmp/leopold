@@ -85,4 +85,13 @@ export interface DriverConfig {
   /** Parallel scheduler: run this many independent plan items concurrently
    *  (each in its own worktree). 1 = the default serial loop. */
   parallel: number;
+  /** Root-cause hypothesis panel when an item is retried after a failure:
+   *  disjoint-evidence investigators + refuters hand the next attempt a lead. */
+  hypotheses: boolean;
+  /** LLM router that researches the repo before setting an item's effort and
+   *  criticality (falls back to the deterministic keyword classifier). */
+  smartRouting: boolean;
+  /** On a clean finish, mine the run's decisions + git history into proposed
+   *  charter amendments (.leopold/CHARTER-amendments.md). Never edits the charter. */
+  learnOnFinish: boolean;
 }

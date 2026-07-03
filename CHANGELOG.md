@@ -4,6 +4,137 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Hardcore CI.** (1) A **CLI smoke test** (`scripts/test-cli-smoke.sh`, also
+  `make driver-smoke`) exercises the *built* binary end to end against a fixture brief —
+  help, unknown-command exit code, `run --dry-run`, `workflow --print` (waves +
+  classification + guardrails verified), the emit path (files written, script parses,
+  args valid JSON), and `insights` — closing the gap where unit tests covered modules
+  but nothing executed the dist entry. Wired into `make test` and CI. (2) **Shellcheck**
+  (warning level) now gates every shell entrypoint — the two `ls | grep` findings it
+  surfaced in `install.sh` and the gstack extension were fixed with proper globs.
+  (3) The driver job runs on a **macOS + Ubuntu matrix**. (4) npm publish now ships
+  **`--provenance`** (supply-chain attestation). (5) **Dependabot** keeps npm, pip, and
+  Actions pins fresh weekly. (6) A **CodeQL** workflow scans JS/TS, Python, and the
+  Actions themselves on every PR to main/develop plus a weekly sweep.
+- **A new demo that shows the workflow engine.** `scripts/record-demo.sh` now
+  *synthesizes* the asciinema cast deterministically (v2 is just JSONL — no recorder
+  needed, byte-stable reruns) and renders it with agg / svg-term / `npx svg-term-cli`.
+  The walkthrough covers the current story: the brief, `leopold workflow` compiling it
+  into waves, the adversarial verify panel catching a blocking finding on a critical
+  item, the root-cause panel, and learn-on-finish proposing charter amendments. Still
+  honest by design — a scripted walkthrough, never a faked model session.
+- **Docs polish.** Cost & Security and Run Isolation joined the mkdocs nav (they were
+  orphaned); the Quickstart points large plans at `/leopold-workflow`; the README
+  quickstart block lists `leopold workflow`.
+- **`leopold-driver workflow` — the brief→workflow compiler as tested code.** The
+  compilation the `/leopold-workflow` skill described in prose is now deterministic TS
+  (`compile.ts`): parse `PLAN.md` into dependency waves, risk-classify each item, and emit
+  the exact `args` the canonical workflow script consumes. `leopold-driver workflow` writes
+  `.claude/workflows/leopold-run.js` + `.leopold/workflow-args.json` (reproducible,
+  CI-checkable); `--print` dumps the compiled args; `--run` executes headlessly through an
+  **experimental** in-driver runtime (`runtime.ts`) that implements the workflow globals —
+  `agent`/`pipeline`/`parallel`/`phase`/`log`/`budget` — with a real concurrency cap and an
+  injected, query-backed agent (git stays locked via the worker guard). The orchestration
+  engine is unit-tested (concurrency cap, budget stop, error-to-null); the query-backed
+  agent is a thin shim, not exercised end-to-end (alpha, like the rest of the SDK driver).
+  New docs: a Dynamic Workflows concept page. Driver suite: 103 → 113 tests.
+- **Dynamic-workflow phase tree in `leopold-watch`.** The dashboard now discovers the
+  native dynamic-workflow runs for the project (`~/.claude/projects/<slug>/<session>/
+  workflows/wf_*.json`) and renders a live phase tree: each run with its status, agent
+  count, token and tool totals, and duration; each phase with its done/running counts
+  and token sum; each agent with a status dot (running pulses), label, tokens, tool
+  calls, and its last tool summary. Read-only, cached by mtime, best-effort (a missing
+  or malformed run is skipped), and the card hides itself when there are no workflow
+  runs — so a plain `/leopold-run` dashboard is unchanged.
+- **Learn-on-finish closes the loop.** The SDK driver can now mine a run the moment it
+  finishes cleanly and propose charter amendments — `learnFromRun` reads the just-written
+  `DECISIONS.md` (plus archived runs) and the repo's git history, runs two miners, a
+  cluster pass, and one kill-biased skeptic per candidate, then writes
+  `.leopold/CHARTER-amendments.md`. It never edits `CHARTER.md`. Opt-in via
+  `--learn-on-finish` / `LEOPOLD_LEARN_ON_FINISH=1` / `learn_on_finish: on` in GUARDRAILS.
+  The completion notice and `leopold insights` report the proposed count; the dashboard
+  renders the `learn` event.
+- **GUARDRAILS.md drives the orchestration toggles.** `review`, `hypotheses`,
+  `smart_routing`, and `learn_on_finish` can be set in the brief's GUARDRAILS.md
+  (`key: on|off`), so the posture lives with the brief. Precedence is explicit CLI flag /
+  env var > GUARDRAILS > built-in default (`boolFrom` + `resolveBool`, unit-tested).
+
+## [0.10.0] - 2026-07-03
+
+### Added
+- **Mock-runtime test harness for the workflow scripts.** The four reference
+  `*.workflow.js` scripts (leopold-run, leopold-learn, leopold-triage,
+  plan-tournament) are now executed against deterministic `agent`/`pipeline`/
+  `parallel` stubs that record every call, so their real control flow is asserted —
+  dependency-wave order and lens escalation (leopold-run), disjoint-source miner
+  fan-out and the kill-biased skeptic (leopold-learn), the quarantine boundary
+  (leopold-triage: an injection marker reaches the classifier but never the
+  repo-capable fix planner), and tournament scoring/synthesis. A static validator
+  additionally asserts every script has a pure-literal `meta` and no filesystem/shell/
+  module access. Driver suite: 63 → 93 tests.
+- **Diverse-lens review panel (driver).** The per-item review gate is now a panel of
+  independent skeptics with distinct lenses instead of 1–2 identical reviewers:
+  correctness always; +security on sensitive diffs; +does-it-actually-work on critical
+  items. Blocking findings are unioned (deduped, `unionReviews`) and handed back to the
+  worker; unparseable verdicts still fail closed. `lensesFor` is pure and unit-tested.
+- **Root-cause hypothesis panel (driver).** When a plan item is retried after a failure,
+  three investigators form independent hypotheses over *disjoint* evidence (the diff /
+  the verification output / the item's assumptions vs the codebase), a refuter tries to
+  kill each one (fail-closed parsing, confidence 0–10), and the strongest survivor is
+  injected into the next worker attempt as a concrete lead instead of "try again". Wired
+  into both the serial loop and the parallel scheduler; logged as `hypothesis` events.
+  On by default; `--no-hypotheses` / `LEOPOLD_HYPOTHESES=0` turns it off.
+- **Smart routing (driver, opt-in).** `--smart-routing` / `LEOPOLD_SMART_ROUTING=1`
+  replaces keyword classification with a short read-only session that researches the
+  item's real blast radius (callers, touched modules) before setting effort/criticality.
+  Any failure falls back to the deterministic classifier, and the router can never lower
+  a keyword-critical item below critical (safety floor).
+- **`/leopold-learn` — the self-improving charter.** A workflow that mines the decision
+  log (`DECISIONS.md` + archived runs), this project's session transcripts, and git
+  history with three miners over disjoint sources, clusters the recurring signals
+  (cross-source repeats are the strongest), puts one kill-biased skeptic on every
+  candidate, and distills the survivors into `.leopold/CHARTER-amendments.md`. It never
+  edits `CHARTER.md` itself — the human reviews and applies.
+- **`/leopold-triage` — backlog triage with quarantine.** Classifies a queue (GitHub
+  issues via `gh`, files, pasted content) with quarantined readers — agents that read
+  untrusted item bodies have no repo access and only emit structured fields; the agents
+  that touch the repo (fix planners, `mode: 'fix'`) see only those fields. Dedupes
+  against tracked work, ranks by severity, drafts grounded fix plans for quick wins.
+  Pairs with `/loop` for continuous triage.
+- **Plan by tournament (`/leopold-brief`).** For substantial missions, the brief can now
+  draft `PLAN.md` by tournament: three drafters plan from deliberate stances (MVP-first,
+  risk-first, user-journey-first) grounded in the real repo, two judges score all drafts
+  comparatively, and a synthesizer builds the final plan from the winner grafted with the
+  runners-up's best ideas (`reference/plan-tournament.workflow.js`).
+- **Dashboard: the new events render.** `leopold-watch` now shows `review` (clean/blocking
+  + panel composition), `hypothesis` (surviving theory + confidence), `item_start/done/
+  incomplete`, `merge_conflict`, and `cost` with real detail lines and severities.
+
+### Changed
+- **`leopold insights` tracks the panel, not the old second-opinion flag.** The review
+  summary now counts multi-lens panels (`lenses>=2`, with the archived `second_opinion`
+  flag still honored) and adds a root-cause panel line (runs / leads produced).
+- **`/leopold-workflow` — the brief, compiled into a dynamic workflow.** A new Phase-2
+  engine that turns the durable brief into a [dynamic workflow](https://code.claude.com/docs/en/workflows):
+  a JavaScript harness Claude Code's runtime executes in the background. `PLAN.md` is
+  parsed into dependency-ordered waves (from the existing `(after: N)` markers), each item
+  is risk-classified with the same keyword rules the driver uses (effort + `critical` +
+  `sensitive`), and the compiled `args` drive a canonical, versioned workflow script
+  (`skills/leopold-workflow/reference/leopold-run.workflow.js`). Every item runs
+  implement → **independent adversarial verify** (a diverse-lens panel — correctness /
+  security / does-it-actually-work — on critical items) → fix, looping up to
+  `max_review_rounds`. Because the plan lives in code and each agent gets a clean context,
+  a long run doesn't drift into agentic laziness, self-preferential bias, or goal drift.
+  The run is resumable, streams a live phase tree into `/workflows`, and **git stays locked
+  for free** — a workflow can't commit; it stages, the human commits. Saving the compiled
+  script to `.claude/workflows/leopold-run.js` makes the brief a re-runnable, readable,
+  diffable harness. `/leopold-run` stays the engine for short or interactive plans;
+  `/leopold-workflow` is for large or parallelizable ones. Both read the same `.leopold/`
+  brief.
+
 ## [0.9.0] - 2026-06-27
 
 ### Added

@@ -7,6 +7,7 @@ import { runDriver } from "./loop.js";
 import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harness.js";
 import { runSecrets } from "./secrets.js";
 import { runInsights } from "./insights.js";
+import { runWorkflowCommand } from "./workflow-cmd.js";
 
 const sub = process.argv[2];
 const rest = process.argv.slice(3);
@@ -23,8 +24,11 @@ Usage:
   leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem)
   leopold-driver doctor                     run every extension's doctor
   leopold-driver update                     reinstall from this package
-  leopold-driver run [--worktree] [--parallel N] [--budget-usd N] [--no-review] [--dry-run]
+  leopold-driver run [--worktree] [--parallel N] [--budget-usd N] [--no-review]
+                     [--no-hypotheses] [--smart-routing] [--learn-on-finish] [--dry-run]
                                             conduct the .leopold run (the SDK driver)
+  leopold-driver workflow [--print] [--run] compile the brief into a dynamic workflow
+                                            (emit by default; --run executes it, experimental)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
@@ -35,11 +39,20 @@ Conducting a run uses your existing Claude Code login (ANTHROPIC_API_KEY only in
 --parallel N runs up to N independent plan items at once, each in its own worktree, replaying
 each item's diff onto the main tree (staged, never committed). Declare order in PLAN.md with
 "- [ ] (after: 2, 3) ...". Items with no deps run concurrently.
-Each item is risk-classified (sets reasoning effort) and, before it closes, an independent
-review gate runs /code-review (+ /security-review on sensitive diffs) — critical items get a
-second reviewer. --no-review turns the gate off; --max-review-rounds N caps fix rounds (2).
+Each item is risk-classified (sets reasoning effort) and, before it closes, a diverse-lens
+review panel gates it: correctness always; +security on sensitive diffs; +does-it-actually-work
+on critical items. --no-review turns the gate off; --max-review-rounds N caps fix rounds (2).
+When an item is retried after a failure, a root-cause panel (3 investigators over disjoint
+evidence + refuters) hands the next attempt a concrete lead (--no-hypotheses turns it off).
+--smart-routing replaces keyword classification with a short read-only session that researches
+the item's real blast radius (always falls back to keywords; never lowers a critical floor).
+--learn-on-finish mines the finished run (its decisions + git history) into proposed charter
+amendments at .leopold/CHARTER-amendments.md — it never edits CHARTER.md. Each of these toggles
+can also be set in the brief's GUARDRAILS.md (review / hypotheses / smart_routing /
+learn_on_finish: on|off); a CLI flag or env var overrides the brief.
 Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK,
-     LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD, LEOPOLD_REVIEW, LEOPOLD_MAX_REVIEW_ROUNDS
+     LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD, LEOPOLD_REVIEW, LEOPOLD_MAX_REVIEW_ROUNDS,
+     LEOPOLD_HYPOTHESES, LEOPOLD_SMART_ROUTING, LEOPOLD_LEARN_ON_FINISH
 `);
 }
 
@@ -59,6 +72,12 @@ switch (sub) {
     process.exit(runInstall(rest));
   case "insights":
     process.exit(runInsights(rest));
+  case "workflow":
+    runWorkflowCommand(process.cwd(), rest).then((c) => process.exit(c)).catch((err: unknown) => {
+      console.error("leopold-driver workflow error:", err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    });
+    break;
   case "menu":
     process.exit(runMenu());
   case "watch":

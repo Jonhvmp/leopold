@@ -38,6 +38,12 @@ this brief, so take your time here.
 Leopold flips into autonomous mode, picks the first open plan item, and starts
 working. From here it decides forks from your charter and keeps going on its own.
 
+!!! tip "Large or parallelizable plan? Compile it into a workflow"
+    `/leopold-workflow` runs the same brief as a
+    [dynamic workflow](../concepts/dynamic-workflows.md): the plan lives in code,
+    every item gets an independent adversarial review, and the run streams a live
+    phase tree into `/workflows`. Use `/leopold-run` for short or interactive plans.
+
 ## 3. Watch (optional)
 
 ```text

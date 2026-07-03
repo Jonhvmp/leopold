@@ -11,7 +11,7 @@ REPO="https://github.com/garrytan/gstack.git"
 case "${1:-}" in
   detect)
     # installed if the clone exists, or if its skills are already present
-    [ -d "$GSTACK_DIR" ] || ls "$SKILLS" 2>/dev/null | grep -q '^spec$'
+    [ -d "$GSTACK_DIR" ] || [ -e "$SKILLS/spec" ]
     ;;
 
   status)

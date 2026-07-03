@@ -1,7 +1,7 @@
 # In-Session Engine
 
 The in-session engine is the v0.1 tier: it runs entirely inside one Claude Code
-session, using two hooks and four skills. No external process, no API key, no
+session, using two hooks and a set of skills. No external process, no API key, no
 new infrastructure.
 
 ## The two hooks

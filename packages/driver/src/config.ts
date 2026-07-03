@@ -40,6 +40,25 @@ function intFrom(text: string, key: string, fallback: number): number {
   return m ? parseInt(m[1], 10) : fallback;
 }
 
+/** Read a `key: on|off` toggle from GUARDRAILS.md. Undefined when the key is absent
+ *  (so the caller can fall back to a default). Tolerates a trailing `# comment`. */
+export function boolFrom(text: string, key: string): boolean | undefined {
+  const m = text.match(new RegExp(`^\\s*-?\\s*${key}\\s*:\\s*([a-z0-9]+)`, "im"));
+  if (!m) return undefined;
+  const v = m[1].toLowerCase();
+  if (["on", "true", "yes", "enabled", "1"].includes(v)) return true;
+  if (["off", "false", "no", "disabled", "0"].includes(v)) return false;
+  return undefined;
+}
+
+/** Resolve a boolean knob with precedence: explicit CLI/env > GUARDRAILS > default. */
+function resolveBool(explicitOn: boolean, explicitOff: boolean, fromGuardrails: boolean | undefined, dflt: boolean): boolean {
+  if (explicitOn) return true;
+  if (explicitOff) return false;
+  if (fromGuardrails !== undefined) return fromGuardrails;
+  return dflt;
+}
+
 export function initState(brief: Brief): RunState {
   const state: RunState = {
     active: true,
@@ -92,9 +111,11 @@ function intArg(argv: string[], name: string, env: string | undefined, fallback:
   return Number.isFinite(n) && n >= 1 ? n : fallback;
 }
 
-export function loadConfig(argv: string[]): DriverConfig {
-  // Review gate is on by default; --no-review or LEOPOLD_REVIEW=0 turns it off.
-  const review = !argv.includes("--no-review") && process.env.LEOPOLD_REVIEW !== "0";
+/** Load the driver config. Precedence for each toggle: explicit CLI flag / env var >
+ *  the run's GUARDRAILS.md > built-in default — so the brief can set the posture and
+ *  a one-off flag can still override it. Pass the brief's guardrails text to honor it. */
+export function loadConfig(argv: string[], guardrails = ""): DriverConfig {
+  const g = guardrails;
   return {
     conductorModel: process.env.LEOPOLD_CONDUCTOR_MODEL || undefined,
     workerModel: process.env.LEOPOLD_WORKER_MODEL || undefined,
@@ -103,8 +124,15 @@ export function loadConfig(argv: string[]): DriverConfig {
     dryRun: argv.includes("--dry-run"),
     worktree: argv.includes("--worktree") || process.env.LEOPOLD_WORKTREE === "1",
     budgetUsd: parseBudgetUsd(flagValue(argv, "--budget-usd") ?? process.env.LEOPOLD_BUDGET_USD),
-    review,
+    // Review gate: on by default; --no-review / LEOPOLD_REVIEW=0 off, or `review:` in guardrails.
+    review: resolveBool(process.env.LEOPOLD_REVIEW === "1", argv.includes("--no-review") || process.env.LEOPOLD_REVIEW === "0", boolFrom(g, "review"), true),
     maxReviewRounds: intArg(argv, "--max-review-rounds", process.env.LEOPOLD_MAX_REVIEW_ROUNDS, 2),
     parallel: intArg(argv, "--parallel", process.env.LEOPOLD_PARALLEL, 1),
+    // Hypothesis panel: on by default; --no-hypotheses / LEOPOLD_HYPOTHESES=0 off, or `hypotheses:` in guardrails.
+    hypotheses: resolveBool(process.env.LEOPOLD_HYPOTHESES === "1", argv.includes("--no-hypotheses") || process.env.LEOPOLD_HYPOTHESES === "0", boolFrom(g, "hypotheses"), true),
+    // Smart routing: opt-in (a short session per item to research blast radius).
+    smartRouting: resolveBool(argv.includes("--smart-routing") || process.env.LEOPOLD_SMART_ROUTING === "1", process.env.LEOPOLD_SMART_ROUTING === "0", boolFrom(g, "smart_routing"), false),
+    // Learn-on-finish: opt-in mining of the just-finished run into charter amendments.
+    learnOnFinish: resolveBool(argv.includes("--learn-on-finish") || process.env.LEOPOLD_LEARN_ON_FINISH === "1", process.env.LEOPOLD_LEARN_ON_FINISH === "0", boolFrom(g, "learn_on_finish"), false),
   };
 }

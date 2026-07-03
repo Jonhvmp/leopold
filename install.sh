@@ -115,7 +115,7 @@ fi
 
 echo
 GSTACK_DIR="$SKILLS/gstack"
-gstack_present() { [ -d "$GSTACK_DIR" ] || ls "$SKILLS" 2>/dev/null | grep -q '^spec$'; }
+gstack_present() { [ -d "$GSTACK_DIR" ] || [ -e "$SKILLS/spec" ]; }
 install_gstack() {
   echo "-> installing gstack (MIT, by Garry Tan: https://github.com/garrytan/gstack)"
   command -v bun >/dev/null 2>&1 || echo "   note: gstack needs Bun v1.0+ (https://bun.sh); its setup will guide you."
@@ -148,7 +148,7 @@ fi
 echo
 echo "-> verifying"
 v_warn=0
-sc="$(ls "$SKILLS" 2>/dev/null | grep -c '^leopold-' || true)"
+sc=0; for d in "$SKILLS"/leopold-*; do [ -e "$d" ] && sc=$((sc+1)); done
 [ "${sc:-0}" -ge 4 ] 2>/dev/null && echo "   ok   $sc leopold skills installed" || { echo "   warn: leopold skills not found in $SKILLS"; v_warn=$((v_warn+1)); }
 if command -v jq >/dev/null 2>&1 && [ -f "$SETTINGS" ] && jq -e '(.hooks.Stop|length>0) and (.hooks.PreToolUse|length>0)' "$SETTINGS" >/dev/null 2>&1; then
   echo "   ok   Stop + PreToolUse hooks wired in settings.json"

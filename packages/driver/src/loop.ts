@@ -17,7 +17,10 @@ import { createWorktree, cleanupWorktree, type Worktree } from "./worktree.js";
 import { reapOrphan } from "./reaper.js";
 import { overBudget } from "./budget.js";
 import { classifyItem } from "./classify.js";
-import { reviewItem, diffIsSensitive } from "./review.js";
+import { smartRoute } from "./route.js";
+import { reviewItem, diffIsSensitive, lensesFor } from "./review.js";
+import { rootCausePanel, formatLead } from "./hypotheses.js";
+import { learnFromRun } from "./learn.js";
 import { parsePlanFile, readyItems, allDone, setItemDone, type PlanItem } from "./plan.js";
 import { headSha, diffAgainst, applyStaged } from "./git.js";
 import type { Brief, DriverConfig, RunState, WorkerStatus } from "./types.js";
@@ -29,26 +32,71 @@ function diffStat(cwd: string): string {
 }
 
 interface Escalation { item: string; question: string; why: string; }
-interface ItemOutcome { done: boolean; escalated: boolean; escalation?: Escalation; }
+interface ItemOutcome {
+  done: boolean; escalated: boolean; escalation?: Escalation;
+  /** Last worker-reported summary — feeds the root-cause panel on a retry. */
+  detail?: string;
+}
+
+/** When an item is being RETRIED after a failure, run the root-cause panel and
+ *  turn its surviving hypothesis into a concrete lead for the next attempt. */
+async function leadForRetry(
+  brief: Brief, cfg: DriverConfig, item: string, cwd: string, failureContext: string,
+): Promise<string | undefined> {
+  if (!cfg.hypotheses) return undefined;
+  console.log("  root-cause panel: 3 investigators over disjoint evidence…");
+  const panel = await rootCausePanel(cfg, brief, item, cwd, failureContext);
+  logEvent(brief.leoDir, {
+    event: "hypothesis", item, considered: panel.considered, survived: panel.survived,
+    angle: panel.survivor?.angle ?? null, confidence: panel.survivor?.confidence ?? null,
+    theory: panel.survivor?.theory?.slice(0, 200) ?? null,
+  });
+  const lead = formatLead(panel);
+  console.log(lead
+    ? `  panel -> survivor (${panel.survivor?.angle}, ${panel.survivor?.confidence}/10): ${panel.survivor?.theory}`
+    : `  panel -> no hypothesis survived refutation (${panel.considered} considered)`);
+  return lead;
+}
+
+/** On a clean finish, optionally mine the run into proposed charter amendments.
+ *  Returns a human-facing note to append to the completion message (empty if off
+ *  or nothing survived). Best-effort — never throws into the finish path. */
+async function maybeLearn(cfg: DriverConfig, brief: Brief): Promise<string> {
+  if (!cfg.learnOnFinish) return "";
+  console.log("learn-on-finish: mining this run for charter amendments…");
+  const r = await learnFromRun(cfg, brief);
+  logEvent(brief.leoDir, { event: "learn", proposed: r.proposed, out: r.outPath });
+  if (r.proposed === 0) {
+    console.log("  learn -> no amendments proposed (the charter already covers this run).");
+    return "\n\nlearn-on-finish: no charter amendments — the charter already fits how this run decided.";
+  }
+  console.log(`  learn -> ${r.proposed} amendment(s) proposed in ${r.outPath}`);
+  return `\n\nlearn-on-finish proposed ${r.proposed} charter amendment(s) in .leopold/CHARTER-amendments.md:\n` +
+    r.rules.map((x) => `  • ${x}`).join("\n") + `\nReview and fold in what sounds like you; the charter itself was not touched.`;
+}
 
 /** Run one plan item to completion in `cwd`: classify → conduct → review gate.
  *  Shared by the serial loop and the parallel scheduler. */
 async function processItem(
   brief: Brief, cfg: DriverConfig, state: RunState, recent: string[],
-  item: string, cwd: string,
+  item: string, cwd: string, lead?: string,
 ): Promise<ItemOutcome> {
-  const klass = classifyItem(item, brief.charter);
-  logEvent(brief.leoDir, { event: "item_start", iteration: state.iteration, item, effort: klass.effort, critical: klass.critical });
-  console.log(`\n--- ${item}  [effort=${klass.effort}${klass.critical ? ", critical" : ""}] ---`);
+  const klass = cfg.smartRouting
+    ? await smartRoute(cfg, brief, item, cwd)
+    : classifyItem(item, brief.charter);
+  logEvent(brief.leoDir, { event: "item_start", iteration: state.iteration, item, effort: klass.effort, critical: klass.critical, routed: cfg.smartRouting, reason: klass.reason });
+  console.log(`\n--- ${item}  [effort=${klass.effort}${klass.critical ? ", critical" : ""}${cfg.smartRouting ? ", smart-routed" : ""}] ---`);
 
   const workerPrompt =
     `Work on this plan item now:\n\n${item}\n\n` +
+    (lead ? `${lead}\n\n` : "") +
     `Do it completely and verify it (build, lint, tests). Decide reversible or charter-clear forks yourself per the mission and charter. When the item is done, or if you hit a fork only the conductor can settle, close your turn with the leopold-status block.`;
 
   // The review gate inspects `cwd`'s diff, so it must see this item's worktree.
   const itemBrief: Brief = { ...brief, worktreeRoot: cwd };
   let escalated = false, itemDone = false, reviewRounds = 0;
   let escalation: Escalation | undefined;
+  let lastSummary = "";
 
   await runItem({
     brief, cfg, item, workerPrompt, cwd, effort: klass.effort,
@@ -58,6 +106,7 @@ async function processItem(
       logEvent(brief.leoDir, { event: "cost", item, usd, spent_usd: state.spent_usd });
     },
     onTurn: async (status: WorkerStatus): Promise<string | null> => {
+      lastSummary = `${status.kind}: ${status.summary}${status.evidence ? `\nEVIDENCE: ${status.evidence}` : ""}`.slice(0, 800);
       logEvent(brief.leoDir, { event: "worker_turn", kind: status.kind, item: status.item || item });
       const verdict = await decide(cfg, brief, status, recent.slice(-5).join("\n"));
       logDecision(brief.leoDir, state.iteration, status, verdict);
@@ -67,8 +116,9 @@ async function processItem(
         // Review gate: an independent pass over the item's diff before it closes.
         if (cfg.review && reviewRounds < cfg.maxReviewRounds) {
           const sensitive = klass.critical || diffIsSensitive(diffStat(cwd));
-          const r = await reviewItem(cfg, itemBrief, { sensitive, secondOpinion: klass.critical });
-          logEvent(brief.leoDir, { event: "review", item, round: reviewRounds + 1, ok: r.ok, blocking: r.blocking.length, sensitive, second_opinion: klass.critical });
+          const lenses = lensesFor({ sensitive, critical: klass.critical });
+          const r = await reviewItem(cfg, itemBrief, { sensitive, critical: klass.critical });
+          logEvent(brief.leoDir, { event: "review", item, round: reviewRounds + 1, ok: r.ok, blocking: r.blocking.length, sensitive, lenses: lenses.length, panel: lenses.join("+") });
           if (!r.ok) {
             reviewRounds += 1;
             console.log(`  review -> ${r.blocking.length} blocking (round ${reviewRounds}/${cfg.maxReviewRounds})`);
@@ -93,12 +143,14 @@ async function processItem(
     },
   });
 
-  return { done: itemDone, escalated, escalation };
+  return { done: itemDone, escalated, escalation, detail: lastSummary };
 }
 
 export async function runDriver(cwd: string, argv: string[]): Promise<void> {
-  const cfg = loadConfig(argv);
   const brief = loadBrief(cwd);
+  // Config honors the brief's GUARDRAILS.md for its toggles (review, hypotheses,
+  // smart_routing, learn_on_finish), with CLI/env taking precedence.
+  const cfg = loadConfig(argv, brief.guardrails);
 
   if (cfg.dryRun) {
     console.log("DRY RUN — brief loaded, no workers will run.\n");
@@ -157,6 +209,9 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   }
 
   // --- Serial loop -----------------------------------------------------------
+  // When an item is retried after a failure, the root-cause panel investigates
+  // first and hands the next attempt a concrete lead instead of "try again".
+  let lastFailed: { item: string; detail: string } | null = null;
   for (;;) {
     if (killSwitch(brief.leoDir)) {
       stop("kill_switch");
@@ -182,16 +237,21 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
 
     const item = nextOpenItem(brief.planPath);
     if (!item) {
+      const learnNote = await maybeLearn(cfg, brief);
       stop("plan_complete");
       await notify(brief.leoDir, cfg.webhookUrl, "Leopold finished",
-        `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.`);
+        `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.${learnNote}`);
       return;
     }
 
     state.iteration += 1;
     writeState(brief.leoDir, state);
 
-    const outcome = await processItem(brief, cfg, state, recent, item, brief.worktreeRoot ?? brief.root);
+    const cwd = brief.worktreeRoot ?? brief.root;
+    const lead = lastFailed?.item === item
+      ? await leadForRetry(brief, cfg, item, cwd, lastFailed.detail)
+      : undefined;
+    const outcome = await processItem(brief, cfg, state, recent, item, cwd, lead);
 
     if (outcome.escalated) {
       const e = outcome.escalation;
@@ -204,11 +264,13 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     if (outcome.done) {
       const left = markItemDone(brief.planPath, item);
       state.consecutive_failures = 0;
+      lastFailed = null;
       writeState(brief.leoDir, state);
       logEvent(brief.leoDir, { event: "item_done", item, open_left: left });
       console.log(`  done. ${left} items left.`);
     } else {
       state.consecutive_failures += 1;
+      lastFailed = { item, detail: outcome.detail ?? "" };
       writeState(brief.leoDir, state);
       logEvent(brief.leoDir, { event: "item_incomplete", item, fails: state.consecutive_failures });
     }
@@ -227,6 +289,9 @@ async function runParallel(
   const runShort = randomUUID().slice(0, 6);
   const inFlight = new Set<number>();
   const running = new Map<number, Promise<void>>();
+  // Items that already failed once, with what the failed attempt reported —
+  // a re-dispatch runs the root-cause panel first (same lead mechanic as serial).
+  const failedDetail = new Map<number, string>();
   let stopReason: string | null = null;
   let escalation: Escalation | undefined;
   let conflicts = 0;
@@ -244,7 +309,11 @@ async function runParallel(
     const cwd = wt?.path ?? baseRoot;
     const base = headSha(cwd) || "HEAD";
     try {
-      const outcome = await processItem(brief, cfg, state, recent, pi.text, cwd);
+      const prior = failedDetail.get(pi.index);
+      const lead = prior !== undefined
+        ? await leadForRetry(brief, cfg, pi.text, cwd, prior)
+        : undefined;
+      const outcome = await processItem(brief, cfg, state, recent, pi.text, cwd, lead);
       if (outcome.escalated) {
         stopReason ??= "escalation";
         escalation ??= outcome.escalation;
@@ -252,9 +321,11 @@ async function runParallel(
       }
       if (!outcome.done) {
         state.consecutive_failures += 1;
+        failedDetail.set(pi.index, outcome.detail ?? "");
         logEvent(brief.leoDir, { event: "item_incomplete", item: pi.text, fails: state.consecutive_failures });
         return;
       }
+      failedDetail.delete(pi.index);
       // Replay the item's diff onto the main tree (staged), serialized.
       let applied = true;
       await serialize(() => {
@@ -308,6 +379,9 @@ async function runParallel(
 
   // Let in-flight items settle before tearing down.
   await Promise.allSettled(running.values());
+
+  // Mine the run BEFORE stop() — on_finish:archive moves DECISIONS.md out of place.
+  const learnNote = stopReason === "plan_complete" ? await maybeLearn(cfg, brief) : "";
   stop(stopReason ?? "plan_complete");
 
   const tail = conflicts ? ` ${conflicts} item(s) need manual merge (worktrees kept).` : "";
@@ -317,7 +391,7 @@ async function runParallel(
       `The run is paused. Make the call, adjust PLAN.md or CHARTER.md, then re-run.${tail}`);
   } else if (stopReason === "plan_complete") {
     await notify(brief.leoDir, cfg.webhookUrl, "Leopold finished",
-      `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.${tail}`);
+      `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.${tail}${learnNote}`);
   } else if (stopReason === "budget_exceeded") {
     await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped",
       `Budget reached: $${(state.spent_usd ?? 0).toFixed(2)} of $${cfg.budgetUsd?.toFixed(2)}. Work so far is staged.${tail}`);

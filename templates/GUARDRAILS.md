@@ -20,6 +20,14 @@
 - max_failures: 3            # consecutive failures of the same kind
 - token/time budget: none    # set if you want a hard ceiling
 
+## Quality & orchestration (SDK driver)
+> Toggles the SDK driver reads from here. A CLI flag or env var overrides the brief.
+- review: on                 # diverse-lens review panel before an item closes
+- hypotheses: on             # root-cause panel hands a stuck retry a concrete lead
+- smart_routing: off         # research each item's blast radius before routing effort
+- learn_on_finish: off       # on a clean finish, mine the run into proposed charter
+                             # amendments (.leopold/CHARTER-amendments.md; never edits CHARTER)
+
 ## On finish
 - on_finish: keep            # keep | archive
 > keep: brief, DECISIONS, and events stay in place. archive: on a clean finish,

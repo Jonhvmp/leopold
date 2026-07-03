@@ -21,6 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Syntax-check hooks, installer, scripts, and extensions
         run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh scripts/*.sh extensions/*/*.sh
+      - name: Shellcheck every shell entrypoint (warning level)
+        run: shellcheck -S warning hooks/*.sh install.sh scripts/*.sh extensions/*/*.sh
       - name: Byte-compile Python scripts (dashboard, etc.)
         run: python3 -m py_compile scripts/*.py
       - name: Hook behavior tests
@@ -29,8 +31,12 @@ jobs:
         run: bash scripts/test-guard.sh
 
   driver:
-    name: driver
-    runs-on: ubuntu-latest
+    name: driver (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     defaults:
       run:
         working-directory: packages/driver
@@ -45,6 +51,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: CLI smoke — exercise the built binary against a fixture brief
+        working-directory: .
+        run: bash scripts/test-cli-smoke.sh
 
   docs:
     name: docs
@@ -80,6 +89,9 @@ jobs:
     needs: [hooks, driver, docs]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write   # npm --provenance (supply-chain attestation)
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
@@ -129,5 +141,5 @@ jobs:
           else
             npm ci
             npm version "$V" --no-git-tag-version --allow-same-version >/dev/null
-            npm publish --access public
+            npm publish --access public --provenance
           fi

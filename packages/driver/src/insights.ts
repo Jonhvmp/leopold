@@ -20,7 +20,9 @@ export interface InsightsReport {
   conflicts: number;
   effort: Record<string, number>;
   critical: number;
-  reviews: { total: number; blocked: number; clean: number; sensitive: number; secondOpinion: number };
+  reviews: { total: number; blocked: number; clean: number; sensitive: number; panel: number };
+  hypotheses: { runs: number; survivors: number };
+  learnProposed?: number;
   guardBlocks: number;
   escalations: number;
   decisions: number;
@@ -34,7 +36,8 @@ export function summarize(lines: string[], state: Record<string, unknown> = {}):
   const r: InsightsReport = {
     events: 0, itemsStarted: 0, itemsDone: 0, itemsIncomplete: 0, conflicts: 0,
     effort: {}, critical: 0,
-    reviews: { total: 0, blocked: 0, clean: 0, sensitive: 0, secondOpinion: 0 },
+    reviews: { total: 0, blocked: 0, clean: 0, sensitive: 0, panel: 0 },
+    hypotheses: { runs: 0, survivors: 0 },
     guardBlocks: 0, escalations: 0, decisions: 0, costUsd: 0,
   };
   for (const line of lines) {
@@ -59,7 +62,16 @@ export function summarize(lines: string[], state: Record<string, unknown> = {}):
         r.reviews.total += 1;
         if (e.ok === true) r.reviews.clean += 1; else r.reviews.blocked += 1;
         if (e.sensitive === true) r.reviews.sensitive += 1;
-        if (e.second_opinion === true) r.reviews.secondOpinion += 1;
+        // A multi-lens panel ran: new events carry `lenses` (a count); tolerate the
+        // old `second_opinion` flag so archived runs still summarize.
+        if (num(e.lenses) >= 2 || e.second_opinion === true) r.reviews.panel += 1;
+        break;
+      case "hypothesis":
+        r.hypotheses.runs += 1;
+        if (typeof e.theory === "string" && e.theory) r.hypotheses.survivors += 1;
+        break;
+      case "learn":
+        r.learnProposed = num(e.proposed);
         break;
       case "guard_block": r.guardBlocks += 1; break;
       case "cost": r.costUsd += num(e.usd); break;
@@ -110,7 +122,9 @@ export function renderInsights(r: InsightsReport): string {
     `Critical items   ${r.critical}`,
     ``,
     `Review gate      ${r.reviews.total} run · ${r.reviews.clean} clean · ${r.reviews.blocked} sent back  (${reviewRate}% first-pass clean)`,
-    `                 ${r.reviews.sensitive} security-sensitive · ${r.reviews.secondOpinion} second-opinion`,
+    `                 ${r.reviews.sensitive} security-sensitive · ${r.reviews.panel} multi-lens panel`,
+    `Root-cause panel ${r.hypotheses.runs} run · ${r.hypotheses.survivors} produced a lead`,
+    ...(r.learnProposed !== undefined ? [`Charter amendments ${r.learnProposed} proposed (learn-on-finish)`] : []),
     `Decisions logged ${r.decisions}     Escalations ${r.escalations}     Guard blocks ${r.guardBlocks}`,
   ].join("\n");
 }

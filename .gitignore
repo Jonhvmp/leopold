@@ -25,3 +25,7 @@ site/
 # Maintainer-only publishing + launch notes (kept local, not public)
 PUBLISHING.md
 launch/
+
+# Python bytecode cache
+__pycache__/
+*.pyc

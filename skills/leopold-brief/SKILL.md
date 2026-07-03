@@ -83,6 +83,10 @@ LOCKED; the run stages and reports, the human commits. Confirm or adjust:
 - Which action classes are autonomous vs gated (default: all git write ops gated).
 - Stop conditions: max consecutive failures (default 3), max iterations
   (default 50), token/time budget if any.
+- Quality & orchestration toggles the SDK driver reads from GUARDRAILS.md:
+  `review` (on), `hypotheses` (on), `smart_routing` (off), and `learn_on_finish`
+  (off — when on, a clean finish mines the run into proposed charter amendments via
+  `/leopold-learn`'s logic, without touching CHARTER.md). A CLI flag overrides the brief.
 
 ## Step 4 — Build the plan
 
@@ -98,6 +102,27 @@ the UI to the API`. Items with no marker are treated as independent and may run 
 the same time, so only add `(after: …)` for real dependencies, and prefer to split
 work so that more items are independent. Items that all touch the same files should
 depend on each other (or be one item) to avoid merge conflicts.
+
+## Step 4a — Draft the plan by tournament (optional, workflow)
+
+For a substantial mission (roughly: 6+ items, or architectural choices baked into
+the ordering), a single draft inherits your first framing. If the `Workflow` tool
+is available, offer to draft the plan by **tournament** instead:
+
+- Copy `~/.claude/skills/leopold-brief/reference/plan-tournament.workflow.js` to
+  `.claude/workflows/leopold-plan-tournament.js` and launch it with `args`:
+  `{ mission, charter, projectDir, constraints }` — where `constraints` restates
+  the format rules from Step 4 (checkbox lines, `(after: N)` markers, sizing,
+  same-file items depend on each other).
+- Three independent drafters plan from deliberate stances (MVP-first, risk-first,
+  user-journey-first), each grounding items in the real repo; two judges score all
+  drafts comparatively (delivery realism, mission fit); a synthesizer builds the
+  final plan from the winner grafted with the runners-up's best ideas.
+- The result comes back as an ordered item list — show the user the winning angle
+  and ranking, then fold the list into `PLAN.md` as the Step 4 backlog.
+
+Skip silently for small missions or when workflows are unavailable; the Step 4
+plan is enough.
 
 ## Step 4b — Harden the plan with gstack (optional)
 
@@ -132,4 +157,13 @@ Summarize the brief to the user in a few lines: mission, the 3 sharpest charter
 rules, the guardrail posture, and the first 3 plan items. Ask if it reflects how
 they actually think. Iterate until they confirm.
 
-End by telling them: when ready, run `/leopold-run` to hand over the seat.
+End by telling them how to hand over the seat, and which engine fits:
+
+- `/leopold-run` — the single-context conductor loop. Good for a short or highly
+  interactive plan.
+- `/leopold-workflow` — compiles this brief into a **dynamic workflow**: the plan runs
+  as code (no context drift on a long plan), each item gets an independent adversarial
+  review, and the run is resumable and visible in `/workflows`. Reach for it when the
+  plan is large or parallelizable. Requires Dynamic workflows enabled (`/config`).
+
+Both read the same `.leopold/` brief and keep git locked.
