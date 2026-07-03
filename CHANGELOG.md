@@ -4,6 +4,64 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Diverse-lens review panel (driver).** The per-item review gate is now a panel of
+  independent skeptics with distinct lenses instead of 1–2 identical reviewers:
+  correctness always; +security on sensitive diffs; +does-it-actually-work on critical
+  items. Blocking findings are unioned (deduped, `unionReviews`) and handed back to the
+  worker; unparseable verdicts still fail closed. `lensesFor` is pure and unit-tested.
+- **Root-cause hypothesis panel (driver).** When a plan item is retried after a failure,
+  three investigators form independent hypotheses over *disjoint* evidence (the diff /
+  the verification output / the item's assumptions vs the codebase), a refuter tries to
+  kill each one (fail-closed parsing, confidence 0–10), and the strongest survivor is
+  injected into the next worker attempt as a concrete lead instead of "try again". Wired
+  into both the serial loop and the parallel scheduler; logged as `hypothesis` events.
+  On by default; `--no-hypotheses` / `LEOPOLD_HYPOTHESES=0` turns it off.
+- **Smart routing (driver, opt-in).** `--smart-routing` / `LEOPOLD_SMART_ROUTING=1`
+  replaces keyword classification with a short read-only session that researches the
+  item's real blast radius (callers, touched modules) before setting effort/criticality.
+  Any failure falls back to the deterministic classifier, and the router can never lower
+  a keyword-critical item below critical (safety floor).
+- **`/leopold-learn` — the self-improving charter.** A workflow that mines the decision
+  log (`DECISIONS.md` + archived runs), this project's session transcripts, and git
+  history with three miners over disjoint sources, clusters the recurring signals
+  (cross-source repeats are the strongest), puts one kill-biased skeptic on every
+  candidate, and distills the survivors into `.leopold/CHARTER-amendments.md`. It never
+  edits `CHARTER.md` itself — the human reviews and applies.
+- **`/leopold-triage` — backlog triage with quarantine.** Classifies a queue (GitHub
+  issues via `gh`, files, pasted content) with quarantined readers — agents that read
+  untrusted item bodies have no repo access and only emit structured fields; the agents
+  that touch the repo (fix planners, `mode: 'fix'`) see only those fields. Dedupes
+  against tracked work, ranks by severity, drafts grounded fix plans for quick wins.
+  Pairs with `/loop` for continuous triage.
+- **Plan by tournament (`/leopold-brief`).** For substantial missions, the brief can now
+  draft `PLAN.md` by tournament: three drafters plan from deliberate stances (MVP-first,
+  risk-first, user-journey-first) grounded in the real repo, two judges score all drafts
+  comparatively, and a synthesizer builds the final plan from the winner grafted with the
+  runners-up's best ideas (`reference/plan-tournament.workflow.js`).
+- **Dashboard: the new events render.** `leopold-watch` now shows `review` (clean/blocking
+  + panel composition), `hypothesis` (surviving theory + confidence), `item_start/done/
+  incomplete`, `merge_conflict`, and `cost` with real detail lines and severities.
+- **`/leopold-workflow` — the brief, compiled into a dynamic workflow.** A new Phase-2
+  engine that turns the durable brief into a [dynamic workflow](https://code.claude.com/docs/en/workflows):
+  a JavaScript harness Claude Code's runtime executes in the background. `PLAN.md` is
+  parsed into dependency-ordered waves (from the existing `(after: N)` markers), each item
+  is risk-classified with the same keyword rules the driver uses (effort + `critical` +
+  `sensitive`), and the compiled `args` drive a canonical, versioned workflow script
+  (`skills/leopold-workflow/reference/leopold-run.workflow.js`). Every item runs
+  implement → **independent adversarial verify** (a diverse-lens panel — correctness /
+  security / does-it-actually-work — on critical items) → fix, looping up to
+  `max_review_rounds`. Because the plan lives in code and each agent gets a clean context,
+  a long run doesn't drift into agentic laziness, self-preferential bias, or goal drift.
+  The run is resumable, streams a live phase tree into `/workflows`, and **git stays locked
+  for free** — a workflow can't commit; it stages, the human commits. Saving the compiled
+  script to `.claude/workflows/leopold-run.js` makes the brief a re-runnable, readable,
+  diffable harness. `/leopold-run` stays the engine for short or interactive plans;
+  `/leopold-workflow` is for large or parallelizable ones. Both read the same `.leopold/`
+  brief.
+
 ## [0.9.0] - 2026-06-27
 
 ### Added
