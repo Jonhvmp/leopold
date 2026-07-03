@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **The installer now upgrades an existing CLI instead of leaving it stale.** Re-running
+  `install.sh` (or the one-line `curl` installer) used to print "leopold CLI already
+  installed" and stop, so anyone with an older `leopold` on PATH kept the old binary —
+  including the one without `leopold --version`. It now always runs
+  `npm i -g leopold-driver@latest` and reports the resulting version (and the
+  before→after when it changed).
+
 ## [0.10.1] - 2026-07-03
 
 ### Fixed
