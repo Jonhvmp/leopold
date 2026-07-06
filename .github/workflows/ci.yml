@@ -27,12 +27,14 @@ jobs:
         run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh scripts/*.sh extensions/*/*.sh
       - name: Shellcheck every shell entrypoint (warning level)
         run: shellcheck -S warning hooks/*.sh install.sh scripts/*.sh extensions/*/*.sh
-      - name: Byte-compile Python scripts (dashboard, etc.)
-        run: python3 -m py_compile scripts/*.py
+      - name: Byte-compile Python scripts (dashboard, extension engines)
+        run: python3 -m py_compile scripts/*.py extensions/*/payload/*.py
       - name: Hook behavior tests
         run: bash scripts/test-hooks.sh
       - name: Guard red-team tests (bypass attempts must stay blocked)
         run: bash scripts/test-guard.sh
+      - name: Enhance behavior tests (stubbed claude, no network)
+        run: bash scripts/test-enhance.sh
 
   driver:
     name: driver (${{ matrix.os }})

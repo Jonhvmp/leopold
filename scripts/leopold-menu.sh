@@ -112,17 +112,18 @@ component_menu() {
     local caps; caps="$(ext_caps "$d/extension.json")"
     [ -n "$caps" ] && printf "  %scapabilities:%s %s\n\n" "$C_DIM" "$C_RESET" "$caps"
     local has_dash=""; [ -n "$(_jget "$d/extension.json" dashboard)" ] && has_dash=1
-    if [ -n "$has_dash" ]; then
-      printf "   1) Install    2) Update    3) Remove    4) Doctor    w) Watch    b) Back\n\n"
-    else
-      printf "   1) Install    2) Update    3) Remove    4) Doctor    b) Back\n\n"
-    fi
+    local has_tog="";  [ -n "$(_jget "$d/extension.json" toggle)" ] && has_tog=1
+    local extra=""
+    [ -n "$has_tog" ]  && extra="$extra    t) Toggle on/off"
+    [ -n "$has_dash" ] && extra="$extra    w) Watch"
+    printf "   1) Install    2) Update    3) Remove    4) Doctor%s    b) Back\n\n" "$extra"
     printf "select: "; read -r a || a="b"
     case "$a" in
       1) ext_consent "$d" && { ext_run "$d" install || echo "${C_YELLOW}install returned non-zero${C_RESET}"; }; pause ;;
       2) ext_consent "$d" && { ext_run "$d" update  || echo "${C_YELLOW}update returned non-zero${C_RESET}"; }; pause ;;
       3) ext_run "$d" remove  || echo "${C_YELLOW}remove returned non-zero${C_RESET}";  pause ;;
       4) ext_run "$d" doctor  || true; pause ;;
+      t|T) [ -n "$has_tog" ] && { ext_run "$d" toggle || true; }; pause ;;
       w|W) [ -n "$has_dash" ] && { ext_run "$d" watch || true; }; pause ;;
       b|B|"") return ;;
       *) ;;
@@ -155,16 +156,18 @@ remove_core() {
   local settings="$CLAUDE/settings.json" tmp d
   if [ -f "$settings" ] && command -v jq >/dev/null 2>&1; then
     cp "$settings" "$settings.leopold.bak"
+    # the core installer also wires the prompt enhancer, so core removal strips it too
     tmp="$(mktemp)"
     jq 'if .hooks then .hooks |= ( to_entries
-          | map(.value |= ( map(.hooks |= map(select((.command // "") | test("leopold/hooks/") | not)))
+          | map(.value |= ( map(.hooks |= map(select((.command // "") | test("leopold/hooks/|enhance\\.py --event") | not)))
                             | map(select((.hooks | length) > 0)) ))
           | from_entries ) else . end' "$settings" > "$tmp" && mv "$tmp" "$settings"
-    echo "  unwired Leopold's Stop/PreToolUse hooks (backup at $settings.leopold.bak)"
+    echo "  unwired Leopold's Stop/PreToolUse/UserPromptSubmit hooks (backup at $settings.leopold.bak)"
   fi
   for d in "$CLAUDE"/skills/leopold-*; do [ -d "$d" ] && rm -rf "$d"; done
   rm -rf "$CLAUDE/leopold" 2>/dev/null || true
-  echo "  removed the leopold-* skills and $CLAUDE/leopold"
+  rm -rf "$CLAUDE/enhance" 2>/dev/null || true
+  echo "  removed the leopold-* skills, $CLAUDE/leopold and $CLAUDE/enhance"
 }
 
 remove_cli() {
@@ -202,11 +205,12 @@ uninstall_menu() {
   printf "   3) serena              unregister MCP + unwire hooks (keeps the serena CLI)\n"
   printf "   4) gstack              remove the skill suite\n"
   printf "   5) ovmem               unwire hooks + remove engine %s(keeps your memory)%s\n" "$C_DIM" "$C_RESET"
-  printf "   6) %sovmem DATA + server   ~/.openviking + OpenViking — DELETES memory!%s\n\n" "$C_YELLOW" "$C_RESET"
-  printf "   a) everything except DATA (1-5)      q) cancel\n\n"
+  printf "   6) enhance              unwire hook + %sDELETE%s %s/enhance (ledger + learned profile)\n" "$C_YELLOW" "$C_RESET" "$CLAUDE"
+  printf "   7) %sovmem DATA + server   ~/.openviking + OpenViking — DELETES memory!%s\n\n" "$C_YELLOW" "$C_RESET"
+  printf "   a) everything except ovmem DATA (1-6)      q) cancel\n\n"
   printf "pick (space-separated, e.g. \"1 2 5\"): "
   local picks p; read -r picks || picks="q"
-  case "$picks" in q|Q|"") return ;; a|A) picks="1 2 3 4 5" ;; esac
+  case "$picks" in q|Q|"") return ;; a|A) picks="1 2 3 4 5 6" ;; esac
   echo
   printf "%sSelected: %s%s\n" "$C_BOLD" "$picks" "$C_RESET"
   confirm "Proceed with the removals above?" || { pause; return; }
@@ -218,7 +222,8 @@ uninstall_menu() {
       3) confirm "Remove serena (MCP + hooks)?"                 && remove_ext serena ;;
       4) confirm "Remove gstack?"                               && remove_ext gstack ;;
       5) confirm "Remove ovmem engine (keeps your memory)?"     && remove_ext ovmem ;;
-      6) remove_ovmem_data ;;
+      6) confirm "Remove enhance (deletes its ledger + learned profile)?" && remove_ext enhance ;;
+      7) remove_ovmem_data ;;
       *) echo "  ignored: '$p'" ;;
     esac
   done

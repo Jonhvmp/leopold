@@ -1,7 +1,7 @@
 # Toolchain Manager
 
 Leopold ships a small interactive menu to install and manage the toolchain it conducts
-(gstack) and companion extensions (like ovmem) from one place. It generalizes the one-off
+(gstack) and companion extensions (like ovmem and enhance) from one place. It generalizes the one-off
 "install gstack?" prompt in the installer into a data-driven registry.
 
 ```bash
@@ -40,8 +40,11 @@ The menu's **`u`** option removes Leopold, granularly and **data-safe**. It asks
 what to take out and confirms each pick — Leopold core (skills + hooks + `~/.claude/leopold`),
 the `leopold` CLI, serena, gstack, and ovmem's engine all **keep your data**. Deleting
 ovmem's long-term memory (`~/.openviking`) is a separate item that requires typing `DELETE`,
-so nothing precious is removed by accident. Each extension's own `remove` (used here) unwires
-its hooks and deletes its engine while leaving your data and any shared server in place.
+so nothing precious is removed by accident. The exception is **enhance**, whose entry says so
+in yellow: its removal deletes `~/.claude/enhance` including the enhancement ledger and the
+learned prompt profile (they are useless without the engine). Each extension's own `remove`
+(used here) unwires its hooks and deletes its engine while leaving your data and any shared
+server in place.
 
 ## Built-in extensions
 
@@ -84,3 +87,13 @@ server. The only outbound traffic is to OpenAI (with the user's own key) for emb
 extraction. A fully-local Ollama/GGUF profile (no key) is on the roadmap.
 
 Supported on Linux and macOS. On native Windows, run it inside WSL.
+
+### enhance
+
+The [global prompt enhancer](../reference/enhance.md): one `UserPromptSubmit` hook that has
+Haiku — on your own connected account — produce a structured interpretation of genuinely weak
+prompts ("fix login") and inject it next to the raw prompt, which always wins on conflict.
+Charter-aware when the project has a Leopold brief, fail-open on any error, and self-learning
+via `/leopold-enhance learn`. Unlike the other extensions it is installed (wired, but **off**)
+by the main installer; the menu's `t) Toggle` action — or `/leopold-enhance on|off` — is the
+switch. Needs python3 + jq; the rewriter uses your existing `claude` login, no extra key.

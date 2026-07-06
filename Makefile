@@ -64,11 +64,12 @@ doctor: ## Diagnose the Leopold install (skills, hooks, wiring, gstack)
 	@bash scripts/leopold-doctor.sh
 
 .PHONY: hooks-check hooks-test
-hooks-check: ## Syntax-check the hooks and the installer
+hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@bash -n hooks/stop-continuity.sh
 	@bash -n hooks/guard-irreversible.sh
 	@bash -n install.sh
-	@echo "hooks + install.sh: syntax OK"
+	@python3 -m py_compile extensions/enhance/payload/enhance.py
+	@echo "hooks + install.sh + enhance engine: syntax OK"
 
 hooks-test: ## Run the hook behavior tests
 	@bash scripts/test-hooks.sh
@@ -76,6 +77,10 @@ hooks-test: ## Run the hook behavior tests
 .PHONY: test-guard
 test-guard: ## Run the guard red-team suite (bypass attempts must stay blocked)
 	@bash scripts/test-guard.sh
+
+.PHONY: enhance-test
+enhance-test: ## Run the prompt-enhancer behavior tests (stubbed claude, no network)
+	@bash scripts/test-enhance.sh
 
 # ---- Driver -----------------------------------------------------------------
 
@@ -120,7 +125,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test test-guard driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test test-guard enhance-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

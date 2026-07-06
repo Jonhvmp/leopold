@@ -44,7 +44,8 @@ the repo**:
 
 ```bash
 leopold up                   # install + project setup in one (then /leopold-up in a session)
-leopold menu                 # toolchain manager (serena / gstack / ovmem)
+leopold menu                 # toolchain manager (serena / gstack / ovmem / enhance)
+leopold enhance toggle       # global prompt enhancer: Haiku interprets weak prompts (your account)
 leopold watch                # live dashboard at http://127.0.0.1:4179 (incl. workflow phase tree)
 leopold run --parallel 3     # conduct the run, independent items in parallel
 leopold workflow             # compile the brief into a dynamic workflow (--run: headless, exp.)
@@ -69,6 +70,7 @@ Then, in any project:
 /leopold-run      # hand over the seat (single-context loop)
 /leopold-workflow # compile the brief into a dynamic workflow and run it
 /leopold-learn    # mine your decisions + sessions → proposed charter amendments
+/leopold-enhance  # global prompt enhancer: status, on/off, preview, learn
 /leopold-triage   # triage a backlog (quarantined classifiers, dedupe, fix plans)
 /leopold-watch    # live web dashboard: cost meters, events, decisions, Stop
 /leopold-status   # see where it is (terminal)
@@ -99,6 +101,7 @@ Leopold extracts the most from Claude Code's native power, in one command. See [
 - **Root-cause panel when an item is stuck.** A failed item isn't just retried: three investigators form hypotheses over *disjoint* evidence (the diff, the verification output, the item's assumptions vs the codebase), refuters try to kill each one, and the surviving theory becomes a concrete lead for the next attempt — the structural fix for an agent doubling down on its own wrong theory.
 - **Effort by risk — keywords or research.** Each item is classified and the worker's reasoning effort is set automatically — `low` for a typo, `max` for a migration or payment change. `--smart-routing` upgrades this: a short read-only session researches the item's *real* blast radius (how many callers, what it touches) before routing; it always falls back to the deterministic classifier and never lowers a critical floor.
 - **A charter that learns you (`/leopold-learn`).** Your recorded behavior beats your self-description: independent miners sweep the decision log, your session corrections, and git history for recurring judgment calls; a skeptic kills the weak candidates; the survivors become proposed charter amendments you review. Each pass makes the next run decide more like you. The SDK driver can close this loop automatically — `learn_on_finish: on` (or `--learn-on-finish`) mines each clean run into `CHARTER-amendments.md` the moment it finishes, without ever editing the charter itself.
+- **A prompt enhancer that reads your shorthand (`enhance`).** Everyday prompts are thin by habit ("fix login"). One global `UserPromptSubmit` hook scores each prompt; genuinely weak ones get a structured interpretation from Haiku **on your own account** — charter-aware, conversation-aware — injected next to the raw prompt, which always wins on conflict. Strong prompts (anything anchored to a path or symbol) never pay the latency; failures fail open. Off by default: `leopold menu` → enhance → Toggle. `/leopold-enhance learn` mines the local ledger for interpretations you corrected and proposes prompt-profile rules — you review, it never self-edits. [Docs](docs/reference/enhance.md).
 - **Parallel items.** `leopold-driver run --parallel N` runs independent plan items at once, each in its own worktree, replaying each diff onto the main tree (staged, never committed). Declare order with `- [ ] (after: 2) …`.
 - **One-command setup.** `leopold up` + `/leopold-up` wire the things people skip — `CLAUDE.md` (`/init`), an app run-skill (`/run-skill-generator`), a permissions allowlist, MCP — so a project starts at full power.
 - **Insights.** `leopold-driver insights` summarizes a run: effort mix, review pass-rate, decisions, escalations, real spend.

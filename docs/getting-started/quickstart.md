@@ -64,4 +64,10 @@ Stops cleanly at the next turn boundary. Nothing is left half-done.
     Leopold stages with `git add` and reports. It never commits or pushes unless
     you explicitly opt in. See [Guardrails](../guardrails.md).
 
+!!! tip "Bonus: turn on the prompt enhancer"
+    The installer also ships a [prompt enhancer](../reference/enhance.md) (off by
+    default): weak everyday prompts — "fix login" — get a charter-aware structured
+    interpretation from Haiku on your own account, injected next to the raw prompt.
+    Enable it with `leopold menu` → enhance → `t) Toggle`, or `/leopold-enhance on`.
+
 Next: walk through a full run in [Your First Run](first-run.md).

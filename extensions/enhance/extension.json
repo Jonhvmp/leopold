@@ -1,0 +1,10 @@
+{
+  "name": "enhance",
+  "title": "enhance",
+  "summary": "Global prompt enhancer: a UserPromptSubmit hook has Haiku (your own account) interpret weak prompts and injects a structured reading. Learns your prompt style via /leopold-enhance learn.",
+  "homepage": "https://github.com/Jonhvmp/leopold",
+  "license": "MIT",
+  "order": 35,
+  "capabilities": ["settings.write", "filesystem.home", "process.spawn"],
+  "toggle": { "label": "Enhancer on/off" }
+}

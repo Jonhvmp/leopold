@@ -13,6 +13,7 @@ flowchart LR
     R --> L["/leopold-learn<br/><small>charter learns</small>"]
     W --> L
     T["/leopold-triage<br/><small>backlog → plan</small>"] --> B
+    E["/leopold-enhance<br/><small>prompt enhancer</small>"]
 ```
 
 ## `/leopold-brief`
@@ -78,6 +79,22 @@ classification.
   items, and (in `fix` mode) grounded fix plans for quick wins — which can become
   `PLAN.md` items for a `/leopold-workflow` run.
 - **Continuous:** pair with `/loop` (e.g. every 6h) for a standing queue.
+
+## `/leopold-enhance`
+
+Control plane for the [global prompt enhancer](enhance.md) — the `UserPromptSubmit`
+hook that has Haiku (your own account) interpret weak prompts, charter-aware.
+
+- **`status`** — enabled/off, mode, and the tail of the enhancement ledger.
+- **`on` / `off`** — the same toggle as `leopold menu` → enhance.
+- **`preview "text"`** — the gate's verdict (per-signal score breakdown) and the
+  exact block that would be injected; the threshold-tuning tool.
+- **`learn`** — mines the ledger + session transcripts for enhanced prompts you
+  corrected right after (plus statistical gate misfires), skeptic-verifies each
+  candidate, and proposes rules into `~/.claude/enhance/PROFILE-amendments.md`.
+- **Hard boundary:** `learn` never edits `PROMPT-PROFILE.md` itself — the profile
+  shapes every future interpretation; you review and apply.
+- `learn` requires Dynamic workflows enabled.
 
 ## `/leopold-status`
 

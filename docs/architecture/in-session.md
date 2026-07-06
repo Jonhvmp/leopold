@@ -4,6 +4,12 @@ The in-session engine is the v0.1 tier: it runs entirely inside one Claude Code
 session, using two hooks and a set of skills. No external process, no API key, no
 new infrastructure.
 
+!!! info "A third hook ships alongside the engine"
+    The installer also wires the [prompt enhancer](../reference/enhance.md) — a
+    `UserPromptSubmit` hook that is independent of the run engine (it improves
+    *your* everyday prompts, off by default). This page covers the two hooks that
+    implement the autonomous run.
+
 ## The two hooks
 
 ```mermaid
@@ -63,6 +69,11 @@ flowchart LR
   carries it forward.
 - **`/leopold-status`** — read-only dashboard of the run.
 - **`/leopold-stop`** — clean shutdown at the next turn boundary.
+
+These four are the engine's core loop. The full family — `/leopold-workflow`,
+`/leopold-learn`, `/leopold-triage`, `/leopold-enhance`, `/leopold-watch`,
+`/leopold-up`, `/leopold-update`, `/leopold-doctor` — is documented in the
+[Skills reference](../reference/skills.md).
 
 ## Known limit
 

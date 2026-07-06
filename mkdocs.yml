@@ -54,7 +54,6 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
-      title: On this page
   - pymdownx.details
   - pymdownx.inlinehilite
   - pymdownx.snippets
@@ -81,6 +80,47 @@ markdown_extensions:
 
 plugins:
   - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          name: English
+          build: true
+          default: true
+        - locale: pt-BR
+          name: Português (Brasil)
+          build: true
+          site_description: Um harness de orquestração autônoma para o Claude Code. Faça o brief como para um colega; ele conduz o Claude Code na sua cadeira.
+          nav_translations:
+            Home: Início
+            Getting Started: Primeiros passos
+            Install: Instalação
+            Quickstart: Início rápido
+            Your First Run: Sua primeira run
+            Toolchain Manager: Gerenciador de toolchain
+            Concepts: Conceitos
+            What Is a Harness: O que é um harness
+            The Two Phases: As duas fases
+            Dynamic Workflows: Workflows dinâmicos
+            Quality & Orchestration: Qualidade e orquestração
+            Decision Protocol: Protocolo de decisão
+            Cost & Security: Custo e segurança
+            Run Isolation: Isolamento da run
+            gstack Playbook: Playbook do gstack
+            Architecture: Arquitetura
+            Overview: Visão geral
+            In-Session Engine: Engine in-session
+            SDK Driver: Driver SDK
+            Conductor & Worker Protocol: Protocolo maestro–worker
+            Reference: Referência
+            Prompt Enhancer: Prompt Enhancer
+            Brief Artifacts: Artefatos do brief
+            Driver Config: Config do driver
+            Comparisons: Comparações
+            Contributing: Como contribuir
 
 extra:
   social:
@@ -117,6 +157,7 @@ nav:
   - Reference:
       - Skills: reference/skills.md
       - Hooks: reference/hooks.md
+      - Prompt Enhancer: reference/enhance.md
       - Brief Artifacts: reference/artifacts.md
       - Driver Config: reference/driver-config.md
   - Comparisons:
