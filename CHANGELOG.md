@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`enhance` — a global prompt enhancer, wired for everyone and OFF by default.** One
+  `UserPromptSubmit` hook scores every prompt; genuinely weak ones ("fix login") get a
+  structured interpretation (Objective / Context / Constraints / Done when / Assumptions)
+  from Haiku **on your own connected account**, injected next to the raw prompt — which
+  always wins on conflict and is never modified. Charter-aware (reads `.leopold/CHARTER.md`
+  when the project has a brief), conversation-aware (transcript tail, so "do the same for
+  logout" resolves), and fail-open everywhere: any failure means the prompt passes through
+  untouched. An anchor (path / `symbol` / identifier) vetoes enhancement — strong prompts
+  never pay the latency. Control: `leopold menu` → enhance (new `t) Toggle` action, plus a
+  full-destroy entry in the uninstall screen) or the new `/leopold-enhance` skill
+  (`status` / `on` / `off` / `preview` / `learn`).
+- **`/leopold-enhance learn` — the self-improving prompt profile.** Every enhancement is
+  ledgered locally; the learn loop (same trust structure as `/leopold-learn`: disjoint
+  miners → cluster → kill-biased skeptic per candidate → proposal-only distill) joins the
+  ledger to your session transcripts, finds enhanced prompts you corrected right after and
+  statistical gate misfires, and proposes rules into `~/.claude/enhance/PROFILE-amendments.md`.
+  It never edits `PROMPT-PROFILE.md` itself — you review and apply.
+- **`leopold enhance` CLI verb** (routes to the extension manager) and an enhance check in
+  `leopold doctor` / `scripts/leopold-doctor.sh`.
+- **`make enhance-test` + CI step**: hermetic behavior suite for the hook (stubbed `claude`,
+  no network) covering the recursion guard, every gate skip, the false-positive regression,
+  cooldown, fail-open error paths, charter injection, and the toggle/preview control plane.
+
 ### Fixed
 - **The installer now upgrades an existing CLI instead of leaving it stale.** Re-running
   `install.sh` (or the one-line `curl` installer) used to print "leopold CLI already

@@ -117,6 +117,7 @@ nav:
   - Reference:
       - Skills: reference/skills.md
       - Hooks: reference/hooks.md
+      - Prompt Enhancer: reference/enhance.md
       - Brief Artifacts: reference/artifacts.md
       - Driver Config: reference/driver-config.md
   - Comparisons:

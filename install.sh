@@ -93,6 +93,18 @@ else
   echo "   merged (backup at $SETTINGS.leopold.bak)"
 fi
 
+# Prompt enhancer — wired for everyone, but OFF until toggled on. One UserPromptSubmit
+# hook that is a silent no-op while disabled (state.json enabled:false), so wiring it
+# here is safe; the settings merge is idempotent, so re-installs never duplicate it.
+echo
+echo "-> installing the prompt enhancer (wired OFF — enable via: leopold menu -> enhance)"
+ENHANCE_INST="$LEO_HOME/extensions/enhance/install.sh"
+if [ -f "$ENHANCE_INST" ] && command -v python3 >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  bash "$ENHANCE_INST" || echo "   enhance setup did not finish; retry via: leopold menu (enhance -> Install)"
+else
+  echo "   skipped (needs python3 + jq) — install later via: leopold menu"
+fi
+
 # Serena — MANDATORY. LSP-backed code intelligence (MCP): symbol-level retrieval/editing
 # instead of grep + whole-file reads. It is the biggest lever for code quality AND for
 # keeping context lean (fewer tokens per operation), so Leopold sets it up for everyone.
@@ -173,6 +185,7 @@ hv="$( [ -f "$LEO_HOME/VERSION" ] && tr -d '[:space:]' < "$LEO_HOME/VERSION" || 
 if command -v jq >/dev/null 2>&1 && [ -f "$SETTINGS" ] && jq -e '(.hooks.Stop|length>0) and (.hooks.PreToolUse|length>0)' "$SETTINGS" >/dev/null 2>&1; then
   echo "   ok   Stop + PreToolUse hooks wired in settings.json"
 else echo "   warn: hooks not detected in settings.json"; v_warn=$((v_warn+1)); fi
+grep -q 'enhance.py --event' "$SETTINGS" 2>/dev/null && echo "   ok   prompt enhancer wired (off — enable via: leopold menu -> enhance)" || echo "   note: prompt enhancer not wired — install via: leopold menu"
 command -v leopold  >/dev/null 2>&1 && echo "   ok   leopold CLI on PATH" || { echo "   warn: 'leopold' not on PATH yet (open a new shell, or: npm i -g leopold-driver)"; v_warn=$((v_warn+1)); }
 command -v serena   >/dev/null 2>&1 && echo "   ok   serena (LSP) present" || echo "   note: serena not on PATH — run: leopold serena install"
 [ "$v_warn" -eq 0 ] && echo "   all good." || echo "   $v_warn warning(s) above — see the hints."

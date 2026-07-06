@@ -1,8 +1,11 @@
 {
   "//": "Leopold hook wiring. install.sh merges this into your ~/.claude/settings.json,",
-  "//2": "substituting the absolute path to the installed hooks. Both hooks are no-ops",
-  "//3": "unless a Leopold run is active (.leopold/state.json with active=true), so they",
-  "//4": "are safe to leave installed in every session.",
+  "//2": "substituting the absolute path to the installed hooks. All three hooks are",
+  "//3": "no-ops until armed: Stop/PreToolUse need an active Leopold run (.leopold/",
+  "//4": "state.json with active=true) and the enhancer needs enabled=true in",
+  "//5": "~/.claude/enhance/state.json — so they are safe to leave installed everywhere.",
+  "//6": "The enhancer engine is vendored by extensions/enhance/install.sh; wiring this",
+  "//7": "entry without running that installer does nothing (the file won't exist).",
   "hooks": {
     "Stop": [
       {
@@ -16,6 +19,13 @@
         "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           { "type": "command", "command": "~/.claude/leopold/hooks/guard-irreversible.sh" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/enhance/enhance.py --event user-prompt", "timeout": 30 }
         ]
       }
     ]

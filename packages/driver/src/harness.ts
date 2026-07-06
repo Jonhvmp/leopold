@@ -63,7 +63,7 @@ export function runWatch(args: string[]): number {
 export function runExt(name: string, args: string[]): number {
   const mgr = join(assetRoot(), "extensions", name, "manage.sh");
   if (!existsSync(mgr)) {
-    console.error(`leopold-driver: unknown extension "${name}". Try: serena, gstack, ovmem.`);
+    console.error(`leopold-driver: unknown extension "${name}". Try: serena, gstack, ovmem, enhance.`);
     return 2;
   }
   return run("bash", [mgr, ...(args.length ? args : ["status"])]);

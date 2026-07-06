@@ -46,7 +46,7 @@ before granting it on install/update.
 - `leopold-menu.sh` shows the declared capabilities in the component view, and
   `Install` / `Update` now route through `ext_consent` — it prints the capabilities and
   requires a `y` before running `manage.sh install`/`update`. No declaration → nothing to
-  gate. All four bundled extensions (leopold, serena, gstack, ovmem) declare theirs.
+  gate. All five bundled extensions (leopold, serena, gstack, ovmem, enhance) declare theirs.
 
 ## Files
 

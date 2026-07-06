@@ -31,6 +31,17 @@ else
   note "hooks not wired (no leopold hook in settings, no plugin) — run ./install.sh or install the plugin"
 fi
 
+if [ -f "$CLAUDE/enhance/enhance.py" ]; then
+  if grep -q 'enhance.py --event' "$CLAUDE/settings.json" 2>/dev/null; then
+    st="$(python3 "$CLAUDE/enhance/enhance.py" --event status 2>/dev/null || echo '?')"
+    pass "prompt enhancer installed + wired ($st)"
+  else
+    note "prompt enhancer installed but not wired — leopold menu (enhance -> Install)"
+  fi
+else
+  note "prompt enhancer not installed (optional) — leopold menu (enhance -> Install)"
+fi
+
 if [ -d "$CLAUDE/skills/gstack" ] || [ -d "$CLAUDE/skills/spec" ]; then
   pass "gstack detected — planning toolchain available"
 else
