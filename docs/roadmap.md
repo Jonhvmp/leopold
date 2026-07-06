@@ -6,10 +6,11 @@ flowchart LR
     DRV --> FAN["parallel waves<br/><small>shipped</small>"]
     FAN --> DASH["live dashboard<br/><small>shipped</small>"]
     DASH --> WF["dynamic-workflow engine<br/><small>shipped</small>"]
-    WF --> E2E["headless runtime E2E"]
+    WF --> ENH["prompt enhancer<br/><small>shipped · v0.11</small>"]
+    ENH --> E2E["headless runtime E2E"]
     E2E --> SBX["sandboxed workers"]
     classDef done fill:#2a9d8f,stroke:#1b6b5f,color:#fff;
-    class V01,DRV,FAN,DASH,WF done;
+    class V01,DRV,FAN,DASH,WF,ENH done;
 ```
 
 ## Shipped
@@ -36,6 +37,10 @@ flowchart LR
       hypothesis panel on retries, opt-in smart routing
 - [x] **Hardcore CI** — CLI smoke of the built binary, shellcheck gate,
       macOS + Ubuntu matrix, npm provenance, Dependabot, CodeQL
+- [x] **Prompt enhancer (v0.11)** — global `UserPromptSubmit` hook: weak prompts
+      get a charter-aware structured interpretation from Haiku on the user's own
+      account (off by default, fail-open, anchor veto), `/leopold-enhance` with a
+      ledger-mining learn loop that proposes prompt-profile rules
 
 ## Next
 

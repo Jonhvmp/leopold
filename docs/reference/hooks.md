@@ -82,5 +82,7 @@ ledger, the learn loop): [Prompt Enhancer](enhance.md).
 
 ## Event log
 
-Both hooks append structured events to `.leopold/events.jsonl`
-(`turn_start`, `stop`, `guard_block`), which `/leopold-status` reads.
+The two engine hooks append structured events to `.leopold/events.jsonl`
+(`turn_start`, `stop`, `guard_block`), which `/leopold-status` reads. The enhancer
+logs to its own global ledger instead — `~/.claude/enhance/enhancements.jsonl`,
+one line per injection or failed attempt — which `/leopold-enhance learn` mines.

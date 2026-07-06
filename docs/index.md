@@ -68,6 +68,14 @@ flowchart LR
 
     [:octicons-arrow-right-24: Dynamic Workflows](concepts/dynamic-workflows.md)
 
+-   :material-auto-fix:{ .lg .middle } __Your prompts, upgraded__
+
+    ---
+
+    Weak everyday prompts get a charter-aware structured interpretation — on your own account, raw prompt always wins.
+
+    [:octicons-arrow-right-24: Prompt Enhancer](reference/enhance.md)
+
 </div>
 
 ## The problem it solves

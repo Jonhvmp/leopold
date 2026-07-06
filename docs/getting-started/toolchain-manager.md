@@ -1,7 +1,7 @@
 # Toolchain Manager
 
 Leopold ships a small interactive menu to install and manage the toolchain it conducts
-(gstack) and companion extensions (like ovmem) from one place. It generalizes the one-off
+(gstack) and companion extensions (like ovmem and enhance) from one place. It generalizes the one-off
 "install gstack?" prompt in the installer into a data-driven registry.
 
 ```bash
