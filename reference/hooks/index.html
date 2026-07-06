@@ -18,9 +18,13 @@
         <link rel="prev" href="../skills/">
       
       
-        <link rel="next" href="../artifacts/">
+        <link rel="next" href="../enhance/">
       
       
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../../pt-BR/reference/hooks/" hreflang="pt-BR">
         
       
       
@@ -152,6 +156,32 @@
     
       <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
     
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../../pt-BR/reference/hooks/" hreflang="pt-BR" class="md-select__link">
+              Português (Brasil)
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
     
     
       
@@ -1181,6 +1211,8 @@
       
         
       
+        
+      
     
     
     
@@ -1310,9 +1342,7 @@
       
         
 
-  
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1321,7 +1351,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      On this page
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -1341,6 +1371,17 @@
     <span class="md-ellipsis">
       
         guard-irreversible.sh — the PreToolUse hook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enhancepy-the-userpromptsubmit-prompt-enhancer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        enhance.py — the UserPromptSubmit prompt enhancer
       
     </span>
   </a>
@@ -1373,6 +1414,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enhance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Enhancer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1599,9 +1668,7 @@
                   <div class="md-sidebar__inner">
                     
 
-  
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1610,7 +1677,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      On this page
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -1630,6 +1697,17 @@
     <span class="md-ellipsis">
       
         guard-irreversible.sh — the PreToolUse hook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enhancepy-the-userpromptsubmit-prompt-enhancer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        enhance.py — the UserPromptSubmit prompt enhancer
       
     </span>
   </a>
@@ -1679,9 +1757,10 @@
 
 
 <h1 id="hooks">Hooks<a class="headerlink" href="#hooks" title="Permanent link">&para;</a></h1>
-<p>Two hooks implement the engine. Both are installed to <code>~/.claude/leopold/hooks/</code>
-and wired into <code>settings.json</code> by <code>install.sh</code>. Both are <strong>no-ops unless a run is
-active</strong>, so they are safe to leave installed in every session.</p>
+<p>Three hooks are wired into <code>settings.json</code> by <code>install.sh</code>. The two engine hooks
+live in <code>~/.claude/leopold/hooks/</code> and are <strong>no-ops unless a run is active</strong>; the
+prompt enhancer lives in <code>~/.claude/enhance/</code> and is a <strong>no-op until you toggle it
+on</strong> — so all three are safe to leave installed in every session.</p>
 <h2 id="stop-continuitysh-the-stop-hook"><code>stop-continuity.sh</code> — the Stop hook<a class="headerlink" href="#stop-continuitysh-the-stop-hook" title="Permanent link">&para;</a></h2>
 <p>Runs when the agent finishes a turn. Contract: read JSON on stdin; print
 <code>{"decision":"block","reason":"..."}</code> to keep going, or exit 0 to allow the stop.</p>
@@ -1702,6 +1781,27 @@ halting is always safe.</p>
 <code>hookSpecificOutput</code> with <code>permissionDecision: "deny"</code> to block, or exit 0 to
 allow. It only adds denials; it never loosens Claude Code's own permissions.</p>
 <p>See the policy table in <a href="../../guardrails/">Guardrails</a>.</p>
+<h2 id="enhancepy-the-userpromptsubmit-prompt-enhancer"><code>enhance.py</code> — the UserPromptSubmit prompt enhancer<a class="headerlink" href="#enhancepy-the-userpromptsubmit-prompt-enhancer" title="Permanent link">&para;</a></h2>
+<p>Runs on every prompt you submit (the event takes no matcher, so all gating is
+internal). Contract: read the hook JSON on stdin; plain text on stdout is injected
+as context next to the raw prompt (plain text, not JSON, so it concatenates safely
+with other <code>UserPromptSubmit</code> hooks); <strong>always exit 0</strong> — the prompt itself is
+never modified or blocked.</p>
+<pre class="mermaid"><code>flowchart TD
+    In["UserPromptSubmit (JSON on stdin)"] --&gt; Rec{recursion / kill-switch env?}
+    Rec -- yes --&gt; Silent([exit 0 · silent])
+    Rec -- no --&gt; On{enabled in state.json?}
+    On -- no --&gt; Silent
+    On -- yes --&gt; Skips{"command · ack · pasted code ·&lt;br/&gt;&amp;gt;60 words · active run · cooldown?"}
+    Skips -- yes --&gt; Silent
+    Skips -- no --&gt; Score{weakness score ≥ 4?&lt;br/&gt;anchor vetoes}
+    Score -- no --&gt; Silent
+    Score -- yes --&gt; Call["claude -p haiku&lt;br/&gt;(charter + profile + transcript tail)"]
+    Call -- failure --&gt; Ledger2["ledger: injected=false"] --&gt; Silent
+    Call -- ok --&gt; Inject["inject interpretation ·&lt;br/&gt;ledger · cooldown stamp"]</code></pre>
+<p>Fail-open: no <code>claude</code> on PATH, timeout, API error, malformed output — nothing is
+emitted and the prompt goes through untouched. Full detail (gate table, state,
+ledger, the learn loop): <a href="../enhance/">Prompt Enhancer</a>.</p>
 <h2 id="settings-wiring">Settings wiring<a class="headerlink" href="#settings-wiring" title="Permanent link">&para;</a></h2>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -1711,13 +1811,18 @@ allow. It only adds denials; it never loosens Claude Code's own permissions.</p>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nt">&quot;PreToolUse&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;matcher&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Bash|Edit|Write|MultiEdit|NotebookEdit&quot;</span><span class="p">,</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">        </span><span class="nt">&quot;hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;~/.claude/leopold/hooks/guard-irreversible.sh&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p">]</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">}</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">}</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p">],</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">&quot;UserPromptSubmit&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python3 ~/.claude/enhance/enhance.py --event user-prompt&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="p">]</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
 </span></code></pre></div>
 <h2 id="event-log">Event log<a class="headerlink" href="#event-log" title="Permanent link">&para;</a></h2>
-<p>Both hooks append structured events to <code>.leopold/events.jsonl</code>
-(<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>), which <code>/leopold-status</code> reads.</p>
+<p>The two engine hooks append structured events to <code>.leopold/events.jsonl</code>
+(<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>), which <code>/leopold-status</code> reads. The enhancer
+logs to its own global ledger instead — <code>~/.claude/enhance/enhancements.jsonl</code>,
+one line per injection or failed attempt — which <code>/leopold-enhance learn</code> mines.</p>
 
 
 
@@ -1772,13 +1877,13 @@ allow. It only adds denials; it never loosens Claude Code's own permissions.</p>
         
         
           
-          <a href="../artifacts/" class="md-footer__link md-footer__link--next" aria-label="Next: Brief Artifacts">
+          <a href="../enhance/" class="md-footer__link md-footer__link--next" aria-label="Next: Prompt Enhancer">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Brief Artifacts
+                Prompt Enhancer
               </div>
             </div>
             <div class="md-footer__button md-icon">
