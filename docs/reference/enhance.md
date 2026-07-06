@@ -51,10 +51,18 @@ False positives are the UX killer: enhancing a good prompt wastes seconds and ad
 noise. So hard skips run first, then a score that demands several independent
 weakness signals — and a single anchor vetoes.
 
-**Hard skips** (silent pass-through): enhancer off · `/`, `!`, `#` commands · short
+**Hard skips** (silent pass-through): enhancer off · `!`, `#` commands · short
 acks ("ok", "sim", "2") · pasted code/logs (fences or > 8 lines) · prompts over
 `max_words` · an active Leopold autonomous run in the project · a per-session
 cooldown · the recursion/kill-switch env vars.
+
+**`/skill` briefs are the exception.** A slash prompt is skipped as a command
+*unless* its argument reads like a real task brief — at least 8 words, and not one
+of the enhancer's own control verbs (`status` / `on` / `off` / `preview` / `learn`).
+Then the **argument** is what gets scored and rewritten, with the command prefix
+stripped so `/leopold-brief` itself never counts as an anchor. `"/leopold-brief add
+microinteractions to onboarding, tasteful, nothing aggressive"` is gated on the
+brief; `/model opus` and `/leopold-enhance preview …` stay skipped.
 
 **Weakness score** (enhance at `min_score`, default 4):
 

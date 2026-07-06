@@ -51,10 +51,19 @@ Falso positivo é o que mata a UX: aprimorar um prompt bom desperdiça segundos 
 ruído. Então os hard skips rodam primeiro, depois um score que exige vários sinais
 independentes de fraqueza — e uma única âncora veta.
 
-**Hard skips** (passagem silenciosa): enhancer desligado · comandos `/`, `!`, `#` · acks
+**Hard skips** (passagem silenciosa): enhancer desligado · comandos `!`, `#` · acks
 curtos ("ok", "sim", "2") · código/logs colados (fences ou > 8 linhas) · prompts acima de
 `max_words` · uma run autônoma do Leopold ativa no projeto · um cooldown por sessão
 · as env vars de recursão/kill switch.
+
+**Briefs em `/skill` são a exceção.** Um prompt com barra é pulado como comando
+*a menos que* o argumento se leia como um brief de tarefa de verdade — pelo menos 8
+palavras, e que não seja um dos verbos de controle do próprio enhancer
+(`status` / `on` / `off` / `preview` / `learn`). Nesse caso o **argumento** é o que
+passa pelo score e pelo rewriter, com o prefixo do comando removido — `/leopold-brief`
+em si nunca conta como âncora. `"/leopold-brief adiciona microinterações no
+onboarding, algo gostoso, sem exagero"` é gateado pelo brief; `/model opus` e
+`/leopold-enhance preview …` continuam pulados.
 
 **Score de fraqueza** (aprimora a partir de `min_score`, padrão 4):
 
