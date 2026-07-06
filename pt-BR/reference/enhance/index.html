@@ -1819,10 +1819,18 @@ Leopold também remove o enhancer (foi o instalador do core que o conectou).</p>
 <p>Falso positivo é o que mata a UX: aprimorar um prompt bom desperdiça segundos e adiciona
 ruído. Então os hard skips rodam primeiro, depois um score que exige vários sinais
 independentes de fraqueza — e uma única âncora veta.</p>
-<p><strong>Hard skips</strong> (passagem silenciosa): enhancer desligado · comandos <code>/</code>, <code>!</code>, <code>#</code> · acks
+<p><strong>Hard skips</strong> (passagem silenciosa): enhancer desligado · comandos <code>!</code>, <code>#</code> · acks
 curtos ("ok", "sim", "2") · código/logs colados (fences ou &gt; 8 linhas) · prompts acima de
 <code>max_words</code> · uma run autônoma do Leopold ativa no projeto · um cooldown por sessão
 · as env vars de recursão/kill switch.</p>
+<p><strong>Briefs em <code>/skill</code> são a exceção.</strong> Um prompt com barra é pulado como comando
+<em>a menos que</em> o argumento se leia como um brief de tarefa de verdade — pelo menos 8
+palavras, e que não seja um dos verbos de controle do próprio enhancer
+(<code>status</code> / <code>on</code> / <code>off</code> / <code>preview</code> / <code>learn</code>). Nesse caso o <strong>argumento</strong> é o que
+passa pelo score e pelo rewriter, com o prefixo do comando removido — <code>/leopold-brief</code>
+em si nunca conta como âncora. <code>"/leopold-brief adiciona microinterações no
+onboarding, algo gostoso, sem exagero"</code> é gateado pelo brief; <code>/model opus</code> e
+<code>/leopold-enhance preview …</code> continuam pulados.</p>
 <p><strong>Score de fraqueza</strong> (aprimora a partir de <code>min_score</code>, padrão 4):</p>
 <table>
 <thead>

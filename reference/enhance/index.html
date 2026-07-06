@@ -1819,10 +1819,17 @@ core also removes the enhancer (the core installer wired it).</p>
 <p>False positives are the UX killer: enhancing a good prompt wastes seconds and adds
 noise. So hard skips run first, then a score that demands several independent
 weakness signals — and a single anchor vetoes.</p>
-<p><strong>Hard skips</strong> (silent pass-through): enhancer off · <code>/</code>, <code>!</code>, <code>#</code> commands · short
+<p><strong>Hard skips</strong> (silent pass-through): enhancer off · <code>!</code>, <code>#</code> commands · short
 acks ("ok", "sim", "2") · pasted code/logs (fences or &gt; 8 lines) · prompts over
 <code>max_words</code> · an active Leopold autonomous run in the project · a per-session
 cooldown · the recursion/kill-switch env vars.</p>
+<p><strong><code>/skill</code> briefs are the exception.</strong> A slash prompt is skipped as a command
+<em>unless</em> its argument reads like a real task brief — at least 8 words, and not one
+of the enhancer's own control verbs (<code>status</code> / <code>on</code> / <code>off</code> / <code>preview</code> / <code>learn</code>).
+Then the <strong>argument</strong> is what gets scored and rewritten, with the command prefix
+stripped so <code>/leopold-brief</code> itself never counts as an anchor. <code>"/leopold-brief add
+microinteractions to onboarding, tasteful, nothing aggressive"</code> is gated on the
+brief; <code>/model opus</code> and <code>/leopold-enhance preview …</code> stay skipped.</p>
 <p><strong>Weakness score</strong> (enhance at <code>min_score</code>, default 4):</p>
 <table>
 <thead>
