@@ -30,6 +30,11 @@ This skill is its control plane. Dispatch on the user's argument:
 - `on` / `off` → **Toggle**
 - `preview <text>` → **Preview**
 - `learn` → **Learn loop**
+- anything else → **it's a task brief, not a control verb.** The hook has already
+  gated the argument and, when it scored weak, injected the interpretation above
+  (by design: `/skill <brief>` prompts are gated on the ARGUMENT). Don't run the
+  control plane — just do the task the argument describes, honoring the injected
+  interpretation if one is present.
 
 If `~/.claude/enhance/enhance.py` does not exist, the enhancer isn't installed —
 point at `leopold menu` (enhance → Install) or re-running the Leopold installer,

@@ -15,8 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when the project has a brief), conversation-aware (transcript tail, so "do the same for
   logout" resolves), and fail-open everywhere: any failure means the prompt passes through
   untouched. An anchor (path / `symbol` / identifier) vetoes enhancement — strong prompts
-  never pay the latency. Control: `leopold menu` → enhance (new `t) Toggle` action, plus a
-  full-destroy entry in the uninstall screen) or the new `/leopold-enhance` skill
+  never pay the latency. `/skill` briefs are gated on the ARGUMENT: `/leopold-brief add
+  microinteractions, tasteful` scores the brief itself (command prefix stripped, so it
+  never counts as an anchor), while built-ins with short args and the enhancer's own
+  control verbs stay skipped. Control: `leopold menu` → enhance (new `t) Toggle` action,
+  plus a full-destroy entry in the uninstall screen) or the new `/leopold-enhance` skill
   (`status` / `on` / `off` / `preview` / `learn`).
 - **`/leopold-enhance learn` — the self-improving prompt profile.** Every enhancement is
   ledgered locally; the learn loop (same trust structure as `/leopold-learn`: disjoint

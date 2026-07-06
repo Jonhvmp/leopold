@@ -429,25 +429,58 @@ def emit(body):
                      % (MARKER, body, FOOTER))
 
 
+# /skill briefs: a slash prompt whose argument is a real task ("/leopold-brief
+# add microinteractions to onboarding, tasteful, nothing aggressive") used to be
+# skipped whole as "command" - hiding exactly the weak prompts this hook exists
+# for. Now the ARGUMENT is gated (and, when weak, enhanced) while the command
+# prefix is stripped from the rewriter's view: "/leopold-brief" is not an anchor.
+# Control-plane calls stay skipped: the enhancer's own verbs, and any slash
+# prompt whose argument is too short to be a brief ("/model opus", "/clear").
+SKILL_ARG_MIN_WORDS = 8
+OWN_SKILL = "leopold-enhance"
+OWN_VERBS = {"status", "on", "off", "preview", "learn"}
+
+
+def slash_args(prompt):
+    """'/skill args' -> the args when they read like a task brief, else None."""
+    m = re.match(r"^/([\w:.-]+)[ \t]*(.*)$", prompt, re.S)
+    if not m:
+        return None
+    cmd, args = m.group(1).lower(), m.group(2).strip()
+    words = args.split()
+    if cmd == OWN_SKILL and words and words[0].lower() in OWN_VERBS:
+        return None  # its own control plane (status/on/off/preview/learn)
+    if len(words) < SKILL_ARG_MIN_WORDS:
+        return None  # built-ins and short control args
+    return args
+
+
 def skip_reason(prompt, data, st):
-    """All the hard skips, in order. Returns a reason string or None to proceed."""
+    """All the hard skips, in order. Returns (reason, effective_text): reason is a
+    string to skip or None to proceed; effective_text is what the gate and the
+    rewriter should see (the argument of a /skill brief, else the prompt itself)."""
     if not prompt:
-        return "empty"
-    if prompt.startswith(("/", "!", "#")):
-        return "command"
+        return "empty", prompt
+    if prompt.startswith(("!", "#")):
+        return "command", prompt
+    text = prompt
+    if prompt.startswith("/"):
+        text = slash_args(prompt)
+        if text is None:
+            return "command", prompt
     if MARKER in prompt:
-        return "marker"  # anti-loop, defense in depth
+        return "marker", text  # anti-loop, defense in depth
     if leopold_run_active(data.get("cwd") or os.getcwd()):
-        return "leopold_run"  # autonomous run - its prompts are machine-generated
-    if "```" in prompt or prompt.count("\n") > 8:
-        return "pasted_content"  # logs/code carry their own context
-    if is_ack(prompt):
-        return "ack"
-    if len(prompt.split()) > threshold(st, "max_words", "LEOPOLD_ENHANCE_MAX_WORDS"):
-        return "long"
+        return "leopold_run", text  # autonomous run - its prompts are machine-generated
+    if "```" in text or text.count("\n") > 8:
+        return "pasted_content", text  # logs/code carry their own context
+    if is_ack(text):
+        return "ack", text
+    if len(text.split()) > threshold(st, "max_words", "LEOPOLD_ENHANCE_MAX_WORDS"):
+        return "long", text
     if in_cooldown(data.get("session_id"), st):
-        return "cooldown"
-    return None
+        return "cooldown", text
+    return None, text
 
 
 def handle_user_prompt(data):
@@ -455,18 +488,18 @@ def handle_user_prompt(data):
     if not st or st.get("enabled") is not True:
         return
     prompt = (data.get("prompt") or "").strip()
-    reason = skip_reason(prompt, data, st)
+    reason, text = skip_reason(prompt, data, st)
     if reason:
         log("skip (%s): %s" % (reason, prompt[:80]))
         return
-    score, signals = gate(prompt, st)
+    score, signals = gate(text, st)
     if score < threshold(st, "min_score", "LEOPOLD_ENHANCE_MIN_SCORE"):
         log("gate pass-through (score %d): %s" % (score, prompt[:80]))
         return
 
     cwd = data.get("cwd") or os.getcwd()
     payload, charter_used, profile_used, tail_used = build_payload(
-        prompt, cwd, data.get("transcript_path"))
+        text, cwd, data.get("transcript_path"))
     safe_mode = st.get("safe_mode") is not False
     t0 = time.time()
     body, err = call_claude(payload, st, safe_mode)
@@ -478,7 +511,8 @@ def handle_user_prompt(data):
         "prompt_id": data.get("prompt_id"),
         "cwd": cwd,
         "prompt_excerpt": prompt[:500],
-        "words": len(prompt.split()),
+        "words": len(text.split()),
+        "skill_brief": text != prompt,  # gated on a /skill argument, not the raw prompt
         "score": score,
         "signals": signals,
         "mode": "safe" if safe_mode else "normal",
@@ -504,11 +538,13 @@ def handle_preview(text):
     st = load_state() or default_state()
     prompt = (text or "").strip()
     data = {"cwd": os.getcwd(), "session_id": "preview"}
-    reason = skip_reason(prompt, data, st) if prompt else "empty"
+    reason, target = skip_reason(prompt, data, st) if prompt else ("empty", "")
     if reason and reason != "cooldown":
         print("verdict: SKIP (%s)" % reason)
         return
-    score, signals = gate(prompt, st)
+    if target != prompt:
+        print("skill brief: gating the argument (command prefix stripped)")
+    score, signals = gate(target, st)
     need = threshold(st, "min_score", "LEOPOLD_ENHANCE_MIN_SCORE")
     print("signals: %s" % json.dumps(signals))
     print("score: %d (needs >= %d)" % (score, need))
@@ -516,7 +552,7 @@ def handle_preview(text):
         print("verdict: PASS-THROUGH (prompt looks strong enough)")
         return
     print("verdict: ENHANCE — calling %s..." % st.get("model", "haiku"))
-    payload, _, _, _ = build_payload(prompt, os.getcwd(), None)
+    payload, _, _, _ = build_payload(target, os.getcwd(), None)
     body, err = call_claude(payload, st, st.get("safe_mode") is not False)
     if err:
         print("rewriter failed: %s (the hook would fail open — prompt passes untouched)" % err)

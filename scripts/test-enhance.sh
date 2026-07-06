@@ -109,6 +109,31 @@ assert "ledger score gated at threshold" "true" "$(tail -1 "$LEDGER" | jq -r '.s
 assert "cooldown suppresses immediate repeat" "" "$(hook s-weak 'arruma o login')"
 assert "cooldown adds no ledger line" "1" "$(ledger_lines)"
 
+# --- /skill briefs: the ARGUMENT is gated, not the command ---------------------
+out="$(hook s-brief1 '/leopold-brief adiciona microinteracoes no onboarding com boas tecnicas sem exagero')"
+case "$out" in
+  *"[leopold-enhance"*) echo "  ok: weak /skill brief gets the enhance block" ;;
+  *) echo "  FAIL: weak /skill brief gets the enhance block (got '$out')"; fail=1 ;;
+esac
+case "$(cat "$T/stub-stdin")" in
+  *"RAW PROMPT:"*"/leopold-brief"*) echo "  FAIL: command prefix must be stripped from the rewriter payload"; fail=1 ;;
+  *"RAW PROMPT:"*"adiciona microinteracoes"*) echo "  ok: rewriter sees the bare argument (no /command anchor)" ;;
+  *) echo "  FAIL: rewriter sees the bare argument"; fail=1 ;;
+esac
+assert "ledger marks the skill brief" "true" "$(tail -1 "$LEDGER" | jq -r '.skill_brief')"
+
+out="$(hook s-brief2 '/leopold-enhance add microinteracoes no onboarding de forma gostosa sem exagero')"
+case "$out" in
+  *"[leopold-enhance"*) echo "  ok: task brief on the enhancer's own skill is enhanced (/leopold-enhance <task>)" ;;
+  *) echo "  FAIL: task brief on the enhancer's own skill is enhanced (got '$out')"; fail=1 ;;
+esac
+
+assert "own control verbs stay skipped" "" \
+  "$(hook s-ownverb '/leopold-enhance preview este texto fraco de teste aqui agora mesmo')"
+assert "short skill args stay skipped" "" "$(hook s-shortargs '/model opus')"
+assert "anchored skill args pass through" "" \
+  "$(hook s-briefanchor '/leopold-brief fix the retry loop in src/api/client.ts please right now')"
+
 # --- failure paths stay silent and fail open ----------------------------------
 out="$(LEOPOLD_ENHANCE_CLAUDE_BIN="$T/bin/stub-claude-fail" hook s-fail 'melhora a busca')"
 assert "rewriter failure emits nothing" "" "$out"

@@ -16,9 +16,12 @@ rewriter runs.
 
 ## How the hook decides (short version)
 
-Hard skips first: disabled, slash/`!`/`#` commands, short acks ("ok", "sim", "2"),
+Hard skips first: disabled, `!`/`#` commands, short acks ("ok", "sim", "2"),
 pasted code/logs, prompts > 60 words, an active Leopold autonomous run, a 120 s
-per-session cooldown. Then a weakness score: short +2, no structure +1, vague opener
+per-session cooldown. A `/skill` prompt is skipped **unless** its argument reads
+like a task brief (≥ 8 words, and not the enhancer's own control verbs) — then
+the ARGUMENT is what gets gated, with the command prefix stripped so it never
+counts as an anchor. Then a weakness score: short +2, no structure +1, vague opener
 +1, **anchor (path / `symbol` / identifier) −2**, formed question −2. Only a score
 ≥ 4 pays the ~2–4 s Haiku call. Tune with `/leopold-enhance preview "your prompt"`.
 
