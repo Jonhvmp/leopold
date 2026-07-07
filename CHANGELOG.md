@@ -4,7 +4,21 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.12.0] - 2026-07-06
+
+### Changed
+- **enhance: `/skill` briefs are gated on the ARGUMENT instead of being swallowed as
+  commands.** `"/leopold-brief add microinteractions, tasteful, nothing aggressive"`
+  now scores the brief itself — the command prefix is stripped so it never counts as
+  an anchor, and a weak brief gets the Haiku interpretation. Built-ins with short args
+  (`/model opus`), `!`/`#` prompts, and the enhancer's own control verbs
+  (`status`/`on`/`off`/`preview`/`learn`) stay skipped. The ledger gains `skill_brief`
+  so the learn loop can tell the two apart; `preview` announces when it gates an
+  argument; the `/leopold-enhance` skill now treats a non-verb argument as a task
+  brief instead of undefined control-plane input. 7 new asserts in the hermetic
+  suite (50 total).
+
+## [0.11.0] - 2026-07-06
 
 ### Added
 - **`enhance` — a global prompt enhancer, wired for everyone and OFF by default.** One
@@ -15,11 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when the project has a brief), conversation-aware (transcript tail, so "do the same for
   logout" resolves), and fail-open everywhere: any failure means the prompt passes through
   untouched. An anchor (path / `symbol` / identifier) vetoes enhancement — strong prompts
-  never pay the latency. `/skill` briefs are gated on the ARGUMENT: `/leopold-brief add
-  microinteractions, tasteful` scores the brief itself (command prefix stripped, so it
-  never counts as an anchor), while built-ins with short args and the enhancer's own
-  control verbs stay skipped. Control: `leopold menu` → enhance (new `t) Toggle` action,
-  plus a full-destroy entry in the uninstall screen) or the new `/leopold-enhance` skill
+  never pay the latency. Control: `leopold menu` → enhance (new `t) Toggle` action, plus a
+  full-destroy entry in the uninstall screen) or the new `/leopold-enhance` skill
   (`status` / `on` / `off` / `preview` / `learn`).
 - **`/leopold-enhance learn` — the self-improving prompt profile.** Every enhancement is
   ledgered locally; the learn loop (same trust structure as `/leopold-learn`: disjoint
