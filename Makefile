@@ -82,6 +82,11 @@ test-guard: ## Run the guard red-team suite (bypass attempts must stay blocked)
 enhance-test: ## Run the prompt-enhancer behavior tests (stubbed claude, no network)
 	@bash scripts/test-enhance.sh
 
+.PHONY: watch-test
+watch-test: ## Run the dashboard DAG-builder + steer-command tests (stdlib, no network)
+	@python3 -m py_compile scripts/leopold-watch.py
+	@python3 scripts/test-watch-graph.py
+
 # ---- Driver -----------------------------------------------------------------
 
 .PHONY: driver-install driver-build driver-check driver-test driver-smoke driver-clean
@@ -125,7 +130,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test test-guard enhance-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test test-guard enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

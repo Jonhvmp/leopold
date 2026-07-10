@@ -34,9 +34,13 @@ headless environment with no Claude Code auth.
 | `--worktree` | off | isolate a serial run in a dedicated git worktree |
 | `--budget-usd N` | none | stop the run once accumulated real spend reaches N |
 | `--no-review` | review on | turn off the diverse-lens review panel |
+| `--no-conformance` | conformance on | turn off the conformance lens (only active on items that declare `@scenario` acceptance lines) |
 | `--max-review-rounds N` | `2` | review→fix rounds per item before it closes anyway |
 | `--no-hypotheses` | panel on | turn off the root-cause panel on retried items |
+| `--no-literal-reset` | reset on | stop restoring the pre-attempt snapshot on retry in an isolated run (falls back to reframing in a non-isolated run) |
+| `--best-of-k N` | `1` | settle a critical, worktree-isolated item by a tournament of N independent attempts (bounded 2..6; opt-in, costs N×) |
 | `--smart-routing` | off | research each item's real blast radius before routing effort (falls back to keywords; never lowers a critical floor) |
+| `--slice-scope` | off | hand smart-routing's file set to the worker as a "start with these files" scope note (needs `--smart-routing`) |
 | `--learn-on-finish` | off | on a clean finish, mine the run into proposed charter amendments |
 | `--dry-run` | — | load the brief and report; run nothing |
 
@@ -51,10 +55,14 @@ headless environment with no Claude Code auth.
 | `LEOPOLD_WORKTREE` | `0` | `1` = same as `--worktree` |
 | `LEOPOLD_BUDGET_USD` | none | same as `--budget-usd` |
 | `LEOPOLD_REVIEW` | `1` | `0` = same as `--no-review` |
+| `LEOPOLD_CONFORMANCE` | `1` | `0` = same as `--no-conformance` |
 | `LEOPOLD_MAX_REVIEW_ROUNDS` | `2` | same as `--max-review-rounds` |
 | `LEOPOLD_PARALLEL` | `1` | same as `--parallel` |
 | `LEOPOLD_HYPOTHESES` | `1` | `0` = same as `--no-hypotheses` |
+| `LEOPOLD_LITERAL_RESET` | `1` | `0` = same as `--no-literal-reset` |
+| `LEOPOLD_BEST_OF_K` | `1` | same as `--best-of-k` (>1 enables; bounded 2..6) |
 | `LEOPOLD_SMART_ROUTING` | `0` | `1` = same as `--smart-routing` |
+| `LEOPOLD_SLICE_SCOPE` | `0` | `1` = same as `--slice-scope` |
 | `LEOPOLD_LEARN_ON_FINISH` | `0` | `1` = same as `--learn-on-finish` |
 | `ANTHROPIC_API_KEY` | none | only for headless environments without Claude Code auth |
 
@@ -66,8 +74,12 @@ The orchestration posture can live with the brief instead of the command line.
 ```markdown
 ## Quality & orchestration (SDK driver)
 - review: on
+- conformance: on
 - hypotheses: on
+- literal_reset: on
+- best_of_k: 1
 - smart_routing: off
+- slice_scope: off
 - learn_on_finish: off
 ```
 

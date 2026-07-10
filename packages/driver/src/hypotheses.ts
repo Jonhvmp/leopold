@@ -10,7 +10,7 @@
 //
 // Everything here is read-only: generators and refuters inspect, they never edit.
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query } from "./sdk.js";
 import type { Brief, DriverConfig } from "./types.js";
 
 export interface Hypothesis {

@@ -98,6 +98,9 @@ const REVIEW_SCHEMA = {
 }
 
 // One plan item: implement → adversarial verify → fix, looping up to MAX_REVIEW rounds.
+// The `role:key` label scheme (`impl:<id>` / `verify:<id>:<lens>`) is also the edge-hint
+// channel the Leopold Canvas reads: leopold-watch's /api/graph links each verify node
+// to the exact impl node sharing its <id>, so the DAG is precise, not phase-approximate.
 async function runItem(item) {
   let feedback = ''
   let round = 0

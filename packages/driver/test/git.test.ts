@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWorktree } from "../src/worktree.ts";
-import { headSha, diffAgainst, applyStaged, git } from "../src/git.ts";
+import { headSha, diffAgainst, applyStaged, git, snapshotTree, restoreTree } from "../src/git.ts";
 
 function sh(cwd: string, args: string[]): void {
   execFileSync("git", args, { cwd, stdio: "ignore" });
@@ -80,4 +80,46 @@ test("an empty patch is a clean no-op", () => {
   const { root } = tmpRepo();
   assert.equal(applyStaged(root, "").ok, true);
   assert.equal(applyStaged(root, "   \n").ok, true);
+});
+
+test("snapshotTree → mutate → restoreTree returns the tree exactly to the snapshot", () => {
+  const { root } = tmpRepo();
+  // "prior items' work": edit a tracked file + add an untracked new file.
+  fs.writeFileSync(path.join(root, "a.txt"), "prior work\n");
+  fs.writeFileSync(path.join(root, "new.txt"), "created by a prior item\n");
+  const snap = snapshotTree(root);
+
+  // "failed attempt": clobber the edit, delete the new file, add yet another file.
+  fs.writeFileSync(path.join(root, "a.txt"), "FAILED attempt garbage\n");
+  fs.rmSync(path.join(root, "new.txt"));
+  fs.writeFileSync(path.join(root, "junk.txt"), "failed-attempt junk\n");
+
+  const r = restoreTree(root, snap);
+  assert.equal(r.ok, true, r.err);
+  assert.equal(fs.readFileSync(path.join(root, "a.txt"), "utf8"), "prior work\n", "tracked edit restored");
+  assert.equal(fs.readFileSync(path.join(root, "new.txt"), "utf8"), "created by a prior item\n", "untracked prior file restored");
+  assert.equal(fs.existsSync(path.join(root, "junk.txt")), false, "failed attempt's file discarded");
+  assert.equal(headSha(root), headSha(root), "nothing committed"); // sanity: still no commits made by restore
+});
+
+test("restoreTree with a corrupt patch leaves the tree UNCHANGED and returns not-ok", () => {
+  const { root } = tmpRepo();
+  fs.writeFileSync(path.join(root, "a.txt"), "work in progress\n");
+  fs.writeFileSync(path.join(root, "keep.txt"), "must not be lost\n");
+
+  const r = restoreTree(root, "diff --git a/x b/x\n@@ totally not a real patch @@\n+garbage\n");
+  assert.equal(r.ok, false, "a corrupt patch must fail");
+  // fail-safe: the pre-restore state is fully intact (prior work never lost)
+  assert.equal(fs.readFileSync(path.join(root, "a.txt"), "utf8"), "work in progress\n");
+  assert.equal(fs.readFileSync(path.join(root, "keep.txt"), "utf8"), "must not be lost\n");
+});
+
+test("restoreTree with an empty snapshot resets the tree to a clean HEAD", () => {
+  const { root } = tmpRepo();
+  fs.writeFileSync(path.join(root, "a.txt"), "dirty\n");
+  fs.writeFileSync(path.join(root, "untracked.txt"), "x\n");
+  const r = restoreTree(root, ""); // empty snapshot = "the tree was clean before the item"
+  assert.equal(r.ok, true);
+  assert.equal(fs.readFileSync(path.join(root, "a.txt"), "utf8"), "base\n", "tracked change discarded");
+  assert.equal(fs.existsSync(path.join(root, "untracked.txt")), false, "untracked discarded");
 });

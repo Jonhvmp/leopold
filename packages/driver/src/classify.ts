@@ -14,6 +14,10 @@ export interface ItemClass {
   /** Critical items get a second, independent review pass (advisor analog). */
   critical: boolean;
   reason: string;
+  /** Files the item is expected to touch, when a router researched them (route.ts).
+   *  Feeds slice-scoped context: the worker is pointed at this set instead of the
+   *  whole repo. Absent for the deterministic keyword classifier. */
+  files?: string[];
 }
 
 // Touching money, identity, data integrity, or anything hard to walk back.

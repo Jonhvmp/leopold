@@ -10,7 +10,7 @@
 // unparseable JSON, thrown error — falls back to the deterministic classifier, so
 // smart routing can only ever refine the signal, never lose it.
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query } from "./sdk.js";
 import { classifyItem, type ItemClass, type Effort } from "./classify.js";
 import type { Brief, DriverConfig } from "./types.js";
 
@@ -32,19 +32,24 @@ The project charter (may raise the floor):
 ${charter.slice(0, 2000)}
 
 Respond with ONLY a single JSON object, no prose, no code fence, shaped exactly:
-{"effort":"low|medium|high|xhigh|max","critical":true|false,"reason":"one line: what you found"}`;
+{"effort":"low|medium|high|xhigh|max","critical":true|false,"reason":"one line: what you found","files":["relative/path/a.ts","relative/path/b.ts"]}
+"files" = the specific files this item would touch, from your research (relative paths, best effort; [] if you truly cannot tell). It scopes the worker's context to the slice that matters.`;
 }
 
 export function parseRoute(text: string): ItemClass | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const raw = fenced ? fenced[1] : text.match(/\{[\s\S]*\}/)?.[0] ?? "";
   try {
-    const o = JSON.parse(raw) as { effort?: unknown; critical?: unknown; reason?: unknown };
+    const o = JSON.parse(raw) as { effort?: unknown; critical?: unknown; reason?: unknown; files?: unknown };
     if (!EFFORTS.includes(o.effort as Effort)) return null;
+    const files = Array.isArray(o.files)
+      ? o.files.filter((f): f is string => typeof f === "string" && f.trim().length > 0).map((f) => f.trim()).slice(0, 40)
+      : [];
     return {
       effort: o.effort as Effort,
       critical: o.critical === true,
       reason: `smart-route: ${String(o.reason ?? "").slice(0, 200)}`,
+      files,
     };
   } catch {
     return null;

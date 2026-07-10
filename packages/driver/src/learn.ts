@@ -14,7 +14,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query } from "./sdk.js";
 import { git } from "./git.js";
 import type { Brief, DriverConfig } from "./types.js";
 

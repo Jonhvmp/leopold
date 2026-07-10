@@ -16,6 +16,7 @@ and uses no web fonts. Usage:
     python3 leopold-watch.py [--project DIR] [--port 4179] [--host 127.0.0.1]
 """
 import argparse
+import datetime
 import glob
 import importlib.util
 import json
@@ -210,6 +211,9 @@ def _compact_workflow(raw):
             "model": (it.get("model") or "").replace("claude-", ""),
             "lastTool": it.get("lastToolSummary") or it.get("lastToolName") or "",
             "durationMs": it.get("durationMs") or 0,
+            "attempt": it.get("attempt") or 1,
+            "promptPreview": it.get("promptPreview") or "",
+            "resultPreview": it.get("resultPreview") or "",
         })
     phases = []
     for t in order:
@@ -364,6 +368,335 @@ def read_cost():
     result = _parse_cost(tp)
     _COST_CACHE[tp] = (st.st_mtime, st.st_size, result)
     return result
+
+
+# --------------------------------------------------------------------------- graph (DAG)
+# The Canvas view: turn a run into a directed graph {nodes, edges, groups}. Nodes are
+# phases / agents / verify (from a dynamic workflow) and items / subagents / verify /
+# hypothesis (from the /leopold-run conductor). Edges are INFERRED here — phase order,
+# PLAN (after: N) markers, and label conventions (verify-ish label -> the phase it
+# checks, fork -> parent). Leopold's own workflow scripts can later emit exact edge
+# hints (PLAN item 2); this inference stays the fallback for generic workflows.
+# build_graph() is pure (no I/O) so the edge logic is unit-testable; graph() wires it
+# to the readers and is what /api/graph serves.
+
+_VERIFY_RE = re.compile(r"^(verify|review|judge|skeptic|refute|critic|check)", re.I)
+_AFTER_RE = re.compile(r"^\s*\(after:\s*([0-9,\s]+)\)")
+
+
+def _label_role_key(label):
+    """Structured-label edge hint: Leopold's own workflow scripts label agents
+    `role:key[:extra]` (e.g. `impl:i3`, `verify:i3:security`). Split off the role and
+    the shared key so the graph can draw an EXACT verify->impl edge instead of a coarse
+    prior-phase one. Returns (role_lower, key or None)."""
+    parts = (label or "").split(":")
+    if len(parts) >= 2 and parts[1].strip():
+        return parts[0].strip().lower(), parts[1].strip()
+    return (label or "").strip().lower(), None
+
+
+def _parse_after(text):
+    """1-based dependency positions from a leading '(after: 2, 3)' marker."""
+    m = _AFTER_RE.match(text or "")
+    return [int(x) for x in re.findall(r"\d+", m.group(1))] if m else []
+
+
+def _strip_after(text):
+    return re.sub(r"^\s*\(after:[^)]*\)\s*", "", text or "")
+
+
+def _match_item(txt, plan_items):
+    """Best-effort map an event's item text back to a PLAN item id."""
+    txt = (txt or "").strip()
+    if not txt:
+        return None
+    for i, it in enumerate(plan_items, start=1):
+        label = _strip_after(it["text"])[:60]
+        if label and (label.startswith(txt[:60]) or txt.startswith(label[:40])):
+            return "item-%d" % i
+    return None
+
+
+def build_graph(plan_items, events, workflows):
+    """Pure DAG builder. Returns {nodes, edges, groups}. No file I/O — testable.
+
+    nodes: {id, kind, label, state, group, tokens, toolCalls, model, source, detail}
+    edges: {from, to, kind}   kind in {seq, contains, verifies, after, fork}
+    """
+    nodes, edges, ids, groups = [], [], set(), []
+
+    def node(nid, kind, label, state="", grp="", **ex):
+        if nid in ids:
+            return nid
+        ids.add(nid)
+        nodes.append({
+            "id": nid, "kind": kind, "label": label, "state": state or "", "group": grp,
+            "tokens": int(ex.get("tokens", 0) or 0),
+            "toolCalls": int(ex.get("toolCalls", 0) or 0),
+            "model": (ex.get("model") or "").replace("claude-", ""),
+            "source": ex.get("source", "conductor"), "detail": ex.get("detail", ""),
+        })
+        return nid
+
+    def edge(a, b, kind):
+        edges.append({"from": a, "to": b, "kind": kind})
+
+    def group(name):
+        if name and name not in groups:
+            groups.append(name)
+
+    # ---- dynamic-workflow sub-graphs (the richer, primary case) ----
+    for wf in workflows or []:
+        rid = wf.get("runId") or wf.get("name") or "wf"
+        src = "workflow:%s" % rid
+        phase_ids = []
+        impl_by_key = {}       # shared key -> the work node it labels (impl:<key>)
+        verify_pending = []    # (verify_node_id, key, prior_phase_id)
+        for j, ph in enumerate(wf.get("phases") or []):
+            title = ph.get("title") or "(phase)"
+            gname = "%s · %s" % (wf.get("name", "workflow"), title)
+            group(gname)
+            pid = "%s-p%d" % (rid, j)
+            node(pid, "phase", title, "running" if ph.get("running") else "done", gname,
+                 source=src, tokens=ph.get("tokens", 0))
+            if phase_ids:
+                edge(phase_ids[-1], pid, "seq")
+            prev_phase = phase_ids[-1] if phase_ids else None
+            for k, a in enumerate(ph.get("agents") or []):
+                lbl = a.get("label") or ("agent %d" % k)
+                is_verify = bool(_VERIFY_RE.match(lbl))
+                role, key = _label_role_key(lbl)
+                aid = "%s-p%d-a%d" % (rid, j, k)
+                node(aid, "verify" if is_verify else "agent", lbl, a.get("state", ""), gname,
+                     source=src, tokens=a.get("tokens", 0), toolCalls=a.get("toolCalls", 0),
+                     model=a.get("model", ""), detail=a.get("lastTool", ""))
+                edge(pid, aid, "contains")
+                if is_verify:
+                    verify_pending.append((aid, key, prev_phase))
+                elif key:
+                    impl_by_key[key] = aid   # a work node names its shared key
+            phase_ids.append(pid)
+        # Draw each verify's edge: EXACT (from the work node with the same key) where
+        # Leopold's labels name it, else the coarse prior-phase fallback for generic
+        # workflows that don't follow the `role:key` convention.
+        for vid, key, prev in verify_pending:
+            if key and key in impl_by_key:
+                edge(impl_by_key[key], vid, "verifies")
+            elif prev:
+                edge(prev, vid, "verifies")
+
+    # ---- conductor sub-graph: PLAN items + (after: N) dependencies ----
+    plan_items = plan_items or []
+    group("plan")
+    n = len(plan_items)
+    for i, it in enumerate(plan_items, start=1):
+        node("item-%d" % i, "item", _strip_after(it["text"])[:90],
+             "done" if it.get("done") else "open", "plan", source="conductor")
+    for i, it in enumerate(plan_items, start=1):
+        for dep in _parse_after(it["text"]):
+            if 1 <= dep <= n and dep != i:
+                edge("item-%d" % dep, "item-%d" % i, "after")
+
+    # ---- conductor events: subagents / reviews / hypotheses on the active item ----
+    cur = None
+    for e in events or []:
+        ev = e.get("event")
+        if ev == "item_start":
+            cur = _match_item(e.get("item"), plan_items)
+        elif ev == "subagent_spawn" and cur:
+            fork = bool(e.get("fork"))
+            sid = "sub-%s" % (e.get("ts") or e.get("total"))
+            node(sid, "fork" if fork else "subagent",
+                 ("fork" if fork else "subagent") + " #%s" % (e.get("total") or ""),
+                 "done", "plan", source="conductor")
+            edge(cur, sid, "fork" if fork else "contains")
+        elif ev == "review" and cur:
+            rid = "rev-%s-r%s" % (cur, e.get("round", 1))
+            node(rid, "verify", "review r%s" % e.get("round", 1),
+                 "done" if e.get("ok") else "error", "plan", source="conductor",
+                 detail=("clean" if e.get("ok") else "%s blocking" % e.get("blocking", "?")))
+            edge(cur, rid, "verifies")
+        elif ev == "hypothesis" and cur:
+            hid = "hyp-%s-%s" % (cur, e.get("ts"))
+            node(hid, "hypothesis", "hypothesis (%s)" % (e.get("angle") or "?"),
+                 "done" if e.get("theory") else "open", "plan", source="conductor",
+                 detail=(e.get("theory") or "no survivor")[:80])
+            edge(cur, hid, "verifies")
+
+    # drop dangling edges (an endpoint that never became a node)
+    edges = [e for e in edges if e["from"] in ids and e["to"] in ids]
+    return {"nodes": nodes, "edges": edges, "groups": groups}
+
+
+def graph():
+    """Read the current run and build its DAG for /api/graph."""
+    plan = read_plan().get("items", [])
+    evs = read_events(limit=500)[::-1]  # read_events is newest-first; back to chronological
+    return build_graph(plan, evs, read_workflows())
+
+
+# --------------------------------------------------------------------------- node detail
+# /api/node/<id> — the inspector payload for one node. Reconstructs the same ids
+# build_graph() mints, then returns the rich record: for a workflow agent, the raw
+# prompt/result preview + model + tokens + a rough per-node cost; for a PLAN item, its
+# label + any matching DECISIONS.md rationale; for a conductor event node, its detail.
+
+def _node_est_usd(model, tokens):
+    """Rough per-node USD estimate. Workflow items report only total tokens (no
+    input/output split), so blend the model's in/out price — clearly an estimate."""
+    tokens = int(tokens or 0)
+    if not tokens:
+        return 0.0
+    p = _price(model)
+    blended = (p["in"] + p["out"]) / 2.0
+    return round(tokens / 1e6 * blended, 4)
+
+
+def _decisions_for(label):
+    """DECISIONS.md blocks (split on '## ' headers) that mention this item's label."""
+    text = _read("DECISIONS.md")
+    blocks, cur = [], []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if cur:
+                blocks.append("\n".join(cur).strip())
+            cur = [line]
+        else:
+            cur.append(line)
+    if cur:
+        blocks.append("\n".join(cur).strip())
+    key = (label or "")[:30].lower()
+    return [b.replace("**", "") for b in blocks if key and key in b.lower()][:3]
+
+
+def _event_node_detail(node_id, plan):
+    """Best-effort detail for a conductor event node (rev-/hyp-/sub-)."""
+    cur = None
+    for e in read_events(limit=500)[::-1]:
+        ev = e.get("event")
+        if ev == "item_start":
+            cur = _match_item(e.get("item"), plan)
+        elif ev == "review" and cur and node_id == "rev-%s-r%s" % (cur, e.get("round", 1)):
+            return {"id": node_id, "kind": "verify", "label": "review r%s" % e.get("round", 1),
+                    "state": "done" if e.get("ok") else "error", "source": "conductor",
+                    "detail": "clean" if e.get("ok") else "%s blocking" % e.get("blocking", "?"),
+                    "round": e.get("round", 1), "panel": e.get("panel"), "lenses": e.get("lenses")}
+        elif ev == "hypothesis" and cur and node_id == "hyp-%s-%s" % (cur, e.get("ts")):
+            return {"id": node_id, "kind": "hypothesis",
+                    "label": "hypothesis (%s)" % (e.get("angle") or "?"),
+                    "state": "done" if e.get("theory") else "open", "source": "conductor",
+                    "theory": e.get("theory", ""), "confidence": e.get("confidence"),
+                    "considered": e.get("considered")}
+        elif ev == "subagent_spawn" and cur and node_id == "sub-%s" % (e.get("ts") or e.get("total")):
+            return {"id": node_id, "kind": "fork" if e.get("fork") else "subagent",
+                    "label": ("fork" if e.get("fork") else "subagent") + " #%s" % (e.get("total") or ""),
+                    "state": "done", "source": "conductor", "promptKb": e.get("prompt_kb")}
+    return None
+
+
+def node_detail(node_id):
+    node_id = str(node_id)
+    # workflow phase / agent nodes: "<runId>-p<j>" and "<runId>-p<j>-a<k>"
+    for wf in read_workflows():
+        rid = wf.get("runId") or wf.get("name") or "wf"
+        for j, ph in enumerate(wf.get("phases") or []):
+            if node_id == "%s-p%d" % (rid, j):
+                return {"id": node_id, "kind": "phase", "label": ph.get("title"),
+                        "state": "running" if ph.get("running") else "done",
+                        "tokens": ph.get("tokens", 0), "agents": len(ph.get("agents") or []),
+                        "estUsd": _node_est_usd("", ph.get("tokens", 0)),
+                        "source": "workflow:%s" % rid, "workflow": wf.get("name")}
+            for k, a in enumerate(ph.get("agents") or []):
+                if node_id == "%s-p%d-a%d" % (rid, j, k):
+                    tokens = a.get("tokens", 0) or 0
+                    return {"id": node_id,
+                            "kind": "verify" if _VERIFY_RE.match(a.get("label", "")) else "agent",
+                            "label": a.get("label"), "state": a.get("state", ""),
+                            "model": (a.get("model") or "").replace("claude-", ""),
+                            "tokens": tokens, "toolCalls": a.get("toolCalls", 0),
+                            "lastTool": a.get("lastTool", ""), "durationMs": a.get("durationMs", 0),
+                            "attempt": a.get("attempt", 1),
+                            "promptPreview": (a.get("promptPreview") or "")[:600],
+                            "resultPreview": (a.get("resultPreview") or "")[:600],
+                            "estUsd": _node_est_usd(a.get("model", ""), tokens),
+                            "source": "workflow:%s" % rid, "phase": ph.get("title")}
+    # conductor PLAN item nodes: "item-<N>"
+    plan = read_plan().get("items", [])
+    m = re.match(r"^item-(\d+)$", node_id)
+    if m:
+        idx = int(m.group(1))
+        if 1 <= idx <= len(plan):
+            it = plan[idx - 1]
+            label = _strip_after(it["text"])
+            return {"id": node_id, "kind": "item", "label": label,
+                    "state": "done" if it["done"] else "open", "source": "conductor",
+                    "position": idx, "after": _parse_after(it["text"]),
+                    "decisions": _decisions_for(label)}
+    # conductor event nodes (rev-/hyp-/sub-)
+    return _event_node_detail(node_id, plan) or {"id": node_id, "error": "node not found"}
+
+
+# --------------------------------------------------------------------------- steer (write side)
+# The canvas POSTs a steer command here. A conductor node's command lands in
+# .leopold/commands.jsonl (the /leopold-run driver drains it at the next turn
+# boundary); a workflow node's command becomes a directive in
+# .leopold/workflow-directives.json — the dynamic-workflow runtime can't be preempted
+# from outside, so it applies on the NEXT resume/re-run, honestly labeled.
+#
+# SECURITY: the command kind is whitelisted; this only ever writes those two files —
+# never a git-unlock token (ALLOW_GIT / ALLOW_PUSH) and never STOP. The driver
+# whitelists again when it drains, so it is defense in depth.
+STEER_CMDS = {"approve", "redirect", "inject", "kill-item", "rerun-item"}
+
+
+def append_command(entry):
+    with open(os.path.join(LEO, "commands.jsonl"), "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def append_workflow_directive(entry):
+    p = os.path.join(LEO, "workflow-directives.json")
+    data = []
+    if os.path.isfile(p):
+        try:
+            with open(p, encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, list):
+                data = []
+        except (OSError, ValueError):
+            data = []
+    entry = dict(entry)
+    entry["ts"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    entry["note"] = "applies on the next workflow resume/re-run"
+    data.append(entry)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def apply_canvas_command(body):
+    """Validate + route one canvas steer command. Returns (http_code, result)."""
+    cmd = body.get("cmd")
+    if cmd not in STEER_CMDS:
+        return 400, {"ok": False, "error": "unknown command"}
+    node_id = str(body.get("nodeId", ""))
+    source = str(body.get("source", ""))
+    raw_text = body.get("text")
+    text = raw_text[:2000] if isinstance(raw_text, str) and raw_text.strip() else None
+    if cmd in ("redirect", "inject") and not text:
+        return 400, {"ok": False, "error": "redirect/inject need text"}
+    if source.startswith("workflow"):
+        append_workflow_directive({"cmd": cmd, "nodeId": node_id, "text": text})
+        return 200, {"ok": True, "applied": "directive", "note": "queued for next resume"}
+    entry = {"cmd": cmd}
+    m = re.match(r"item-(\d+)$", node_id)
+    if m:
+        entry["index"] = int(m.group(1))
+    elif node_id:
+        entry["item"] = node_id
+    if text:
+        entry["text"] = text
+    append_command(entry)
+    return 200, {"ok": True, "applied": "command"}
 
 
 # --------------------------------------------------------------------------- snapshot
@@ -615,6 +948,56 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--hairline);border:2px solid var(--bg);border-radius:9999px}
 ::selection{background:var(--fg);color:var(--bg)}
+/* ---- canvas (DAG) ---- */
+.canvas-wrap{position:relative;height:calc(100vh - 170px);min-height:420px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+ background:radial-gradient(circle at 1px 1px,var(--hairline) 1px,transparent 0) 0 0/22px 22px,var(--card)}
+.canvas-svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none}
+.canvas-svg.grab{cursor:grabbing}
+.cv-edge{fill:none;stroke:var(--border);stroke-width:1.5}
+.cv-edge.k-after{stroke:var(--muted-fg)}
+.cv-edge.k-seq{stroke:var(--sev-low);stroke-width:2}
+.cv-edge.k-contains{stroke:var(--hairline)}
+.cv-edge.k-verifies{stroke:var(--sev-med);stroke-dasharray:4 3}
+.cv-edge.k-fork{stroke:var(--sev-high);stroke-dasharray:1 4;stroke-linecap:round}
+.cv-node{cursor:grab}
+.cv-node .box{fill:var(--secondary);stroke:var(--border);stroke-width:1.5}
+.cv-node.sel .box{stroke:var(--fg);stroke-width:2}
+.cv-node.s-done .box{stroke:var(--success)}
+.cv-node.s-running .box{stroke:var(--sev-low);animation:wfpulse 1.4s ease-in-out infinite}
+.cv-node.s-error .box{stroke:var(--destructive)}
+.cv-node.s-open .box{stroke-dasharray:5 4}
+.cv-node .lbl{fill:var(--fg);font-family:var(--mono);font-size:11px}
+.cv-node .meta{fill:var(--muted-fg);font-family:var(--mono);font-size:9px}
+.cv-node .kind{fill:var(--muted-fg);font-family:var(--mono);font-size:8px;letter-spacing:.14em}
+.cv-node.k-phase .box{stroke-width:2}
+.canvas-bar{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:2}
+.canvas-hint{position:absolute;bottom:9px;right:12px;font-family:var(--mono);font-size:9px;color:var(--muted-fg);letter-spacing:.06em;pointer-events:none}
+.cbtn{background:var(--card);border:1px solid var(--border);color:var(--muted-fg);border-radius:6px;height:26px;padding:0 11px;
+ font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.cbtn:hover{color:var(--fg);border-color:var(--muted-fg)}
+.canvas-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted-fg);font-size:13px;pointer-events:none}
+.canvas-legend{position:absolute;top:10px;right:12px;display:flex;gap:10px;z-index:2;font-family:var(--mono);font-size:9px;color:var(--muted-fg)}
+.canvas-legend span{display:inline-flex;align-items:center;gap:4px}
+.canvas-legend i{width:12px;height:0;border-top:2px solid currentColor;display:inline-block}
+.cv-inspector{position:absolute;top:0;right:0;width:332px;max-width:82%;height:100%;background:var(--card);border-left:1px solid var(--border);
+ overflow:auto;padding:15px 16px 26px;z-index:3;box-shadow:-10px 0 26px rgba(0,0,0,.18)}
+.cv-inspector .ihead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cv-inspector .ikind{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-fg);border:1px solid var(--border);border-radius:9999px;padding:2px 9px}
+.cv-inspector .iclose{margin-left:auto;background:transparent;border:0;color:var(--muted-fg);font-size:19px;line-height:1;cursor:pointer}
+.cv-inspector .iclose:hover{color:var(--fg)}
+.cv-inspector .ititle{font-family:var(--mono);font-size:12px;color:var(--fg);line-height:1.5;margin-bottom:12px;word-break:break-word}
+.cv-inspector .ikv{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:10px;margin-bottom:6px}
+.cv-inspector .ikv .k{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-fg)}
+.cv-inspector .ikv .v{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;margin-top:2px;word-break:break-word}
+.cv-inspector .isec{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-fg);margin:13px 0 6px}
+.cv-inspector pre.iprev{background:var(--secondary);border:1px solid var(--hairline);border-radius:6px;padding:9px 10px;font-family:var(--mono);font-size:11px;color:var(--fg);white-space:pre-wrap;word-break:break-word;max-height:190px;overflow:auto;margin:0 0 4px}
+.cv-inspector .idec{background:var(--secondary);border:1px solid var(--hairline);border-radius:6px;padding:9px 10px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;line-height:1.5;margin-bottom:8px;color:var(--fg)}
+.cv-inspector .iwfnote{font-family:var(--mono);font-size:10px;color:var(--warnbar);margin-bottom:8px;line-height:1.4}
+.cv-inspector .isteerrow{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.cv-inspector .isteerin{flex:1;min-width:120px;background:var(--secondary);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 9px;font-family:var(--mono);font-size:11px}
+.cv-inspector .cbtn.danger{color:var(--destructive);border-color:rgba(174,31,31,.4)}
+.cv-inspector .cbtn.danger:hover{border-color:var(--destructive);color:var(--destructive)}
+.cv-inspector .isteerstatus{font-family:var(--mono);font-size:10px;color:var(--success);margin-top:4px;min-height:13px;word-break:break-word}
 </style>
 <script>try{document.documentElement.className=localStorage.getItem("leo-theme")||"dark"}catch(e){}</script>
 </head><body><div class="wrap">
@@ -640,7 +1023,29 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 <div class="card" id="wfcard" style="display:none"><div class="sectitle">Dynamic workflows · phase tree</div><div id="workflows"></div></div>
 <div class="card"><div class="sectitle">Decisions · newest</div><div id="decisions"></div></div>
 </div><!-- /tab-run -->
+<div id="tab-canvas" class="hide">
+<div class="card" style="padding:0;overflow:hidden">
+  <div class="canvas-wrap">
+    <div class="canvas-bar">
+      <button class="cbtn" id="cv-fit">Fit</button>
+      <button class="cbtn" id="cv-dir">Dir: TB</button>
+      <button class="cbtn" id="cv-reset">Reset</button>
+    </div>
+    <div class="canvas-legend">
+      <span style="color:var(--sev-low)"><i></i>seq</span>
+      <span style="color:var(--muted-fg)"><i></i>dep</span>
+      <span style="color:var(--sev-med)"><i></i>verify</span>
+      <span style="color:var(--sev-high)"><i></i>fork</span>
+    </div>
+    <svg class="canvas-svg" id="cv-svg"><g id="cv-view"></g></svg>
+    <div class="canvas-hint">drag bg to pan · wheel to zoom · drag node to pin · click to select</div>
+    <div class="canvas-empty" id="cv-empty">no graph yet — start a run</div>
+    <div class="cv-inspector hide" id="cv-inspector"></div>
+  </div>
+</div>
+</div><!-- /tab-canvas -->
 <div id="extviews"></div>
+<script src="/leopold-canvas-layout.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 function el(t,c,txt){const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e;}
@@ -763,16 +1168,152 @@ fetch("/api/state").then(r=>r.json()).then(render).catch(()=>{});
 const es=new EventSource("/api/events");
 es.onmessage=ev=>{try{render(JSON.parse(ev.data))}catch(_){}};
 
-// ---- tabs: Run (SSE) + one per extension dashboard (polled) ----
+// ---- Canvas: live DAG (zero-dep SVG over the hand-rolled layout) ----
+const Canvas=(()=>{
+  const SVG="http://www.w3.org/2000/svg";
+  const NW=176,NH=52;
+  let vp={x:40,y:40,k:1},dir="TB",timer=null,sig="",nodes=[],edges=[],selId=null,P={},pinned={},drag=null,fitted=false,wired=false,selectCb=null;
+  const svg=()=>document.getElementById("cv-svg");
+  const view=()=>document.getElementById("cv-view");
+  function pkey(){try{return (document.getElementById("proj").textContent||"x")}catch(e){return "x"}}
+  function loadPinned(){try{return JSON.parse(localStorage.getItem("leo-cvpos-"+pkey())||"{}")}catch(e){return {}}}
+  function savePinned(){try{localStorage.setItem("leo-cvpos-"+pkey(),JSON.stringify(pinned))}catch(e){}}
+  function e(t,a,c){const n=document.createElementNS(SVG,t);if(c)n.setAttribute("class",c);for(const k in(a||{}))n.setAttribute(k,a[k]);return n;}
+  function txt(x,y,s,c){const n=e("text",{x,y},c);n.textContent=s;return n;}
+  function clip(s,n){s=s||"";return s.length>n?s.slice(0,n-1)+"…":s;}
+  function applyVp(){view().setAttribute("transform","translate("+vp.x+","+vp.y+") scale("+vp.k+")");}
+  function scls(st){st=(st||"").toLowerCase();return st==="done"?"s-done":(st==="running"||st==="queued")?"s-running":(st==="error"||st==="failed")?"s-error":st==="open"?"s-open":"";}
+  function anchor(p,side){if(dir==="LR")return side==="out"?[p.x+NW,p.y+NH/2]:[p.x,p.y+NH/2];return side==="out"?[p.x+NW/2,p.y+NH]:[p.x+NW/2,p.y];}
+  function edgeD(a,b){const o=anchor(a,"out"),i=anchor(b,"in");if(dir==="LR"){const mx=(o[0]+i[0])/2;return "M"+o[0]+","+o[1]+" C"+mx+","+o[1]+" "+mx+","+i[1]+" "+i[0]+","+i[1];}const my=(o[1]+i[1])/2;return "M"+o[0]+","+o[1]+" C"+o[0]+","+my+" "+i[0]+","+my+" "+i[0]+","+i[1];}
+  function relayout(){
+    if(!window.LeopoldLayout)return;
+    const r=window.LeopoldLayout.layout(nodes,edges,{dir:dir,nodeW:NW+30,nodeH:NH+34});
+    P=r.positions;
+    for(const id in pinned){if(P[id])P[id]={x:pinned[id].x,y:pinned[id].y,layer:P[id].layer,order:P[id].order};}
+    draw();
+  }
+  function draw(){
+    const g=view();g.innerHTML="";
+    edges.forEach(ed=>{const a=P[ed.from],b=P[ed.to];if(!a||!b)return;g.append(e("path",{d:edgeD(a,b)},"cv-edge k-"+ed.kind));});
+    nodes.forEach(n=>{const p=P[n.id];if(!p)return;
+      const gg=e("g",{transform:"translate("+p.x+","+p.y+")","data-id":n.id},"cv-node k-"+(n.kind||"")+" "+scls(n.state)+(n.id===selId?" sel":""));
+      gg.append(e("rect",{x:0,y:0,width:NW,height:NH,rx:9},"box"));
+      gg.append(txt(11,16,(n.kind||"").toUpperCase(),"kind"));
+      gg.append(txt(11,32,clip(n.label,25),"lbl"));
+      const meta=(n.tokens?fmtTok(n.tokens)+"tok":"")+(n.model?(" · "+n.model):"");
+      if(meta)gg.append(txt(11,46,meta,"meta"));
+      g.append(gg);});
+    const em=document.getElementById("cv-empty");if(em)em.style.display=nodes.length?"none":"";
+  }
+  function redrawEdges(){const paths=view().querySelectorAll(".cv-edge");let i=0;edges.forEach(ed=>{const a=P[ed.from],b=P[ed.to];if(!a||!b)return;const pt=paths[i++];if(pt)pt.setAttribute("d",edgeD(a,b));});}
+  function updateStates(){const map={};view().querySelectorAll(".cv-node").forEach(nd=>map[nd.getAttribute("data-id")]=nd);
+    nodes.forEach(n=>{const nd=map[n.id];if(nd)nd.setAttribute("class","cv-node k-"+(n.kind||"")+" "+scls(n.state)+(n.id===selId?" sel":""));});}
+  function select(id){selId=id;view().querySelectorAll(".cv-node").forEach(nd=>nd.classList.toggle("sel",nd.getAttribute("data-id")===id));if(selectCb)selectCb(id);}
+  function onDown(ev){const nodeEl=ev.target.closest(".cv-node");
+    if(nodeEl){const id=nodeEl.getAttribute("data-id");if(!P[id])return;drag={mode:"node",id,el:nodeEl,sx:ev.clientX,sy:ev.clientY,px:P[id].x,py:P[id].y,moved:false};}
+    else{drag={mode:"pan",sx:ev.clientX,sy:ev.clientY,ox:vp.x,oy:vp.y};svg().classList.add("grab");}}
+  function onMove(ev){if(!drag)return;
+    if(drag.mode==="pan"){vp.x=drag.ox+(ev.clientX-drag.sx);vp.y=drag.oy+(ev.clientY-drag.sy);applyVp();}
+    else{const sdx=ev.clientX-drag.sx,sdy=ev.clientY-drag.sy;if(Math.abs(sdx)+Math.abs(sdy)>3)drag.moved=true;
+      P[drag.id].x=drag.px+sdx/vp.k;P[drag.id].y=drag.py+sdy/vp.k;drag.el.setAttribute("transform","translate("+P[drag.id].x+","+P[drag.id].y+")");redrawEdges();}}
+  function onUp(){if(!drag)return;if(drag.mode==="pan")svg().classList.remove("grab");
+    else if(drag.moved){pinned[drag.id]={x:P[drag.id].x,y:P[drag.id].y};savePinned();}else select(drag.id);drag=null;}
+  function onWheel(ev){ev.preventDefault();const r=svg().getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top,f=ev.deltaY<0?1.1:1/1.1,nk=Math.min(2.5,Math.max(0.2,vp.k*f));vp.x=mx-(mx-vp.x)/vp.k*nk;vp.y=my-(my-vp.y)/vp.k*nk;vp.k=nk;applyVp();}
+  function fit(){if(!nodes.length)return;let a=1e9,b=1e9,c=-1e9,d=-1e9;nodes.forEach(n=>{const p=P[n.id];if(!p)return;a=Math.min(a,p.x);b=Math.min(b,p.y);c=Math.max(c,p.x+NW);d=Math.max(d,p.y+NH);});
+    const s=svg().getBoundingClientRect(),gw=c-a||1,gh=d-b||1,k=Math.min(2,Math.max(0.2,Math.min((s.width-70)/gw,(s.height-70)/gh)));vp.k=k;vp.x=(s.width-gw*k)/2-a*k;vp.y=(s.height-gh*k)/2-b*k;applyVp();}
+  async function tick(){let g;try{g=await(await fetch("/api/graph")).json();}catch(e){return;}
+    nodes=g.nodes||[];edges=g.edges||[];const ns=nodes.map(n=>n.id).sort().join(",")+"|"+edges.length+"|"+dir;
+    if(ns!==sig){sig=ns;relayout();if(!fitted&&nodes.length){fitted=true;setTimeout(fit,20);}}else updateStates();}
+  return {
+    start(){pinned=loadPinned();
+      if(!wired){const s=svg();s.addEventListener("mousedown",onDown);window.addEventListener("mousemove",onMove);window.addEventListener("mouseup",onUp);s.addEventListener("wheel",onWheel,{passive:false});
+        document.getElementById("cv-fit").onclick=fit;
+        document.getElementById("cv-reset").onclick=()=>{pinned={};savePinned();sig="";fitted=false;tick();};
+        document.getElementById("cv-dir").onclick=ev=>{dir=dir==="TB"?"LR":"TB";ev.target.textContent="Dir: "+dir;sig="";fitted=false;tick();};
+        wired=true;}
+      tick();if(timer)clearInterval(timer);timer=setInterval(tick,2000);},
+    stop(){if(timer){clearInterval(timer);timer=null;}},
+    setOnSelect(fn){selectCb=fn;},
+  };
+})();
+
+// ---- Canvas node inspector (side panel; polls the selected node while open) ----
+const Inspector=(()=>{
+  let openId=null,timer=null;
+  const box=()=>document.getElementById("cv-inspector");
+  function kv(k,v){const d=el("div");d.append(el("div","k",k),el("div","v",v==null||v===""?"—":String(v)));return d;}
+  async function load(id){
+    const inp=document.querySelector('#cv-inspector .isteerin');
+    if(inp&&(inp===document.activeElement||inp.value.trim()))return; // don't clobber in-progress steering
+    let d;try{d=await(await fetch("/api/node/"+encodeURIComponent(id))).json();}catch(e){return;}if(openId!==id)return;render(d);}
+  function render(d){
+    const b=box();b.innerHTML="";
+    const head=el("div","ihead");head.append(el("span","ikind",(d.kind||"node").toUpperCase()));
+    const x=el("button","iclose","×");x.onclick=close;head.append(x);b.append(head);
+    if(d.error){b.append(el("div","ititle",d.error));return;}
+    b.append(el("div","ititle",d.label||d.id));
+    const g=el("div","ikv");
+    if(d.state)g.append(kv("state",d.state));
+    if(d.model)g.append(kv("model",d.model));
+    if(d.tokens!=null&&(d.tokens||d.kind!=="item"))g.append(kv("tokens",fmtTok(d.tokens)));
+    if(d.estUsd!=null&&d.estUsd>0)g.append(kv("est cost","≈"+fmtUsd(d.estUsd)));
+    if(d.toolCalls!=null)g.append(kv("tools",d.toolCalls));
+    if(d.durationMs)g.append(kv("duration",fmtDur(Math.round(d.durationMs/1000))));
+    if(d.attempt&&d.attempt>1)g.append(kv("attempt",d.attempt));
+    if(d.phase)g.append(kv("phase",d.phase));
+    if(d.position!=null)g.append(kv("plan #",d.position));
+    if(d.round!=null)g.append(kv("round",d.round));
+    if(d.confidence!=null)g.append(kv("confidence",d.confidence+"/10"));
+    if(g.children.length)b.append(g);
+    if(d.after&&d.after.length){b.append(el("div","isec","depends on"));b.append(el("div","idec","plan items "+d.after.join(", ")));}
+    if(d.theory){b.append(el("div","isec","hypothesis"));b.append(el("div","idec",d.theory));}
+    if(d.detail){b.append(el("div","isec","verdict"));b.append(el("div","idec",d.detail));}
+    if(d.promptPreview){b.append(el("div","isec","prompt"));b.append(el("pre","iprev",d.promptPreview));}
+    if(d.resultPreview){b.append(el("div","isec","result"));b.append(el("pre","iprev",d.resultPreview));}
+    if(d.decisions&&d.decisions.length){b.append(el("div","isec","decisions"));d.decisions.forEach(t=>b.append(el("div","idec",t)));}
+    if(!d.error)renderActions(b,d);
+  }
+  function renderActions(b,d){
+    b.append(el("div","isec","steer"));
+    if((d.source||"").startsWith("workflow"))b.append(el("div","iwfnote","workflow node — steer applies on the next resume/re-run (runtime isn't preemptible)"));
+    const inp=el("input","isteerin");inp.placeholder="redirect / inject text…";
+    const r1=el("div","isteerrow");
+    const bR=el("button","cbtn","Redirect");bR.onclick=()=>send("redirect",d,inp.value);
+    const bI=el("button","cbtn","Inject");bI.onclick=()=>send("inject",d,inp.value);
+    r1.append(inp,bR,bI);b.append(r1);
+    const r2=el("div","isteerrow");
+    const bRe=el("button","cbtn","Re-run");bRe.onclick=()=>send("rerun-item",d,"");
+    let armed=false;const bK=el("button","cbtn danger","Kill");
+    bK.onclick=()=>{if(!armed){armed=true;bK.textContent="Confirm kill?";setTimeout(()=>{armed=false;bK.textContent="Kill";},2500);}else{armed=false;bK.textContent="Kill";send("kill-item",d,"");}};
+    r2.append(bRe,bK);b.append(r2);
+    b.append(el("div","isteerstatus"));
+  }
+  async function send(cmd,d,text){
+    if((cmd==="redirect"||cmd==="inject")&&!(text||"").trim()){setStatus("type a note first");return;}
+    setStatus("sending…");
+    let r;try{r=await(await fetch("/api/command",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cmd,nodeId:d.id,source:d.source||"",text:text||""})})).json();}catch(e){setStatus("failed");return;}
+    setStatus(r.ok?("✓ "+cmd+" · "+(r.applied||"")+(r.note?(" — "+r.note):"")):("error: "+(r.error||"?")));
+    const inp=document.querySelector('#cv-inspector .isteerin');if(inp&&(cmd==="redirect"||cmd==="inject"))inp.value="";
+  }
+  function setStatus(s){const e2=document.querySelector('#cv-inspector .isteerstatus');if(e2)e2.textContent=s;}
+  function open(id){openId=id;box().classList.remove("hide");load(id);if(timer)clearInterval(timer);timer=setInterval(()=>{if(openId)load(openId);},2500);}
+  function close(){openId=null;box().classList.add("hide");if(timer){clearInterval(timer);timer=null;}}
+  return {open,close};
+})();
+Canvas.setOnSelect(id=>Inspector.open(id));
+
+// ---- tabs: Run (SSE) + Canvas + one per extension dashboard (polled) ----
 let curTab="run",extTimer=null;
 function setTab(name){
   curTab=name;
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   $("#tab-run").classList.toggle("hide",name!=="run");
+  $("#tab-canvas").classList.toggle("hide",name!=="canvas");
   document.querySelectorAll("[data-extview]").forEach(v=>v.classList.toggle("hide",v.dataset.extview!==name));
   try{localStorage.setItem("leo-tab",name)}catch(e){}
   if(extTimer){clearInterval(extTimer);extTimer=null;}
-  if(name!=="run"){loadExt(name);extTimer=setInterval(()=>loadExt(name),5000);}
+  if(name==="canvas")Canvas.start();else Canvas.stop();
+  if(name!=="run"&&name!=="canvas"){loadExt(name);extTimer=setInterval(()=>loadExt(name),5000);}
 }
 async function loadExt(name){
   const host=document.querySelector('[data-extview="'+name+'"]');if(!host)return;
@@ -836,11 +1377,10 @@ function renderView(host,name,v){
   let exts=[];try{exts=await (await fetch("/api/ext")).json();}catch(e){}
   const nav=$("#tabs"),views=$("#extviews");
   const mk=(tab,label)=>{const b=el("button","tab",label);b.dataset.tab=tab;b.onclick=()=>setTab(tab);nav.append(b);};
-  mk("run","Run");
+  mk("run","Run");mk("canvas","Canvas");
   exts.forEach(e=>{mk(e.name,e.label);const v=el("div","hide");v.dataset.extview=e.name;views.append(v);});
-  if(!exts.length)nav.classList.add("hide");                // no extensions -> plain single page
   let start="run";try{start=localStorage.getItem("leo-tab")||"run";}catch(e){}
-  if(start!=="run"&&!exts.some(e=>e.name===start))start="run";
+  if(start!=="run"&&start!=="canvas"&&!exts.some(e=>e.name===start))start="run";
   setTab(start);
 })();
 </script></body></html>"""
@@ -859,12 +1399,28 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _serve_asset(self, name, ctype):
+        """Serve a sibling static file (the canvas layout JS) from the script's dir."""
+        here = os.path.dirname(os.path.abspath(__file__))
+        try:
+            with open(os.path.join(here, name), "rb") as f:
+                self._send(200, ctype, f.read())
+        except OSError:
+            self._send(404, "text/plain", b"not found")
+
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         if path == "/":
             self._send(200, "text/html; charset=utf-8", PAGE.encode())
+        elif path == "/leopold-canvas-layout.js":
+            self._serve_asset("leopold-canvas-layout.js", "application/javascript; charset=utf-8")
         elif path == "/api/state":
             self._send(200, "application/json", json.dumps(snapshot()).encode())
+        elif path == "/api/graph":
+            self._send(200, "application/json", json.dumps(graph()).encode())
+        elif path.startswith("/api/node/"):
+            nid = urllib.parse.unquote(path[len("/api/node/"):])
+            self._send(200, "application/json", json.dumps(node_detail(nid)).encode())
         elif path == "/api/events":
             self._sse()
         elif path == "/api/ext":
@@ -907,15 +1463,43 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, "text/plain", b"not found")
 
+    def _json_body(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            body = json.loads(raw or b"{}")
+            return body if isinstance(body, dict) else {}
+        except (ValueError, OSError):
+            return None
+
+    # JSON POST endpoints -> (http_code, result_dict). All are steer/task writes only.
+    # Plain functions stored in a dict (not staticmethod, so it stays callable on 3.8).
+    _POST = {
+        "/api/command": apply_canvas_command,
+    }
+
     def do_POST(self):
-        if self.path.split("?", 1)[0] == "/api/stop":
+        p = self.path.split("?", 1)[0]
+        if p == "/api/stop":
             try:
                 open(os.path.join(LEO, "STOP"), "a").close()
                 self._send(200, "application/json", b'{"ok":true}')
             except OSError as e:
                 self._send(500, "application/json", json.dumps({"ok": False, "error": str(e)}).encode())
-        else:
+            return
+        fn = self._POST.get(p)
+        if not fn:
             self._send(404, "text/plain", b"not found")
+            return
+        body = self._json_body()
+        if body is None:
+            self._send(400, "application/json", b'{"ok":false,"error":"bad json"}')
+            return
+        try:
+            code, result = fn(body)
+        except OSError as e:
+            code, result = 500, {"ok": False, "error": str(e)}
+        self._send(code, "application/json", json.dumps(result).encode())
 
     def _sse(self):
         self.send_response(200)

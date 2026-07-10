@@ -185,13 +185,16 @@ case "$(python3 "$ENGINE" --event status)" in
   *) echo "  FAIL: status reports on"; fail=1 ;;
 esac
 
-out="$(python3 "$ENGINE" --event preview 'fix the retry loop in src/api/client.ts')"
+# Run preview from an isolated cwd: the verdict must reflect the prompt's own signals,
+# not whether a Leopold run happens to be active in the caller's directory (which would
+# otherwise skip with "leopold_run"). Keeps the control-plane test deterministic.
+out="$(cd "$T" && python3 "$ENGINE" --event preview 'fix the retry loop in src/api/client.ts')"
 case "$out" in
   *"PASS-THROUGH"*) echo "  ok: preview verdict for a strong prompt" ;;
   *) echo "  FAIL: preview verdict for a strong prompt (got '$out')"; fail=1 ;;
 esac
 before="$(ledger_lines)"
-out="$(python3 "$ENGINE" --event preview 'fix login')"
+out="$(cd "$T" && python3 "$ENGINE" --event preview 'fix login')"
 case "$out" in
   *"ENHANCE"*"[leopold-enhance"*) echo "  ok: preview renders the would-be injection" ;;
   *) echo "  FAIL: preview renders the would-be injection (got '$out')"; fail=1 ;;

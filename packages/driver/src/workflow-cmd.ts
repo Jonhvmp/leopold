@@ -13,7 +13,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query } from "./sdk.js";
 import { loadBrief } from "./config.js";
 import { compileBrief } from "./compile.js";
 import { executeWorkflow, type AgentOpts } from "./runtime.js";
