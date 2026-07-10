@@ -4,6 +4,64 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-07-10
+
+### Added
+- **Leopold Canvas — a live, zero-dependency DAG of the run.** `leopold-watch` gains a
+  **Canvas** tab (loopback, `http://127.0.0.1:4179`) that reads `.leopold/` and every
+  dynamic-workflow record and lays them out as a directed graph with a hand-rolled
+  layered layout — no framework, no bundler, no web fonts, fully offline. Plan items are
+  nodes with `(after: N)` edges; workflow phases/agents render as `seq`/`contains`/`verifies`
+  edges (precise where scripts label agents `impl:<id>` / `verify:<id>:<lens>`); forks,
+  reviews, and root-cause hypotheses hang off the item that spawned them; tasks are
+  first-class nodes. Pan/zoom/drag with persisted positions and Fit; a node inspector shows
+  model, tokens, per-node cost, tool calls, prompt/result previews, and a plan item's
+  `DECISIONS.md` rationale.
+- **Steer a live run from the Canvas — git stays locked.** A command channel (`commands.ts`)
+  lets the dashboard nudge a running `/leopold-run` between turns: `approve`, `redirect`,
+  `inject`, `kill-item`, `rerun-item`, drained at the same turn boundary as `STOP`, logged to
+  `DECISIONS.md` + `events.jsonl`. A **security invariant** (red-team proven) holds: a command
+  can only steer the plan — it can never write `ALLOW_GIT`/`ALLOW_PUSH`, touch `STOP`, or shell
+  out; unknown/hostile commands are dropped. A non-preemptible workflow node's steer becomes an
+  honest directive for the next resume.
+- **Behavior-spec verification (`conformance`, on).** A plan item can carry `@scenario
+  given → when → then` acceptance lines under its checkbox; `plan.ts` parses them into
+  `PlanItem.scenarios` (backward compatible — an item with none is byte-for-byte unchanged).
+  A new **conformance** review lens verifies the uncommitted diff satisfies EVERY scenario
+  before the item closes, and an unmet scenario comes back to the worker as the concrete fix.
+  Active only when the item declares scenarios. `leopold-brief` and `templates/PLAN.md` teach
+  the grammar.
+- **Best-of-k tournaments (`best_of_k`, off by default).** With `--best-of-k N`, a
+  critical/max-effort item in a worktree-isolated run is settled by N independent attempts —
+  each in its own throwaway worktree off HEAD, seeded with the current state — judged by a
+  panel, winner's diff applied. Bounded 2..6; falls back to a single attempt when nothing wins.
+- **Slice-scoped context (`slice_scope`, off).** When smart routing researches an item's
+  files, that set is handed to the worker as an explicit "start with these files" scope note
+  instead of the whole repo. Needs `smart_routing`.
+- **A single SDK seam (`src/sdk.ts`).** Every model call in the driver now goes through one
+  point. Production is unchanged — the real Agent SDK on the user's OWN Claude Code auth (their
+  subscription; no external API key, no separate billing). Tests inject a deterministic fake via
+  `setQuery`, so the whole conductor ↔ worker ↔ review ↔ retry loop runs end-to-end with **zero
+  model calls and zero spend** — which is how the new integration tests exercise the four levers
+  above for real.
+
+### Changed
+- **Literal fresh restart on a failed retry (`literal_reset`, on).** On a retry in a
+  worktree-isolated run, the tree is restored to a snapshot taken before the item's first
+  attempt — the failed diff is discarded, prior items' staged work kept — so the fresh attempt
+  starts clean instead of building on a dead end. A live repo is never hard-reset: the
+  non-isolated path falls back to reframing the retry. `git.ts` gains fail-safe
+  `snapshotTree`/`restoreTree` (a corrupt patch never loses work).
+- **Worker doctrine, from first principles.** The autonomous worker is now told to: frame the
+  item as observable acceptance behavior first; test behavior not implementation and never mock
+  the unit under test (reward-hacked tests are flagged blocking by the review gate); prefer
+  widely-used libraries and web-research current APIs (its knowledge is frozen); and simplify
+  before closing (fewer lines, abstract only on real duplication).
+- **161 driver tests** (up from 113), including real-git integration for the tournament
+  orchestration and full-loop integration for conformance + literal reset. A latent bug was
+  fixed along the way: the tournament captured the winner's diff with `git diff HEAD`, which
+  drops untracked new files — now captured via `snapshotTree`.
+
 ## [0.12.0] - 2026-07-06
 
 ### Changed
