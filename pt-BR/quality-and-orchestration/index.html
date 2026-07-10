@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/quality-and-orchestration/">
       
       
-        <link rel="prev" href="../concepts/dynamic-workflows/">
+        <link rel="prev" href="../canvas/">
       
       
         <link rel="next" href="../decision-protocol/">
@@ -709,6 +709,8 @@
       
         
       
+        
+      
     
     
     
@@ -845,6 +847,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../canvas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    O Canvas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -919,6 +949,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conformidade-verificando-contra-os-seus-cenarios-de-aceite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conformidade — verificando contra os seus cenários de aceite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#effort-por-item-palavras-chave-ou-pesquisa" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -930,10 +971,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#contexto-escopado-por-fatia-aponte-o-worker-para-os-arquivos-certos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contexto escopado por fatia — aponte o worker para os arquivos certos
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#o-painel-de-causa-raiz-sem-insistir-no-erro" class="md-nav__link">
     <span class="md-ellipsis">
       
         O painel de causa raiz — sem insistir no erro
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reset-literal-um-recomeco-limpo-nao-um-remendo-sobre-a-falha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reset literal — um recomeço limpo, não um remendo sobre a falha
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-of-k-um-torneio-no-item-que-precisa-dar-certo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best-of-k — um torneio no item que precisa dar certo
       
     </span>
   </a>
@@ -1715,6 +1789,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conformidade-verificando-contra-os-seus-cenarios-de-aceite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conformidade — verificando contra os seus cenários de aceite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#effort-por-item-palavras-chave-ou-pesquisa" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1726,10 +1811,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#contexto-escopado-por-fatia-aponte-o-worker-para-os-arquivos-certos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contexto escopado por fatia — aponte o worker para os arquivos certos
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#o-painel-de-causa-raiz-sem-insistir-no-erro" class="md-nav__link">
     <span class="md-ellipsis">
       
         O painel de causa raiz — sem insistir no erro
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reset-literal-um-recomeco-limpo-nao-um-remendo-sobre-a-falha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reset literal — um recomeço limpo, não um remendo sobre a falha
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-of-k-um-torneio-no-item-que-precisa-dar-certo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best-of-k — um torneio no item que precisa dar certo
       
     </span>
   </a>
@@ -1849,6 +1967,20 @@ ligado por padrão; <code>--no-review</code> / <code>LEOPOLD_REVIEW=0</code> / <
 <p>Dica para o worker: faça self-review com <code>/code-review</code> <em>antes</em> de reportar done, para o gate
 passar de primeira. A skill <code>/leopold-run</code> diz exatamente isso a ele.</p>
 </blockquote>
+<h2 id="conformidade-verificando-contra-os-seus-cenarios-de-aceite">Conformidade — verificando contra os seus cenários de aceite<a class="headerlink" href="#conformidade-verificando-contra-os-seus-cenarios-de-aceite" title="Permanent link">&para;</a></h2>
+<p>Uma linha "done when" diz o que é sucesso em prosa; um <strong>cenário</strong> diz isso em casos que o diff
+precisa de fato satisfazer. Um item do plano pode carregar linhas de aceite
+<code>@scenario &lt;given → when → then&gt;</code> logo abaixo do seu checkbox, e uma lente de review dedicada de
+<strong>conformidade</strong> então confere o diff não commitado contra <em>cada</em> cenário antes de o item fechar —
+um cenário não atendido volta para o worker como a correção concreta, não como um vago "não
+funciona":</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Register the <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>      <span class="ni">@scenario</span> no flag → the table prints unchanged
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table&#39;s exact fields
+</span></code></pre></div>
+<p>A lente fica <strong>ativa apenas quando o item declara linhas <code>@scenario</code></strong>, então planos sem cenário
+se comportam exatamente como antes — totalmente retrocompatível. Vem ligada por padrão;
+<code>--no-conformance</code> / <code>LEOPOLD_CONFORMANCE=0</code> / <code>conformance: off</code> no GUARDRAILS desliga.</p>
 <h2 id="effort-por-item-palavras-chave-ou-pesquisa">Effort por item — palavras-chave ou pesquisa<a class="headerlink" href="#effort-por-item-palavras-chave-ou-pesquisa" title="Permanent link">&para;</a></h2>
 <p>Todo item é classificado por risco com uma passada barata e determinística de palavras-chave sobre o
 texto do item e o charter (sem chamada extra de LLM). A classe define o <strong>reasoning effort</strong> nativo
@@ -1897,6 +2029,13 @@ do item — quais arquivos, quantos chamadores — antes de rotear. Ele sempre c
 classificador determinístico em qualquer falha, e nunca pode rebaixar um item crítico-por-palavra-chave
 para abaixo de crítico (um piso de segurança: dinheiro/auth/migrações continuam guardados mesmo se o
 roteador relaxar).</p>
+<h2 id="contexto-escopado-por-fatia-aponte-o-worker-para-os-arquivos-certos">Contexto escopado por fatia — aponte o worker para os arquivos certos<a class="headerlink" href="#contexto-escopado-por-fatia-aponte-o-worker-para-os-arquivos-certos" title="Permanent link">&para;</a></h2>
+<p>O roteamento inteligente já pesquisa quais arquivos um item toca. Ative o <strong>slice scope</strong>
+(<code>--slice-scope</code> ou <code>slice_scope: on</code> no GUARDRAILS — precisa do <code>smart_routing</code> ligado) e esse
+conjunto de arquivos é entregue ao worker como uma nota de escopo explícita "comece por estes
+arquivos", em vez de apontá-lo para o repositório inteiro. Desligado, ou quando o roteamento não
+achou nenhum conjunto de arquivos, o worker recebe o repositório como sempre — nada muda.
+Desligado por padrão.</p>
 <h2 id="o-painel-de-causa-raiz-sem-insistir-no-erro">O painel de causa raiz — sem insistir no erro<a class="headerlink" href="#o-painel-de-causa-raiz-sem-insistir-no-erro" title="Permanent link">&para;</a></h2>
 <p>Quando o mesmo item falha repetidamente, um contexto único tende a insistir na própria teoria
 (viés autopreferencial). Em uma nova tentativa, o Leopold convoca, em vez disso, um <strong>painel de
@@ -1906,6 +2045,23 @@ então um refutador tenta matar cada uma (refutações não parseáveis falham f
 sobrevivente mais forte é entregue à próxima tentativa como uma <strong>pista concreta</strong>, com instrução
 explícita de verificar a teoria rapidamente e abandoná-la se estiver errada. Vem ligado por padrão;
 <code>--no-hypotheses</code> / <code>hypotheses: off</code> desliga.</p>
+<h2 id="reset-literal-um-recomeco-limpo-nao-um-remendo-sobre-a-falha">Reset literal — um recomeço limpo, não um remendo sobre a falha<a class="headerlink" href="#reset-literal-um-recomeco-limpo-nao-um-remendo-sobre-a-falha" title="Permanent link">&para;</a></h2>
+<p>Uma nova tentativa que se apoia no diff que falhou herda o beco sem saída dele. Quando um item
+falha em uma run <strong>isolada em worktree</strong>, o <strong>reset literal</strong> restaura a árvore para um snapshot
+tirado antes da primeira tentativa do item — descartando o diff que falhou por inteiro, mas
+mantendo o trabalho staged dos itens anteriores — para que a nova tentativa comece limpa. Em uma
+run <strong>não isolada</strong> ele nunca faz hard-reset: cai de volta para reenquadrar a nova tentativa
+("trate a abordagem que falhou como beco sem saída, pegue outra"). Ele nunca mexe no seu repo vivo
+de forma destrutiva. Vem ligado por padrão; <code>--no-literal-reset</code> / <code>LEOPOLD_LITERAL_RESET=0</code> /
+<code>literal_reset: off</code> desliga.</p>
+<h2 id="best-of-k-um-torneio-no-item-que-precisa-dar-certo">Best-of-k — um torneio no item que precisa dar certo<a class="headerlink" href="#best-of-k-um-torneio-no-item-que-precisa-dar-certo" title="Permanent link">&para;</a></h2>
+<p>Alguns itens valem mais que uma tentativa. Defina <code>--best-of-k N</code> (ou <code>best_of_k: N</code> no
+GUARDRAILS) acima de 1 e — quando o item é crítico / de effort máximo <strong>e</strong> a run está isolada em
+worktree — o item é resolvido por um <strong>torneio de K tentativas independentes</strong>. Cada uma roda na
+própria worktree descartável derivada do <code>HEAD</code>, semeada com o estado atual, um painel as julga, e
+o diff da vencedora é aplicado. K é limitado a 2..6. Se nenhuma tentativa vence, ou a vencedora
+não consegue ser aplicada, cai de volta para uma tentativa única. Desligado por padrão (<code>1</code>) —
+opt-in, porque custa K× uma tentativa normal.</p>
 <h2 id="o-charter-que-aprende-voce">O charter que aprende você<a class="headerlink" href="#o-charter-que-aprende-voce" title="Permanent link">&para;</a></h2>
 <p>Seu comportamento registrado vale mais que a sua autodescrição. Com <code>--learn-on-finish</code> (ou
 <code>learn_on_finish: on</code> no GUARDRAILS), um fim limpo minera a run — o log de decisões que ela acabou
@@ -1918,10 +2074,10 @@ significa menos escalações na próxima run.</p>
 <h2 id="execucao-paralela">Execução paralela<a class="headerlink" href="#execucao-paralela" title="Permanent link">&para;</a></h2>
 <p>Itens independentes do plano não precisam esperar na fila. Declare a ordem no <code>PLAN.md</code> com um
 marcador <code>(after: N)</code> (posição do item, começando em 1); itens sem marcador são independentes:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Add the API layer
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">- [ ]</span> Refresh the docs
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">- [ ]</span> Add the API layer
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">- [ ]</span> Refresh the docs
 </span></code></pre></div>
 <p>Com <code>leopold-driver run --parallel 3</code>, um agendador ciente de dependências despacha até 3 itens
 prontos de uma vez, <strong>cada um em seu próprio git worktree</strong> derivado da árvore principal. Quando um
@@ -1988,7 +2144,7 @@ dashboard de watch transmite ao vivo — releia-os para escrever briefs mais afi
       <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
         
           
-          <a href="../concepts/dynamic-workflows/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Workflows dinâmicos">
+          <a href="../canvas/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: O Canvas">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1998,7 +2154,7 @@ dashboard de watch transmite ao vivo — releia-os para escrever briefs mais afi
                 Anterior
               </span>
               <div class="md-ellipsis">
-                Workflows dinâmicos
+                O Canvas
               </div>
             </div>
           </a>

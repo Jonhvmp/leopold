@@ -1,46 +1,46 @@
 
 <!doctype html>
-<html lang="pt" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code. Faça o brief como para um colega; ele conduz o Claude Code na sua cadeira.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code. Brief it like a teammate; it conducts Claude Code in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/cost-and-security/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/canvas/">
       
       
-        <link rel="prev" href="../guardrails/">
+        <link rel="prev" href="../concepts/dynamic-workflows/">
       
       
-        <link rel="next" href="../run-isolation/">
+        <link rel="next" href="../quality-and-orchestration/">
       
       
         
-          <link rel="alternate" href="../../cost-and-security/" hreflang="en">
+          <link rel="alternate" href="./" hreflang="en">
         
-          <link rel="alternate" href="./" hreflang="pt-BR">
+          <link rel="alternate" href="../pt-BR/canvas/" hreflang="pt-BR">
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Custo e segurança - Leopold</title>
+        <title>The Canvas - Leopold</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -59,7 +59,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -84,8 +84,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#controle-de-custo-seguranca-de-secretsextensoes" class="md-skip">
-          Pular para conteúdo
+        <a href="#the-canvas" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -99,8 +99,8 @@
   
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
-    <a href="../" title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Custo e segurança
+              The Canvas
             
           </span>
         </div>
@@ -160,20 +160,20 @@
       <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Selecione o idioma">
+    <button class="md-header__button md-icon" aria-label="Select language">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="../../cost-and-security/" hreflang="en" class="md-select__link">
+            <a href="./" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="./" hreflang="pt-BR" class="md-select__link">
+            <a href="../pt-BR/canvas/" hreflang="pt-BR" class="md-select__link">
               Português (Brasil)
             </a>
           </li>
@@ -194,21 +194,21 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Buscar" placeholder="Buscar" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Pesquisar">
+      <nav class="md-search__options" aria-label="Search">
         
-          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Compartilhar" aria-label="Compartilhar" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
             
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
           </a>
         
-        <button type="reset" class="md-search__icon md-icon" title="Limpar" aria-label="Limpar" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -221,7 +221,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Inicializando busca
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -233,7 +233,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+        <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -248,7 +248,7 @@
   
     
       
-<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -258,13 +258,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../" class="md-tabs__link">
+      <a href=".." class="md-tabs__link">
         
   
   
     
   
-  Início
+  Home
 
       </a>
     </li>
@@ -285,7 +285,7 @@
   
     
   
-  Primeiros passos
+  Getting Started
 
         </a>
       </li>
@@ -309,7 +309,7 @@
   
     
   
-  Conceitos
+  Concepts
 
         </a>
       </li>
@@ -331,7 +331,7 @@
   
     
   
-  Arquitetura
+  Architecture
 
         </a>
       </li>
@@ -353,7 +353,7 @@
   
     
   
-  Referência
+  Reference
 
         </a>
       </li>
@@ -375,7 +375,7 @@
   
     
   
-  Comparações
+  Comparisons
 
         </a>
       </li>
@@ -414,7 +414,7 @@
   
     
   
-  Como contribuir
+  Contributing
 
       </a>
     </li>
@@ -447,9 +447,9 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navegação" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../" title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href=".." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -459,7 +459,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+      <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -479,14 +479,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Início
+    Home
   
 
     
@@ -539,7 +539,7 @@
   <span class="md-ellipsis">
     
   
-    Primeiros passos
+    Getting Started
   
 
     
@@ -555,7 +555,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Primeiros passos
+    Getting Started
   
 
           </label>
@@ -575,7 +575,7 @@
   <span class="md-ellipsis">
     
   
-    Instalação
+    Install
   
 
     
@@ -603,7 +603,7 @@
   <span class="md-ellipsis">
     
   
-    Início rápido
+    Quickstart
   
 
     
@@ -631,7 +631,7 @@
   <span class="md-ellipsis">
     
   
-    Sua primeira run
+    Your First Run
   
 
     
@@ -659,7 +659,7 @@
   <span class="md-ellipsis">
     
   
-    Gerenciador de toolchain
+    Toolchain Manager
   
 
     
@@ -737,7 +737,7 @@
   <span class="md-ellipsis">
     
   
-    Conceitos
+    Concepts
   
 
     
@@ -753,7 +753,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Conceitos
+    Concepts
   
 
           </label>
@@ -773,7 +773,7 @@
   <span class="md-ellipsis">
     
   
-    O que é um harness
+    What Is a Harness
   
 
     
@@ -801,7 +801,7 @@
   <span class="md-ellipsis">
     
   
-    As duas fases
+    The Two Phases
   
 
     
@@ -829,7 +829,7 @@
   <span class="md-ellipsis">
     
   
-    Workflows dinâmicos
+    Dynamic Workflows
   
 
     
@@ -847,17 +847,44 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../canvas/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Canvas
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    O Canvas
+    The Canvas
   
 
     
@@ -866,6 +893,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-renders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it renders
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#steering-from-the-canvas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steering from the Canvas
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-canvas-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Canvas is not
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -885,7 +965,7 @@
   <span class="md-ellipsis">
     
   
-    Qualidade e orquestração
+    Quality & Orchestration
   
 
     
@@ -913,7 +993,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo de decisão
+    Decision Protocol
   
 
     
@@ -959,44 +1039,17 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Custo e segurança
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../cost-and-security/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Custo e segurança
+    Cost & Security
   
 
     
@@ -1005,81 +1058,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Índice
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-hard-stop-de-budget-em-usd-driver-sdk" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Hard-stop de budget em USD (driver SDK)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-secrets-fora-do-prompt-vault-criptografado" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Secrets fora do prompt (vault criptografado)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-gating-de-capabilities-para-extensoes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Gating de capabilities para extensões
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arquivos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arquivos
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verificacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verificação
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1099,7 +1077,7 @@
   <span class="md-ellipsis">
     
   
-    Isolamento da run
+    Run Isolation
   
 
     
@@ -1127,7 +1105,7 @@
   <span class="md-ellipsis">
     
   
-    Playbook do gstack
+    gstack Playbook
   
 
     
@@ -1188,7 +1166,7 @@
   <span class="md-ellipsis">
     
   
-    Arquitetura
+    Architecture
   
 
     
@@ -1204,7 +1182,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Arquitetura
+    Architecture
   
 
           </label>
@@ -1224,7 +1202,7 @@
   <span class="md-ellipsis">
     
   
-    Visão geral
+    Overview
   
 
     
@@ -1252,7 +1230,7 @@
   <span class="md-ellipsis">
     
   
-    Engine in-session
+    In-Session Engine
   
 
     
@@ -1280,7 +1258,7 @@
   <span class="md-ellipsis">
     
   
-    Driver SDK
+    SDK Driver
   
 
     
@@ -1308,7 +1286,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo maestro–worker
+    Conductor & Worker Protocol
   
 
     
@@ -1371,7 +1349,7 @@
   <span class="md-ellipsis">
     
   
-    Referência
+    Reference
   
 
     
@@ -1387,7 +1365,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência
+    Reference
   
 
           </label>
@@ -1491,7 +1469,7 @@
   <span class="md-ellipsis">
     
   
-    Artefatos do brief
+    Brief Artifacts
   
 
     
@@ -1519,7 +1497,7 @@
   <span class="md-ellipsis">
     
   
-    Config do driver
+    Driver Config
   
 
     
@@ -1574,7 +1552,7 @@
   <span class="md-ellipsis">
     
   
-    Comparações
+    Comparisons
   
 
     
@@ -1590,7 +1568,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Comparações
+    Comparisons
   
 
           </label>
@@ -1672,7 +1650,7 @@
   <span class="md-ellipsis">
     
   
-    Como contribuir
+    Contributing
   
 
     
@@ -1698,7 +1676,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1707,15 +1685,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Índice
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-hard-stop-de-budget-em-usd-driver-sdk" class="md-nav__link">
+  <a href="#what-it-renders" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Hard-stop de budget em USD (driver SDK)
+        What it renders
       
     </span>
   </a>
@@ -1723,10 +1701,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-secrets-fora-do-prompt-vault-criptografado" class="md-nav__link">
+  <a href="#steering-from-the-canvas" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Secrets fora do prompt (vault criptografado)
+        Steering from the Canvas
       
     </span>
   </a>
@@ -1734,32 +1712,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-gating-de-capabilities-para-extensoes" class="md-nav__link">
+  <a href="#what-the-canvas-is-not" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Gating de capabilities para extensões
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arquivos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Arquivos
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verificacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verificação
+        What the Canvas is not
       
     </span>
   </a>
@@ -1786,86 +1742,51 @@
   
 
 
-<h1 id="controle-de-custo-seguranca-de-secretsextensoes">Controle de custo &amp; segurança de secrets/extensões<a class="headerlink" href="#controle-de-custo-seguranca-de-secretsextensoes" title="Permanent link">&para;</a></h1>
-<p>Três ports nativos de coisas que o paperclip faz bem para dentro do harness do
-Leopold: um hard-stop de budget em USD, um vault de secrets que mantém secrets fora
-do prompt e gating de capabilities para extensões. Sem Postgres, sem daemon — estado
-em <code>.leopold/</code>, secrets criptografados em disco, consentimento na CLI.</p>
-<h2 id="1-hard-stop-de-budget-em-usd-driver-sdk">1. Hard-stop de budget em USD (driver SDK)<a class="headerlink" href="#1-hard-stop-de-budget-em-usd-driver-sdk" title="Permanent link">&para;</a></h2>
-<p>A CLI do Claude Code já reporta <code>total_cost_usd</code> por sessão, então não existe mapa de
-preços de modelo: o driver acumula o custo real por item e para a run quando ele cruza
-o teto. Esse é o teto de dólares confiável para uma run autônoma.</p>
+<h1 id="the-canvas">The Canvas<a class="headerlink" href="#the-canvas" title="Permanent link">&para;</a></h1>
+<p>Leopold's plan is not a chat thread — it is a <strong>graph</strong>. The Canvas makes that graph
+visible and steerable: a live, zero-dependency DAG of the run, served on loopback by
+<code>leopold-watch</code>. It is the open, git-locked answer to a linear agent workspace.</p>
+<p>Open it with <code>/leopold-watch</code> (or <code>make watch</code> / <code>npx leopold-driver watch</code>), then switch
+to the <strong>Canvas</strong> tab at <code>http://127.0.0.1:4179</code>.</p>
+<h2 id="what-it-renders">What it renders<a class="headerlink" href="#what-it-renders" title="Permanent link">&para;</a></h2>
+<p>The Canvas reads the run's own files (<code>.leopold/</code>) and every dynamic-workflow record the
+runtime writes, and lays them out as a directed graph with a hand-rolled layered layout
+(no framework, no bundler, no web fonts — it works fully offline):</p>
 <ul>
-<li><code>leopold-driver run --budget-usd 5</code> (ou <code>LEOPOLD_BUDGET_USD=5</code>) define um teto de $5.</li>
-<li><code>worker.ts</code> lê <code>total_cost_usd</code> do evento <code>result</code>; <code>loop.ts</code> acumula em
-  <code>state.spent_usd</code> e loga um evento <code>cost</code> por item.</li>
-<li>Aplicado no topo do loop (antes de cada item): quando <code>spent_usd &gt;= budget_usd</code>, a
-  run para com <code>budget_exceeded</code>, notifica e deixa o trabalho em stage.</li>
-<li>Funções de decisão puras (<code>parseBudgetUsd</code>, <code>overBudget</code>) em <code>budget.ts</code> têm testes unitários.</li>
+<li><strong>Plan items</strong> as nodes, with <code>(after: N)</code> dependencies as edges.</li>
+<li><strong>Dynamic-workflow</strong> phases and agents: phase→phase (<code>seq</code>), phase→agent (<code>contains</code>),
+  and each adversarial-verify agent linked to the exact node it reviews (<code>verifies</code>).
+  The edge is precise wherever Leopold's own scripts label agents <code>impl:&lt;id&gt;</code> /
+  <code>verify:&lt;id&gt;:&lt;lens&gt;</code>; generic workflows fall back to phase-level inference.</li>
+<li><strong>Forks</strong>, <strong>reviews</strong>, and <strong>root-cause hypotheses</strong> as nodes hanging off the item
+  that spawned them.</li>
+<li><strong>Tasks</strong> as first-class standalone nodes (see below).</li>
 </ul>
-<h2 id="2-secrets-fora-do-prompt-vault-criptografado">2. Secrets fora do prompt (vault criptografado)<a class="headerlink" href="#2-secrets-fora-do-prompt-vault-criptografado" title="Permanent link">&para;</a></h2>
-<p>Hoje o worker é uma sessão crua do Claude Code, então qualquer secret que o trabalho
-precisa tende a ser digitado no prompt/transcript. Isto injeta secrets como <strong>variáveis
-de ambiente</strong>: elas chegam à tool Bash do worker como <code>$NAME</code>, mas nunca entram no prompt.</p>
+<p>Pan (drag the background), zoom (wheel), drag a node to pin it (positions persist), and
+<strong>Fit</strong> to reframe. Click a node to open the <strong>inspector</strong>: model, tokens, a per-node cost
+estimate, tool calls, prompt/result previews, and — for a plan item — the matching
+<code>DECISIONS.md</code> rationale.</p>
+<h2 id="steering-from-the-canvas">Steering from the Canvas<a class="headerlink" href="#steering-from-the-canvas" title="Permanent link">&para;</a></h2>
+<p>The inspector turns a node into a control. You can <strong>redirect</strong>, <strong>inject</strong> a note,
+<strong>kill</strong>, or <strong>re-run</strong> an item. What happens next depends on how the run is executing:</p>
 <ul>
-<li><code>leopold-driver secrets set NAME</code> (valor lido do <strong>stdin</strong>, então nunca cai no
-  histórico do shell) criptografa em <code>.leopold/secrets.env</code>; <code>secrets list</code> mostra só os nomes.</li>
-<li>Em repouso: <strong>AES-256-GCM</strong>. A master key de 32 bytes fica em
-  <code>~/.claude/leopold/secrets.key</code> (modo <code>0600</code>, gerada sob demanda); o vault é o blob
-  criptografado. Chave errada/rotacionada → fail-closed (sem secrets).</li>
-<li><code>worker.ts</code> descriptografa o vault e coloca os valores em <code>process.env</code> para o item
-  (e os passa como <code>options.env</code>), restaurando o ambiente depois. O worker é instruído
-  a usar <code>$NAME</code> e nunca ecoar um valor.</li>
-<li>A proteção é <strong>criptografia em repouso</strong>, não um guard de leitura: o vault é um blob
-  AES-256-GCM e a master key é <code>0600</code> fora do projeto, então ler <code>secrets.env</code> rende
-  ciphertext sem chave. O worker nunca precisa do arquivo — ele recebe os valores como <code>$NAME</code>.</li>
+<li>A live <strong><code>/leopold-run</code></strong> loop drains these commands from <code>.leopold/commands.jsonl</code> at
+  the same turn boundary it checks the kill switch, and applies them: redirect/inject
+  prepend guidance to the next item, kill closes it, re-run re-opens it.</li>
+<li>A <strong>dynamic-workflow</strong> node can't be preempted from outside — the runtime owns it — so
+  a steer becomes a <strong>directive for the next resume/re-run</strong>, recorded in
+  <code>.leopold/workflow-directives.json</code> and labelled as such. Leopold does not pretend to
+  kill a workflow agent mid-flight.</li>
 </ul>
-<h2 id="3-gating-de-capabilities-para-extensoes">3. Gating de capabilities para extensões<a class="headerlink" href="#3-gating-de-capabilities-para-extensoes" title="Permanent link">&para;</a></h2>
-<p>Uma extensão declara de antemão o que faz, e o menu do toolchain exige consentimento
-antes de conceder no install/update.</p>
-<ul>
-<li><code>extension.json</code> ganha um array <code>capabilities</code>, ex. ovmem:
-  <code>["network", "settings.write", "filesystem.home", "package.install", "process.spawn"]</code>.</li>
-<li><code>leopold-menu.sh</code> mostra as capabilities declaradas na visão do componente, e
-  <code>Install</code> / <code>Update</code> agora passam por <code>ext_consent</code> — ele imprime as capabilities e
-  exige um <code>y</code> antes de rodar <code>manage.sh install</code>/<code>update</code>. Sem declaração → nada a
-  liberar. As cinco extensões incluídas (leopold, serena, gstack, ovmem, enhance) declaram as suas.</li>
-</ul>
-<h2 id="arquivos">Arquivos<a class="headerlink" href="#arquivos" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Área</th>
-<th>Arquivos</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Budget</td>
-<td><code>packages/driver/src/{budget,config,loop,worker,types,index}.ts</code>, <code>test/budget.test.ts</code></td>
-</tr>
-<tr>
-<td>Secrets</td>
-<td><code>packages/driver/src/{secrets,worker,guard,index}.ts</code>, <code>hooks/guard-irreversible.sh</code>, <code>test/secrets.test.ts</code></td>
-</tr>
-<tr>
-<td>Capabilities</td>
-<td><code>extensions/*/extension.json</code>, <code>scripts/leopold-menu.sh</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="verificacao">Verificação<a class="headerlink" href="#verificacao" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>make driver-test</code> (unitário): decisões de budget; round-trip de secret +
-  criptografia em disco (sem plaintext) + chave <code>0600</code> + apply/restore de env; a suíte
-  do guard (só o lock de git commit/push).</li>
-<li>Smoke de CLI: <code>secrets set</code> via stdin criptografa (sem plaintext no vault), <code>secrets list</code>,
-  a chave é <code>0600</code>, nomes inválidos são rejeitados. <code>leopold menu</code> mostra as capabilities
-  e condiciona install/update ao consentimento.</li>
-<li><code>tsc --noEmit</code> e <code>make hooks-check</code> verdes.</li>
-</ul>
-<p>Nota: budget e injeção de secrets miram o driver SDK (Path A), onde o driver controla
-o worker. O guard de bash continua protegendo os arquivos de secrets no caminho in-session.</p>
+<p>Either way, <strong>git stays locked.</strong> A steer command can only log a note, prepend guidance,
+or flip a <code>PLAN.md</code> checkbox — it can never unlock <code>ALLOW_GIT</code>/<code>ALLOW_PUSH</code> or commit.
+That invariant is proven by a red-team test on both the dashboard and the driver.</p>
+<h2 id="what-the-canvas-is-not">What the Canvas is not<a class="headerlink" href="#what-the-canvas-is-not" title="Permanent link">&para;</a></h2>
+<p>Leopold Canvas is deliberately narrow. It is <strong>not</strong> a general knowledge-work assistant:
+no deck/spreadsheet/document generation, no connectors marketplace, no enterprise SIEM,
+no real-time multi-user collaboration, no task board, no mobile app. It is a graph-native,
+open-source, self-hostable view-and-steer surface for an autonomous coding run — and
+nothing it shows is a claim the tests don't back.</p>
 
 
 
@@ -1891,7 +1812,7 @@ o worker. O guard de bash continua protegendo os arquivos de secrets no caminho 
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Voltar para o topo
+  Back to top
 </button>
         
       </main>
@@ -1900,33 +1821,33 @@ o worker. O guard de bash continua protegendo os arquivos de secrets no caminho 
   
     
       
-      <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../guardrails/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Guardrails">
+          <a href="../concepts/dynamic-workflows/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Dynamic Workflows">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Anterior
+                Previous
               </span>
               <div class="md-ellipsis">
-                Guardrails
+                Dynamic Workflows
               </div>
             </div>
           </a>
         
         
           
-          <a href="../run-isolation/" class="md-footer__link md-footer__link--next" aria-label="Próximo: Isolamento da run">
+          <a href="../quality-and-orchestration/" class="md-footer__link md-footer__link--next" aria-label="Next: Quality &amp; Orchestration">
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Próximo
+                Next
               </span>
               <div class="md-ellipsis">
-                Isolamento da run
+                Quality & Orchestration
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1978,10 +1899,10 @@ o worker. O guard de bash continua protegendo os arquivos de secrets no caminho 
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://jonhvmp.github.io/leopold/quality-and-orchestration/">
       
       
-        <link rel="prev" href="../concepts/dynamic-workflows/">
+        <link rel="prev" href="../canvas/">
       
       
         <link rel="next" href="../decision-protocol/">
@@ -709,6 +709,8 @@
       
         
       
+        
+      
     
     
     
@@ -845,6 +847,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../canvas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Canvas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -919,6 +949,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conformance-verifying-against-your-acceptance-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conformance — verifying against your acceptance scenarios
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#per-item-effort-keywords-or-research" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -930,10 +971,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#slice-scoped-context-point-the-worker-at-the-right-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Slice-scoped context — point the worker at the right files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-root-cause-panel-no-doubling-down" class="md-nav__link">
     <span class="md-ellipsis">
       
         The root-cause panel — no doubling down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#literal-reset-a-clean-restart-not-a-patched-over-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Literal reset — a clean restart, not a patched-over failure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-of-k-a-tournament-on-the-item-that-has-to-land" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best-of-k — a tournament on the item that has to land
       
     </span>
   </a>
@@ -1715,6 +1789,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#conformance-verifying-against-your-acceptance-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conformance — verifying against your acceptance scenarios
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#per-item-effort-keywords-or-research" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1726,10 +1811,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#slice-scoped-context-point-the-worker-at-the-right-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Slice-scoped context — point the worker at the right files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-root-cause-panel-no-doubling-down" class="md-nav__link">
     <span class="md-ellipsis">
       
         The root-cause panel — no doubling down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#literal-reset-a-clean-restart-not-a-patched-over-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Literal reset — a clean restart, not a patched-over failure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-of-k-a-tournament-on-the-item-that-has-to-land" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best-of-k — a tournament on the item that has to land
       
     </span>
   </a>
@@ -1849,6 +1967,19 @@ by default; <code>--no-review</code> / <code>LEOPOLD_REVIEW=0</code> / <code>rev
 <p>Tip for the worker: self-review with <code>/code-review</code> <em>before</em> reporting done, so the gate
 passes first try. The <code>/leopold-run</code> skill tells it exactly that.</p>
 </blockquote>
+<h2 id="conformance-verifying-against-your-acceptance-scenarios">Conformance — verifying against your acceptance scenarios<a class="headerlink" href="#conformance-verifying-against-your-acceptance-scenarios" title="Permanent link">&para;</a></h2>
+<p>A "done when" line says what success is in prose; a <strong>scenario</strong> says it in cases the diff must
+actually satisfy. A plan item may carry <code>@scenario &lt;given → when → then&gt;</code> acceptance lines
+directly under its checkbox, and a dedicated <strong>conformance</strong> review lens then checks the
+uncommitted diff against <em>every</em> scenario before the item closes — an unmet scenario comes back
+to the worker as the concrete fix, not a vague "doesn't work":</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Register the <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>      <span class="ni">@scenario</span> no flag → the table prints unchanged
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table&#39;s exact fields
+</span></code></pre></div>
+<p>The lens is <strong>active only when the item declares <code>@scenario</code> lines</strong>, so scenario-less plans
+behave exactly as before — fully backward compatible. On by default; <code>--no-conformance</code> /
+<code>LEOPOLD_CONFORMANCE=0</code> / <code>conformance: off</code> in GUARDRAILS turns it off.</p>
 <h2 id="per-item-effort-keywords-or-research">Per-item effort — keywords or research<a class="headerlink" href="#per-item-effort-keywords-or-research" title="Permanent link">&para;</a></h2>
 <p>Every item is risk-classified by a cheap, deterministic keyword pass over the item text and
 the charter (no extra LLM call). The class sets the worker's native SDK <strong>reasoning effort</strong>:</p>
@@ -1895,6 +2026,12 @@ dangerous ones get scrutiny.</p>
 blast radius — which files, how many callers — before routing. It always falls back to the
 deterministic classifier on any failure, and it can never lower a keyword-critical item below
 critical (a safety floor: money/auth/migrations stay guarded even if the router relaxes).</p>
+<h2 id="slice-scoped-context-point-the-worker-at-the-right-files">Slice-scoped context — point the worker at the right files<a class="headerlink" href="#slice-scoped-context-point-the-worker-at-the-right-files" title="Permanent link">&para;</a></h2>
+<p>Smart routing already researches which files an item touches. Turn on <strong>slice scope</strong>
+(<code>--slice-scope</code> or <code>slice_scope: on</code> in GUARDRAILS — it needs <code>smart_routing</code> on) and that file
+set is handed to the worker as an explicit "start with these files" scope note, instead of
+pointing it at the whole repo. Off, or when routing found no file set, the worker gets the repo
+as usual — nothing changes. Off by default.</p>
 <h2 id="the-root-cause-panel-no-doubling-down">The root-cause panel — no doubling down<a class="headerlink" href="#the-root-cause-panel-no-doubling-down" title="Permanent link">&para;</a></h2>
 <p>When the same item fails repeatedly, a single context tends to double down on its own theory
 (self-preferential bias). On a retry, Leopold instead convenes a <strong>root-cause panel</strong>: three
@@ -1904,6 +2041,21 @@ refuter tries to kill each one (unparseable refutations fail closed). The strong
 hypothesis is handed to the next attempt as a <strong>concrete lead</strong>, with an explicit instruction
 to verify the theory quickly and abandon it if wrong. On by default; <code>--no-hypotheses</code> /
 <code>hypotheses: off</code> turns it off.</p>
+<h2 id="literal-reset-a-clean-restart-not-a-patched-over-failure">Literal reset — a clean restart, not a patched-over failure<a class="headerlink" href="#literal-reset-a-clean-restart-not-a-patched-over-failure" title="Permanent link">&para;</a></h2>
+<p>A retry that builds on the failed diff inherits its dead end. When an item fails in a
+<strong>worktree-isolated</strong> run, <strong>literal reset</strong> restores the tree to a snapshot taken before the
+item's first attempt — discarding the failed diff entirely while keeping prior items' staged
+work — so the fresh attempt starts clean. In a <strong>non-isolated</strong> run it never hard-resets: it
+falls back to reframing the retry ("treat the failed approach as a dead end, take a different
+one"). It never touches your live repo destructively. On by default; <code>--no-literal-reset</code> /
+<code>LEOPOLD_LITERAL_RESET=0</code> / <code>literal_reset: off</code> turns it off.</p>
+<h2 id="best-of-k-a-tournament-on-the-item-that-has-to-land">Best-of-k — a tournament on the item that has to land<a class="headerlink" href="#best-of-k-a-tournament-on-the-item-that-has-to-land" title="Permanent link">&para;</a></h2>
+<p>Some items are worth more than one shot. Set <code>--best-of-k N</code> (or <code>best_of_k: N</code> in GUARDRAILS)
+above 1 and — when the item is critical / max-effort <strong>and</strong> the run is worktree-isolated — the
+item is settled by a <strong>tournament of K independent attempts</strong>. Each runs in its own throwaway
+worktree off <code>HEAD</code> seeded with the current state, a panel judges them, and the winner's diff is
+applied. K is bounded to 2..6. If no attempt wins, or the winner fails to apply, it falls back to
+a single attempt. Off by default (<code>1</code>) — opt-in, because it costs K× a normal attempt.</p>
 <h2 id="the-charter-that-learns-you">The charter that learns you<a class="headerlink" href="#the-charter-that-learns-you" title="Permanent link">&para;</a></h2>
 <p>Your recorded behavior beats your self-description. With <code>--learn-on-finish</code> (or
 <code>learn_on_finish: on</code> in GUARDRAILS), a clean finish mines the run — the decision log it just
@@ -1916,10 +2068,10 @@ escalations next run.</p>
 <h2 id="parallel-execution">Parallel execution<a class="headerlink" href="#parallel-execution" title="Permanent link">&para;</a></h2>
 <p>Independent plan items don't have to wait in line. Declare order in <code>PLAN.md</code> with an
 <code>(after: N)</code> marker (1-based item position); items with no marker are independent:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Add the API layer
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">- [ ]</span> Refresh the docs
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">- [ ]</span> Add the API layer
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">- [ ]</span> Refresh the docs
 </span></code></pre></div>
 <p>With <code>leopold-driver run --parallel 3</code>, a dependency-aware scheduler dispatches up to 3 ready
 items at once, <strong>each in its own git worktree</strong> off the main tree. When an item finishes (and
@@ -1985,7 +2137,7 @@ back to write sharper briefs next time.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../concepts/dynamic-workflows/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Dynamic Workflows">
+          <a href="../canvas/" class="md-footer__link md-footer__link--prev" aria-label="Previous: The Canvas">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1995,7 +2147,7 @@ back to write sharper briefs next time.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Dynamic Workflows
+                The Canvas
               </div>
             </div>
           </a>

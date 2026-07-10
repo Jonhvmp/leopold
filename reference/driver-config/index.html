@@ -707,6 +707,8 @@
       
         
       
+        
+      
     
     
     
@@ -823,6 +825,34 @@
     
   
     Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../canvas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Canvas
   
 
     
@@ -1852,6 +1882,11 @@ headless environment with no Claude Code auth.</p>
 <td>turn off the diverse-lens review panel</td>
 </tr>
 <tr>
+<td><code>--no-conformance</code></td>
+<td>conformance on</td>
+<td>turn off the conformance lens (only active on items that declare <code>@scenario</code> acceptance lines)</td>
+</tr>
+<tr>
 <td><code>--max-review-rounds N</code></td>
 <td><code>2</code></td>
 <td>review→fix rounds per item before it closes anyway</td>
@@ -1862,9 +1897,24 @@ headless environment with no Claude Code auth.</p>
 <td>turn off the root-cause panel on retried items</td>
 </tr>
 <tr>
+<td><code>--no-literal-reset</code></td>
+<td>reset on</td>
+<td>stop restoring the pre-attempt snapshot on retry in an isolated run (falls back to reframing in a non-isolated run)</td>
+</tr>
+<tr>
+<td><code>--best-of-k N</code></td>
+<td><code>1</code></td>
+<td>settle a critical, worktree-isolated item by a tournament of N independent attempts (bounded 2..6; opt-in, costs N×)</td>
+</tr>
+<tr>
 <td><code>--smart-routing</code></td>
 <td>off</td>
 <td>research each item's real blast radius before routing effort (falls back to keywords; never lowers a critical floor)</td>
+</tr>
+<tr>
+<td><code>--slice-scope</code></td>
+<td>off</td>
+<td>hand smart-routing's file set to the worker as a "start with these files" scope note (needs <code>--smart-routing</code>)</td>
 </tr>
 <tr>
 <td><code>--learn-on-finish</code></td>
@@ -1924,6 +1974,11 @@ headless environment with no Claude Code auth.</p>
 <td><code>0</code> = same as <code>--no-review</code></td>
 </tr>
 <tr>
+<td><code>LEOPOLD_CONFORMANCE</code></td>
+<td><code>1</code></td>
+<td><code>0</code> = same as <code>--no-conformance</code></td>
+</tr>
+<tr>
 <td><code>LEOPOLD_MAX_REVIEW_ROUNDS</code></td>
 <td><code>2</code></td>
 <td>same as <code>--max-review-rounds</code></td>
@@ -1939,9 +1994,24 @@ headless environment with no Claude Code auth.</p>
 <td><code>0</code> = same as <code>--no-hypotheses</code></td>
 </tr>
 <tr>
+<td><code>LEOPOLD_LITERAL_RESET</code></td>
+<td><code>1</code></td>
+<td><code>0</code> = same as <code>--no-literal-reset</code></td>
+</tr>
+<tr>
+<td><code>LEOPOLD_BEST_OF_K</code></td>
+<td><code>1</code></td>
+<td>same as <code>--best-of-k</code> (&gt;1 enables; bounded 2..6)</td>
+</tr>
+<tr>
 <td><code>LEOPOLD_SMART_ROUTING</code></td>
 <td><code>0</code></td>
 <td><code>1</code> = same as <code>--smart-routing</code></td>
+</tr>
+<tr>
+<td><code>LEOPOLD_SLICE_SCOPE</code></td>
+<td><code>0</code></td>
+<td><code>1</code> = same as <code>--slice-scope</code></td>
 </tr>
 <tr>
 <td><code>LEOPOLD_LEARN_ON_FINISH</code></td>
@@ -1960,9 +2030,13 @@ headless environment with no Claude Code auth.</p>
 <code>GUARDRAILS.md</code> may set any of these as <code>key: on|off</code>:</p>
 <div class="language-markdown highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">-</span><span class="w"> </span>review: on
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">-</span><span class="w"> </span>conformance: on
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
 </span></code></pre></div>
 <p>Precedence: <strong>explicit CLI flag / env var → GUARDRAILS.md → built-in default.</strong></p>
 <h2 id="stop-conditions">Stop conditions<a class="headerlink" href="#stop-conditions" title="Permanent link">&para;</a></h2>
