@@ -31,3 +31,35 @@ export function applyStaged(cwd: string, patch: string): GitResult {
   // --3way lets git fall back to a real merge when context drifted; --index stages.
   return git(cwd, ["apply", "--index", "--3way", "--whitespace=nowarn"], patch);
 }
+
+/** A complete snapshot of the working tree vs HEAD as a single patch — staged,
+ *  unstaged, AND untracked (non-ignored) changes, captured as additions. This is
+ *  the "state before an item's first attempt" that R2 restores to on a retry.
+ *  Orchestrator-only: it stages with `git add -A` but never commits or pushes. */
+export function snapshotTree(cwd: string): string {
+  git(cwd, ["add", "-A"]); // stage everything incl. untracked so the diff captures it
+  return git(cwd, ["diff", "--cached", "--binary", "HEAD"]).out;
+}
+
+/** Restore the working tree to a `snapshotTree` patch: discard everything back to
+ *  HEAD, then re-apply the snapshot (staged). FAIL-SAFE — the current state is
+ *  rescued first, so a corrupt/unapplyable patch leaves the tree exactly as it was
+ *  and returns not-ok, never losing work. Gated by the caller to worktree-isolated
+ *  runs; the user's live repo is never handed to this. Empty patch = reset to HEAD. */
+export function restoreTree(cwd: string, patch: string): GitResult {
+  const rescue = snapshotTree(cwd); // full current state, same capture (incl. untracked)
+  const wipe = (): void => {
+    git(cwd, ["reset", "--hard", "HEAD"]);
+    git(cwd, ["clean", "-fd"]); // remove untracked; -d not -x, so .gitignored stays
+  };
+  wipe();
+  if (!patch.trim()) return { ok: true, out: "", err: "" }; // snapshot was a clean HEAD
+  const r = git(cwd, ["apply", "--index", "--binary", "--whitespace=nowarn"], patch);
+  if (!r.ok) {
+    // Re-apply failed (corrupt/unapplyable) — put the rescued state back untouched.
+    wipe();
+    if (rescue.trim()) git(cwd, ["apply", "--index", "--binary", "--whitespace=nowarn"], rescue);
+    return { ok: false, out: r.out, err: r.err };
+  }
+  return { ok: true, out: r.out, err: r.err };
+}

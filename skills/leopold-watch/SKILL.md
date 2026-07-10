@@ -44,5 +44,11 @@ Then tell the user, briefly:
   "no active run" and updates the moment one starts.
 - To stop the dashboard itself: `pkill -f leopold-watch.py`. It also runs via `make watch`
   or, from the npm package, `npx leopold-driver watch`.
+- The **Canvas** tab renders the run as a live DAG (phases, agents, forks, adversarial
+  verify, plan items as nodes; dependency edges). Click a node to inspect it (model,
+  tokens, per-node cost, prompt/result preview, decisions). From a node you can **steer**
+  the run — redirect / inject / kill / re-run — which the `/leopold-run` loop applies at
+  the next turn boundary (a workflow node's steer becomes a directive for the next
+  resume). Git stays **locked** throughout: steering never commits.
 
 Do not do anything else. Start it, report the URL, stop.

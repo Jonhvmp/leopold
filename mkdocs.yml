@@ -105,6 +105,7 @@ plugins:
             What Is a Harness: O que é um harness
             The Two Phases: As duas fases
             Dynamic Workflows: Workflows dinâmicos
+            The Canvas: O Canvas
             Quality & Orchestration: Qualidade e orquestração
             Decision Protocol: Protocolo de decisão
             Cost & Security: Custo e segurança
@@ -143,6 +144,7 @@ nav:
       - What Is a Harness: concepts/harness.md
       - The Two Phases: concepts/two-phases.md
       - Dynamic Workflows: concepts/dynamic-workflows.md
+      - The Canvas: canvas.md
       - Quality & Orchestration: quality-and-orchestration.md
       - Decision Protocol: decision-protocol.md
       - Guardrails: guardrails.md

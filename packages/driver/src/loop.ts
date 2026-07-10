@@ -22,13 +22,54 @@ import { reviewItem, diffIsSensitive, lensesFor } from "./review.js";
 import { rootCausePanel, formatLead } from "./hypotheses.js";
 import { learnFromRun } from "./learn.js";
 import { parsePlanFile, readyItems, allDone, setItemDone, type PlanItem } from "./plan.js";
-import { headSha, diffAgainst, applyStaged } from "./git.js";
+import { drainCommands } from "./commands.js";
+import { headSha, diffAgainst, applyStaged, snapshotTree, restoreTree } from "./git.js";
+import { runTournament, type RunAttempt } from "./tournament.js";
 import type { Brief, DriverConfig, RunState, WorkerStatus } from "./types.js";
 
 /** The item's uncommitted change set (file list), for sensitivity detection. */
 function diffStat(cwd: string): string {
   const r = spawnSync("git", ["--no-pager", "diff", "--stat", "HEAD"], { cwd, encoding: "utf8" });
   return r.status === 0 ? (r.stdout ?? "") : "";
+}
+
+/** On a serial retry the failed attempt's diff is still in the shared tree. Ed's
+ *  principle: do not patch a dead end — building on a failed diff pulls the fresh
+ *  worker back toward the same wrong region of the solution space. Frame the prior
+ *  attempt as someone else's dead end (third-person projection, which the models
+ *  handle far better than "your own code is wrong") and push a clean restart. Kept
+ *  as framing, not a destructive git reset, so prior items' staged work is never at
+ *  risk. The parallel scheduler needs none of this — each dispatch is a fresh
+ *  worktree off HEAD, already a clean start. */
+const FRESH_RESTART =
+  "The previous attempt at this item FAILED. Treat its code as a dead end written by someone else: do NOT patch, extend, or try to salvage it. Where that approach went wrong, replace it wholesale with a genuinely different one instead of adjusting it in place — reworking a failed diff pulls back toward the same dead end. Start from the behavior the item needs, not from the code already sitting there.";
+
+/** Combine the fresh-restart framing with the root-cause panel's lead (if any).
+ *  Exported for unit tests — the framing must survive on every serial retry
+ *  whether or not the hypothesis panel produced a surviving lead. */
+export function retryLead(panelLead?: string): string {
+  return panelLead ? `${FRESH_RESTART}\n\n${panelLead}` : FRESH_RESTART;
+}
+
+/** Whether a serial retry should do a LITERAL reset (restore the pre-item snapshot)
+ *  instead of only reframing. Pure + tested: it needs the toggle on, a worktree-
+ *  isolated run (never the user's live repo), an actual retry, and a snapshot of
+ *  THIS item to restore. When false, the retry falls back to the retryLead framing. */
+export function shouldLiteralReset(o: {
+  isRetry: boolean; literalReset: boolean; isolated: boolean; haveSnapshot: boolean;
+}): boolean {
+  return o.isRetry && o.literalReset && o.isolated && o.haveSnapshot;
+}
+
+/** Whether an item should be settled by a best-of-k tournament (R3) instead of a
+ *  single attempt. Pure + tested: needs K>1, a worktree-isolated run (the winner is
+ *  applied with restoreTree, never pointed at a live repo), and a critical/max item —
+ *  best-of-k is for the sharp edges, not routine work. K=1 (default) → always false,
+ *  so the loop is byte-for-byte unchanged when the toggle is off. */
+export function tournamentEligible(o: {
+  bestOfK: number; isolated: boolean; critical: boolean; maxEffort: boolean;
+}): boolean {
+  return o.bestOfK > 1 && o.isolated && (o.critical || o.maxEffort);
 }
 
 interface Escalation { item: string; question: string; why: string; }
@@ -75,22 +116,43 @@ async function maybeLearn(cfg: DriverConfig, brief: Brief): Promise<string> {
     r.rules.map((x) => `  • ${x}`).join("\n") + `\nReview and fold in what sounds like you; the charter itself was not touched.`;
 }
 
+/** Build the worker's opening instruction for an item. Exported for tests: an item
+ *  with `@scenario` acceptance lines lists them as the definition of done; an item
+ *  with none produces the same prompt shape it always had (backward compatible). */
+export function buildWorkerPrompt(item: string, scenarios: string[], lead?: string, steer?: string, scope: string[] = []): string {
+  return (
+    (steer ? `${steer}\n\n` : "") +
+    `Work on this plan item now:\n\n${item}\n\n` +
+    (scope.length
+      ? `Likely in scope — start with these files (the item's slice); read widely only if the change genuinely reaches past them:\n` +
+        scope.map((f) => `  - ${f}`).join("\n") + `\n\n`
+      : "") +
+    (scenarios.length
+      ? `Acceptance scenarios — this item is DONE only when EVERY one holds (given→when→then, observable from the caller/user's side):\n` +
+        scenarios.map((s, i) => `  ${i + 1}. ${s}`).join("\n") + `\n\n`
+      : "") +
+    (lead ? `${lead}\n\n` : "") +
+    `Do it completely and verify it (build, lint, tests). Decide reversible or charter-clear forks yourself per the mission and charter. When the item is done, or if you hit a fork only the conductor can settle, close your turn with the leopold-status block.`
+  );
+}
+
 /** Run one plan item to completion in `cwd`: classify → conduct → review gate.
- *  Shared by the serial loop and the parallel scheduler. */
-async function processItem(
+ *  Shared by the serial loop and the parallel scheduler. Exported for the loop
+ *  integration test (driven with an injected fake SDK, zero model calls). */
+export async function processItem(
   brief: Brief, cfg: DriverConfig, state: RunState, recent: string[],
-  item: string, cwd: string, lead?: string,
+  item: string, scenarios: string[], cwd: string, lead?: string, steer?: string,
 ): Promise<ItemOutcome> {
   const klass = cfg.smartRouting
     ? await smartRoute(cfg, brief, item, cwd)
     : classifyItem(item, brief.charter);
-  logEvent(brief.leoDir, { event: "item_start", iteration: state.iteration, item, effort: klass.effort, critical: klass.critical, routed: cfg.smartRouting, reason: klass.reason });
-  console.log(`\n--- ${item}  [effort=${klass.effort}${klass.critical ? ", critical" : ""}${cfg.smartRouting ? ", smart-routed" : ""}] ---`);
+  logEvent(brief.leoDir, { event: "item_start", iteration: state.iteration, item, effort: klass.effort, critical: klass.critical, routed: cfg.smartRouting, reason: klass.reason, scenarios: scenarios.length });
+  console.log(`\n--- ${item}  [effort=${klass.effort}${klass.critical ? ", critical" : ""}${cfg.smartRouting ? ", smart-routed" : ""}${scenarios.length ? `, ${scenarios.length} scenario(s)` : ""}] ---`);
 
-  const workerPrompt =
-    `Work on this plan item now:\n\n${item}\n\n` +
-    (lead ? `${lead}\n\n` : "") +
-    `Do it completely and verify it (build, lint, tests). Decide reversible or charter-clear forks yourself per the mission and charter. When the item is done, or if you hit a fork only the conductor can settle, close your turn with the leopold-status block.`;
+  // Slice-scoped context (opt-in): when routing researched the item's files, point
+  // the worker at that slice instead of the whole repo. Off / no file set = unchanged.
+  const scope = cfg.sliceScope ? (klass.files ?? []) : [];
+  const workerPrompt = buildWorkerPrompt(item, scenarios, lead, steer, scope);
 
   // The review gate inspects `cwd`'s diff, so it must see this item's worktree.
   const itemBrief: Brief = { ...brief, worktreeRoot: cwd };
@@ -116,8 +178,11 @@ async function processItem(
         // Review gate: an independent pass over the item's diff before it closes.
         if (cfg.review && reviewRounds < cfg.maxReviewRounds) {
           const sensitive = klass.critical || diffIsSensitive(diffStat(cwd));
-          const lenses = lensesFor({ sensitive, critical: klass.critical });
-          const r = await reviewItem(cfg, itemBrief, { sensitive, critical: klass.critical });
+          // Conformance skeptic joins the panel only when the item has scenarios AND
+          // the toggle is on — so scenario-less items and conformance:off runs are unchanged.
+          const reviewScenarios = cfg.conformance ? scenarios : [];
+          const lenses = lensesFor({ sensitive, critical: klass.critical, hasScenarios: reviewScenarios.length > 0 });
+          const r = await reviewItem(cfg, itemBrief, { sensitive, critical: klass.critical, scenarios: reviewScenarios });
           logEvent(brief.leoDir, { event: "review", item, round: reviewRounds + 1, ok: r.ok, blocking: r.blocking.length, sensitive, lenses: lenses.length, panel: lenses.join("+") });
           if (!r.ok) {
             reviewRounds += 1;
@@ -144,6 +209,45 @@ async function processItem(
   });
 
   return { done: itemDone, escalated, escalation, detail: lastSummary };
+}
+
+/** Run one item, escalating to a best-of-k tournament (R3) when it is critical/max
+ *  and the toggle is on. Isolated runs only — the winner is applied with restoreTree,
+ *  which never touches the user's live repo. Falls back to a single attempt when
+ *  best-of-k is off, the item is ordinary, the run isn't isolated, or no attempt wins.
+ *  Each attempt is a full processItem (so the winner already passed the review gate). */
+async function runItemOrTournament(
+  brief: Brief, cfg: DriverConfig, state: RunState, recent: string[],
+  item: string, scenarios: string[], cwd: string, isolated: boolean,
+  lead?: string, steer?: string,
+): Promise<ItemOutcome> {
+  const single = (): Promise<ItemOutcome> => processItem(brief, cfg, state, recent, item, scenarios, cwd, lead, steer);
+  const klass = classifyItem(item, brief.charter);
+  if (!tournamentEligible({ bestOfK: cfg.bestOfK, isolated, critical: klass.critical, maxEffort: klass.effort === "max" })) {
+    return single();
+  }
+
+  // Seed each attempt with the current accumulated state (prior items' work).
+  const basePatch = snapshotTree(cwd);
+  const runAttempt: RunAttempt = async (attemptCwd) => {
+    const o = await processItem(brief, cfg, state, recent, item, scenarios, attemptCwd, lead, steer);
+    return { ok: o.done, detail: o.detail ?? "" };
+  };
+  const t = await runTournament(cfg, brief, item, scenarios, cfg.bestOfK, cwd, runAttempt, basePatch);
+  if (t.patch === null) {
+    logEvent(brief.leoDir, { event: "tournament_no_winner", item, attempts: t.attempts });
+    console.log(`  best-of-${t.attempts}: no attempt won — falling back to a single attempt.`);
+    return single();
+  }
+  // Put the winner's full tree onto cwd (isolated worktree; restoreTree is fail-safe).
+  const r = restoreTree(cwd, t.patch);
+  logEvent(brief.leoDir, { event: "tournament_applied", item, winner: t.winner, scores: t.scores, applied: r.ok });
+  if (!r.ok) {
+    console.log(`  best-of-${t.attempts}: winner #${t.winner} did not apply (${r.err.slice(0, 100)}) — single attempt.`);
+    return single();
+  }
+  console.log(`  best-of-${t.attempts}: attempt #${t.winner} won (scores ${t.scores.join("/")}), applied.`);
+  return { done: true, escalated: false };
 }
 
 export async function runDriver(cwd: string, argv: string[]): Promise<void> {
@@ -212,6 +316,9 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   // When an item is retried after a failure, the root-cause panel investigates
   // first and hands the next attempt a concrete lead instead of "try again".
   let lastFailed: { item: string; detail: string } | null = null;
+  // Pre-first-attempt tree snapshot for the literal fresh restart (R2). Captured
+  // before an item's first attempt in an isolated run; restored on a retry.
+  let snapshot: { item: string; patch: string } | null = null;
   for (;;) {
     if (killSwitch(brief.leoDir)) {
       stop("kill_switch");
@@ -235,6 +342,11 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
       return;
     }
 
+    // Steer channel: apply any canvas commands (redirect/inject/kill/rerun) at this
+    // turn boundary, exactly where STOP is honored. Git stays locked (commands only
+    // log + flip PLAN.md checkboxes). redirect/inject return guidance for this item.
+    const steer = drainCommands(brief);
+
     const item = nextOpenItem(brief.planPath);
     if (!item) {
       const learnNote = await maybeLearn(cfg, brief);
@@ -248,10 +360,32 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     writeState(brief.leoDir, state);
 
     const cwd = brief.worktreeRoot ?? brief.root;
-    const lead = lastFailed?.item === item
-      ? await leadForRetry(brief, cfg, item, cwd, lastFailed.detail)
+    const isolated = cwd !== brief.root;
+    const isRetry = lastFailed !== null && lastFailed.item === item;
+
+    // Literal fresh restart (R2): on a retry in an isolated worktree, restore the
+    // pre-item snapshot so the failed diff is truly discarded (not just reframed),
+    // while prior items' staged work survives. Non-isolated or toggle-off falls back
+    // to the retryLead framing below. Snapshot the tree on an item's first attempt.
+    if (shouldLiteralReset({ isRetry, literalReset: cfg.literalReset, isolated, haveSnapshot: snapshot?.item === item })) {
+      const r = restoreTree(cwd, snapshot!.patch);
+      logEvent(brief.leoDir, { event: "literal_reset", item, ok: r.ok, err: r.ok ? null : r.err.slice(0, 200) });
+      console.log(r.ok
+        ? "  literal reset: failed diff discarded, pre-item tree restored."
+        : `  literal reset failed (${r.err.slice(0, 120)}) — tree kept, framing fallback.`);
+    } else if (!isRetry && cfg.literalReset && isolated) {
+      snapshot = { item, patch: snapshotTree(cwd) };
+    }
+
+    // On a retry, frame the failed approach as a dead end (retryLead) with the
+    // root-cause panel's lead — still right after a literal reset (take a NEW path).
+    const lead = isRetry
+      ? retryLead(await leadForRetry(brief, cfg, item, cwd, lastFailed!.detail))
       : undefined;
-    const outcome = await processItem(brief, cfg, state, recent, item, cwd, lead);
+    // The current item is the first open one — carry its @scenario acceptance lines
+    // into the worker prompt + review gate (empty for a scenario-less item).
+    const scenarios = parsePlanFile(brief.planPath).find((i) => !i.done)?.scenarios ?? [];
+    const outcome = await runItemOrTournament(brief, cfg, state, recent, item, scenarios, cwd, isolated, lead, steer);
 
     if (outcome.escalated) {
       const e = outcome.escalation;
@@ -303,7 +437,7 @@ async function runParallel(
     return applyChain;
   };
 
-  async function dispatch(pi: PlanItem): Promise<void> {
+  async function dispatch(pi: PlanItem, steer?: string): Promise<void> {
     inFlight.add(pi.index);
     const wt = createWorktree(baseRoot, brief.leoDir, `${runShort}-i${pi.index}`);
     const cwd = wt?.path ?? baseRoot;
@@ -313,7 +447,7 @@ async function runParallel(
       const lead = prior !== undefined
         ? await leadForRetry(brief, cfg, pi.text, cwd, prior)
         : undefined;
-      const outcome = await processItem(brief, cfg, state, recent, pi.text, cwd, lead);
+      const outcome = await processItem(brief, cfg, state, recent, pi.text, pi.scenarios, cwd, lead, steer);
       if (outcome.escalated) {
         stopReason ??= "escalation";
         escalation ??= outcome.escalation;
@@ -357,6 +491,10 @@ async function runParallel(
     if (state.iteration >= state.max_iterations) { stopReason = "iteration_budget"; break; }
     if (state.consecutive_failures >= state.max_failures) { stopReason = "repeated_failure"; break; }
 
+    // Steer channel at the boundary: kill/rerun mutate PLAN.md before we read it;
+    // redirect/inject guidance rides along with items dispatched this round.
+    const steer = drainCommands(brief);
+
     const items = parsePlanFile(brief.planPath);
     if (allDone(items)) { stopReason = "plan_complete"; break; }
 
@@ -365,7 +503,7 @@ async function runParallel(
       const pi = ready.shift()!;
       state.iteration += 1;
       writeState(brief.leoDir, state);
-      const p = dispatch(pi).finally(() => running.delete(pi.index));
+      const p = dispatch(pi, steer).finally(() => running.delete(pi.index));
       running.set(pi.index, p);
     }
 

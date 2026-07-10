@@ -103,6 +103,21 @@ the same time, so only add `(after: …)` for real dependencies, and prefer to s
 work so that more items are independent. Items that all touch the same files should
 depend on each other (or be one item) to avoid merge conflicts.
 
+**Make behavior checkable with `@scenario`.** For any item whose "done" is a
+behavior (not a cosmetic change), write its acceptance cases as `@scenario` lines
+directly under the checkbox — one per case, `given X → when Y → then Z`, phrased so
+a caller or user could observe it (an output, a status code, a screen state — never
+"the function sets `_cache`"). The run hands these to the worker as the definition
+of done and to a **conformance** reviewer that verifies the diff satisfies every one
+before the item closes; an unmet scenario comes back as the concrete fix. An item
+with no `@scenario` lines is fine — it just relies on its prose done-check, exactly
+as before (fully backward compatible). Example:
+
+    - [ ] Register the `--json` flag — done when: `mycli --json` emits valid JSON
+          @scenario no flag → the table prints unchanged
+          @scenario `--json` set → stdout is valid JSON with the table's exact fields
+          @scenario `--json` with no rows → prints `[]` and exits 0
+
 ## Step 4a — Draft the plan by tournament (optional, workflow)
 
 For a substantial mission (roughly: 6+ items, or architectural choices baked into

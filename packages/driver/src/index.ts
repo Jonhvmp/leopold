@@ -34,7 +34,7 @@ Usage:
   leopold-driver install [--with-gstack]   install skills + hooks into ~/.claude
   leopold-driver insights [--json]          summarize the current run (events.jsonl)
   leopold-driver menu                       toolchain manager (serena / gstack / ovmem / enhance)
-  leopold-driver watch [--port N]           live dashboard (http://127.0.0.1:4179)
+  leopold-driver watch [--port N]           live dashboard + Canvas DAG (http://127.0.0.1:4179)
   leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem, enhance)
   leopold-driver enhance [toggle|status]    global prompt enhancer (Haiku interprets weak prompts)
   leopold-driver doctor                     run every extension's doctor

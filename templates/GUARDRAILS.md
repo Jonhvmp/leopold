@@ -27,6 +27,14 @@
 - smart_routing: off         # research each item's blast radius before routing effort
 - learn_on_finish: off       # on a clean finish, mine the run into proposed charter
                              # amendments (.leopold/CHARTER-amendments.md; never edits CHARTER)
+- conformance: on            # verify the diff against an item's @scenario acceptance
+                             # lines — active only when the item declares them
+- literal_reset: on          # on a retry in a worktree-isolated run, restore the
+                             # pre-item snapshot (discard the failed diff). Never a live repo
+- best_of_k: 1               # >1 fans out K attempts on a critical/max item, judged,
+                             # winner kept. 1 = off (opt-in; it costs)
+- slice_scope: off           # feed smart_routing's researched file set to the worker
+                             # as an explicit scope (needs smart_routing on)
 
 ## On finish
 - on_finish: keep            # keep | archive

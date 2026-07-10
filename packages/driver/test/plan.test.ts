@@ -26,6 +26,40 @@ test("parses checkboxes, done state, and dependency markers", () => {
   assert.deepEqual(items[4].deps, []);
 });
 
+test("@scenario lines attach to the item above them; scenario-less items stay []", () => {
+  const items = parsePlan(
+    "- [ ] Build login\n" +
+    "  @scenario existing email + right password → 200 + session cookie\n" +
+    "  @scenario wrong password → 401 and no cookie\n" +
+    "- [ ] Unrelated docs pass\n",
+  );
+  assert.equal(items.length, 2);
+  assert.equal(items[0].scenarios.length, 2);
+  assert.equal(items[0].scenarios[0], "existing email + right password → 200 + session cookie");
+  assert.equal(items[0].scenarios[1], "wrong password → 401 and no cookie");
+  assert.equal(items[0].text, "Build login"); // scenarios do not bleed into item text
+  assert.deepEqual(items[1].scenarios, []);    // an item with none is unchanged
+});
+
+test("@scenario is tolerant of a colon and casing, and drops orphans before any item", () => {
+  const items = parsePlan(
+    "@scenario this one has no item above it — dropped\n" +
+    "- [ ] Do X\n" +
+    "@Scenario: no leading indent, colon form\n",
+  );
+  assert.equal(items.length, 1);
+  assert.deepEqual(items[0].scenarios, ["no leading indent, colon form"]);
+});
+
+test("existing plans are byte-for-byte backward compatible (scenarios: [] everywhere)", () => {
+  const items = parsePlan(PLAN); // the classic fixture, no @scenario lines
+  for (const it of items) assert.deepEqual(it.scenarios, []);
+  // and the pre-existing fields are unchanged
+  assert.equal(items.length, 5);
+  assert.equal(items[2].text, "Wire the UI to the API");
+  assert.deepEqual(items[3].deps, [2, 3]);
+});
+
 test("forward / self references are dropped (only earlier items count)", () => {
   const items = parsePlan("- [ ] (after: 2, 9) a\n- [ ] b\n");
   assert.deepEqual(items[0].deps, []); // 2 and 9 are not < 1

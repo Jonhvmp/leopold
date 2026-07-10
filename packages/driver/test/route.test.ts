@@ -28,3 +28,15 @@ test("critical must be literally true — anything else is not critical", () => 
   assert.ok(r);
   assert.equal(r.critical, false);
 });
+
+test("the researched file set is parsed (slice scope); non-strings dropped", () => {
+  const r = parseRoute('{"effort":"high","critical":false,"reason":"x","files":["src/a.ts"," src/b.ts ", 42, "", "src/c.ts"]}');
+  assert.ok(r);
+  assert.deepEqual(r.files, ["src/a.ts", "src/b.ts", "src/c.ts"]); // trimmed, non-strings/empties dropped
+});
+
+test("a verdict with no files field yields an empty slice (backward compatible)", () => {
+  const r = parseRoute('{"effort":"low","critical":false,"reason":"docs"}');
+  assert.ok(r);
+  assert.deepEqual(r.files, []);
+});

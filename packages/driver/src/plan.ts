@@ -15,10 +15,18 @@ export interface PlanItem {
   done: boolean;
   /** 1-based indices this item must wait for. */
   deps: number[];
+  /** `@scenario` acceptance lines declared under this item (given→when→then), in
+   *  order. Empty when the item declares none — a scenario-less item behaves exactly
+   *  as before, so this field is backward compatible with every existing plan. */
+  scenarios: string[];
 }
 
 const CHECKBOX = /^[ \t]*- \[( |x|X)\]\s?(.*)$/;
 const DEP_MARKER = /^\((?:after|deps)\s*:\s*([0-9,\s]+)\)\s*/i;
+// An acceptance line under an item: `@scenario given X → when Y → then Z`. Indented
+// or not; attaches to the most recent checkbox item. Anything before the first
+// checkbox is ignored.
+const SCENARIO = /^[ \t]*@scenario\b[ \t:]*(.*)$/i;
 
 /** Parse a leading `(after: 1, 3)` marker off an item's text → {deps, text}. */
 function splitDeps(raw: string): { deps: number[]; text: string } {
@@ -31,13 +39,24 @@ function splitDeps(raw: string): { deps: number[]; text: string } {
 export function parsePlan(text: string): PlanItem[] {
   const items: PlanItem[] = [];
   let index = 0;
+  let current: PlanItem | null = null;
   for (const line of text.split("\n")) {
     const m = line.match(CHECKBOX);
-    if (!m) continue;
-    index += 1;
-    const done = m[1].toLowerCase() === "x";
-    const { deps, text: itemText } = splitDeps(m[2] ?? "");
-    items.push({ index, text: itemText, done, deps: deps.filter((d) => d < index) });
+    if (m) {
+      index += 1;
+      const done = m[1].toLowerCase() === "x";
+      const { deps, text: itemText } = splitDeps(m[2] ?? "");
+      current = { index, text: itemText, done, deps: deps.filter((d) => d < index), scenarios: [] };
+      items.push(current);
+      continue;
+    }
+    // A `@scenario` line attaches to the item above it. Non-checkbox, non-scenario
+    // lines (blank lines, wrapped continuations) are ignored, exactly as before.
+    const s = line.match(SCENARIO);
+    if (s && current) {
+      const scenario = s[1].trim();
+      if (scenario) current.scenarios.push(scenario);
+    }
   }
   return items;
 }
@@ -57,6 +76,23 @@ export function setItemDone(planPath: string, index: number): number {
     if (!m) continue;
     n += 1;
     if (n === index && m[1] === " ") lines[i] = lines[i].replace("- [ ]", "- [x]");
+  }
+  fs.writeFileSync(planPath, lines.join("\n"));
+  for (const line of lines) { const m = line.match(CHECKBOX); if (m && m[1] === " ") open += 1; }
+  return open;
+}
+
+/** Re-open the Nth checkbox (1-based) — flip `[x]` back to `[ ]`. Used by the
+ *  canvas "rerun-item" steer command so the loop redoes a completed item. Returns
+ *  the number of open items left. */
+export function setItemOpen(planPath: string, index: number): number {
+  const lines = fs.readFileSync(planPath, "utf8").split("\n");
+  let n = 0, open = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(CHECKBOX);
+    if (!m) continue;
+    n += 1;
+    if (n === index && m[1].toLowerCase() === "x") lines[i] = lines[i].replace(/- \[[xX]\]/, "- [ ]");
   }
   fs.writeFileSync(planPath, lines.join("\n"));
   for (const line of lines) { const m = line.match(CHECKBOX); if (m && m[1] === " ") open += 1; }

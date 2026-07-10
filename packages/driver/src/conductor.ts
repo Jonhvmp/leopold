@@ -5,7 +5,7 @@
 // Claude Code auth (your subscription). No separate API key, no split billing.
 // It is a one-shot reasoning call with NO tools that returns a JSON verdict.
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query } from "./sdk.js";
 import type { Brief, WorkerStatus, ConductorVerdict, DriverConfig } from "./types.js";
 
 function system(brief: Brief): string {

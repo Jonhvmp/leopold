@@ -94,4 +94,17 @@ export interface DriverConfig {
   /** On a clean finish, mine the run's decisions + git history into proposed
    *  charter amendments (.leopold/CHARTER-amendments.md). Never edits the charter. */
   learnOnFinish: boolean;
+  /** Verify the diff against an item's @scenario acceptance lines (R1). Active only
+   *  when the item declares scenarios, so scenario-less briefs are unchanged. */
+  conformance: boolean;
+  /** On a retry in a worktree-isolated run, restore the pre-item snapshot (discard
+   *  the failed diff) instead of only reframing the next attempt (R2). Ignored when
+   *  the run is not isolated in a worktree — a live repo is never hard-reset. */
+  literalReset: boolean;
+  /** Best-of-k on a critical/max-effort item: fan out this many attempts in parallel
+   *  worktrees, judge, keep the winner. 1 = off (the default single-attempt path). */
+  bestOfK: number;
+  /** Feed smart_routing's researched file set to the worker as an explicit scope
+   *  note instead of the whole repo. No effect unless smartRouting is also on. */
+  sliceScope: boolean;
 }

@@ -134,5 +134,13 @@ export function loadConfig(argv: string[], guardrails = ""): DriverConfig {
     smartRouting: resolveBool(argv.includes("--smart-routing") || process.env.LEOPOLD_SMART_ROUTING === "1", process.env.LEOPOLD_SMART_ROUTING === "0", boolFrom(g, "smart_routing"), false),
     // Learn-on-finish: opt-in mining of the just-finished run into charter amendments.
     learnOnFinish: resolveBool(argv.includes("--learn-on-finish") || process.env.LEOPOLD_LEARN_ON_FINISH === "1", process.env.LEOPOLD_LEARN_ON_FINISH === "0", boolFrom(g, "learn_on_finish"), false),
+    // Conformance (R1): on by default; --no-conformance / LEOPOLD_CONFORMANCE=0 off, or `conformance:` in guardrails. Only bites when an item has @scenario lines.
+    conformance: resolveBool(process.env.LEOPOLD_CONFORMANCE === "1", argv.includes("--no-conformance") || process.env.LEOPOLD_CONFORMANCE === "0", boolFrom(g, "conformance"), true),
+    // Literal reset (R2): on by default; --no-literal-reset / LEOPOLD_LITERAL_RESET=0 off, or `literal_reset:` in guardrails. Only acts in a worktree-isolated run.
+    literalReset: resolveBool(process.env.LEOPOLD_LITERAL_RESET === "1", argv.includes("--no-literal-reset") || process.env.LEOPOLD_LITERAL_RESET === "0", boolFrom(g, "literal_reset"), true),
+    // Best-of-k (R3): 1 = off (opt-in; it costs). --best-of-k N / LEOPOLD_BEST_OF_K, else `best_of_k:` in guardrails, clamped >=1.
+    bestOfK: intArg(argv, "--best-of-k", process.env.LEOPOLD_BEST_OF_K, intFrom(g, "best_of_k", 1)),
+    // Slice scope: opt-in; feeds smart_routing's file set to the worker as scope. --slice-scope / LEOPOLD_SLICE_SCOPE=1, or `slice_scope:` in guardrails.
+    sliceScope: resolveBool(argv.includes("--slice-scope") || process.env.LEOPOLD_SLICE_SCOPE === "1", process.env.LEOPOLD_SLICE_SCOPE === "0", boolFrom(g, "slice_scope"), false),
   };
 }

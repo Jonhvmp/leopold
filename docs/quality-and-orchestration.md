@@ -35,6 +35,24 @@ by default; `--no-review` / `LEOPOLD_REVIEW=0` / `review: off` in GUARDRAILS tur
 > Tip for the worker: self-review with `/code-review` *before* reporting done, so the gate
 > passes first try. The `/leopold-run` skill tells it exactly that.
 
+## Conformance — verifying against your acceptance scenarios
+
+A "done when" line says what success is in prose; a **scenario** says it in cases the diff must
+actually satisfy. A plan item may carry `@scenario <given → when → then>` acceptance lines
+directly under its checkbox, and a dedicated **conformance** review lens then checks the
+uncommitted diff against *every* scenario before the item closes — an unmet scenario comes back
+to the worker as the concrete fix, not a vague "doesn't work":
+
+```markdown
+- [ ] Register the `--json` flag — done when: `mycli --json` emits valid JSON
+      @scenario no flag → the table prints unchanged
+      @scenario `--json` set → stdout is valid JSON with the table's exact fields
+```
+
+The lens is **active only when the item declares `@scenario` lines**, so scenario-less plans
+behave exactly as before — fully backward compatible. On by default; `--no-conformance` /
+`LEOPOLD_CONFORMANCE=0` / `conformance: off` in GUARDRAILS turns it off.
+
 ## Per-item effort — keywords or research
 
 Every item is risk-classified by a cheap, deterministic keyword pass over the item text and
@@ -57,6 +75,14 @@ blast radius — which files, how many callers — before routing. It always fal
 deterministic classifier on any failure, and it can never lower a keyword-critical item below
 critical (a safety floor: money/auth/migrations stay guarded even if the router relaxes).
 
+## Slice-scoped context — point the worker at the right files
+
+Smart routing already researches which files an item touches. Turn on **slice scope**
+(`--slice-scope` or `slice_scope: on` in GUARDRAILS — it needs `smart_routing` on) and that file
+set is handed to the worker as an explicit "start with these files" scope note, instead of
+pointing it at the whole repo. Off, or when routing found no file set, the worker gets the repo
+as usual — nothing changes. Off by default.
+
 ## The root-cause panel — no doubling down
 
 When the same item fails repeatedly, a single context tends to double down on its own theory
@@ -67,6 +93,25 @@ refuter tries to kill each one (unparseable refutations fail closed). The strong
 hypothesis is handed to the next attempt as a **concrete lead**, with an explicit instruction
 to verify the theory quickly and abandon it if wrong. On by default; `--no-hypotheses` /
 `hypotheses: off` turns it off.
+
+## Literal reset — a clean restart, not a patched-over failure
+
+A retry that builds on the failed diff inherits its dead end. When an item fails in a
+**worktree-isolated** run, **literal reset** restores the tree to a snapshot taken before the
+item's first attempt — discarding the failed diff entirely while keeping prior items' staged
+work — so the fresh attempt starts clean. In a **non-isolated** run it never hard-resets: it
+falls back to reframing the retry ("treat the failed approach as a dead end, take a different
+one"). It never touches your live repo destructively. On by default; `--no-literal-reset` /
+`LEOPOLD_LITERAL_RESET=0` / `literal_reset: off` turns it off.
+
+## Best-of-k — a tournament on the item that has to land
+
+Some items are worth more than one shot. Set `--best-of-k N` (or `best_of_k: N` in GUARDRAILS)
+above 1 and — when the item is critical / max-effort **and** the run is worktree-isolated — the
+item is settled by a **tournament of K independent attempts**. Each runs in its own throwaway
+worktree off `HEAD` seeded with the current state, a panel judges them, and the winner's diff is
+applied. K is bounded to 2..6. If no attempt wins, or the winner fails to apply, it falls back to
+a single attempt. Off by default (`1`) — opt-in, because it costs K× a normal attempt.
 
 ## The charter that learns you
 

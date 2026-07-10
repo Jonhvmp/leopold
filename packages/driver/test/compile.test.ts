@@ -57,8 +57,8 @@ test("a dependency cycle is rejected, not silently dropped", () => {
   // can't be expressed; an unsatisfiable dep (referencing a done-less missing index
   // via manual construction) is what wavesOf must catch. Simulate with a hand-built graph.
   const items = [
-    { index: 1, text: "a", done: false, deps: [2] }, // waits on a later item → unsatisfiable
-    { index: 2, text: "b", done: false, deps: [1] },
+    { index: 1, text: "a", done: false, deps: [2], scenarios: [] }, // waits on a later item → unsatisfiable
+    { index: 2, text: "b", done: false, deps: [1], scenarios: [] },
   ];
   assert.throws(() => wavesOf(items), /cycle|unsatisfiable/i);
 });
