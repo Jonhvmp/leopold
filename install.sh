@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 # Leopold installer.
-# Copies the skills into ~/.claude/skills/, the hooks/templates/docs into
-# ~/.claude/leopold/, and wires the Stop + PreToolUse hooks into
-# ~/.claude/settings.json (idempotent, with a backup). The hooks are no-ops
-# unless a Leopold run is active, so they are safe to leave installed.
+#
+# Installs into whichever agent harness you have — Claude Code, Codex CLI, or both.
+# The skills go to each harness's skills dir; the hooks/templates/docs go to one
+# shared asset home; the git lock and (on Claude) the continuity hook get wired into
+# that harness's settings file. Idempotent, with a backup of anything it edits.
+# The hooks are no-ops unless a Leopold run is active, so they are safe to leave
+# installed everywhere.
+#
+#   ./install.sh                     install into every harness found (default: auto)
+#   ./install.sh --harness claude    Claude Code only
+#   ./install.sh --harness codex     Codex CLI only
+#   ./install.sh --harness all       both, whether or not they are on PATH
 set -euo pipefail
 
 # Resolve the source tree. When run from a clone, that is the script's dir.
@@ -34,28 +42,68 @@ else
   [ -f "$SRC/VERSION" ] && echo "   at v$(tr -d '[:space:]' < "$SRC/VERSION")"
 fi
 CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"
+CODEX="${CODEX_HOME:-$HOME/.codex}"
 SKILLS="$CLAUDE/skills"
-LEO_HOME="$CLAUDE/leopold"
 SETTINGS="$CLAUDE/settings.json"
 
 # Optional gstack integration: pass --with-gstack to install it non-interactively.
 WITH_GSTACK=0
-for _a in "$@"; do [ "$_a" = "--with-gstack" ] && WITH_GSTACK=1; done
+HARNESS="auto"
+_want_harness=0
+for _a in "$@"; do
+  if [ "$_want_harness" = "1" ]; then HARNESS="$_a"; _want_harness=0; continue; fi
+  case "$_a" in
+    --with-gstack) WITH_GSTACK=1 ;;
+    --harness)     _want_harness=1 ;;
+    --harness=*)   HARNESS="${_a#--harness=}" ;;
+  esac
+done
+
+# Which harnesses to install into. "auto" takes whatever is actually here; if
+# neither is, we still set Claude Code up so a fresh machine ends in a usable state.
+DO_CLAUDE=0; DO_CODEX=0
+case "$HARNESS" in
+  claude|claude-code) DO_CLAUDE=1 ;;
+  codex|openai)       DO_CODEX=1 ;;
+  all|both)           DO_CLAUDE=1; DO_CODEX=1 ;;
+  auto)
+    { command -v claude >/dev/null 2>&1 || [ -d "$CLAUDE" ]; } && DO_CLAUDE=1
+    { command -v codex  >/dev/null 2>&1 || [ -d "$CODEX"  ]; } && DO_CODEX=1
+    [ "$DO_CLAUDE" = "0" ] && [ "$DO_CODEX" = "0" ] && DO_CLAUDE=1
+    ;;
+  *) echo "install.sh: unknown --harness \"$HARNESS\" (use: auto, claude, codex, all)" >&2; exit 2 ;;
+esac
+
+# One shared home for the harness-neutral assets (hooks, templates, docs, scripts,
+# extensions). It stays under ~/.claude when Claude Code is in play so existing
+# installs keep working without a migration; a Codex-only machine gets its own.
+if [ -n "${LEOPOLD_HOME:-}" ]; then LEO_HOME="$LEOPOLD_HOME"
+elif [ "$DO_CLAUDE" = "1" ];  then LEO_HOME="$CLAUDE/leopold"
+else                               LEO_HOME="$CODEX/leopold"
+fi
+
+_targets=""
+[ "$DO_CLAUDE" = "1" ] && _targets="Claude Code ($CLAUDE)"
+[ "$DO_CODEX"  = "1" ] && _targets="${_targets:+$_targets + }Codex CLI ($CODEX)"
 
 echo "Leopold installer"
 echo "  source:   $SRC"
-echo "  target:   $CLAUDE"
+echo "  harness:  $_targets"
+echo "  assets:   $LEO_HOME"
 echo
 
-mkdir -p "$SKILLS" "$LEO_HOME"
+mkdir -p "$LEO_HOME"
 
-echo "-> installing skills"
-for d in "$SRC"/skills/*/; do
-  name="$(basename "$d")"
-  rm -rf "${SKILLS:?}/$name"
-  cp -R "$d" "$SKILLS/$name"
-  echo "   $name"
-done
+if [ "$DO_CLAUDE" = "1" ]; then
+  mkdir -p "$SKILLS"
+  echo "-> installing skills into Claude Code"
+  for d in "$SRC"/skills/*/; do
+    name="$(basename "$d")"
+    rm -rf "${SKILLS:?}/$name"
+    cp -R "$d" "$SKILLS/$name"
+    echo "   $name"
+  done
+fi
 
 echo "-> installing hooks, templates, docs, extensions"
 cp -R "$SRC/hooks"      "$LEO_HOME/"
@@ -71,6 +119,24 @@ chmod +x "$LEO_HOME"/extensions/*/manage.sh 2>/dev/null || true
 STOP_HOOK="$LEO_HOME/hooks/stop-continuity.sh"
 GUARD_HOOK="$LEO_HOME/hooks/guard-irreversible.sh"
 
+if [ "$DO_CODEX" = "1" ]; then
+  echo
+  bash "$SRC/scripts/install-codex.sh" "$SRC" "$LEO_HOME" || \
+    echo "   warn: the Codex install did not finish — re-run: ./install.sh --harness codex"
+fi
+
+if [ "$DO_CLAUDE" != "1" ]; then
+  echo
+  echo "Done. Codex is set up. In any project:"
+  echo "  /leopold-brief    debate the mission, write the brief"
+  echo "  /leopold-run      hand over the seat (needs the hooks trusted once)"
+  echo "  /leopold-status   see where it is"
+  echo "  leopold run --provider codex     or conduct it headlessly from a shell"
+  echo "  leopold harness                  what each harness here can do"
+  exit 0
+fi
+
+echo
 echo "-> wiring hooks into $SETTINGS"
 if ! command -v jq >/dev/null 2>&1; then
   echo
@@ -186,6 +252,11 @@ if command -v jq >/dev/null 2>&1 && [ -f "$SETTINGS" ] && jq -e '(.hooks.Stop|le
   echo "   ok   Stop + PreToolUse hooks wired in settings.json"
 else echo "   warn: hooks not detected in settings.json"; v_warn=$((v_warn+1)); fi
 grep -q 'enhance.py --event' "$SETTINGS" 2>/dev/null && echo "   ok   prompt enhancer wired (off — enable via: leopold menu -> enhance)" || echo "   note: prompt enhancer not wired — install via: leopold menu"
+if [ "$DO_CODEX" = "1" ]; then
+  cs=0; for d in "$CODEX"/skills/leopold-*; do [ -e "$d" ] && cs=$((cs+1)); done
+  [ "${cs:-0}" -ge 4 ] 2>/dev/null && echo "   ok   $cs leopold skills installed for Codex" || { echo "   warn: leopold skills not found in $CODEX/skills"; v_warn=$((v_warn+1)); }
+  grep -q 'leopold (managed)' "$CODEX/config.toml" 2>/dev/null && echo "   ok   git lock wired into $CODEX/config.toml (trust it once in Codex to arm it)" || { echo "   warn: git lock not wired into $CODEX/config.toml"; v_warn=$((v_warn+1)); }
+fi
 command -v leopold  >/dev/null 2>&1 && echo "   ok   leopold CLI on PATH" || { echo "   warn: 'leopold' not on PATH yet (open a new shell, or: npm i -g leopold-driver)"; v_warn=$((v_warn+1)); }
 command -v serena   >/dev/null 2>&1 && echo "   ok   serena (LSP) present" || echo "   note: serena not on PATH — run: leopold serena install"
 [ "$v_warn" -eq 0 ] && echo "   all good." || echo "   $v_warn warning(s) above — see the hints."
@@ -196,7 +267,8 @@ echo "  /leopold-brief    debate the mission, write the brief"
 echo "  /leopold-run      hand over the seat"
 echo "  /leopold-status   see where it is"
 echo "  /leopold-stop     take the seat back"
-echo "  (or from a shell: leopold menu · leopold watch · leopold doctor)"
+echo "  (or from a shell: leopold menu · leopold watch · leopold doctor · leopold harness)"
+[ "$DO_CODEX" = "1" ] && echo "  On Codex:         leopold run --provider codex   (the driver conducts it)"
 echo
 # Offer the toolchain manager. We read from /dev/tty (the controlling terminal),
 # not stdin, so this works even when the installer is piped: `curl ... | bash`

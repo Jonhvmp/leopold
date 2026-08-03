@@ -4,6 +4,45 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Leopold runs on Codex CLI, not just Claude Code.** The whole point of the brief was
+  always that it is harness-neutral markdown, and it turns out the hooks are too: Codex
+  reimplemented Claude Code's hook contract nearly field for field. `PreToolUse` arrives
+  with the same keys (its shell tool is reported as `Bash`, with `tool_input.command`,
+  `cwd`, `transcript_path`) and honors the same
+  `{"hookSpecificOutput":{"permissionDecision":"deny",…}}` reply; `Stop` arrives with
+  `cwd`, `transcript_path` and `stop_hook_active` and honors
+  `{"decision":"block","reason":…}`. So **both Leopold hooks — the git lock and the
+  autonomous continuity engine — run on Codex as the same unmodified scripts**. Verified
+  end to end against Codex CLI 0.146.0: the guard blocked a `git commit` (no commit was
+  created, `guard_block` logged), and a two-item plan ran to `plan_complete` driven by
+  `stop-continuity.sh`, with iteration, progress signature and the context budget all
+  tracked off Codex's own transcript.
+- **`install.sh --harness auto|claude|codex|all`.** The installer detects what you have and
+  wires each one: skills into that harness's skills dir, hooks into `settings.json` (JSON)
+  or `config.toml` (TOML). The Codex block is marker-delimited so a re-install replaces it
+  and nothing else, the config is backed up first, and the merged file is validated — a
+  result that would not parse is rolled back and printed for you to paste instead.
+  Harness-neutral assets live in one shared home (`~/.claude/leopold` when Claude Code is
+  present, so existing installs need no migration; `LEOPOLD_HOME` overrides).
+- **`leopold harness`** — what each harness on this machine can do, and which one a run
+  would be conducted on. `leopold doctor` now checks every harness present, including
+  whether the Codex hooks have been trusted.
+- **`leopold run --provider claude|codex`** (also `LEOPOLD_PROVIDER`). The driver's single
+  model seam (`sdk.ts`) now selects a backend: the Agent SDK, or `codex exec --json` with
+  `codex exec resume` for multi-turn items. Same message contract, so no call site changed.
+  Headless Codex workers arm their own git lock, because Codex keeps a config-declared hook
+  inert until it has been trusted once and a headless run has nobody to approve it.
+- **`.codex-plugin/plugin.json`** — Leopold installs as a Codex plugin too, which arms both
+  hooks without the separate trust step.
+
+### Notes
+- Codex reports token usage, never a dollar figure, so `--budget-usd` prices a Codex run
+  from a built-in per-model table. An unrecognized model falls back to a default rate rather
+  than zero: pricing a run at zero would silently disable the budget.
+
 ## [0.13.0] - 2026-07-10
 
 ### Added

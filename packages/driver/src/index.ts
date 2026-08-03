@@ -11,6 +11,11 @@ import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harne
 import { runSecrets } from "./secrets.js";
 import { runInsights } from "./insights.js";
 import { runWorkflowCommand } from "./workflow-cmd.js";
+import { setProvider, currentProvider } from "./sdk.js";
+import {
+  HARNESSES, describeHarness, installedHarnesses, resolveProvider,
+  UnknownProviderError, type ProviderId,
+} from "./provider.js";
 
 const sub = process.argv[2];
 const rest = process.argv.slice(3);
@@ -31,7 +36,8 @@ function help(): void {
 Usage:
   leopold-driver --version                  print the leopold-driver version
   leopold-driver up                         one-shot setup: install + permissions + extensions
-  leopold-driver install [--with-gstack]   install skills + hooks into ~/.claude
+  leopold-driver harness                    which harnesses are here, and what each can do
+  leopold-driver install [--with-gstack]   install skills + hooks (Claude Code and/or Codex)
   leopold-driver insights [--json]          summarize the current run (events.jsonl)
   leopold-driver menu                       toolchain manager (serena / gstack / ovmem / enhance)
   leopold-driver watch [--port N]           live dashboard + Canvas DAG (http://127.0.0.1:4179)
@@ -39,9 +45,9 @@ Usage:
   leopold-driver enhance [toggle|status]    global prompt enhancer (Haiku interprets weak prompts)
   leopold-driver doctor                     run every extension's doctor
   leopold-driver update                     reinstall from this package
-  leopold-driver run [--worktree] [--parallel N] [--budget-usd N] [--no-review]
-                     [--no-hypotheses] [--smart-routing] [--learn-on-finish] [--dry-run]
-                                            conduct the .leopold run (the SDK driver)
+  leopold-driver run [--provider claude|codex] [--worktree] [--parallel N] [--budget-usd N]
+                     [--no-review] [--no-hypotheses] [--smart-routing] [--learn-on-finish]
+                     [--dry-run]             conduct the .leopold run (the SDK driver)
   leopold-driver workflow [--print] [--run] compile the brief into a dynamic workflow
                                             (emit by default; --run executes it, experimental)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
@@ -49,7 +55,11 @@ Usage:
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
 Newer version: npm i -g leopold-driver@latest.
 
-Conducting a run uses your existing Claude Code login (ANTHROPIC_API_KEY only in headless).
+Conducting a run uses your existing harness login — Claude Code by default, or Codex with
+--provider codex (LEOPOLD_PROVIDER also works). The brief in .leopold/ is the same on both,
+and so are the hooks; only the seam that reaches the model differs. Codex keeps a hook inert
+until you trust it once, so headless Codex workers arm their own git lock — see
+"leopold harness".
 --worktree isolates the run in a git worktree; --budget-usd stops it at a USD cap.
 --parallel N runs up to N independent plan items at once, each in its own worktree, replaying
 each item's diff onto the main tree (staged, never committed). Declare order in PLAN.md with
@@ -71,12 +81,41 @@ Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, 
 `);
 }
 
+/** Report which harnesses Leopold can drive here and what each one can do. */
+function harnessReport(): number {
+  const active = currentProvider();
+  const present = installedHarnesses();
+  process.stdout.write(`Conducting on: ${HARNESSES[active].label}  (--provider / LEOPOLD_PROVIDER to switch)\n\n`);
+  for (const id of Object.keys(HARNESSES) as ProviderId[]) {
+    process.stdout.write(`${id === active ? "*" : " "} ${describeHarness(id)}\n`);
+    const caveat = HARNESSES[id].caveat;
+    if (caveat) process.stdout.write(`    note: ${caveat}\n`);
+  }
+  if (!present.length) {
+    process.stdout.write("\nNo harness detected on PATH. Install Claude Code or Codex CLI first.\n");
+    return 1;
+  }
+  return 0;
+}
+
 function conduct(): void {
   runDriver(process.cwd(), process.argv.slice(2)).catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("leopold-driver error:", msg);
     process.exit(1);
   });
+}
+
+// Resolve the harness before dispatching, so a typo in --provider fails here with a
+// usable message rather than halfway through a run.
+try {
+  setProvider(resolveProvider(process.argv.slice(2)));
+} catch (err) {
+  if (err instanceof UnknownProviderError) {
+    console.error(`leopold-driver: ${err.message}`);
+    process.exit(2);
+  }
+  throw err;
 }
 
 switch (sub) {
@@ -103,6 +142,9 @@ switch (sub) {
   case "ovmem":
   case "enhance":
     process.exit(runExt(sub, rest));
+  case "harness":
+  case "harnesses":
+    process.exit(harnessReport());
   case "doctor":
     process.exit(runDoctor());
   case "secrets":

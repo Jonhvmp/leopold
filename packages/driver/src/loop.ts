@@ -25,6 +25,8 @@ import { parsePlanFile, readyItems, allDone, setItemDone, type PlanItem } from "
 import { drainCommands } from "./commands.js";
 import { headSha, diffAgainst, applyStaged, snapshotTree, restoreTree } from "./git.js";
 import { runTournament, type RunAttempt } from "./tournament.js";
+import { currentProvider } from "./sdk.js";
+import { HARNESSES } from "./provider.js";
 import type { Brief, DriverConfig, RunState, WorkerStatus } from "./types.js";
 
 /** The item's uncommitted change set (file list), for sensitivity detection. */
@@ -289,14 +291,15 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   writeState(brief.leoDir, state);
   const recent: string[] = [];
 
+  const harness = HARNESSES[currentProvider()];
   logEvent(brief.leoDir, {
-    event: "run_start", conductor: cfg.conductorModel,
+    event: "run_start", conductor: cfg.conductorModel, provider: harness.id,
     worktree: worktree?.path ?? null, budget_usd: cfg.budgetUsd ?? null,
     review: cfg.review, parallel: cfg.parallel,
   });
   const gate = cfg.review ? `Review gate on (${cfg.maxReviewRounds} rounds/item).` : "Review gate off.";
   const mode = cfg.parallel > 1 ? `Parallel x${cfg.parallel}.` : "";
-  console.log(`Leopold is conducting "${brief.root}". Git is locked. ${gate} ${mode} touch .leopold/STOP to halt.\n`.replace(/\s+/g, " "));
+  console.log(`Leopold is conducting "${brief.root}" on ${harness.label}. Git is locked. ${gate} ${mode} touch .leopold/STOP to halt.\n`.replace(/\s+/g, " "));
 
   const stop = (reason: string) => {
     state.active = false;

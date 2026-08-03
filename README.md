@@ -38,16 +38,22 @@ npm i -g leopold-driver && leopold up
 curl -fsSL https://raw.githubusercontent.com/Jonhvmp/leopold/main/install.sh | bash
 ```
 
-Either way, the skills + hooks land in `~/.claude/` and the `settings.json` snippet is
-merged. With the npm package, the bundled `leopold` CLI runs the whole toolchain **without
-the repo**:
+Either way, the installer finds whichever harness you have and wires it: skills + hooks into
+`~/.claude/` (merged into `settings.json`), and/or into `~/.codex/` (merged into
+`config.toml`). Pick one explicitly with `--harness claude|codex|all`. See
+[Claude Code and Codex](docs/concepts/harnesses.md).
+
+With the npm package, the bundled `leopold` CLI runs the whole toolchain **without the
+repo**:
 
 ```bash
 leopold up                   # install + project setup in one (then /leopold-up in a session)
 leopold menu                 # toolchain manager (serena / gstack / ovmem / enhance)
 leopold enhance toggle       # global prompt enhancer: Haiku interprets weak prompts (your account)
 leopold watch                # live dashboard at http://127.0.0.1:4179 (incl. workflow phase tree)
+leopold harness              # which harnesses are here, and what each one can do
 leopold run --parallel 3     # conduct the run, independent items in parallel
+leopold run --provider codex # conduct the same brief on Codex instead
 leopold workflow             # compile the brief into a dynamic workflow (--run: headless, exp.)
 leopold insights             # summarize a run (effort mix, review pass-rate, spend)
 leopold doctor               # health check
@@ -60,6 +66,8 @@ leopold doctor               # health check
 git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
 # as a Claude Code plugin (auto-wires skills + hooks)
 claude plugin marketplace add Jonhvmp/leopold && claude plugin install leopold@leopold
+# Codex only (skills + the git lock and continuity hooks in config.toml)
+./install.sh --harness codex
 ```
 </details>
 
@@ -128,13 +136,13 @@ Because Leopold sells autonomy, guardrails are the product, not an afterthought.
 - **Fails closed.** A malformed run-state file blocks loudly; it never silently lets autonomy through.
 - **Kill switch + audit.** `/leopold-stop` (or `touch .leopold/STOP`) halts at the next turn boundary; every autonomous decision is logged with its reasoning.
 
-Leopold never weakens Claude Code's own permissions — it adds a second lock on top. Details: [`docs/guardrails.md`](docs/guardrails.md).
+Leopold never weakens the harness's own permissions — it adds a second lock on top. The lock is the same script on Claude Code and on Codex, because Codex reimplemented Claude Code's hook contract: same event names, same payload keys, same deny reply. Details: [`docs/guardrails.md`](docs/guardrails.md).
 
 ---
 
 ## What is a harness?
 
-`Agent = Model + Harness` — everything around the model: orchestration, memory, guardrails, observability. Claude Code is a great harness for one *interactive* turn. Leopold adds the layer it lacks for *unattended* work: a **decider** (your charter, so it chooses instead of asking), **continuity** (a stop hook, so a finished turn rolls into the next item), behind **guardrails** (the gate above). More in [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/).
+`Agent = Model + Harness` — everything around the model: orchestration, memory, guardrails, observability. Claude Code and Codex are both great harnesses for one *interactive* turn. Leopold adds the layer they lack for *unattended* work: a **decider** (your charter, so it chooses instead of asking), **continuity** (a stop hook, so a finished turn rolls into the next item), behind **guardrails** (the gate above). It runs on either — the brief in `.leopold/` is plain markdown, and both hooks are the same scripts on both. More in [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/) and [Claude Code and Codex](docs/concepts/harnesses.md).
 
 ## gstack + the toolchain manager
 

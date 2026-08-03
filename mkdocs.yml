@@ -103,6 +103,7 @@ plugins:
             Toolchain Manager: Gerenciador de toolchain
             Concepts: Conceitos
             What Is a Harness: O que é um harness
+            Claude Code and Codex: Claude Code e Codex
             The Two Phases: As duas fases
             Dynamic Workflows: Workflows dinâmicos
             The Canvas: O Canvas
@@ -142,6 +143,7 @@ nav:
       - Toolchain Manager: getting-started/toolchain-manager.md
   - Concepts:
       - What Is a Harness: concepts/harness.md
+      - Claude Code and Codex: concepts/harnesses.md
       - The Two Phases: concepts/two-phases.md
       - Dynamic Workflows: concepts/dynamic-workflows.md
       - The Canvas: canvas.md
