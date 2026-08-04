@@ -28,7 +28,10 @@ real_serena_fp() { ls -A "$HOME/.serena" 2>/dev/null | sort | cksum; }
 CODEX_BEFORE="$(real_codex_fp)"; CLAUDE_BEFORE="$(real_claude_fp)"; SERENA_BEFORE="$(real_serena_fp)"
 REAL_HOME="$HOME"
 
-CODEX_BIN="$(command -v codex 2>/dev/null || true)"
+# The Codex-MCP assertions need the real binary; the hook assertions never do. Set
+# LEOPOLD_TEST_CODEX_BIN= (empty) to exercise the codex-less path — that is what CI
+# runs, and without this a developer who has codex installed cannot reproduce it.
+CODEX_BIN="${LEOPOLD_TEST_CODEX_BIN-$(command -v codex 2>/dev/null || true)}"
 
 TD="$(mktemp -d)"
 trap 'rm -rf "$TD"' EXIT
@@ -188,7 +191,15 @@ has "status shows Claude unwired"  "$both" "Claude Code: MCP off, hooks 0/4"
 out="$(run all install)"
 both="$(run all status)"
 has "after a two-harness install, Claude is on" "$both" "Claude Code: MCP on, hooks 4/4"
-has "and Codex is still on"                     "$both" "Codex CLI: MCP on, hooks 4/4"
+# What this assertion is really for: wiring Claude must not clobber the Codex side.
+# The hooks half is ours to write and holds anywhere; the MCP half needs the real
+# `codex` binary to have registered it, which a machine without codex never did. So
+# assert the whole line either way rather than skipping the check on CI.
+if [ -n "$CODEX_BIN" ]; then
+  has "and Codex is still on"                   "$both" "Codex CLI: MCP on, hooks 4/4"
+else
+  has "and the Codex hooks are still wired"     "$both" "Codex CLI: MCP off, hooks 4/4"
+fi
 check "Claude got its own four hooks" "$(jq '[.hooks[]?[]?.hooks[]? | select(.command | test("serena-hooks "))] | length' "$SET")" "4"
 check "Claude wired with --client=claude-code"  "$(grep -c 'client=claude-code' "$SET")" "4"
 check "Claude keeps the mcp__serena__* matcher" "$(jq '[.hooks.PreToolUse[]? | select(.matcher == "mcp__serena__*")] | length' "$SET")" "1"
