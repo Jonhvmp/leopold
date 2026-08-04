@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An autonomous orchestration harness for Claude Code. Brief it like a teammate; it conducts Claude Code in your seat.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
@@ -29,7 +29,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -709,6 +709,8 @@
       
         
       
+        
+      
     
     
     
@@ -769,6 +771,34 @@
     
   
     What Is a Harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/harnesses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Claude Code and Codex
   
 
     
@@ -1243,6 +1273,8 @@
       
         
       
+        
+      
     
     
     
@@ -1419,13 +1451,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-wiring" class="md-nav__link">
+  <a href="#wiring-per-harness" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings wiring
+        Wiring, per harness
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Wiring, per harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-claudesettingsjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code — ~/.claude/settings.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#codex-cli-codexconfigtoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Codex CLI — ~/.codex/config.toml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1520,6 +1580,34 @@
     
   
     Driver Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../leopold-home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Home
   
 
     
@@ -1745,13 +1833,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#settings-wiring" class="md-nav__link">
+  <a href="#wiring-per-harness" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Settings wiring
+        Wiring, per harness
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Wiring, per harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-claudesettingsjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code — ~/.claude/settings.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#codex-cli-codexconfigtoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Codex CLI — ~/.codex/config.toml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1787,10 +1903,17 @@
 
 
 <h1 id="hooks">Hooks<a class="headerlink" href="#hooks" title="Permanent link">&para;</a></h1>
-<p>Three hooks are wired into <code>settings.json</code> by <code>install.sh</code>. The two engine hooks
-live in <code>~/.claude/leopold/hooks/</code> and are <strong>no-ops unless a run is active</strong>; the
-prompt enhancer lives in <code>~/.claude/enhance/</code> and is a <strong>no-op until you toggle it
-on</strong> — so all three are safe to leave installed in every session.</p>
+<p>Three hooks are wired by <code>install.sh</code> into each harness it finds — <code>settings.json</code>
+on Claude Code, <code>config.toml</code> on Codex CLI. The two engine hooks live in
+<code>&lt;asset home&gt;/hooks/</code> and are <strong>no-ops unless a run is active</strong>; the prompt
+enhancer lives in <code>&lt;asset home&gt;/enhance/</code> and is a <strong>no-op until you toggle it
+on</strong> — so all three are safe to leave installed in every session. The asset home is
+<code>~/.claude/leopold</code> whenever Claude Code is present and <code>~/.codex/leopold</code> on a
+Codex-only machine (<a href="../leopold-home/">Asset Home</a>); the paths below use the Claude
+Code layout.</p>
+<p>The two engine hooks are <strong>the same unmodified scripts on both harnesses</strong> — Codex
+reimplemented Claude Code's hook contract nearly field for field, so no portability
+layer exists to go wrong. See <a href="../../concepts/harnesses/">Claude Code and Codex</a>.</p>
 <h2 id="stop-continuitysh-the-stop-hook"><code>stop-continuity.sh</code> — the Stop hook<a class="headerlink" href="#stop-continuitysh-the-stop-hook" title="Permanent link">&para;</a></h2>
 <p>Runs when the agent finishes a turn. Contract: read JSON on stdin; print
 <code>{"decision":"block","reason":"..."}</code> to keep going, or exit 0 to allow the stop.</p>
@@ -1809,14 +1932,20 @@ halting is always safe.</p>
 <h2 id="guard-irreversiblesh-the-pretooluse-hook"><code>guard-irreversible.sh</code> — the PreToolUse hook<a class="headerlink" href="#guard-irreversiblesh-the-pretooluse-hook" title="Permanent link">&para;</a></h2>
 <p>Runs before every tool call. Contract: read JSON on stdin; print a
 <code>hookSpecificOutput</code> with <code>permissionDecision: "deny"</code> to block, or exit 0 to
-allow. It only adds denials; it never loosens Claude Code's own permissions.</p>
+allow. It only adds denials; it never loosens the harness's own permissions.</p>
+<p>Codex delivers this event with the same keys — <code>tool_name</code> (its shell tool is
+reported as <code>Bash</code>), <code>tool_input.command</code>, <code>cwd</code>, <code>transcript_path</code> — and honors the
+same deny reply.</p>
 <p>See the policy table in <a href="../../guardrails/">Guardrails</a>.</p>
 <h2 id="enhancepy-the-userpromptsubmit-prompt-enhancer"><code>enhance.py</code> — the UserPromptSubmit prompt enhancer<a class="headerlink" href="#enhancepy-the-userpromptsubmit-prompt-enhancer" title="Permanent link">&para;</a></h2>
 <p>Runs on every prompt you submit (the event takes no matcher, so all gating is
 internal). Contract: read the hook JSON on stdin; plain text on stdout is injected
 as context next to the raw prompt (plain text, not JSON, so it concatenates safely
 with other <code>UserPromptSubmit</code> hooks); <strong>always exit 0</strong> — the prompt itself is
-never modified or blocked.</p>
+never modified or blocked. Codex validates hook stdout as strict JSON, so on that
+harness the same text is wrapped in <code>hookSpecificOutput.additionalContext</code> instead —
+the plain-text form logs <code>hook: UserPromptSubmit Failed</code> there and never reaches the
+model. The engine detects which harness sent the payload and answers in its dialect.</p>
 <pre class="mermaid"><code>flowchart TD
     In["UserPromptSubmit (JSON on stdin)"] --&gt; Rec{recursion / kill-switch env?}
     Rec -- yes --&gt; Silent([exit 0 · silent])
@@ -1832,7 +1961,8 @@ never modified or blocked.</p>
 <p>Fail-open: no <code>claude</code> on PATH, timeout, API error, malformed output — nothing is
 emitted and the prompt goes through untouched. Full detail (gate table, state,
 ledger, the learn loop): <a href="../enhance/">Prompt Enhancer</a>.</p>
-<h2 id="settings-wiring">Settings wiring<a class="headerlink" href="#settings-wiring" title="Permanent link">&para;</a></h2>
+<h2 id="wiring-per-harness">Wiring, per harness<a class="headerlink" href="#wiring-per-harness" title="Permanent link">&para;</a></h2>
+<h3 id="claude-code-claudesettingsjson">Claude Code — <code>~/.claude/settings.json</code><a class="headerlink" href="#claude-code-claudesettingsjson" title="Permanent link">&para;</a></h3>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">&quot;Stop&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -1848,6 +1978,42 @@ ledger, the learn loop): <a href="../enhance/">Prompt Enhancer</a>.</p>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">}</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
 </span></code></pre></div>
+<h3 id="codex-cli-codexconfigtoml">Codex CLI — <code>~/.codex/config.toml</code><a class="headerlink" href="#codex-cli-codexconfigtoml" title="Permanent link">&para;</a></h3>
+<p>The same hooks, in TOML, inside a marker-delimited managed block that a re-install
+replaces and nothing else. The two engine hooks:</p>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># &gt;&gt;&gt; leopold (managed) &gt;&gt;&gt;</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">[[hooks.PreToolUse]]</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/you/.claude/leopold/hooks/guard-irreversible.sh&quot;</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="k">[[hooks.Stop]]</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="k">[[hooks.Stop.hooks]]</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/you/.claude/leopold/hooks/stop-continuity.sh&quot;</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># &lt;&lt;&lt; leopold (managed) &lt;&lt;&lt;</span>
+</span></code></pre></div>
+<p>The prompt enhancer and every extension get their own tagged block
+(<code># &gt;&gt;&gt; leopold:enhance (managed) &gt;&gt;&gt;</code> and friends), so each one is installed,
+updated and removed without touching the others.</p>
+<p>The config is backed up before the merge and the result is validated: a write that
+would not parse is rolled back and the block printed for you to paste. Both formats
+are produced by one shared writer, <code>extensions/lib/harness.sh</code>, so the two harnesses
+cannot drift.</p>
+<div class="admonition warning">
+<p class="admonition-title">Codex hooks are inert until trusted</p>
+<p>Codex will not execute a hook declared in <code>config.toml</code> until you have approved
+it once (<code>hooks.state."&lt;id&gt;".trusted_hash</code>) — no error, it simply does not run.
+Approve it in one interactive session, or install Leopold as a Codex plugin,
+which trusts plugin-provided hooks through the install. Headless workers started
+by <code>leopold run --provider codex</code> pass <code>--dangerously-bypass-hook-trust</code> so they
+arm their own git lock. <code>leopold doctor</code> reports which state each harness is in.</p>
+</div>
 <h2 id="event-log">Event log<a class="headerlink" href="#event-log" title="Permanent link">&para;</a></h2>
 <p>The two engine hooks append structured events to <code>.leopold/events.jsonl</code>
 (<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>), which <code>/leopold-status</code> reads. The enhancer
@@ -1968,7 +2134,7 @@ one line per injection or failed attempt — which <code>/leopold-enhance learn<
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

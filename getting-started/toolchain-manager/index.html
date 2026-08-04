@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An autonomous orchestration harness for Claude Code. Brief it like a teammate; it conducts Claude Code in your seat.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
@@ -29,7 +29,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -844,6 +844,8 @@
       
         
       
+        
+      
     
     
     
@@ -904,6 +906,34 @@
     
   
     What Is a Harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/harnesses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Claude Code and Codex
   
 
     
@@ -1376,6 +1406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1548,6 +1580,34 @@
     
   
     Driver Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/leopold-home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Home
   
 
     
@@ -1884,9 +1944,14 @@ server in place.</p>
 <p><a href="https://github.com/oraios/serena">Serena</a> (MIT) gives the agent <strong>LSP-backed, symbol-level
 tools</strong> over MCP — <code>find_symbol</code>, <code>find_referencing_symbols</code>, <code>replace_symbol_body</code> — instead
 of grep + whole-file reads. Leopold's installer sets it up automatically: it installs
-<code>serena-agent</code> via uv if missing, registers the MCP server for all projects
-(<code>claude mcp add --scope user serena -- serena start-mcp-server --context=claude-code
---project-from-cwd</code>), and wires Serena's recommended hooks. It is the biggest single lever
+<code>serena-agent</code> via uv if missing, then registers the MCP server for all projects and wires
+Serena's recommended hooks <strong>once per harness on the machine</strong> — <code>claude mcp add --scope
+user serena -- serena start-mcp-server --context=claude-code --project-from-cwd</code> plus hooks
+in <code>~/.claude/settings.json</code> for Claude Code, and <code>codex mcp add serena -- serena
+start-mcp-server --context=codex --project-from-cwd</code> plus hooks in <code>~/.codex/config.toml</code>
+for Codex CLI. <code>manage.sh status</code> and <code>doctor</code> report each harness separately, so a
+two-harness box never sees one harness's state passed off as both. (On Codex, hooks stay
+inert until you approve them once — doctor says so.) It is the biggest single lever
 for <strong>code quality</strong> <em>and</em> <strong>lean context</strong> (symbol-level reads cost far fewer tokens — the
 same discipline the <a href="../../guardrails/">cost guardrails</a> enforce),
 which is why it is mandatory rather than optional. Setup uses Serena's official path, not the
@@ -1895,17 +1960,32 @@ MCP marketplace (which ships stale commands). Manage with <code>make serena-inst
 <h3 id="gstack">gstack<a class="headerlink" href="#gstack" title="Permanent link">&para;</a></h3>
 <p>The planning + QA skill suite Leopold conducts (<code>/spec</code>, <code>/autoplan</code>, <code>/plan-*-review</code>, …).
 A separate MIT project by Garry Tan; the extension clones it and runs its setup. Needs Bun.</p>
+<p>gstack skills are plain <code>SKILL.md</code> dirs, and <strong>both harnesses discover them</strong> — Claude Code
+under <code>~/.claude/skills</code>, Codex CLI under <code>~/.codex/skills</code> — so the extension runs gstack's
+own installer once per harness on this machine (<code>--host claude</code>, <code>--host codex</code>) and
+<code>status</code>, <code>remove</code> and <code>doctor</code> report each one separately, counting the skills actually
+visible in that skills root. A Codex-only box keeps the checkout in gstack's own
+<code>~/.gstack/repos/gstack</code> (it refuses a checkout inside the Codex skills dir, which would
+make every skill get discovered twice) and gets nothing under <code>~/.claude</code>. <code>make
+gstack-install</code> / <code>make gstack-doctor</code>.</p>
 <h3 id="ovmem">ovmem<a class="headerlink" href="#ovmem" title="Permanent link">&para;</a></h3>
 <p>Autonomous RAG long-term memory: it wires <a href="https://github.com/volcengine/OpenViking">OpenViking</a>
-to Claude Code through 4 native hooks (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
+to your agent through 4 native hooks (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
 so sessions stay optimized without destructive <code>/compact</code> or <code>/clear</code>. Distillation, dedup and
 reconsolidation happen server-side; a weekly hotness prune keeps the store from accumulating.</p>
+<p>Those four events exist on <strong>Claude Code and Codex CLI</strong>, and the installer declares them in
+whichever harnesses are on the machine — <code>~/.claude/settings.json</code> in JSON, <code>~/.codex/config.toml</code>
+in TOML. The memory store is a single one for the machine, so a decision recorded in a Codex
+session comes back in a Claude Code one. Codex holds a config-declared hook inert until you
+approve it once, and it caps <code>SessionEnd</code> at 3 seconds — so the end-of-session flush runs
+detached there. <code>leopold doctor</code> and the extension's own doctor name every harness that is
+still missing its wiring.</p>
 <p>The installer ships the <strong>OpenAI profile</strong>:</p>
 <ul>
 <li>prompts for an OpenAI key, <strong>validates it against chat + embeddings</strong> before saving
   (it needs the <code>model.request</code> scope, not just embedding),</li>
-<li>writes <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>), wires the 4 hooks idempotently, and
-  verifies end-to-end with a commit → extract round-trip.</li>
+<li>writes <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>), wires the 4 hooks idempotently into every
+  harness present, and verifies end-to-end with a commit → extract round-trip.</li>
 </ul>
 <p>Everything is <strong>local and private</strong>: the OpenViking server binds to <code>127.0.0.1</code> (loopback) on
 the user's own device — it is not exposed to the network, and nothing points to a central
@@ -2035,7 +2115,7 @@ switch. Needs python3 + jq; the rewriter uses your existing <code>claude</code> 
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

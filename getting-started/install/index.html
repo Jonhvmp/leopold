@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An autonomous orchestration harness for Claude Code. Brief it like a teammate; it conducts Claude Code in your seat.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
@@ -29,7 +29,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -652,6 +652,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Install the in-session engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choosing-harnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing harnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -677,10 +694,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-as-a-claude-code-plugin-one-command-auto-wires-hooks" class="md-nav__link">
+  <a href="#install-as-a-plugin-one-command-auto-wires-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install as a Claude Code plugin (one command, auto-wires hooks)
+        Install as a plugin (one command, auto-wires hooks)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The extensions
       
     </span>
   </a>
@@ -838,6 +866,8 @@
       
         
       
+        
+      
     
     
     
@@ -898,6 +928,34 @@
     
   
     What Is a Harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/harnesses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Claude Code and Codex
   
 
     
@@ -1370,6 +1428,8 @@
       
         
       
+        
+      
     
     
     
@@ -1542,6 +1602,34 @@
     
   
     Driver Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/leopold-home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Home
   
 
     
@@ -1753,6 +1841,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Install the in-session engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choosing-harnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing harnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1778,10 +1883,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-as-a-claude-code-plugin-one-command-auto-wires-hooks" class="md-nav__link">
+  <a href="#install-as-a-plugin-one-command-auto-wires-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install as a Claude Code plugin (one command, auto-wires hooks)
+        Install as a plugin (one command, auto-wires hooks)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The extensions
       
     </span>
   </a>
@@ -1832,11 +1948,13 @@
 
 <h1 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h1>
 <p>Leopold has two tiers. The <strong>in-session engine</strong> (skills + hooks) is all you need
-to start and runs in plain Claude Code. The <strong>SDK driver</strong> is optional and adds
-unattended, background runs.</p>
+to start and runs in plain Claude Code or plain Codex CLI. The <strong>SDK driver</strong> is
+optional and adds unattended, background runs.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="https://claude.com/claude-code">Claude Code</a>, logged in.</li>
+<li>At least one harness, logged in: <a href="https://claude.com/claude-code">Claude Code</a>
+  and/or <a href="https://github.com/openai/codex">Codex CLI</a> (0.146.0 is the
+  reference). Both is fine — the installer wires each one it finds.</li>
 <li><code>jq</code> on your <code>PATH</code> (the hooks use it to parse state safely).</li>
 <li><code>python3</code> (the <a href="../../reference/enhance/">prompt enhancer</a> engine and the
   <code>leopold watch</code> dashboard).</li>
@@ -1855,48 +1973,100 @@ project up in one command:</p>
 <p>Or clone it (more transparent):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Jonhvmp/leopold.git<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>leopold<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./install.sh
 </span></code></pre></div>
+<h3 id="choosing-harnesses">Choosing harnesses<a class="headerlink" href="#choosing-harnesses" title="Permanent link">&para;</a></h3>
+<p>The installer detects what is on the machine, and asks only when the choice is a real
+one. If it finds <strong>both</strong> Claude Code and Codex — or <strong>neither</strong> — it prompts:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Both Claude Code and Codex CLI are here. Install Leopold into which?
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  1) both        — same brief, same hooks, either seat (recommended)
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  2) Claude Code — ~/.claude
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  3) Codex CLI   — ~/.codex
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Choice [1]:
+</span></code></pre></div>
+<p>If exactly one harness is present it just installs there — asking would be friction,
+not a choice. The prompt reads from the terminal rather than stdin, so it still works
+under <code>curl … | bash</code>; with no terminal at all (CI, a headless box) it takes both and
+says so instead of hanging.</p>
+<p>Skip the prompt entirely by naming the harness:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>./install.sh<span class="w">                     </span><span class="c1"># auto — detect, and ask if the choice is real</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>claude<span class="w">    </span><span class="c1"># Claude Code only</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>codex<span class="w">     </span><span class="c1"># Codex only</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>all<span class="w">       </span><span class="c1"># both, installed or not</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nv">LEOPOLD_NONINTERACTIVE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>./install.sh<span class="w">   </span><span class="c1"># never prompt, take the defaults</span>
+</span></code></pre></div>
 <p>What the installer does:</p>
 <pre class="mermaid"><code>flowchart LR
-    Run["./install.sh"] --&gt; S["copy skills →&lt;br/&gt;~/.claude/skills/"]
-    Run --&gt; H["copy hooks/templates/docs →&lt;br/&gt;~/.claude/leopold/"]
-    Run --&gt; M["merge hooks into&lt;br/&gt;~/.claude/settings.json"]
-    Run --&gt; E["vendor the prompt enhancer →&lt;br/&gt;~/.claude/enhance/ (off)"]
+    Run["./install.sh"] --&gt; S["copy skills →&lt;br/&gt;each harness's skills/"]
+    Run --&gt; H["copy hooks/templates/docs →&lt;br/&gt;the asset home"]
+    Run --&gt; M["wire hooks into&lt;br/&gt;settings.json / config.toml"]
+    Run --&gt; E["vendor the prompt enhancer →&lt;br/&gt;&amp;lt;home&amp;gt;/enhance/ (off)"]
     M --&gt; Idem{{"idempotent +&lt;br/&gt;backup"}}</code></pre>
-<p>Three hooks are wired into your settings: the two engine hooks are <strong>inert unless
-a Leopold run is active</strong>, and the <a href="../../reference/enhance/">prompt enhancer</a> is
-<strong>off until you toggle it on</strong> (<code>leopold menu</code> → enhance) — so none of them
+<p>Skills go into each harness's own skills directory (<code>~/.claude/skills/</code>,
+<code>~/.codex/skills/</code> — the same <code>SKILL.md</code> format). Everything harness-neutral —
+hooks, templates, docs, scripts, extensions — goes into one shared <strong>asset home</strong>:
+<code>~/.claude/leopold</code> whenever Claude Code is in play, so existing installs need no
+migration, otherwise <code>~/.codex/leopold</code>. <code>LEOPOLD_HOME</code> overrides both. See
+<a href="../../reference/leopold-home/">Asset Home</a>.</p>
+<p>Three hooks are wired into your harness config: the two engine hooks are <strong>inert
+unless a Leopold run is active</strong>, and the <a href="../../reference/enhance/">prompt enhancer</a>
+is <strong>off until you toggle it on</strong> (<code>leopold menu</code> → enhance) — so none of them
 interfere with normal sessions.</p>
 <div class="admonition tip">
 <p class="admonition-title">It is safe to re-run</p>
-<p><code>install.sh</code> is idempotent. It backs up <code>settings.json</code> to
-<code>settings.json.leopold.bak</code> and never duplicates hook entries.</p>
+<p><code>install.sh</code> is idempotent, on both formats. It backs up <code>settings.json</code> to
+<code>settings.json.leopold.bak</code> and never duplicates hook entries; on Codex it backs
+up <code>config.toml</code>, replaces its marker-delimited block and nothing else, and
+validates the result — a merge that would not parse is rolled back and printed
+for you to paste instead. Three installs leave a byte-identical file.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">One extra step on Codex</p>
+<p>Codex will not execute a hook declared in <code>config.toml</code> until you have trusted
+it once — until then it is silently inert. Open Codex once and approve the
+Leopold hooks, or install Leopold as a Codex plugin, which arms them through the
+plugin install. <code>leopold doctor</code> tells you which state you are in. Headless
+workers started by <code>leopold run --provider codex</code> arm their own git lock, so a
+driver-conducted run is locked from its first turn either way. Full detail:
+<a href="../../concepts/harnesses/">Claude Code and Codex</a>.</p>
 </div>
 <h2 id="install-the-sdk-driver-optional">Install the SDK driver (optional)<a class="headerlink" href="#install-the-sdk-driver-optional" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">cd</span><span class="w"> </span>packages/driver
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>npm<span class="w"> </span>install
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>npm<span class="w"> </span>run<span class="w"> </span>build
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>packages/driver
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>npm<span class="w"> </span>install
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>npm<span class="w"> </span>run<span class="w"> </span>build
 </span></code></pre></div>
-<p>The driver uses your existing Claude Code login for both the worker and the
-conductor, so there is <strong>no separate API key</strong>. See
+<p>The driver uses your existing harness login for both the worker and the conductor,
+so there is <strong>no separate API key</strong> — the Agent SDK on your Claude Code auth, or
+<code>codex exec</code> on your Codex login (<code>leopold run --provider codex</code>). See
 <a href="../../reference/driver-config/">Driver Config</a>.</p>
 <h2 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># in any project, after writing a brief:</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>/leopold-status
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>leopold<span class="w"> </span>doctor<span class="w">     </span><span class="c1"># every harness present: skills, hooks, wiring, extensions</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>leopold<span class="w"> </span>harness<span class="w">    </span><span class="c1"># what each harness here can do, and which one a run would use</span>
+</span></code></pre></div>
+<p>Then, in any session:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>/leopold-status
 </span></code></pre></div>
 <p>If Leopold is installed, this reports "No Leopold run in this project." (which is
 the correct answer before you start one).</p>
-<h2 id="install-as-a-claude-code-plugin-one-command-auto-wires-hooks">Install as a Claude Code plugin (one command, auto-wires hooks)<a class="headerlink" href="#install-as-a-claude-code-plugin-one-command-auto-wires-hooks" title="Permanent link">&para;</a></h2>
-<p>Once published, the plugin is the most native install — it wires the skills and
-hooks automatically, no <code>settings.json</code> merge:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span>Jonhvmp/leopold
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span>leopold@leopold
+<h2 id="install-as-a-plugin-one-command-auto-wires-hooks">Install as a plugin (one command, auto-wires hooks)<a class="headerlink" href="#install-as-a-plugin-one-command-auto-wires-hooks" title="Permanent link">&para;</a></h2>
+<p>The plugin is the most native install — it wires the skills and hooks
+automatically, with no config merge. Leopold ships both manifests
+(<code>.claude-plugin/</code> and <code>.codex-plugin/</code>):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span>Jonhvmp/leopold
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span>leopold@leopold
 </span></code></pre></div>
+<p>On Codex the plugin has a second benefit: plugin-provided hooks are trusted through
+the install, so there is no separate approval step.</p>
 <p>Use the plugin <strong>or</strong> <code>install.sh</code>, not both, to avoid double-wired hooks.</p>
+<h2 id="the-extensions">The extensions<a class="headerlink" href="#the-extensions" title="Permanent link">&para;</a></h2>
+<p><code>leopold menu</code> installs and manages the bundled extensions — serena, gstack, ovmem
+and the prompt enhancer. Each one installs, reports status and runs its doctor
+<strong>per harness</strong>, so a two-harness machine gets both wired and a Codex-only machine
+gets nothing pointing at a Claude path. See
+<a href="../toolchain-manager/">Toolchain Manager</a>.</p>
 <h2 id="the-sdk-driver-from-npm">The SDK driver from npm<a class="headerlink" href="#the-sdk-driver-from-npm" title="Permanent link">&para;</a></h2>
 <p>For the background-driver tier:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>npm<span class="w"> </span>i<span class="w"> </span>-g<span class="w"> </span>leopold-driver
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1"># then, in a project that has a .leopold/ brief:</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>leopold-driver
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>npm<span class="w"> </span>i<span class="w"> </span>-g<span class="w"> </span>leopold-driver
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># then, in a project that has a .leopold/ brief:</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>leopold-driver
 </span></code></pre></div>
 <h2 id="updating">Updating<a class="headerlink" href="#updating" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2021,7 +2191,7 @@ hooks automatically, no <code>settings.json</code> merge:</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

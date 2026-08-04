@@ -1,46 +1,46 @@
 
 <!doctype html>
-<html lang="pt" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/getting-started/toolchain-manager/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/concepts/harnesses/">
       
       
-        <link rel="prev" href="../first-run/">
+        <link rel="prev" href="../harness/">
       
       
-        <link rel="next" href="../../concepts/harness/">
+        <link rel="next" href="../two-phases/">
       
       
         
-          <link rel="alternate" href="../../../getting-started/toolchain-manager/" hreflang="en">
+          <link rel="alternate" href="./" hreflang="en">
         
-          <link rel="alternate" href="./" hreflang="pt-BR">
+          <link rel="alternate" href="../../pt-BR/concepts/harnesses/" hreflang="pt-BR">
         
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Gerenciador de toolchain - Leopold</title>
+        <title>Claude Code and Codex - Leopold</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -59,7 +59,7 @@
       
     
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -84,8 +84,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#gerenciador-de-toolchain" class="md-skip">
-          Pular para conteúdo
+        <a href="#harnesses-claude-code-and-codex" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -99,8 +99,8 @@
   
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
-    <a href="../../" title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Gerenciador de toolchain
+              Claude Code and Codex
             
           </span>
         </div>
@@ -160,20 +160,20 @@
       <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Selecione o idioma">
+    <button class="md-header__button md-icon" aria-label="Select language">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="../../../getting-started/toolchain-manager/" hreflang="en" class="md-select__link">
+            <a href="./" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="./" hreflang="pt-BR" class="md-select__link">
+            <a href="../../pt-BR/concepts/harnesses/" hreflang="pt-BR" class="md-select__link">
               Português (Brasil)
             </a>
           </li>
@@ -194,21 +194,21 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Buscar" placeholder="Buscar" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Pesquisar">
+      <nav class="md-search__options" aria-label="Search">
         
-          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Compartilhar" aria-label="Compartilhar" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
             
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
           </a>
         
-        <button type="reset" class="md-search__icon md-icon" title="Limpar" aria-label="Limpar" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -221,7 +221,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Inicializando busca
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -233,7 +233,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+        <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -248,7 +248,7 @@
   
     
       
-<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -258,16 +258,38 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../" class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
     
   
-  Início
+  Home
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/install/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
   
 
       
@@ -281,35 +303,13 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../install/" class="md-tabs__link">
+        <a href="../harness/" class="md-tabs__link">
           
   
   
     
   
-  Primeiros passos
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../concepts/harness/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Conceitos
+  Concepts
 
         </a>
       </li>
@@ -331,7 +331,7 @@
   
     
   
-  Arquitetura
+  Architecture
 
         </a>
       </li>
@@ -353,7 +353,7 @@
   
     
   
-  Referência
+  Reference
 
         </a>
       </li>
@@ -375,7 +375,7 @@
   
     
   
-  Comparações
+  Comparisons
 
         </a>
       </li>
@@ -414,7 +414,7 @@
   
     
   
-  Como contribuir
+  Contributing
 
       </a>
     </li>
@@ -447,9 +447,9 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navegação" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../" title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href="../.." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -459,7 +459,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+      <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -479,14 +479,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Início
+    Home
   
 
     
@@ -503,12 +503,207 @@
       
   
   
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/first-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Run
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/toolchain-manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Toolchain Manager
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
   
     
     
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
       
         
       
@@ -534,17 +729,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Primeiros passos
+    Concepts
   
 
     
@@ -555,12 +750,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Primeiros passos
+    Concepts
   
 
           </label>
@@ -573,70 +768,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../install/" class="md-nav__link">
+      <a href="../harness/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Instalação
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Início rápido
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../first-run/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sua primeira run
+    What Is a Harness
   
 
     
@@ -673,7 +812,7 @@
   <span class="md-ellipsis">
     
   
-    Gerenciador de toolchain
+    Claude Code and Codex
   
 
     
@@ -691,7 +830,7 @@
   <span class="md-ellipsis">
     
   
-    Gerenciador de toolchain
+    Claude Code and Codex
   
 
     
@@ -703,7 +842,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -712,15 +851,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Índice
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#como-o-registry-funciona" class="md-nav__link">
+  <a href="#what-is-already-portable" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Como o registry funciona
+        What is already portable
       
     </span>
   </a>
@@ -728,10 +867,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#desinstalar" class="md-nav__link">
+  <a href="#what-actually-differs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Desinstalar
+        What actually differs
       
     </span>
   </a>
@@ -739,63 +878,79 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#extensoes-embutidas" class="md-nav__link">
+  <a href="#the-hooks-are-the-same-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Extensões embutidas
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Extensões embutidas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#serena-obrigatoria" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        serena (obrigatória)
+        The hooks are the same scripts
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#gstack" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#the-one-manual-step-on-codex" class="md-nav__link">
     <span class="md-ellipsis">
       
-        gstack
+        The one manual step on Codex
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#ovmem" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#installing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ovmem
+        Installing
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#enhance" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#extensions-install-on-every-harness-you-have" class="md-nav__link">
     <span class="md-ellipsis">
       
-        enhance
+        Extensions install on every harness you have
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#the-dashboard-reads-codex-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dashboard reads Codex runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-a-harness-for-a-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a harness for a run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-driver-reaches-each-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the driver reaches each harness
+      
+    </span>
+  </a>
   
 </li>
       
@@ -808,89 +963,6 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Conceitos
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Conceitos
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
               
                 
   
@@ -898,14 +970,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/harness/" class="md-nav__link">
+      <a href="../two-phases/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    O que é um harness
+    The Two Phases
   
 
     
@@ -926,70 +998,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/harnesses/" class="md-nav__link">
+      <a href="../dynamic-workflows/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Claude Code e Codex
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/two-phases/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    As duas fases
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../concepts/dynamic-workflows/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflows dinâmicos
+    Dynamic Workflows
   
 
     
@@ -1017,7 +1033,7 @@
   <span class="md-ellipsis">
     
   
-    O Canvas
+    The Canvas
   
 
     
@@ -1045,7 +1061,7 @@
   <span class="md-ellipsis">
     
   
-    Qualidade e orquestração
+    Quality & Orchestration
   
 
     
@@ -1073,7 +1089,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo de decisão
+    Decision Protocol
   
 
     
@@ -1129,7 +1145,7 @@
   <span class="md-ellipsis">
     
   
-    Custo e segurança
+    Cost & Security
   
 
     
@@ -1157,7 +1173,7 @@
   <span class="md-ellipsis">
     
   
-    Isolamento da run
+    Run Isolation
   
 
     
@@ -1185,7 +1201,7 @@
   <span class="md-ellipsis">
     
   
-    Playbook do gstack
+    gstack Playbook
   
 
     
@@ -1246,7 +1262,7 @@
   <span class="md-ellipsis">
     
   
-    Arquitetura
+    Architecture
   
 
     
@@ -1262,7 +1278,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Arquitetura
+    Architecture
   
 
           </label>
@@ -1282,7 +1298,7 @@
   <span class="md-ellipsis">
     
   
-    Visão geral
+    Overview
   
 
     
@@ -1310,7 +1326,7 @@
   <span class="md-ellipsis">
     
   
-    Engine in-session
+    In-Session Engine
   
 
     
@@ -1338,7 +1354,7 @@
   <span class="md-ellipsis">
     
   
-    Driver SDK
+    SDK Driver
   
 
     
@@ -1366,7 +1382,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo maestro–worker
+    Conductor & Worker Protocol
   
 
     
@@ -1431,7 +1447,7 @@
   <span class="md-ellipsis">
     
   
-    Referência
+    Reference
   
 
     
@@ -1447,7 +1463,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência
+    Reference
   
 
           </label>
@@ -1551,7 +1567,7 @@
   <span class="md-ellipsis">
     
   
-    Artefatos do brief
+    Brief Artifacts
   
 
     
@@ -1579,7 +1595,7 @@
   <span class="md-ellipsis">
     
   
-    Config do driver
+    Driver Config
   
 
     
@@ -1662,7 +1678,7 @@
   <span class="md-ellipsis">
     
   
-    Comparações
+    Comparisons
   
 
     
@@ -1678,7 +1694,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Comparações
+    Comparisons
   
 
           </label>
@@ -1760,7 +1776,7 @@
   <span class="md-ellipsis">
     
   
-    Como contribuir
+    Contributing
   
 
     
@@ -1786,7 +1802,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1795,15 +1811,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Índice
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#como-o-registry-funciona" class="md-nav__link">
+  <a href="#what-is-already-portable" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Como o registry funciona
+        What is already portable
       
     </span>
   </a>
@@ -1811,10 +1827,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#desinstalar" class="md-nav__link">
+  <a href="#what-actually-differs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Desinstalar
+        What actually differs
       
     </span>
   </a>
@@ -1822,63 +1838,79 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#extensoes-embutidas" class="md-nav__link">
+  <a href="#the-hooks-are-the-same-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Extensões embutidas
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Extensões embutidas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#serena-obrigatoria" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        serena (obrigatória)
+        The hooks are the same scripts
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#gstack" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#the-one-manual-step-on-codex" class="md-nav__link">
     <span class="md-ellipsis">
       
-        gstack
+        The one manual step on Codex
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#ovmem" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#installing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ovmem
+        Installing
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#enhance" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#extensions-install-on-every-harness-you-have" class="md-nav__link">
     <span class="md-ellipsis">
       
-        enhance
+        Extensions install on every harness you have
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#the-dashboard-reads-codex-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dashboard reads Codex runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-a-harness-for-a-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a harness for a run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-driver-reaches-each-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the driver reaches each harness
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1902,105 +1934,276 @@
   
 
 
-<h1 id="gerenciador-de-toolchain">Gerenciador de Toolchain<a class="headerlink" href="#gerenciador-de-toolchain" title="Permanent link">&para;</a></h1>
-<p>O Leopold traz um pequeno menu interativo pra instalar e gerenciar, num lugar só, a toolchain
-que ele conduz (gstack) e as extensões companheiras (como ovmem e enhance). Ele generaliza a
-pergunta pontual de "instalar o gstack?" do instalador num registry orientado a dados.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>menu
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or, from an install:</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>bash<span class="w"> </span>~/.claude/leopold/scripts/leopold-menu.sh
+<h1 id="harnesses-claude-code-and-codex">Harnesses: Claude Code and Codex<a class="headerlink" href="#harnesses-claude-code-and-codex" title="Permanent link">&para;</a></h1>
+<p>Leopold is not a Claude Code plugin that happens to run elsewhere. It is a harness
+layer that sits on top of whichever coding agent you use, and today that means
+<strong>Claude Code</strong> and <strong>OpenAI Codex CLI</strong>.</p>
+<p>The reason this works is not clever abstraction on Leopold's side. It is that Codex
+reimplemented Claude Code's hook contract almost verbatim — same event names, same
+payload keys, same reply shapes. Leopold's two hooks run on both harnesses as the
+exact same shell scripts, unmodified.</p>
+<h2 id="what-is-already-portable">What is already portable<a class="headerlink" href="#what-is-already-portable" title="Permanent link">&para;</a></h2>
+<p>The brief is the whole point of Leopold, and it was never harness-specific:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>.leopold/
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  MISSION.md      what we are doing and why
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  CHARTER.md      how to decide when nobody is watching
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  GUARDRAILS.md   the budgets and stop conditions
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  PLAN.md         the checklist the run burns down
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  DECISIONS.md    what got decided, and on what basis
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  state.json      run state (active, iteration, budgets)
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  events.jsonl    the append-only event log
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>========================================
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  Leopold - toolchain manager
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>========================================
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>   1) Leopold   installed             — the harness (skills + hooks)
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>   2) serena    installed             — LSP code intelligence (MCP, mandatory)
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>   3) gstack    installed             — planning / QA skill suite
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>   4) ovmem     not installed         — RAG long-term memory
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>   d) Doctor all     q) Quit
+<p>Plain markdown and one JSON file. Nothing in there knows or cares which agent is
+reading it. A brief written in Claude Code runs on Codex and vice versa.</p>
+<h2 id="what-actually-differs">What actually differs<a class="headerlink" href="#what-actually-differs" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Claude Code</th>
+<th>Codex CLI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Home</td>
+<td><code>~/.claude</code></td>
+<td><code>~/.codex</code></td>
+</tr>
+<tr>
+<td>Skills</td>
+<td><code>~/.claude/skills/</code></td>
+<td><code>~/.codex/skills/</code> (same <code>SKILL.md</code> format)</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td><code>settings.json</code> (JSON)</td>
+<td><code>config.toml</code> (TOML)</td>
+</tr>
+<tr>
+<td>Project memory</td>
+<td><code>CLAUDE.md</code></td>
+<td><code>AGENTS.md</code></td>
+</tr>
+<tr>
+<td>Plugin manifest</td>
+<td><code>.claude-plugin/</code></td>
+<td><code>.codex-plugin/</code></td>
+</tr>
+<tr>
+<td>Headless seam</td>
+<td><code>@anthropic-ai/claude-agent-sdk</code></td>
+<td><code>codex exec --json</code></td>
+</tr>
+<tr>
+<td>Hooks need trust</td>
+<td>no</td>
+<td><strong>yes, once</strong></td>
+</tr>
+</tbody>
+</table>
+<p>That last row is the only real behavioral difference, and the rest of this page is
+mostly about it.</p>
+<h2 id="the-hooks-are-the-same-scripts">The hooks are the same scripts<a class="headerlink" href="#the-hooks-are-the-same-scripts" title="Permanent link">&para;</a></h2>
+<p>Leopold rides on exactly two hooks.</p>
+<p><strong><code>guard-irreversible.sh</code> (PreToolUse) — the git lock.</strong> It denies <code>git commit</code> and
+<code>git push</code> while a run is active, so the run stages work and you ship it. Codex
+delivers PreToolUse with the same keys Claude Code does — <code>tool_name</code> (its shell tool
+is reported as <code>Bash</code>), <code>tool_input.command</code>, <code>cwd</code>, <code>transcript_path</code> — and honors the
+same reply:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">&quot;hookSpecificOutput&quot;</span><span class="p">:{</span><span class="nt">&quot;hookEventName&quot;</span><span class="p">:</span><span class="s2">&quot;PreToolUse&quot;</span><span class="p">,</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w"> </span><span class="nt">&quot;permissionDecision&quot;</span><span class="p">:</span><span class="s2">&quot;deny&quot;</span><span class="p">,</span><span class="nt">&quot;permissionDecisionReason&quot;</span><span class="p">:</span><span class="s2">&quot;…&quot;</span><span class="p">}}</span>
 </span></code></pre></div>
-<p>Escolha um componente pra instalar, atualizar, remover ou rodar o doctor dele.</p>
-<h2 id="como-o-registry-funciona">Como o registry funciona<a class="headerlink" href="#como-o-registry-funciona" title="Permanent link">&para;</a></h2>
-<p>Cada componente vive em <code>extensions/&lt;name&gt;/</code> com dois arquivos:</p>
+<p><strong><code>stop-continuity.sh</code> (Stop) — the autonomous engine.</strong> When the agent finishes a
+turn it reads <code>state.json</code> and <code>PLAN.md</code>, and if work remains with no stop condition
+met it blocks the halt and re-injects the next instruction. Codex delivers Stop with
+<code>cwd</code>, <code>transcript_path</code> and <code>stop_hook_active</code>, and honors the same reply:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span><span class="nt">&quot;decision&quot;</span><span class="p">:</span><span class="s2">&quot;block&quot;</span><span class="p">,</span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="s2">&quot;…&quot;</span><span class="p">}</span>
+</span></code></pre></div>
+<p>So autonomy is not a Claude-only feature. <code>/leopold-run</code> keeps a Codex session going
+the same way it keeps a Claude Code session going, with the same budgets, the same
+no-progress detection, and the same context ceiling.</p>
+<h2 id="the-one-manual-step-on-codex">The one manual step on Codex<a class="headerlink" href="#the-one-manual-step-on-codex" title="Permanent link">&para;</a></h2>
+<p>Codex will not execute a hook declared in <code>config.toml</code> until you have trusted it
+once. Until then it is silently inert — no error, it just does not run.</p>
+<p>Leopold does not try to forge that approval. Two ways through it:</p>
+<ol>
+<li><strong>Open Codex once and approve the Leopold hooks.</strong> After that the git lock and the
+   continuity engine are live in every interactive session.</li>
+<li><strong>Install Leopold as a Codex plugin.</strong> Plugin-provided hooks are trusted through
+   the plugin install, so there is no separate step.</li>
+</ol>
+<p>Headless workers started by <code>leopold run --provider codex</code> arm themselves, so a
+driver-conducted run is locked from its first turn whether or not you have approved
+anything.</p>
+<p><code>leopold doctor</code> tells you which state you are in.</p>
+<h2 id="installing">Installing<a class="headerlink" href="#installing" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./install.sh<span class="w">                     </span><span class="c1"># every harness found on this machine</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>claude<span class="w">    </span><span class="c1"># Claude Code only</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>codex<span class="w">     </span><span class="c1"># Codex only</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>all<span class="w">       </span><span class="c1"># both, installed or not</span>
+</span></code></pre></div>
+<p>The skills go into each harness's skills directory. The hooks, templates, docs and
+extensions go into one shared asset home — <code>~/.claude/leopold</code> when Claude Code is in
+play (so existing installs keep working), otherwise <code>~/.codex/leopold</code>. Override it
+with <code>LEOPOLD_HOME</code>.</p>
+<p>The Codex wiring is written into <code>config.toml</code> as a marker-delimited block:</p>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># &gt;&gt;&gt; leopold (managed) &gt;&gt;&gt;</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">[[hooks.PreToolUse]]</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/you/.claude/leopold/hooks/guard-irreversible.sh&quot;</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="k">[[hooks.Stop]]</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="k">[[hooks.Stop.hooks]]</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/you/.claude/leopold/hooks/stop-continuity.sh&quot;</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="c1"># &lt;&lt;&lt; leopold (managed) &lt;&lt;&lt;</span>
+</span></code></pre></div>
+<p>Re-installing replaces the block and nothing else. Your config is backed up first,
+and the merged file is validated — if it would not parse, the install rolls back and
+prints the block for you to paste yourself.</p>
+<h2 id="extensions-install-on-every-harness-you-have">Extensions install on every harness you have<a class="headerlink" href="#extensions-install-on-every-harness-you-have" title="Permanent link">&para;</a></h2>
+<p>The four bundled extensions — <code>serena</code>, <code>enhance</code>, <code>ovmem</code>, <code>gstack</code> — are not
+Claude-only either. Each one installs, reports and cleans up <strong>per harness</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Extension</th>
+<th>Claude Code</th>
+<th>Codex CLI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>serena</td>
+<td><code>claude mcp add --scope user</code> + 4 hooks in <code>settings.json</code></td>
+<td><code>codex mcp add</code> + the same 4 hooks in <code>config.toml</code>, <code>--context=codex</code>, <code>serena-hooks --client=codex</code></td>
+</tr>
+<tr>
+<td>enhance</td>
+<td><code>UserPromptSubmit</code> in <code>settings.json</code>, plain-text injection</td>
+<td><code>UserPromptSubmit</code> in <code>config.toml</code>, JSON <code>hookSpecificOutput.additionalContext</code></td>
+</tr>
+<tr>
+<td>ovmem</td>
+<td>4 hooks in <code>settings.json</code>, in-process 25s flush</td>
+<td>the same 4 in <code>config.toml</code>; <code>SessionEnd</code> declared at 3s and the flush detached, because Codex hard-caps that hook at 3 seconds</td>
+</tr>
+<tr>
+<td>gstack</td>
+<td><code>./setup --host claude</code> → <code>~/.claude/skills</code></td>
+<td><code>./setup --host codex</code> → <code>~/.codex/skills</code> (checkout in <code>~/.gstack/repos/gstack</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Two rules hold across all four. <strong>One writer per format:</strong> the JSON and TOML
+wiring lives in a single shared helper, <code>extensions/lib/harness.sh</code>, so the two
+harnesses cannot silently drift apart. And <strong>nothing reports per machine:</strong>
+<code>status</code>, <code>remove</code> and <code>doctor</code> answer one line per harness, so a two-harness box
+never sees one harness's state passed off as both, and Codex's hook-trust gate is
+named instead of being shown as a green that is not live yet.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>bash<span class="w"> </span>extensions/serena/manage.sh<span class="w"> </span>doctor<span class="w">   </span><span class="c1"># or ovmem / gstack / enhance</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>leopold<span class="w"> </span>doctor<span class="w">                            </span><span class="c1"># every harness present, in one pass</span>
+</span></code></pre></div>
+<p>The engine data is shared even though the wiring is not: ovmem keeps one memory
+directory for the machine, so a decision recorded in a Codex session comes back in
+a Claude Code one, and the enhancer's ledger and prompt profile are the same files
+from either seat.</p>
+<p>Each suite is hermetic — temp <code>HOME</code>/<code>CLAUDE_HOME</code>/<code>CODEX_HOME</code>, stubbed CLIs, no
+network: <code>make serena-test</code>, <code>make ovmem-test</code>, <code>make gstack-test</code>,
+<code>make enhance-test</code>, plus <code>make codex-install-test</code> for the whole Codex install
+end to end.</p>
+<h2 id="the-dashboard-reads-codex-runs">The dashboard reads Codex runs<a class="headerlink" href="#the-dashboard-reads-codex-runs" title="Permanent link">&para;</a></h2>
+<p><code>leopold watch</code> shows real tokens, cost and context on a Codex run — the panel is
+not blank and, more importantly, never a zero.</p>
+<p>It finds the transcript the same way on both harnesses: the path the hook reported
+in <code>state.json</code>, or else the newest session for this project — a Claude Code
+transcript under <code>~/.claude/projects/</code>, or a Codex rollout under
+<code>~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl</code> whose <code>session_meta.cwd</code> is this
+project. It then sniffs which one it is and parses accordingly: Claude Code's
+per-message <code>usage</code> + <code>model</code>, or Codex's <code>event_msg</code> lines with
+<code>payload.type == "token_count"</code> (<code>info.total_token_usage</code>, including
+<code>cached_input_tokens</code> and <code>reasoning_output_tokens</code>).</p>
+<p>Codex reports tokens and never dollars, so cost is priced from a built-in
+per-model table, cached input billed at 0.1x. An unrecognized model falls back to
+a non-zero default rate: a run priced at zero would silently disable
+<code>--budget-usd</code>, the one failure a budget cannot have. And a live rollout that has
+not reported usage yet says <strong>"waiting for session data…"</strong> rather than quoting
+<code>$0.00</code>.</p>
+<p>Extension dashboard tabs follow the same rule. An <code>extension.json</code>
+<code>dashboard.module</code> may be a path relative to the asset home (<code>ovmem/dashboard.py</code>),
+resolved Claude-first exactly like the installers do — so the Memory tab shows up
+on a machine with no <code>~/.claude</code> instead of silently vanishing.</p>
+<p>Covered by <code>make watch-test</code> (stdlib only, no network), which asserts Codex
+detection, pricing, discovery by <code>cwd</code>, the unknown-model fallback and the
+no-usage-yet case.</p>
+<h2 id="choosing-a-harness-for-a-run">Choosing a harness for a run<a class="headerlink" href="#choosing-a-harness-for-a-run" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>leopold<span class="w"> </span>harness<span class="w">                    </span><span class="c1"># what is here, and what each one can do</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>leopold<span class="w"> </span>run<span class="w">                        </span><span class="c1"># conduct on the default harness</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex<span class="w">       </span><span class="c1"># conduct on Codex</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run<span class="w"> </span><span class="c1"># same, from the environment</span>
+</span></code></pre></div>
+<p>Precedence is <code>--provider</code> → <code>LEOPOLD_PROVIDER</code> → whatever is installed → Claude Code
+as the tie-break. A name Leopold does not recognize is an error, not a silent
+fallback — conducting a run on the wrong harness because of a typo is not a failure
+mode worth having.</p>
+<h2 id="how-the-driver-reaches-each-harness">How the driver reaches each harness<a class="headerlink" href="#how-the-driver-reaches-each-harness" title="Permanent link">&para;</a></h2>
+<p>Everything in the driver — worker turns, conductor decisions, review lenses,
+hypothesis panels, routing, tournament judges — goes through one seam,
+<code>packages/driver/src/sdk.ts</code>, and consumes one small message shape. The provider
+behind that seam is swappable:</p>
 <ul>
-<li><code>extension.json</code> — metadados que o menu renderiza (<code>name</code>, <code>title</code>, <code>summary</code>, <code>order</code>).</li>
-<li><code>manage.sh</code> — as ações que o menu chama: <code>detect | status | install | update | remove | doctor</code>.</li>
+<li><strong>claude</strong> — the Agent SDK's <code>query</code>, on your own Claude Code auth.</li>
+<li><strong>codex</strong> — <code>codex exec --json</code>, on your own Codex login. Multi-turn items use
+  <code>codex exec resume &lt;thread_id&gt;</code>, which gives the worker the same property that
+  matters: fresh context per plan item, continuous context within one.</li>
 </ul>
-<p>O menu descobre tudo que está nessa pasta, então <strong>adicionar um componente é só largar uma
-pasta ali</strong> — sem mudar código do menu. O <code>detect</code> é a fonte única da verdade pra "instalado?".
-Cada <code>manage.sh</code> precisa ser idempotente, nunca pode tocar no seu git e nunca pode imprimir segredos.</p>
-<h2 id="desinstalar">Desinstalar<a class="headerlink" href="#desinstalar" title="Permanent link">&para;</a></h2>
-<p>A opção <strong><code>u</code></strong> do menu remove o Leopold de forma granular e <strong>sem perder dados</strong>. Ela pergunta
-exatamente o que tirar e confirma cada escolha — o core do Leopold (skills + hooks + <code>~/.claude/leopold</code>),
-o CLI <code>leopold</code>, serena, gstack e o engine do ovmem, todos <strong>preservam os seus dados</strong>. Apagar
-a memória de longo prazo do ovmem (<code>~/.openviking</code>) é um item separado que exige digitar <code>DELETE</code>,
-então nada precioso é removido por acidente. A exceção é o <strong>enhance</strong>, cuja entrada avisa isso
-em amarelo: a remoção dele apaga <code>~/.claude/enhance</code>, incluindo o ledger de enhancement e o
-prompt profile aprendido (eles são inúteis sem o engine). O <code>remove</code> de cada extensão
-(usado aqui) despluga os hooks dela e apaga o engine, deixando os seus dados e qualquer servidor
-compartilhado no lugar.</p>
-<h2 id="extensoes-embutidas">Extensões embutidas<a class="headerlink" href="#extensoes-embutidas" title="Permanent link">&para;</a></h2>
-<h3 id="serena-obrigatoria">serena (obrigatória)<a class="headerlink" href="#serena-obrigatoria" title="Permanent link">&para;</a></h3>
-<p>A <a href="https://github.com/oraios/serena">Serena</a> (MIT) dá ao agente <strong>ferramentas em nível de símbolo,
-com LSP por trás</strong>, via MCP — <code>find_symbol</code>, <code>find_referencing_symbols</code>, <code>replace_symbol_body</code> — em vez
-de grep + leitura de arquivos inteiros. O instalador do Leopold configura tudo automaticamente: instala
-o <code>serena-agent</code> via uv se estiver faltando e então registra o servidor MCP pra todos os projetos
-e pluga os hooks recomendados da Serena <strong>uma vez por harness da máquina</strong> — <code>claude mcp add
---scope user serena -- serena start-mcp-server --context=claude-code --project-from-cwd</code> mais
-os hooks no <code>~/.claude/settings.json</code> no Claude Code, e <code>codex mcp add serena -- serena
-start-mcp-server --context=codex --project-from-cwd</code> mais os hooks no <code>~/.codex/config.toml</code>
-no Codex CLI. O <code>manage.sh status</code> e o <code>doctor</code> reportam cada harness separadamente, então
-numa máquina com os dois você nunca vê o estado de um passando por ambos. (No Codex os hooks
-ficam inertes até você aprovar uma vez — o doctor avisa.) É a maior alavanca isolada
-pra <strong>qualidade de código</strong> <em>e</em> <strong>contexto enxuto</strong> (leituras em nível de símbolo custam bem
-menos tokens — a mesma disciplina que os <a href="../../guardrails/">guardrails de custo</a> impõem),
-e é por isso que ela é obrigatória em vez de opcional. O setup usa o caminho oficial da Serena, não o
-marketplace de MCP (que traz comandos desatualizados). Gerencie com <code>make serena-install</code> /
-<code>make serena-doctor</code>.</p>
-<h3 id="gstack">gstack<a class="headerlink" href="#gstack" title="Permanent link">&para;</a></h3>
-<p>A suíte de skills de planejamento + QA que o Leopold conduz (<code>/spec</code>, <code>/autoplan</code>, <code>/plan-*-review</code>, …).
-Um projeto MIT separado, do Garry Tan; a extensão clona o repositório e roda o setup dele. Precisa de Bun.</p>
-<p>As skills do gstack são diretórios <code>SKILL.md</code> comuns, e <strong>os dois harnesses as descobrem</strong> —
-o Claude Code em <code>~/.claude/skills</code>, o Codex CLI em <code>~/.codex/skills</code> — então a extensão roda
-o instalador do próprio gstack uma vez por harness da máquina (<code>--host claude</code>, <code>--host
-codex</code>), e o <code>status</code>, o <code>remove</code> e o <code>doctor</code> reportam cada um separadamente, contando as
-skills que realmente aparecem naquele skills root. Uma máquina só com Codex mantém o checkout
-no <code>~/.gstack/repos/gstack</code> do próprio gstack (ele recusa um checkout dentro do skills dir do
-Codex, o que faria cada skill ser descoberta duas vezes) e não ganha nada em <code>~/.claude</code>.
-<code>make gstack-install</code> / <code>make gstack-doctor</code>.</p>
-<h3 id="ovmem">ovmem<a class="headerlink" href="#ovmem" title="Permanent link">&para;</a></h3>
-<p>Memória RAG de longo prazo autônoma: ela liga o <a href="https://github.com/volcengine/OpenViking">OpenViking</a>
-ao seu agente através de 4 hooks nativos (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
-então as sessões ficam otimizadas sem <code>/compact</code> ou <code>/clear</code> destrutivos. Destilação, dedup e
-reconsolidação acontecem do lado do servidor; uma poda semanal por hotness impede o store de inchar.</p>
-<p>Esses quatro eventos existem tanto no <strong>Claude Code quanto no Codex CLI</strong>, e o instalador declara
-todos eles nos harnesses que estiverem na máquina — <code>~/.claude/settings.json</code> em JSON,
-<code>~/.codex/config.toml</code> em TOML. O store de memória é um só pra máquina, então uma decisão registrada
-numa sessão do Codex volta numa sessão do Claude Code. O Codex mantém um hook declarado em config
-inerte até você aprovar uma vez, e limita o <code>SessionEnd</code> a 3 segundos — por isso o flush de fim de
-sessão roda destacado lá. O <code>leopold doctor</code> e o doctor da própria extensão nomeiam todo harness que
-ainda está sem a fiação.</p>
-<p>O instalador traz o <strong>perfil OpenAI</strong>:</p>
-<ul>
-<li>pede uma chave da OpenAI e <strong>valida contra chat + embeddings</strong> antes de salvar
-  (ela precisa do escopo <code>model.request</code>, não só de embedding),</li>
-<li>escreve <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>), pluga os 4 hooks de forma idempotente em todo
-  harness presente e verifica de ponta a ponta com uma ida e volta de commit → extract.</li>
-</ul>
-<p>Tudo é <strong>local e privado</strong>: o servidor OpenViking faz bind em <code>127.0.0.1</code> (loopback) no
-dispositivo do próprio usuário — ele não fica exposto à rede, e nada aponta pra um servidor
-central. O único tráfego de saída vai pra OpenAI (com a chave do próprio usuário), pra embeddings e
-extração. Um perfil totalmente local com Ollama/GGUF (sem chave) está no roadmap.</p>
-<p>Suportado em Linux e macOS. No Windows nativo, rode dentro do WSL.</p>
-<h3 id="enhance">enhance<a class="headerlink" href="#enhance" title="Permanent link">&para;</a></h3>
-<p>O <a href="../../reference/enhance/">prompt enhancer global</a>: um hook de <code>UserPromptSubmit</code> que faz o
-Haiku — na sua própria conta conectada — produzir uma interpretação estruturada de prompts
-genuinamente fracos ("conserta o login") e injetá-la ao lado do prompt cru, que sempre vence em caso
-de conflito. Ciente do charter quando o projeto tem um brief do Leopold, fail-open em qualquer erro,
-e se aprimora sozinho via <code>/leopold-enhance learn</code>. Diferente das outras extensões, ele é instalado
-(plugado, mas <strong>desligado</strong>) pelo instalador principal; a ação <code>t) Toggle</code> do menu — ou
-<code>/leopold-enhance on|off</code> — é o interruptor. Precisa de python3 + jq; o reescritor usa o seu
-login existente do <code>claude</code>, sem chave extra.</p>
+<p>Because the shape is identical, no call site knows which harness answered. The
+mapping the Codex side has to do is small and lives in one file:</p>
+<table>
+<thead>
+<tr>
+<th>Driver concept</th>
+<th>Codex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cwd</code></td>
+<td><code>-C &lt;dir&gt;</code></td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td><code>-m &lt;model&gt;</code></td>
+</tr>
+<tr>
+<td><code>effort</code></td>
+<td><code>-c model_reasoning_effort=…</code> (<code>max</code> → <code>xhigh</code>)</td>
+</tr>
+<tr>
+<td>read-only session (<code>disallowedTools</code>)</td>
+<td><code>--sandbox read-only</code></td>
+</tr>
+<tr>
+<td><code>canUseTool</code> guard</td>
+<td>the PreToolUse hook + <code>--dangerously-bypass-hook-trust</code></td>
+</tr>
+<tr>
+<td><code>total_cost_usd</code></td>
+<td>token usage priced by model</td>
+</tr>
+</tbody>
+</table>
+<p>That last one is worth knowing about: Codex reports token counts, never a dollar
+figure, so <code>--budget-usd</code> prices the run from a built-in table. An unrecognized model
+falls back to a default rate rather than zero — pricing a run at zero would silently
+disable the budget, which is the one failure mode a budget cannot have.</p>
 
 
 
@@ -2026,7 +2229,7 @@ login existente do <code>claude</code>, sem chave extra.</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Voltar para o topo
+  Back to top
 </button>
         
       </main>
@@ -2035,33 +2238,33 @@ login existente do <code>claude</code>, sem chave extra.</p>
   
     
       
-      <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../first-run/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Sua primeira run">
+          <a href="../harness/" class="md-footer__link md-footer__link--prev" aria-label="Previous: What Is a Harness">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Anterior
+                Previous
               </span>
               <div class="md-ellipsis">
-                Sua primeira run
+                What Is a Harness
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../concepts/harness/" class="md-footer__link md-footer__link--next" aria-label="Próximo: O que é um harness">
+          <a href="../two-phases/" class="md-footer__link md-footer__link--next" aria-label="Next: The Two Phases">
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Próximo
+                Next
               </span>
               <div class="md-ellipsis">
-                O que é um harness
+                The Two Phases
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2113,10 +2316,10 @@ login existente do <code>claude</code>, sem chave extra.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

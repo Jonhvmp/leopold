@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An autonomous orchestration harness for Claude Code. Brief it like a teammate; it conducts Claude Code in your seat.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
@@ -29,7 +29,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -711,6 +711,8 @@
       
         
       
+        
+      
     
     
     
@@ -774,6 +776,34 @@
     
   
     What Is a Harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/harnesses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Claude Code and Codex
   
 
     
@@ -1348,6 +1378,8 @@
       
         
       
+        
+      
     
     
     
@@ -1520,6 +1552,34 @@
     
   
     Driver Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/leopold-home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Home
   
 
     
@@ -1808,10 +1868,12 @@ the gstack workflows.</p>
     class Ship gated;</code></pre>
 <h2 id="install-gstack-optional">Install gstack (optional)<a class="headerlink" href="#install-gstack-optional" title="Permanent link">&para;</a></h2>
 <p>Leopold does not bundle gstack; it is a separate <a href="https://github.com/garrytan/gstack">MIT project by Garry Tan</a> with its own installer and self-update. Install it standalone so Leopold can conduct it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>gstack-install
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or the official one-liner (needs Bun v1.0+):</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git<span class="w"> </span>clone<span class="w"> </span>--single-branch<span class="w"> </span>--depth<span class="w"> </span><span class="m">1</span><span class="w"> </span>https://github.com/garrytan/gstack.git<span class="w"> </span>~/.claude/skills/gstack<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>~/.claude/skills/gstack<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./setup
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>gstack-install<span class="w">      </span><span class="c1"># installs into every harness on this machine</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>gstack-doctor<span class="w">       </span><span class="c1"># per-harness report: checkout, Bun, skills per skills root</span>
 </span></code></pre></div>
+<p><code>make gstack-install</code> drives gstack's own installer once per harness Leopold
+resolves here (<code>--host claude</code>, <code>--host codex</code>), so a Codex-only machine gets the
+skills under <code>~/.codex/skills</code> and nothing under <code>~/.claude</code>. It needs Bun v1.0+.</p>
 <p><code>install.sh</code> offers to set it up if it is missing (or run <code>./install.sh --with-gstack</code>). It shines for planning: <code>/office-hours</code>, <code>/spec</code>, <code>/autoplan</code>, <code>/plan-ceo-review</code>, <code>/plan-eng-review</code>, <code>/plan-design-review</code>.</p>
 <h2 id="how-leopold-uses-it">How Leopold uses it<a class="headerlink" href="#how-leopold-uses-it" title="Permanent link">&para;</a></h2>
 <p>During a turn, after picking a plan item, Leopold matches the item's <em>situation</em>
@@ -2042,7 +2104,7 @@ call.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

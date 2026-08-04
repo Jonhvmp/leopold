@@ -1,46 +1,46 @@
 
 <!doctype html>
-<html lang="pt" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/getting-started/toolchain-manager/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/reference/leopold-home/">
       
       
-        <link rel="prev" href="../first-run/">
+        <link rel="prev" href="../driver-config/">
       
       
-        <link rel="next" href="../../concepts/harness/">
+        <link rel="next" href="../../comparisons/ralph/">
       
       
         
-          <link rel="alternate" href="../../../getting-started/toolchain-manager/" hreflang="en">
+          <link rel="alternate" href="./" hreflang="en">
         
-          <link rel="alternate" href="./" hreflang="pt-BR">
+          <link rel="alternate" href="../../pt-BR/reference/leopold-home/" hreflang="pt-BR">
         
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Gerenciador de toolchain - Leopold</title>
+        <title>Asset Home - Leopold</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -59,7 +59,7 @@
       
     
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -84,8 +84,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#gerenciador-de-toolchain" class="md-skip">
-          Pular para conteúdo
+        <a href="#the-leopold-asset-home" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -99,8 +99,8 @@
   
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
-    <a href="../../" title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Gerenciador de toolchain
+              Asset Home
             
           </span>
         </div>
@@ -160,20 +160,20 @@
       <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Selecione o idioma">
+    <button class="md-header__button md-icon" aria-label="Select language">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="../../../getting-started/toolchain-manager/" hreflang="en" class="md-select__link">
+            <a href="./" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="./" hreflang="pt-BR" class="md-select__link">
+            <a href="../../pt-BR/reference/leopold-home/" hreflang="pt-BR" class="md-select__link">
               Português (Brasil)
             </a>
           </li>
@@ -194,21 +194,21 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Buscar" placeholder="Buscar" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Pesquisar">
+      <nav class="md-search__options" aria-label="Search">
         
-          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Compartilhar" aria-label="Compartilhar" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
             
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
           </a>
         
-        <button type="reset" class="md-search__icon md-icon" title="Limpar" aria-label="Limpar" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -221,7 +221,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Inicializando busca
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -233,7 +233,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+        <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -248,7 +248,7 @@
   
     
       
-<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -258,13 +258,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../" class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
     
   
-  Início
+  Home
 
       </a>
     </li>
@@ -275,19 +275,17 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../install/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../getting-started/install/" class="md-tabs__link">
           
   
   
     
   
-  Primeiros passos
+  Getting Started
 
         </a>
       </li>
@@ -309,7 +307,7 @@
   
     
   
-  Conceitos
+  Concepts
 
         </a>
       </li>
@@ -331,7 +329,7 @@
   
     
   
-  Arquitetura
+  Architecture
 
         </a>
       </li>
@@ -343,17 +341,19 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../reference/skills/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../skills/" class="md-tabs__link">
           
   
   
     
   
-  Referência
+  Reference
 
         </a>
       </li>
@@ -375,7 +375,7 @@
   
     
   
-  Comparações
+  Comparisons
 
         </a>
       </li>
@@ -414,7 +414,7 @@
   
     
   
-  Como contribuir
+  Contributing
 
       </a>
     </li>
@@ -447,9 +447,9 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navegação" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../" title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href="../.." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -459,7 +459,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+      <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -479,14 +479,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Início
+    Home
   
 
     
@@ -503,10 +503,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -522,29 +520,26 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Primeiros passos
+    Getting Started
   
 
     
@@ -555,12 +550,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Primeiros passos
+    Getting Started
   
 
           </label>
@@ -573,14 +568,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../install/" class="md-nav__link">
+      <a href="../../getting-started/install/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Instalação
+    Install
   
 
     
@@ -601,14 +596,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Início rápido
+    Quickstart
   
 
     
@@ -629,14 +624,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../first-run/" class="md-nav__link">
+      <a href="../../getting-started/first-run/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Sua primeira run
+    Your First Run
   
 
     
@@ -654,44 +649,17 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Gerenciador de toolchain
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/toolchain-manager/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Gerenciador de toolchain
+    Toolchain Manager
   
 
     
@@ -700,109 +668,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Índice
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#como-o-registry-funciona" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Como o registry funciona
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#desinstalar" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Desinstalar
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#extensoes-embutidas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extensões embutidas
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Extensões embutidas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#serena-obrigatoria" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        serena (obrigatória)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gstack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        gstack
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ovmem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ovmem
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enhance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        enhance
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -869,7 +734,7 @@
   <span class="md-ellipsis">
     
   
-    Conceitos
+    Concepts
   
 
     
@@ -885,7 +750,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Conceitos
+    Concepts
   
 
           </label>
@@ -905,7 +770,7 @@
   <span class="md-ellipsis">
     
   
-    O que é um harness
+    What Is a Harness
   
 
     
@@ -933,7 +798,7 @@
   <span class="md-ellipsis">
     
   
-    Claude Code e Codex
+    Claude Code and Codex
   
 
     
@@ -961,7 +826,7 @@
   <span class="md-ellipsis">
     
   
-    As duas fases
+    The Two Phases
   
 
     
@@ -989,7 +854,7 @@
   <span class="md-ellipsis">
     
   
-    Workflows dinâmicos
+    Dynamic Workflows
   
 
     
@@ -1017,7 +882,7 @@
   <span class="md-ellipsis">
     
   
-    O Canvas
+    The Canvas
   
 
     
@@ -1045,7 +910,7 @@
   <span class="md-ellipsis">
     
   
-    Qualidade e orquestração
+    Quality & Orchestration
   
 
     
@@ -1073,7 +938,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo de decisão
+    Decision Protocol
   
 
     
@@ -1129,7 +994,7 @@
   <span class="md-ellipsis">
     
   
-    Custo e segurança
+    Cost & Security
   
 
     
@@ -1157,7 +1022,7 @@
   <span class="md-ellipsis">
     
   
-    Isolamento da run
+    Run Isolation
   
 
     
@@ -1185,7 +1050,7 @@
   <span class="md-ellipsis">
     
   
-    Playbook do gstack
+    gstack Playbook
   
 
     
@@ -1246,7 +1111,7 @@
   <span class="md-ellipsis">
     
   
-    Arquitetura
+    Architecture
   
 
     
@@ -1262,7 +1127,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Arquitetura
+    Architecture
   
 
           </label>
@@ -1282,7 +1147,7 @@
   <span class="md-ellipsis">
     
   
-    Visão geral
+    Overview
   
 
     
@@ -1310,7 +1175,7 @@
   <span class="md-ellipsis">
     
   
-    Engine in-session
+    In-Session Engine
   
 
     
@@ -1338,7 +1203,7 @@
   <span class="md-ellipsis">
     
   
-    Driver SDK
+    SDK Driver
   
 
     
@@ -1366,7 +1231,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo maestro–worker
+    Conductor & Worker Protocol
   
 
     
@@ -1391,8 +1256,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1412,26 +1279,29 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Referência
+    Reference
   
 
     
@@ -1442,12 +1312,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência
+    Reference
   
 
           </label>
@@ -1460,7 +1330,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/skills/" class="md-nav__link">
+      <a href="../skills/" class="md-nav__link">
         
   
   
@@ -1488,7 +1358,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/hooks/" class="md-nav__link">
+      <a href="../hooks/" class="md-nav__link">
         
   
   
@@ -1516,7 +1386,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/enhance/" class="md-nav__link">
+      <a href="../enhance/" class="md-nav__link">
         
   
   
@@ -1544,14 +1414,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/artifacts/" class="md-nav__link">
+      <a href="../artifacts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Artefatos do brief
+    Brief Artifacts
   
 
     
@@ -1572,14 +1442,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/driver-config/" class="md-nav__link">
+      <a href="../driver-config/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Config do driver
+    Driver Config
   
 
     
@@ -1597,10 +1467,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../reference/leopold-home/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1616,6 +1513,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#leopold-home" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        leopold home
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Precedence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-no-cli-fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The no-CLI fallback
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1662,7 +1612,7 @@
   <span class="md-ellipsis">
     
   
-    Comparações
+    Comparisons
   
 
     
@@ -1678,7 +1628,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Comparações
+    Comparisons
   
 
           </label>
@@ -1760,7 +1710,7 @@
   <span class="md-ellipsis">
     
   
-    Como contribuir
+    Contributing
   
 
     
@@ -1786,7 +1736,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1795,15 +1745,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Índice
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#como-o-registry-funciona" class="md-nav__link">
+  <a href="#leopold-home" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Como o registry funciona
+        leopold home
       
     </span>
   </a>
@@ -1811,10 +1761,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#desinstalar" class="md-nav__link">
+  <a href="#precedence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Desinstalar
+        Precedence
       
     </span>
   </a>
@@ -1822,63 +1772,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#extensoes-embutidas" class="md-nav__link">
+  <a href="#the-no-cli-fallback" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Extensões embutidas
+        The no-CLI fallback
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Extensões embutidas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#serena-obrigatoria" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        serena (obrigatória)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gstack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        gstack
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ovmem" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ovmem
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enhance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        enhance
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1902,105 +1802,99 @@
   
 
 
-<h1 id="gerenciador-de-toolchain">Gerenciador de Toolchain<a class="headerlink" href="#gerenciador-de-toolchain" title="Permanent link">&para;</a></h1>
-<p>O Leopold traz um pequeno menu interativo pra instalar e gerenciar, num lugar só, a toolchain
-que ele conduz (gstack) e as extensões companheiras (como ovmem e enhance). Ele generaliza a
-pergunta pontual de "instalar o gstack?" do instalador num registry orientado a dados.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>menu
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or, from an install:</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>bash<span class="w"> </span>~/.claude/leopold/scripts/leopold-menu.sh
+<h1 id="the-leopold-asset-home">The Leopold asset home<a class="headerlink" href="#the-leopold-asset-home" title="Permanent link">&para;</a></h1>
+<p>Leopold installs into two places. The <strong>harness home</strong> (<code>~/.claude</code> or <code>~/.codex</code>)
+gets the parts each agent loads itself — skills, settings, hooks wiring. The
+<strong>asset home</strong> gets the harness-neutral half: <code>hooks/</code>, <code>templates/</code>, <code>docs/</code>,
+<code>scripts/</code>, <code>extensions/</code>. Everything that has to point at a Leopold file — a
+skill, an extension installer, a hook command line — points at the asset home.</p>
+<p>It is not always <code>~/.claude/leopold</code>. On a Codex-only machine there is no
+<code>~/.claude</code>, and <code>LEOPOLD_HOME</code> relocates it anywhere. So nothing in the product
+hardcodes a path: it resolves the home at run time.</p>
+<h2 id="leopold-home"><code>leopold home</code><a class="headerlink" href="#leopold-home" title="Permanent link">&para;</a></h2>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gp">$ </span>leopold<span class="w"> </span>home
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="go">/home/you/.claude/leopold</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>========================================
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  Leopold - toolchain manager
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>========================================
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>   1) Leopold   installed             — the harness (skills + hooks)
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>   2) serena    installed             — LSP code intelligence (MCP, mandatory)
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>   3) gstack    installed             — planning / QA skill suite
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>   4) ovmem     not installed         — RAG long-term memory
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>   d) Doctor all     q) Quit
+<p>One absolute path, one line, exit 0. It never fails and never asks the harness
+anything — it is pure path resolution, safe to call from a hook.</p>
+<p>The path is <strong>not</strong> guaranteed to exist. <code>leopold home</code> answers "where would
+Leopold's assets be", which is exactly what an installer needs; a consumer that
+requires the assets checks for the file it wants and says so if it is missing.
+<code>leopold doctor</code> is the command that verifies the install.</p>
+<h2 id="precedence">Precedence<a class="headerlink" href="#precedence" title="Permanent link">&para;</a></h2>
+<p>Identical in <code>install.sh</code>, <code>scripts/leopold-doctor.sh</code>, and the driver
+(<code>leopoldHome()</code> in <code>packages/driver/src/provider.ts</code>):</p>
+<ol>
+<li><strong><code>LEOPOLD_HOME</code></strong> — wins outright, whatever else is on the machine.</li>
+<li><strong><code>$CLAUDE_HOME/leopold</code></strong> if it exists (<code>CLAUDE_HOME</code> defaults to
+   <code>~/.claude</code>). Claude Code stays the asset home wherever it is in play, so
+   existing installs never need a migration.</li>
+<li><strong><code>$CODEX_HOME/leopold</code></strong> if it exists (<code>CODEX_HOME</code> defaults to <code>~/.codex</code>).</li>
+<li>Nothing installed yet — predict where <code>install.sh</code> would put it: the Claude
+   path, unless Codex is the only harness on the machine, which mirrors the
+   installer's <code>--harness auto</code> detection.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Machine</th>
+<th><code>leopold home</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LEOPOLD_HOME=/opt/leo</code></td>
+<td><code>/opt/leo</code></td>
+</tr>
+<tr>
+<td>Claude Code installed</td>
+<td><code>~/.claude/leopold</code></td>
+</tr>
+<tr>
+<td>Claude Code + Codex</td>
+<td><code>~/.claude/leopold</code></td>
+</tr>
+<tr>
+<td>Codex only</td>
+<td><code>~/.codex/leopold</code></td>
+</tr>
+<tr>
+<td>Neither</td>
+<td><code>~/.claude/leopold</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-no-cli-fallback">The no-CLI fallback<a class="headerlink" href="#the-no-cli-fallback" title="Permanent link">&para;</a></h2>
+<p>Skills and hooks run in shells that may not have <code>leopold</code> on <code>PATH</code> — a repo
+clone with <code>make install</code> and no npm global, for instance. Use the CLI when it is
+there and fall back to shell when it is not:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">LEO_HOME</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>leopold<span class="w"> </span>home<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>leopold_home<span class="k">)</span><span class="s2">&quot;</span>
 </span></code></pre></div>
-<p>Escolha um componente pra instalar, atualizar, remover ou rodar o doctor dele.</p>
-<h2 id="como-o-registry-funciona">Como o registry funciona<a class="headerlink" href="#como-o-registry-funciona" title="Permanent link">&para;</a></h2>
-<p>Cada componente vive em <code>extensions/&lt;name&gt;/</code> com dois arquivos:</p>
-<ul>
-<li><code>extension.json</code> — metadados que o menu renderiza (<code>name</code>, <code>title</code>, <code>summary</code>, <code>order</code>).</li>
-<li><code>manage.sh</code> — as ações que o menu chama: <code>detect | status | install | update | remove | doctor</code>.</li>
-</ul>
-<p>O menu descobre tudo que está nessa pasta, então <strong>adicionar um componente é só largar uma
-pasta ali</strong> — sem mudar código do menu. O <code>detect</code> é a fonte única da verdade pra "instalado?".
-Cada <code>manage.sh</code> precisa ser idempotente, nunca pode tocar no seu git e nunca pode imprimir segredos.</p>
-<h2 id="desinstalar">Desinstalar<a class="headerlink" href="#desinstalar" title="Permanent link">&para;</a></h2>
-<p>A opção <strong><code>u</code></strong> do menu remove o Leopold de forma granular e <strong>sem perder dados</strong>. Ela pergunta
-exatamente o que tirar e confirma cada escolha — o core do Leopold (skills + hooks + <code>~/.claude/leopold</code>),
-o CLI <code>leopold</code>, serena, gstack e o engine do ovmem, todos <strong>preservam os seus dados</strong>. Apagar
-a memória de longo prazo do ovmem (<code>~/.openviking</code>) é um item separado que exige digitar <code>DELETE</code>,
-então nada precioso é removido por acidente. A exceção é o <strong>enhance</strong>, cuja entrada avisa isso
-em amarelo: a remoção dele apaga <code>~/.claude/enhance</code>, incluindo o ledger de enhancement e o
-prompt profile aprendido (eles são inúteis sem o engine). O <code>remove</code> de cada extensão
-(usado aqui) despluga os hooks dela e apaga o engine, deixando os seus dados e qualquer servidor
-compartilhado no lugar.</p>
-<h2 id="extensoes-embutidas">Extensões embutidas<a class="headerlink" href="#extensoes-embutidas" title="Permanent link">&para;</a></h2>
-<h3 id="serena-obrigatoria">serena (obrigatória)<a class="headerlink" href="#serena-obrigatoria" title="Permanent link">&para;</a></h3>
-<p>A <a href="https://github.com/oraios/serena">Serena</a> (MIT) dá ao agente <strong>ferramentas em nível de símbolo,
-com LSP por trás</strong>, via MCP — <code>find_symbol</code>, <code>find_referencing_symbols</code>, <code>replace_symbol_body</code> — em vez
-de grep + leitura de arquivos inteiros. O instalador do Leopold configura tudo automaticamente: instala
-o <code>serena-agent</code> via uv se estiver faltando e então registra o servidor MCP pra todos os projetos
-e pluga os hooks recomendados da Serena <strong>uma vez por harness da máquina</strong> — <code>claude mcp add
---scope user serena -- serena start-mcp-server --context=claude-code --project-from-cwd</code> mais
-os hooks no <code>~/.claude/settings.json</code> no Claude Code, e <code>codex mcp add serena -- serena
-start-mcp-server --context=codex --project-from-cwd</code> mais os hooks no <code>~/.codex/config.toml</code>
-no Codex CLI. O <code>manage.sh status</code> e o <code>doctor</code> reportam cada harness separadamente, então
-numa máquina com os dois você nunca vê o estado de um passando por ambos. (No Codex os hooks
-ficam inertes até você aprovar uma vez — o doctor avisa.) É a maior alavanca isolada
-pra <strong>qualidade de código</strong> <em>e</em> <strong>contexto enxuto</strong> (leituras em nível de símbolo custam bem
-menos tokens — a mesma disciplina que os <a href="../../guardrails/">guardrails de custo</a> impõem),
-e é por isso que ela é obrigatória em vez de opcional. O setup usa o caminho oficial da Serena, não o
-marketplace de MCP (que traz comandos desatualizados). Gerencie com <code>make serena-install</code> /
-<code>make serena-doctor</code>.</p>
-<h3 id="gstack">gstack<a class="headerlink" href="#gstack" title="Permanent link">&para;</a></h3>
-<p>A suíte de skills de planejamento + QA que o Leopold conduz (<code>/spec</code>, <code>/autoplan</code>, <code>/plan-*-review</code>, …).
-Um projeto MIT separado, do Garry Tan; a extensão clona o repositório e roda o setup dele. Precisa de Bun.</p>
-<p>As skills do gstack são diretórios <code>SKILL.md</code> comuns, e <strong>os dois harnesses as descobrem</strong> —
-o Claude Code em <code>~/.claude/skills</code>, o Codex CLI em <code>~/.codex/skills</code> — então a extensão roda
-o instalador do próprio gstack uma vez por harness da máquina (<code>--host claude</code>, <code>--host
-codex</code>), e o <code>status</code>, o <code>remove</code> e o <code>doctor</code> reportam cada um separadamente, contando as
-skills que realmente aparecem naquele skills root. Uma máquina só com Codex mantém o checkout
-no <code>~/.gstack/repos/gstack</code> do próprio gstack (ele recusa um checkout dentro do skills dir do
-Codex, o que faria cada skill ser descoberta duas vezes) e não ganha nada em <code>~/.claude</code>.
-<code>make gstack-install</code> / <code>make gstack-doctor</code>.</p>
-<h3 id="ovmem">ovmem<a class="headerlink" href="#ovmem" title="Permanent link">&para;</a></h3>
-<p>Memória RAG de longo prazo autônoma: ela liga o <a href="https://github.com/volcengine/OpenViking">OpenViking</a>
-ao seu agente através de 4 hooks nativos (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
-então as sessões ficam otimizadas sem <code>/compact</code> ou <code>/clear</code> destrutivos. Destilação, dedup e
-reconsolidação acontecem do lado do servidor; uma poda semanal por hotness impede o store de inchar.</p>
-<p>Esses quatro eventos existem tanto no <strong>Claude Code quanto no Codex CLI</strong>, e o instalador declara
-todos eles nos harnesses que estiverem na máquina — <code>~/.claude/settings.json</code> em JSON,
-<code>~/.codex/config.toml</code> em TOML. O store de memória é um só pra máquina, então uma decisão registrada
-numa sessão do Codex volta numa sessão do Claude Code. O Codex mantém um hook declarado em config
-inerte até você aprovar uma vez, e limita o <code>SessionEnd</code> a 3 segundos — por isso o flush de fim de
-sessão roda destacado lá. O <code>leopold doctor</code> e o doctor da própria extensão nomeiam todo harness que
-ainda está sem a fiação.</p>
-<p>O instalador traz o <strong>perfil OpenAI</strong>:</p>
-<ul>
-<li>pede uma chave da OpenAI e <strong>valida contra chat + embeddings</strong> antes de salvar
-  (ela precisa do escopo <code>model.request</code>, não só de embedding),</li>
-<li>escreve <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>), pluga os 4 hooks de forma idempotente em todo
-  harness presente e verifica de ponta a ponta com uma ida e volta de commit → extract.</li>
-</ul>
-<p>Tudo é <strong>local e privado</strong>: o servidor OpenViking faz bind em <code>127.0.0.1</code> (loopback) no
-dispositivo do próprio usuário — ele não fica exposto à rede, e nada aponta pra um servidor
-central. O único tráfego de saída vai pra OpenAI (com a chave do próprio usuário), pra embeddings e
-extração. Um perfil totalmente local com Ollama/GGUF (sem chave) está no roadmap.</p>
-<p>Suportado em Linux e macOS. No Windows nativo, rode dentro do WSL.</p>
-<h3 id="enhance">enhance<a class="headerlink" href="#enhance" title="Permanent link">&para;</a></h3>
-<p>O <a href="../../reference/enhance/">prompt enhancer global</a>: um hook de <code>UserPromptSubmit</code> que faz o
-Haiku — na sua própria conta conectada — produzir uma interpretação estruturada de prompts
-genuinamente fracos ("conserta o login") e injetá-la ao lado do prompt cru, que sempre vence em caso
-de conflito. Ciente do charter quando o projeto tem um brief do Leopold, fail-open em qualquer erro,
-e se aprimora sozinho via <code>/leopold-enhance learn</code>. Diferente das outras extensões, ele é instalado
-(plugado, mas <strong>desligado</strong>) pelo instalador principal; a ação <code>t) Toggle</code> do menu — ou
-<code>/leopold-enhance on|off</code> — é o interruptor. Precisa de python3 + jq; o reescritor usa o seu
-login existente do <code>claude</code>, sem chave extra.</p>
+<!-- leopold-home:fallback -->
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Resolves exactly like `leopold home`. POSIX sh, no dependencies.</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>leopold_home<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nv">_c</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_HOME</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.claude</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="nv">_x</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LEOPOLD_HOME</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$LEOPOLD_HOME</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>/*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$LEOPOLD_HOME</span><span class="s2">&quot;</span><span class="p">;;</span><span class="w"> </span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/</span><span class="nv">$LEOPOLD_HOME</span><span class="s2">&quot;</span><span class="p">;;</span><span class="w"> </span><span class="k">esac</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_c</span><span class="s2">/leopold&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_c</span><span class="s2">/leopold&quot;</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_x</span><span class="s2">/leopold&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_x</span><span class="s2">/leopold&quot;</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="k">elif</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>claude<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_c</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>codex<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_x</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_c</span><span class="s2">/leopold&quot;</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="k">else</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$_x</span><span class="s2">/leopold&quot;</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">  </span><span class="k">fi</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="o">}</span>
+</span></code></pre></div>
+<p>That block is not decorative documentation: <code>packages/driver/test/provider.test.ts</code>
+extracts it from this file, runs it under the same environments as <code>leopoldHome()</code>,
+and asserts both print the same path. If the two ever drift, <code>make test</code> goes red.</p>
+<p>When a skill only needs the home <em>after</em> Leopold is installed, the short form is
+enough — the directory it names is guaranteed to be there:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">LEO_HOME</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LEOPOLD_HOME</span><span class="k">:-$(</span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_HOME</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.claude</span><span class="si">}</span><span class="s2">/leopold&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_HOME</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.claude</span><span class="si">}</span><span class="s2">/leopold&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/leopold&quot;</span><span class="k">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span></code></pre></div>
+<p>One caveat on <code>LEOPOLD_HOME</code>: the driver normalizes it (<code>path.resolve</code>), so
+<code>/opt/leo/</code> and <code>/opt/../opt/leo</code> both come back as <code>/opt/leo</code>; the shell fallback
+only makes a relative value absolute. Set it to a plain absolute path and the two
+agree exactly.</p>
 
 
 
@@ -2026,7 +1920,7 @@ login existente do <code>claude</code>, sem chave extra.</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Voltar para o topo
+  Back to top
 </button>
         
       </main>
@@ -2035,33 +1929,33 @@ login existente do <code>claude</code>, sem chave extra.</p>
   
     
       
-      <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../first-run/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Sua primeira run">
+          <a href="../driver-config/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Driver Config">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Anterior
+                Previous
               </span>
               <div class="md-ellipsis">
-                Sua primeira run
+                Driver Config
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../concepts/harness/" class="md-footer__link md-footer__link--next" aria-label="Próximo: O que é um harness">
+          <a href="../../comparisons/ralph/" class="md-footer__link md-footer__link--next" aria-label="Next: Leopold vs Ralph">
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Próximo
+                Next
               </span>
               <div class="md-ellipsis">
-                O que é um harness
+                Leopold vs Ralph
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2113,10 +2007,10 @@ login existente do <code>claude</code>, sem chave extra.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

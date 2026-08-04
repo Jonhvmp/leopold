@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code. Faça o brief como para um colega; ele conduz o Claude Code na sua cadeira.">
+        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.">
       
       
         <meta name="author" content="Jonhvmp">
@@ -29,7 +29,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -711,6 +711,8 @@
       
         
       
+        
+      
     
     
     
@@ -774,6 +776,34 @@
     
   
     O que é um harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/harnesses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Claude Code e Codex
   
 
     
@@ -1348,6 +1378,8 @@
       
         
       
+        
+      
     
     
     
@@ -1520,6 +1552,34 @@
     
   
     Config do driver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/leopold-home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Home
   
 
     
@@ -1808,10 +1868,13 @@ dos workflows do gstack.</p>
     class Ship gated;</code></pre>
 <h2 id="instalar-o-gstack-opcional">Instalar o gstack (opcional)<a class="headerlink" href="#instalar-o-gstack-opcional" title="Permanent link">&para;</a></h2>
 <p>O Leopold não embute o gstack; é um <a href="https://github.com/garrytan/gstack">projeto MIT do Garry Tan</a> à parte, com instalador e self-update próprios. Instale-o standalone para que o Leopold possa conduzi-lo:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>gstack-install
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or the official one-liner (needs Bun v1.0+):</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>git<span class="w"> </span>clone<span class="w"> </span>--single-branch<span class="w"> </span>--depth<span class="w"> </span><span class="m">1</span><span class="w"> </span>https://github.com/garrytan/gstack.git<span class="w"> </span>~/.claude/skills/gstack<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>~/.claude/skills/gstack<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./setup
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>gstack-install<span class="w">      </span><span class="c1"># instala em todos os harnesses desta máquina</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>gstack-doctor<span class="w">       </span><span class="c1"># relatório por harness: checkout, Bun, skills em cada skills root</span>
 </span></code></pre></div>
+<p>O <code>make gstack-install</code> roda o instalador do próprio gstack uma vez por harness
+que o Leopold resolve aqui (<code>--host claude</code>, <code>--host codex</code>), então uma máquina só
+com Codex recebe as skills em <code>~/.codex/skills</code> e nada em <code>~/.claude</code>. Precisa de
+Bun v1.0+.</p>
 <p>O <code>install.sh</code> se oferece para configurá-lo se estiver faltando (ou rode <code>./install.sh --with-gstack</code>). Ele brilha no planejamento: <code>/office-hours</code>, <code>/spec</code>, <code>/autoplan</code>, <code>/plan-ceo-review</code>, <code>/plan-eng-review</code>, <code>/plan-design-review</code>.</p>
 <h2 id="como-o-leopold-usa">Como o Leopold usa<a class="headerlink" href="#como-o-leopold-usa" title="Permanent link">&para;</a></h2>
 <p>Durante um turno, depois de escolher um item do plano, o Leopold casa a <em>situação</em>
@@ -2042,7 +2105,7 @@ com um resumo de "pronto para ship" e devolve a cadeira. Ship é decisão sua.</
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

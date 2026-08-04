@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code. Faça o brief como para um colega; ele conduz o Claude Code na sua cadeira.">
+        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.">
       
       
         <meta name="author" content="Jonhvmp">
@@ -29,7 +29,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -37,7 +37,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -709,6 +709,8 @@
       
         
       
+        
+      
     
     
     
@@ -769,6 +771,34 @@
     
   
     O que é um harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/harnesses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Claude Code e Codex
   
 
     
@@ -1243,6 +1273,8 @@
       
         
       
+        
+      
     
     
     
@@ -1419,13 +1451,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#wiring-no-settings" class="md-nav__link">
+  <a href="#wiring-por-harness" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Wiring no settings
+        Wiring, por harness
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Wiring, por harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-claudesettingsjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code — ~/.claude/settings.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#codex-cli-codexconfigtoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Codex CLI — ~/.codex/config.toml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1520,6 +1580,34 @@
     
   
     Config do driver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../leopold-home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Home
   
 
     
@@ -1745,13 +1833,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#wiring-no-settings" class="md-nav__link">
+  <a href="#wiring-por-harness" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Wiring no settings
+        Wiring, por harness
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Wiring, por harness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code-claudesettingsjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code — ~/.claude/settings.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#codex-cli-codexconfigtoml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Codex CLI — ~/.codex/config.toml
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1787,10 +1903,18 @@
 
 
 <h1 id="hooks">Hooks<a class="headerlink" href="#hooks" title="Permanent link">&para;</a></h1>
-<p>Três hooks são conectados ao <code>settings.json</code> pelo <code>install.sh</code>. Os dois hooks do engine
-vivem em <code>~/.claude/leopold/hooks/</code> e são <strong>no-ops a menos que uma run esteja ativa</strong>; o
-prompt enhancer vive em <code>~/.claude/enhance/</code> e é um <strong>no-op até você ligá-lo</strong> — então
-os três podem ficar instalados em toda sessão sem risco.</p>
+<p>Três hooks são conectados pelo <code>install.sh</code> em cada harness que ele encontra —
+<code>settings.json</code> no Claude Code, <code>config.toml</code> no Codex CLI. Os dois hooks do engine
+vivem em <code>&lt;asset home&gt;/hooks/</code> e são <strong>no-ops a menos que uma run esteja ativa</strong>; o
+prompt enhancer vive em <code>&lt;asset home&gt;/enhance/</code> e é um <strong>no-op até você ligá-lo</strong> —
+então os três podem ficar instalados em toda sessão sem risco. O asset home é
+<code>~/.claude/leopold</code> sempre que o Claude Code está presente e <code>~/.codex/leopold</code> numa
+máquina só com Codex (<a href="../leopold-home/">Asset Home</a>); os caminhos abaixo usam o
+layout do Claude Code.</p>
+<p>Os dois hooks do engine são <strong>os mesmos scripts, sem modificação, nos dois
+harnesses</strong> — o Codex reimplementou o contrato de hooks do Claude Code quase campo a
+campo, então não existe camada de portabilidade pra dar errado. Veja
+<a href="../../concepts/harnesses/">Claude Code e Codex</a>.</p>
 <h2 id="stop-continuitysh-o-hook-de-stop"><code>stop-continuity.sh</code> — o hook de Stop<a class="headerlink" href="#stop-continuitysh-o-hook-de-stop" title="Permanent link">&para;</a></h2>
 <p>Roda quando o agente termina um turno. Contrato: lê JSON no stdin; imprime
 <code>{"decision":"block","reason":"..."}</code> para continuar, ou sai com 0 para permitir a parada.</p>
@@ -1809,14 +1933,20 @@ parar é sempre seguro.</p>
 <h2 id="guard-irreversiblesh-o-hook-de-pretooluse"><code>guard-irreversible.sh</code> — o hook de PreToolUse<a class="headerlink" href="#guard-irreversiblesh-o-hook-de-pretooluse" title="Permanent link">&para;</a></h2>
 <p>Roda antes de toda chamada de ferramenta. Contrato: lê JSON no stdin; imprime um
 <code>hookSpecificOutput</code> com <code>permissionDecision: "deny"</code> para bloquear, ou sai com 0 para
-permitir. Ele só adiciona negações; nunca afrouxa as permissões do próprio Claude Code.</p>
+permitir. Ele só adiciona negações; nunca afrouxa as permissões do próprio harness.</p>
+<p>O Codex entrega esse evento com as mesmas chaves — <code>tool_name</code> (a ferramenta de shell
+dele é reportada como <code>Bash</code>), <code>tool_input.command</code>, <code>cwd</code>, <code>transcript_path</code> — e
+respeita a mesma resposta de negação.</p>
 <p>Veja a tabela de política em <a href="../../guardrails/">Guardrails</a>.</p>
 <h2 id="enhancepy-o-prompt-enhancer-de-userpromptsubmit"><code>enhance.py</code> — o prompt enhancer de UserPromptSubmit<a class="headerlink" href="#enhancepy-o-prompt-enhancer-de-userpromptsubmit" title="Permanent link">&para;</a></h2>
 <p>Roda a cada prompt que você envia (o evento não aceita matcher, então todo o gating é
 interno). Contrato: lê o JSON do hook no stdin; texto puro no stdout é injetado como
 contexto ao lado do prompt bruto (texto puro, não JSON, para concatenar com segurança
 com outros hooks de <code>UserPromptSubmit</code>); <strong>sempre sai com 0</strong> — o prompt em si nunca é
-modificado nem bloqueado.</p>
+modificado nem bloqueado. O Codex valida o stdout do hook como JSON estrito, então
+nesse harness o mesmo texto vai embrulhado em <code>hookSpecificOutput.additionalContext</code> —
+a forma em texto puro loga <code>hook: UserPromptSubmit Failed</code> lá e nunca chega no modelo.
+O engine detecta qual harness mandou o payload e responde no dialeto dele.</p>
 <pre class="mermaid"><code>flowchart TD
     In["UserPromptSubmit (JSON no stdin)"] --&gt; Rec{env de recursão / kill switch?}
     Rec -- sim --&gt; Silent([exit 0 · silencioso])
@@ -1832,7 +1962,8 @@ modificado nem bloqueado.</p>
 <p>Fail-open: sem <code>claude</code> no PATH, timeout, erro de API, saída malformada — nada é
 emitido e o prompt segue intocado. Detalhe completo (tabela do gate, estado,
 ledger, o loop de learn): <a href="../enhance/">Prompt Enhancer</a>.</p>
-<h2 id="wiring-no-settings">Wiring no settings<a class="headerlink" href="#wiring-no-settings" title="Permanent link">&para;</a></h2>
+<h2 id="wiring-por-harness">Wiring, por harness<a class="headerlink" href="#wiring-por-harness" title="Permanent link">&para;</a></h2>
+<h3 id="claude-code-claudesettingsjson">Claude Code — <code>~/.claude/settings.json</code><a class="headerlink" href="#claude-code-claudesettingsjson" title="Permanent link">&para;</a></h3>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">&quot;Stop&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -1848,6 +1979,43 @@ ledger, o loop de learn): <a href="../enhance/">Prompt Enhancer</a>.</p>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">}</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
 </span></code></pre></div>
+<h3 id="codex-cli-codexconfigtoml">Codex CLI — <code>~/.codex/config.toml</code><a class="headerlink" href="#codex-cli-codexconfigtoml" title="Permanent link">&para;</a></h3>
+<p>Os mesmos hooks, em TOML, dentro de um bloco gerenciado delimitado por marcadores que
+uma reinstalação troca e mais nada. Os dois hooks do engine:</p>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># &gt;&gt;&gt; leopold (managed) &gt;&gt;&gt;</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">[[hooks.PreToolUse]]</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/voce/.claude/leopold/hooks/guard-irreversible.sh&quot;</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="k">[[hooks.Stop]]</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="k">[[hooks.Stop.hooks]]</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/voce/.claude/leopold/hooks/stop-continuity.sh&quot;</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># &lt;&lt;&lt; leopold (managed) &lt;&lt;&lt;</span>
+</span></code></pre></div>
+<p>O prompt enhancer e cada extension ganham o próprio bloco com tag
+(<code># &gt;&gt;&gt; leopold:enhance (managed) &gt;&gt;&gt;</code> e companhia), então cada um é instalado,
+atualizado e removido sem encostar nos outros.</p>
+<p>A config é copiada antes do merge e o resultado é validado: uma escrita que não
+parsearia volta atrás e o bloco é impresso pra você colar. Os dois formatos saem de um
+único escritor compartilhado, o <code>extensions/lib/harness.sh</code>, então os dois harnesses
+não têm como divergir.</p>
+<div class="admonition warning">
+<p class="admonition-title">Hooks do Codex ficam inertes até serem confiados</p>
+<p>O Codex não executa um hook declarado no <code>config.toml</code> enquanto você não aprovar
+uma vez (<code>hooks.state."&lt;id&gt;".trusted_hash</code>) — sem erro, ele simplesmente não roda.
+Aprove numa sessão interativa, ou instale o Leopold como plugin do Codex, que
+confia nos hooks vindos do plugin pela própria instalação. Workers headless
+iniciados por <code>leopold run --provider codex</code> passam
+<code>--dangerously-bypass-hook-trust</code> e armam o próprio trava-git. O <code>leopold doctor</code>
+reporta em que estado cada harness está.</p>
+</div>
 <h2 id="log-de-eventos">Log de eventos<a class="headerlink" href="#log-de-eventos" title="Permanent link">&para;</a></h2>
 <p>Os dois hooks do engine anexam eventos estruturados em <code>.leopold/events.jsonl</code>
 (<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>), que o <code>/leopold-status</code> lê. O enhancer, por sua
@@ -1968,7 +2136,7 @@ linha por injeção ou tentativa falha — que o <code>/leopold-enhance learn</c
       <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
