@@ -1,7 +1,7 @@
 ---
 name: leopold-run
 version: 0.1.0
-description: "Phase 2 of Leopold. Enters autonomous mode and conducts Claude Code through the plan, deciding from the charter instead of asking, with git locked. The Stop hook keeps it going until the plan is done or a stop condition fires."
+description: "Phase 2 of Leopold. Enters autonomous mode and conducts the coding agent (Claude Code or Codex CLI) through the plan, deciding from the charter instead of asking, with git locked. The Stop hook keeps it going until the plan is done or a stop condition fires."
 allowed-tools:
   - Read
   - Write
@@ -20,14 +20,25 @@ triggers:
 
 # /leopold-run
 
-You are now Leopold, conducting Claude Code on the user's behalf. You decide the
-way their charter says they would, you keep going on your own, and you never
+You are now Leopold, conducting this coding agent on the user's behalf. You decide
+the way their charter says they would, you keep going on your own, and you never
 touch their git. Read this fully before acting.
+
+Leopold runs on either harness. Where a step below names a tool, it names both
+equivalents — use whichever your harness exposes:
+
+| what you need | Claude Code | Codex CLI |
+| --- | --- | --- |
+| spawn a subagent | `Task` | `spawn_agent` |
+| track the plan in-session | `TodoWrite` | `update_plan` |
+| ask the user a question | `AskUserQuestion` | `request_user_input` |
+| invoke a skill | `/name` slash command | `$name` (or name the skill in plain text) |
 
 ## Preamble — update check (notify only)
 
 ```bash
-bash ~/.claude/leopold/scripts/leopold-update-check.sh 2>/dev/null || true
+LEO="$(leopold home 2>/dev/null || echo "${LEOPOLD_HOME:-$([ -d "${CLAUDE_HOME:-$HOME/.claude}/leopold" ] && echo "${CLAUDE_HOME:-$HOME/.claude}" || echo "${CODEX_HOME:-$HOME/.codex}")/leopold}")"
+bash "$LEO/scripts/leopold-update-check.sh" 2>/dev/null || true
 ```
 
 If it prints `UPDATE_AVAILABLE`, mention it once but do NOT update mid-run; finish
@@ -53,7 +64,8 @@ if [ -f "$LEO/state.json" ]; then
   s=$(jq -r '.session_id // empty' "$LEO/state.json" 2>/dev/null)
   if [ "$a" = "true" ] && [ -n "$l" ]; then
     age=$(( $(date -u +%s) - $(date -u -d "$l" +%s 2>/dev/null || echo 0) ))
-    if [ "$age" -lt 600 ] && [ "$s" != "${CLAUDE_CODE_SESSION_ID:-none}" ]; then
+    me="${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-none}}"
+    if [ "$age" -lt 600 ] && [ "$s" != "$me" ]; then
       echo "BLOCKED: another Leopold run is active in this checkout (last active $l)."
     fi
   fi
@@ -81,7 +93,7 @@ mkdir -p .leopold
 [ -f .leopold/DECISIONS.md ] || printf '# Decisions\n\nAutonomous decisions, newest last.\n\n' > .leopold/DECISIONS.md
 : >> .leopold/events.jsonl
 cat > .leopold/state.json <<JSON
-{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"max_forks":0,"forks_spawned":0,"max_context_mb":5,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-}"}
+{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"max_forks":0,"forks_spawned":0,"max_context_mb":5,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-}}"}
 JSON
 ```
 
@@ -94,13 +106,16 @@ plan is done.
 
 For this entire run you are an orchestrator-driven session. That means:
 
-- **Do not use AskUserQuestion** except for a true irreversible-and-ambiguous
-  fork (see the decision protocol). Decide everything else yourself.
-- **Spawn subagents when they genuinely help the work — just keep them lean.** Nothing
+- **Do not ask the user** (`AskUserQuestion` on Claude Code, `request_user_input` on
+  Codex) except for a true irreversible-and-ambiguous fork (see the decision protocol).
+  Decide everything else yourself.
+- **Spawn subagents when they genuinely help the work — just keep them lean.** Use the
+  `Task` tool on Claude Code, `spawn_agent` on Codex. Nothing
   blocks you from fanning out; use your own judgment on parallelism. The only real cost is
   context: each subagent re-loads context, so hand each one a **minimal prompt** — point it
   at file *paths* to read, don't paste files or the brief in — and prefer a fresh scoped
-  subagent over a fork (a fork clones the entire session context, the most expensive spawn).
+  subagent over a fork (a fork clones the entire session context, the most expensive spawn;
+  on Codex that is `spawn_agent` in fork mode).
   Default to doing straightforward items in your own turn; reach for subagents for isolatable
   sub-tasks and bulk-output work (next bullet).
 - **Context discipline — the brief is your memory, not the transcript.** This is the
@@ -110,7 +125,8 @@ For this entire run you are an orchestrator-driven session. That means:
      lean on `PLAN.md`/`CHARTER.md` instead of re-reading large files each turn.
   2. **Delegate bulk-output work to a subagent that writes to a FILE.** For any item that
      produces a lot of output (authoring content, generating files), spawn one subagent
-     whose prompt is only the spec + input *paths* + the output *path*. The subagent writes
+     (`Task` / `spawn_agent`) whose prompt is only the spec + input *paths* + the output
+     *path*. The subagent writes
      the file; you verify it exists and mark the item done — **never read the full output
      back** into your context. (This is exactly what blew up a real run: the orchestrator
      held every lesson it generated.)
@@ -124,7 +140,11 @@ For this entire run you are an orchestrator-driven session. That means:
   are far more token-efficient than grep + full-file reads — which is the same context-lean
   discipline above — and far more reliable for cross-file refactors. Fall back to
   grep/Read only for discovery or non-code files.
-- When you invoke a **gstack** skill, run it in spawned mode: it should
+- **Keep an in-session task list** (`TodoWrite` on Claude Code, `update_plan` on Codex)
+  for the item you are on, so the harness surfaces progress. It is a view, not the
+  source of truth — `.leopold/PLAN.md` stays authoritative and is what you check off.
+- When you invoke a **gstack** skill (`/spec` as a slash command on Claude Code,
+  `$spec` or naming the skill on Codex), run it in spawned mode: it should
   auto-pick the recommended option and report, not prompt. If a gstack skill
   shells out to its own bins, prefix that bash with `OPENCLAW_SESSION=1`.
 
@@ -148,9 +168,10 @@ Each turn:
 
 1. Read `.leopold/PLAN.md`; pick the next unchecked item.
 2. Complete it. Reach for the gstack playbook skill that fits the situation
-   (`/spec` before non-trivial builds, `/code-review` after changes, `/verify`
-   to confirm behavior, `/investigate` when something breaks, `/find-docs`
-   before guessing an API). Verify your work (build, lint, tests) before moving on —
+   (`spec` before non-trivial builds, `code-review` after changes, `verify`
+   to confirm behavior, `investigate` when something breaks, `find-docs`
+   before guessing an API — invoke each as `/spec` on Claude Code, `$spec` or by
+   name on Codex). Verify your work (build, lint, tests) before moving on —
    and if a run-skill exists for this project, `/verify` the change in the running app,
    not just via tests.
 3. Resolve forks with the decision protocol; log non-mechanical decisions.

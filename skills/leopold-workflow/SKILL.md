@@ -24,6 +24,13 @@ Phase 2, the workflow way. You compile the durable Leopold brief into a **dynami
 workflow** — a JavaScript harness Claude Code's runtime executes in the background —
 and run it. Same brief, same charter, same git lock; a different, stronger engine.
 
+> **Claude Code only.** Dynamic workflows and the `Workflow` tool are a Claude Code
+> runtime feature; Codex CLI has no equivalent, so this skill cannot run there. That is
+> a real harness difference, not a gap to paper over. On Codex, get the same compiled
+> plan from the driver: `leopold workflow --run` executes the brief through
+> `codex exec`, with the same per-item review and the same git lock. `/leopold-run`
+> (`$leopold-run` on Codex) also works on either harness.
+
 **Why compile the brief into a workflow.** `/leopold-run` conducts the plan inside one
 session's context window. That is fine for a short plan, but a long one accumulates
 context every turn and drifts into the three failure modes Anthropic names for
@@ -34,8 +41,8 @@ long single-context runs:
 - **Goal drift** — losing charter constraints across compactions.
 
 A workflow moves the plan into **code**: the loop, the branching, and the intermediate
-results live in the script, so each agent gets a clean, focused context and Claude's
-own context holds only the final report. Every plan item gets an **independent**
+results live in the script, so each agent gets a clean, focused context and the
+conducting agent's own context holds only the final report. Every plan item gets an **independent**
 reviewer that did not write the code it judges. The run is **resumable** and streams a
 live phase tree into `/workflows`. Git is locked for free: a workflow never commits —
 its agents stage work and you commit what you approve.
@@ -48,8 +55,14 @@ same `.leopold/` brief.
 ## Preflight — is this even the right tool?
 
 Confirm dynamic workflows are available: the `Workflow` tool must be present in this
-session (Claude Code v2.1.154+, enabled in `/config`). If it is not, tell the user to
-enable Dynamic workflows in `/config` (or run `/leopold-run` instead) and stop.
+session (Claude Code v2.1.154+, enabled in `/config`). If it is not, say which case you
+are in and stop:
+
+- **On Claude Code without the tool** → tell the user to enable Dynamic workflows in
+  `/config`, or to run `/leopold-run` instead.
+- **On Codex CLI** → the tool does not exist on this harness. Point them at
+  `leopold workflow --run` (driver-executed, same brief, same review, git still locked)
+  or `$leopold-run`. Do not attempt a hand-rolled substitute in one context.
 
 Confirm the brief exists: `.leopold/MISSION.md`, `.leopold/CHARTER.md`,
 `.leopold/GUARDRAILS.md`, `.leopold/PLAN.md`. If any is missing, stop and tell the user
@@ -102,7 +115,7 @@ they commit after.
 ## Step 4 — Compile and launch the workflow
 
 Copy the reference script `reference/leopold-run.workflow.js` from this skill's folder
-(installed at `~/.claude/skills/leopold-workflow/reference/leopold-run.workflow.js`) to
+(the directory holding this SKILL.md, wherever the harness loaded it from) to
 `.claude/workflows/leopold-run.js` in the project — creating `.claude/workflows/` if
 needed. Do **not** rewrite the script logic; it is the canonical, tested harness. You
 only supply data through `args`.

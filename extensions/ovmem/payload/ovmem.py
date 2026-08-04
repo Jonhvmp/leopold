@@ -1,13 +1,29 @@
 #!/usr/bin/env python3
 """
-ovmem - autonomous RAG memory for Claude Code, backed by OpenViking.
+ovmem - autonomous RAG memory, on every harness Leopold runs on, backed by OpenViking.
 
-Wires 4 native Claude Code hooks to the OpenViking REST API (127.0.0.1:1933):
+Wires 4 native hooks to the OpenViking REST API (127.0.0.1:1933). The same four
+events exist on Claude Code and on Codex CLI and the installer declares them in
+both places (settings.json / config.toml) through the shared harness helper:
 
   SessionStart     -> rehydrate: session context + relevant long-term memory (find)
   UserPromptSubmit -> recall: inject memory relevant to the prompt
   PreCompact       -> flush: send the transcript delta to the OV session and commit
   SessionEnd       -> flush: same on session end, then maybe run the weekly cleanup
+
+Two things genuinely differ between the harnesses, and both are handled here:
+
+  1. The transcript. Claude Code writes one JSON object per message
+     ({"type":"user"|"assistant","message":{...}}); Codex writes a rollout
+     (session_meta / event_msg / response_item / turn_context lines) and carries the
+     conversation as event_msg payloads of type user_message / agent_message.
+     parse_transcript_delta reads both — see _msgs_claude / _msgs_codex.
+  2. The injection envelope. Claude Code adds a hook's plain stdout to the context;
+     Codex validates hook stdout against a strict JSON schema, so plain text makes
+     the hook FAIL and nothing reaches the model. Verified on codex-cli 0.146.0:
+     the text form logged "hook: SessionStart Failed" and the model answered "I
+     don't know"; the {"hookSpecificOutput":{...,"additionalContext":...}} form
+     logged "Completed" and the model read the block. See emit_context.
 
 Golden rule: NEVER break the session. On any error -> exit 0 with no stdout.
 OpenViking does the reflection/distillation server-side on commit (the configured
@@ -18,11 +34,12 @@ Usage:
 
 Env controls:
   OVMEM_DISABLE=1        turn everything off (no-op)
-  OVMEM_DEBUG=1          log to ~/.claude/ovmem/ovmem.log
+  OVMEM_DEBUG=1          log to <ovmem dir>/ovmem.log
   OVMEM_RECALL_LIMIT=5   max memories injected on recall (default 5)
   OVMEM_RECALL_SCORE=0.28 minimum score to inject (default 0.28)
   OVMEM_CHAR_BUDGET=2200 char cap on the injected block (default 2200)
   OVMEM_TIMEOUT=4        timeout (s) for calls on the critical path (default 4)
+  LEOPOLD_OVMEM_DIR      data dir override (engine + state); see _resolve_ovmem_dir
 """
 import json
 import os
@@ -34,13 +51,49 @@ import urllib.parse
 import urllib.error
 
 HOME = os.path.expanduser("~")
-OVMEM_DIR = os.path.join(HOME, ".claude", "ovmem")
+
+
+def _resolve_ovmem_dir():
+    """ONE data dir for the machine, whichever harness fired the hook.
+
+    The memory is about the USER, not about the agent they happened to open: a
+    decision recorded in a Codex session has to come back in a Claude Code one, and
+    the per-session commit offsets under state/ must not be split in two or the
+    same transcript gets committed twice.
+
+    This mirrors leo_ovmem_dir() in extensions/lib/harness.sh EXACTLY. Keep the two
+    in step — the installer resolves the dir with the bash one and the hook it wires
+    resolves it again here at run time.
+    """
+    env = os.environ.get("LEOPOLD_OVMEM_DIR")
+    if env:
+        return env
+    leo = os.environ.get("LEOPOLD_HOME")
+    if leo:
+        return os.path.join(leo, "ovmem")
+    # Claude first at every step: an existing ~/.claude install is never migrated.
+    claude = os.environ.get("CLAUDE_HOME") or os.path.join(HOME, ".claude")
+    codex = os.environ.get("CODEX_HOME") or os.path.join(HOME, ".codex")
+    for base in (claude, codex):
+        if os.path.isdir(os.path.join(base, "ovmem")):
+            return os.path.join(base, "ovmem")
+    for base in (claude, codex):
+        if os.path.isdir(base):
+            return os.path.join(base, "ovmem")
+    return os.path.join(claude, "ovmem")
+
+
+OVMEM_DIR = _resolve_ovmem_dir()
 STATE_DIR = os.path.join(OVMEM_DIR, "state")
 LOG_PATH = os.path.join(OVMEM_DIR, "ovmem.log")
 CONF_PATH = os.path.join(HOME, ".openviking", "ov.conf")
 
 ACCOUNT = os.environ.get("OVMEM_ACCOUNT", "default")
 USER = os.environ.get("OVMEM_USER", os.environ.get("USER", "default"))
+# The OpenViking agent header. Deliberately ONE value on every harness: it namespaces
+# the memory store, it is not a label for whoever is asking. Varying it per harness
+# would split one user's memory in two and orphan everything an existing install has
+# already written under "claude-code". Override with OVMEM_AGENT.
 AGENT = os.environ.get("OVMEM_AGENT", "claude-code")
 
 
@@ -143,8 +196,63 @@ def extract_text(content):
     return ""
 
 
+def _msg_claude(obj):
+    """One Claude Code transcript line -> {role, content}, or None.
+
+    Shape: {"type":"user"|"assistant","message":{"role":...,"content":...}}.
+    """
+    if obj.get("type") not in ("user", "assistant"):
+        return None
+    message = obj.get("message") or {}
+    role = message.get("role") or obj.get("type")
+    if role not in ("user", "assistant"):
+        return None
+    text = extract_text(message.get("content"))
+    return {"role": role, "content": text[:8000]} if text else None
+
+
+def _msg_codex(obj):
+    """One Codex CLI rollout line -> {role, content}, or None.
+
+    Verified against codex-cli 0.146.0 rollouts. A rollout mixes four line types
+    (session_meta / turn_context / event_msg / response_item); the conversation
+    itself arrives as event_msg payloads:
+
+      {"type":"event_msg","payload":{"type":"user_message","message":"..."}}
+      {"type":"event_msg","payload":{"type":"agent_message","message":"..."}}
+
+    We read THOSE and not the response_item messages on purpose. response_item
+    replays the whole model input every turn — the developer preamble, the sandbox
+    instructions and every earlier user turn again — so committing it would feed
+    OpenViking the same text N times and distil the harness's own boilerplate into
+    the user's long-term memory.
+    """
+    if obj.get("type") != "event_msg":
+        return None
+    payload = obj.get("payload") or {}
+    ptype = payload.get("type")
+    if ptype == "user_message":
+        role = "user"
+    elif ptype == "agent_message":
+        role = "assistant"
+    else:
+        return None
+    # `message` is a plain string here, but extract_text also accepts the block-list
+    # form so a future rollout revision degrades to "no text", never to a crash.
+    text = extract_text(payload.get("message"))
+    return {"role": role, "content": text[:8000]} if text else None
+
+
 def parse_transcript_delta(transcript_path, start_line):
-    """Read the transcript jsonl from start_line on. Returns (messages, total_lines)."""
+    """Read the transcript jsonl from start_line on. Returns (messages, total_lines).
+
+    Harness-agnostic: each line is offered to both readers and whichever one
+    recognizes it wins. That is deliberately cheaper and safer than sniffing the
+    harness up front — the two shapes are disjoint (Claude keys on a top-level
+    "type" of user/assistant, Codex on "event_msg"), so a line can never be read
+    twice, and a transcript this build has never seen simply yields nothing
+    instead of raising inside a hook.
+    """
     msgs = []
     if not transcript_path or not os.path.exists(transcript_path):
         return msgs, start_line
@@ -165,16 +273,11 @@ def parse_transcript_delta(transcript_path, start_line):
             obj = json.loads(raw)
         except Exception:
             continue
-        if obj.get("type") not in ("user", "assistant"):
+        if not isinstance(obj, dict):
             continue
-        message = obj.get("message") or {}
-        role = message.get("role") or obj.get("type")
-        if role not in ("user", "assistant"):
-            continue
-        text = extract_text(message.get("content"))
-        if not text:
-            continue
-        msgs.append({"role": role, "content": text[:8000]})
+        m = _msg_claude(obj) or _msg_codex(obj)
+        if m:
+            msgs.append(m)
     return msgs, total
 
 
@@ -224,17 +327,62 @@ def format_recall(hits, header):
     return block[:budget], picked_uris
 
 
-def emit_context(text):
+def harness_of(data):
+    """Which agent fired this hook: 'codex' or 'claude'.
+
+    The payload keys are nearly identical on both (session_id / transcript_path /
+    cwd / hook_event_name / source), so the transcript itself is the tell:
+
+      Codex CLI    <CODEX_HOME>/sessions/YYYY/MM/DD/rollout-*.jsonl, whose first
+                   line is a `session_meta` record
+      Claude Code  ~/.claude/projects/<slug>/<uuid>.jsonl
+
+    Both signals are checked because each can be absent on its own: turn_id only
+    rides UserPromptSubmit, and the rollout file does not exist yet when the very
+    first SessionStart fires. Verified against codex-cli 0.146.0 hook payloads.
+    """
+    if data.get("turn_id"):
+        return "codex"
+    tp = data.get("transcript_path") or ""
+    if os.path.basename(tp).startswith("rollout-"):
+        return "codex"
+    try:
+        with open(tp) as f:
+            if '"session_meta"' in f.readline():
+                return "codex"
+    except Exception:
+        pass
+    return "claude"
+
+
+# Which hook event name each harness expects back in a hookSpecificOutput envelope.
+_HOOK_EVENT_NAME = {"session-start": "SessionStart", "user-prompt": "UserPromptSubmit"}
+
+
+def emit_context(text, harness="claude", event="user-prompt"):
     """Inject text into the model's context (SessionStart / UserPromptSubmit).
 
-    Plain text on stdout is added to the context for those two events. We use
-    plain text (not a JSON hookSpecificOutput) because another hook may run on
-    the same event (e.g. skill-activator) and the stdouts get concatenated -
-    plain text survives concatenation; JSON would break.
+    Claude Code adds a hook's plain stdout to the context for those two events, and
+    plain text is what Leopold has always emitted there: another hook may run on the
+    same event (e.g. skill-activator) and the stdouts get concatenated — text
+    survives concatenation, JSON would not. That path is unchanged.
+
+    Codex CLI validates hook stdout against a strict JSON schema instead. Verified
+    on codex-cli 0.146.0 with a real session: the plain-text form logged
+    "hook: SessionStart Failed" and the model answered "I don't know", while the
+    envelope below logged "Completed" and the model read the injected block back.
+    Same content, two envelopes — emitting text here would be a silent no-op.
     """
     if not text:
         return
-    sys.stdout.write("\n[ovmem - long-term memory (OpenViking)]\n" + text + "\n")
+    block = "\n[ovmem - long-term memory (OpenViking)]\n" + text + "\n"
+    if harness == "codex":
+        json.dump({"hookSpecificOutput": {
+            "hookEventName": _HOOK_EVENT_NAME.get(event, "UserPromptSubmit"),
+            "additionalContext": block}}, sys.stdout)
+        sys.stdout.write("\n")
+    else:
+        sys.stdout.write(block)
 
 
 # ---------- handlers ----------
@@ -348,7 +496,8 @@ def handle_session_start(data):
 
     if parts:
         emit_context("\n\n".join(parts) +
-                     "\n\n(Treat these memories as ground truth for context. Do not reopen decisions already settled.)")
+                     "\n\n(Treat these memories as ground truth for context. Do not reopen decisions already settled.)",
+                     harness_of(data), "session-start")
     record_access(used)
     log("session-start source=%s parts=%d" % (source, len(parts)))
 
@@ -361,9 +510,37 @@ def handle_user_prompt(data):
               body={"query": prompt, "target_uri": ["viking://user/", "viking://session/"], "limit": 6}, timeout=4)
     recall, used = format_recall(collect_hits(res), "Relevant memory for this request (OpenViking):")
     if recall:
-        emit_context(recall)
+        emit_context(recall, harness_of(data), "user-prompt")
         record_access(used)
     log("user-prompt recall=%s" % bool(recall))
+
+
+def detach_flush(data, why):
+    """Run the flush in a detached child and return immediately. Returns True when
+    the child was launched.
+
+    Codex CLI hard-caps a SessionEnd hook at 3 seconds — verified on codex-cli
+    0.146.0, which prints `clamping SessionEnd hook timeout to 3s` for anything
+    higher. Batching a long transcript plus the commit does not reliably fit in
+    three seconds, and a killed hook means the whole session is never distilled
+    into memory: the one thing ovmem exists to do. So on that one event we hand the
+    work to a child that outlives the kill, exactly like the weekly cleanup already
+    does. Claude Code's 25s SessionEnd is honored in-process, unchanged.
+    """
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+        path = os.path.join(STATE_DIR, "flush-%d.json" % os.getpid())
+        with open(path, "w") as f:
+            json.dump(data, f)
+        subprocess.Popen([sys.executable, os.path.abspath(__file__),
+                          "--event", "flush-detached", "--payload", path, "--why", why],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         stdin=subprocess.DEVNULL, start_new_session=True)
+        log("%s: handed the flush to a detached child (%s)" % (why, path))
+        return True
+    except Exception as e:
+        log("detach_flush failed: %s" % e)
+        return False
 
 
 def flush_and_commit(data, why):
@@ -389,14 +566,40 @@ def flush_and_commit(data, why):
     log("%s: committed %d msgs (total=%d)" % (why, len(msgs), total))
 
 
+def arg(name):
+    for i, a in enumerate(sys.argv):
+        if a == name and i + 1 < len(sys.argv):
+            return sys.argv[i + 1]
+    return None
+
+
 def main():
     global EVENT
-    EVENT = None
-    for i, a in enumerate(sys.argv):
-        if a == "--event" and i + 1 < len(sys.argv):
-            EVENT = sys.argv[i + 1]
+    EVENT = arg("--event")
     if os.environ.get("OVMEM_DISABLE") == "1" or not EVENT:
         return
+
+    # The detached SessionEnd worker: payload on disk, not on stdin, because its
+    # parent is already gone by the time it runs.
+    if EVENT == "flush-detached":
+        path = arg("--payload")
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except Exception as e:
+            log("flush-detached: unreadable payload %s: %s" % (path, e))
+            return
+        try:
+            flush_and_commit(data, arg("--why") or "session-end")
+        except Exception as e:
+            log("flush-detached error: %s" % e)
+        finally:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+        return
+
     try:
         raw = sys.stdin.read()
         data = json.loads(raw) if raw.strip() else {}
@@ -411,7 +614,9 @@ def main():
         elif EVENT == "pre-compact":
             flush_and_commit(data, "pre-compact")
         elif EVENT == "session-end":
-            flush_and_commit(data, "session-end")
+            # Codex kills this hook at 3s; hand it off rather than get cut in half.
+            if harness_of(data) != "codex" or not detach_flush(data, "session-end"):
+                flush_and_commit(data, "session-end")
             maybe_run_cleanup()
     except Exception as e:
         log("handler %s error: %s" % (EVENT, e))

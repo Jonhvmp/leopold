@@ -1,9 +1,14 @@
-# ovmem - autonomous RAG memory for Claude Code
+# ovmem - autonomous RAG memory, on every harness Leopold runs on
 
-Wires **OpenViking** (hierarchical context DB at `127.0.0.1:1933`) to Claude Code via
+Wires **OpenViking** (hierarchical context DB at `127.0.0.1:1933`) to your agent via
 **4 native hooks**, so any session stays optimized without destructive `/compact` or
 `/clear`. All reflection/distillation happens **server-side** (OpenViking calls the LLM),
 so the hooks never spend an LLM call of their own.
+
+The same four events exist on **Claude Code** and on **Codex CLI**, and the installer
+declares them in both places (`~/.claude/settings.json` / `~/.codex/config.toml`)
+through Leopold's shared harness helper. The memory itself is ONE store for the
+machine: what you decide in a Codex session comes back in a Claude Code one.
 
 ## Flow
 
@@ -18,9 +23,23 @@ so the hooks never spend an LLM call of their own.
 (preferences / entities / events / agent) asynchronously, using the VLM configured
 in OpenViking (`gpt-4o-mini`).
 
-Read-hook output is **plain text** (not JSON) so it concatenates cleanly with other hooks
-on the same event (e.g. `skill-activator.sh`). The hooks **never** exit non-zero - they
-fail silently (fail-open) and never block the session.
+Read-hook output is shaped per harness. On Claude Code it is **plain text**, so it
+concatenates cleanly with other hooks on the same event (e.g. `skill-activator.sh`). On
+Codex CLI hook stdout is validated against a strict JSON schema, so the same block is
+wrapped in `{"hookSpecificOutput":{"hookEventName":...,"additionalContext":...}}` —
+verified on codex-cli 0.146.0, where the plain-text form logs `hook: SessionStart Failed`
+and never reaches the model. The hooks **never** exit non-zero - they fail silently
+(fail-open) and never block the session.
+
+Two more harness facts, both measured rather than assumed:
+
+- Codex writes a **rollout** transcript (`session_meta` / `event_msg` / `response_item`
+  lines) instead of Claude's one-object-per-message JSONL. The flush reads the
+  conversation from `event_msg` payloads of type `user_message` / `agent_message`.
+- Codex **hard-caps a SessionEnd hook at 3 seconds** (`clamping SessionEnd hook timeout
+  to 3s`). The hook is declared as 3 there and hands the flush to a detached child, so
+  the session still gets distilled. Claude Code's 25s SessionEnd runs in-process,
+  unchanged.
 
 ## Files
 
@@ -30,13 +49,20 @@ fail silently (fail-open) and never block the session.
 - `state/access.json` - local access signal (frequency + recency) feeding the cleanup.
 - `ovmem.log` - debug log (only with `OVMEM_DEBUG=1`).
 
-Registered in `~/.claude/settings.json` under `hooks`.
+- `state/flush-<pid>.json` - the payload handed to the detached Codex SessionEnd flush (deleted by the child).
+
+Registered under `hooks` in `~/.claude/settings.json` (Claude Code) and/or
+`~/.codex/config.toml` (Codex CLI), one entry per event per harness.
+
+The engine lives in ONE directory for the machine: `~/.claude/ovmem` whenever
+`~/.claude` exists (existing installs are never migrated), otherwise `~/.codex/ovmem`.
+`LEOPOLD_HOME` and `LEOPOLD_OVMEM_DIR` override it.
 
 ## Controls (env vars)
 
 ```
 OVMEM_DISABLE=1        turn everything off (immediate no-op)
-OVMEM_DEBUG=1          log to ~/.claude/ovmem/ovmem.log
+OVMEM_DEBUG=1          log to <ovmem dir>/ovmem.log
 OVMEM_RECALL_LIMIT=5   max memories injected (default 5)
 OVMEM_RECALL_SCORE=0.28 minimum score to inject (default 0.28)
 OVMEM_CHAR_BUDGET=2200 char cap on the injected block (default 2200)
@@ -76,8 +102,9 @@ archive L2 leaves with hotness < threshold AND age >= min_age  ->  {parent}/_arc
 - Protected (never archived): `identity.md`, `soul.md` (agent core identity).
 
 ```bash
-python3 ~/.claude/ovmem/ovmem-cleanup.py            # dry-run: list cold candidates
-python3 ~/.claude/ovmem/ovmem-cleanup.py --apply    # archive them
+OVMEM="$(ls -d ~/.claude/ovmem ~/.codex/ovmem 2>/dev/null | head -1)"
+python3 "$OVMEM"/ovmem-cleanup.py            # dry-run: list cold candidates
+python3 "$OVMEM"/ovmem-cleanup.py --apply    # archive them
 ```
 
 Tunables: `OVMEM_HOTNESS_THRESHOLD=0.1` `OVMEM_HALF_LIFE_DAYS=7` `OVMEM_MIN_AGE_DAYS=7`
@@ -86,12 +113,14 @@ Tunables: `OVMEM_HOTNESS_THRESHOLD=0.1` `OVMEM_HALF_LIFE_DAYS=7` `OVMEM_MIN_AGE_
 ## Verify
 
 ```bash
+OVMEM="$(ls -d ~/.claude/ovmem ~/.codex/ovmem 2>/dev/null | head -1)"
+
 # server alive?
 curl -s http://127.0.0.1:1933/health
 
 # manual recall
 echo '{"prompt":"what is my preferred stack?","cwd":"'"$PWD"'"}' \
-  | python3 ~/.claude/ovmem/ovmem.py --event user-prompt
+  | python3 "$OVMEM"/ovmem.py --event user-prompt
 
 # inspect long-term memory
 curl -s -H "x-api-key: ov-local-dev-key" -H "X-OpenViking-User: $USER" \
@@ -117,5 +146,5 @@ curl -s -H "x-api-key: ov-local-dev-key" -H "X-OpenViking-User: $USER" \
 
 - The **SessionStart** hook calls `~/.local/bin/openviking-start` (idempotent) if the
   server is down - auto-bootstrap.
-- For full uptime independent of Claude Code, add `~/.local/bin/openviking-start` to
+- For full uptime independent of the agent, add `~/.local/bin/openviking-start` to
   `~/.bashrc`.

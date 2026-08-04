@@ -4,6 +4,187 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-08-03
+
+### Added
+- **Leopold runs on Codex CLI, not just Claude Code.** The whole point of the brief was
+  always that it is harness-neutral markdown, and it turns out the hooks are too: Codex
+  reimplemented Claude Code's hook contract nearly field for field. `PreToolUse` arrives
+  with the same keys (its shell tool is reported as `Bash`, with `tool_input.command`,
+  `cwd`, `transcript_path`) and honors the same
+  `{"hookSpecificOutput":{"permissionDecision":"deny",…}}` reply; `Stop` arrives with
+  `cwd`, `transcript_path` and `stop_hook_active` and honors
+  `{"decision":"block","reason":…}`. So **both Leopold hooks — the git lock and the
+  autonomous continuity engine — run on Codex as the same unmodified scripts**. Verified
+  end to end against Codex CLI 0.146.0: the guard blocked a `git commit` (no commit was
+  created, `guard_block` logged), and a two-item plan ran to `plan_complete` driven by
+  `stop-continuity.sh`, with iteration, progress signature and the context budget all
+  tracked off Codex's own transcript.
+- **`install.sh --harness auto|claude|codex|all`.** The installer detects what you have and
+  wires each one: skills into that harness's skills dir, hooks into `settings.json` (JSON)
+  or `config.toml` (TOML). The Codex block is marker-delimited so a re-install replaces it
+  and nothing else, the config is backed up first, and the merged file is validated — a
+  result that would not parse is rolled back and printed for you to paste instead.
+  Harness-neutral assets live in one shared home (`~/.claude/leopold` when Claude Code is
+  present, so existing installs need no migration; `LEOPOLD_HOME` overrides).
+- **`leopold harness`** — what each harness on this machine can do, and which one a run
+  would be conducted on. `leopold doctor` now checks every harness present, including
+  whether the Codex hooks have been trusted.
+- **`leopold run --provider claude|codex`** (also `LEOPOLD_PROVIDER`). The driver's single
+  model seam (`sdk.ts`) now selects a backend: the Agent SDK, or `codex exec --json` with
+  `codex exec resume` for multi-turn items. Same message contract, so no call site changed.
+  Headless Codex workers arm their own git lock, because Codex keeps a config-declared hook
+  inert until it has been trusted once and a headless run has nobody to approve it.
+- **`.codex-plugin/plugin.json`** — Leopold installs as a Codex plugin too, which arms both
+  hooks without the separate trust step.
+- **The serena extension installs on every harness you have.** `extensions/serena/manage.sh`
+  now registers the MCP server and wires Serena's four hooks once per harness: `claude mcp
+  add --scope user` + `~/.claude/settings.json` for Claude Code, `codex mcp add` +
+  `~/.codex/config.toml` for Codex CLI, with `--context=codex` (a built-in Serena context)
+  and `serena-hooks --client=codex`. `install`, `status`, `remove` and `doctor` all report
+  **per harness** — a two-harness box never sees one harness's state passed off as both, and
+  doctor names Codex's hook-trust gate instead of showing a green that isn't live yet. Both
+  config formats are written by the one shared helper (`extensions/lib/harness.sh`), which
+  gains the matching `leo_unwire_hooks_json` / `leo_unwire_hooks_toml` and the `leo_mcp_*`
+  wrappers so no extension hand-rolls a second copy. `install.sh` now exports its resolved
+  `--harness` choice, so `--harness codex` on a machine that merely *has* a `~/.claude` no
+  longer wires an extension into Claude Code. Covered by `make serena-test` (hermetic: temp
+  `HOME`/`CLAUDE_HOME`/`CODEX_HOME`, stubbed CLIs, no network, no package install).
+
+- **The ovmem extension runs on every harness you have.** Its four hooks
+  (`SessionStart`, `UserPromptSubmit`, `PreCompact`, `SessionEnd`) are declared once per
+  harness through the same shared writer as everything else — `~/.claude/settings.json` in
+  JSON, `~/.codex/config.toml` in TOML — and the engine, its per-session commit offsets and
+  the access log live in ONE directory for the machine, so a decision recorded in a Codex
+  session comes back in a Claude Code one. Three Codex specifics, each measured against
+  codex-cli 0.146.0 rather than assumed, are handled instead of papered over: its hook
+  stdout is validated as strict JSON, so the recall block is wrapped in
+  `hookSpecificOutput.additionalContext` there (the plain-text form Claude Code needs logs
+  `hook: SessionStart Failed` and never reaches the model); its transcript is a **rollout**
+  (`session_meta` / `event_msg` / `response_item`), so the flush reads the conversation from
+  `event_msg` payloads of type `user_message` / `agent_message` and skips the replayed
+  developer preamble; and it **hard-caps a `SessionEnd` hook at 3 seconds**, so that hook is
+  declared as 3 and hands the flush to a detached child, which is the difference between a
+  session being distilled into memory and being cut in half. Claude Code's path — plain-text
+  injection, in-process 25s flush, `~/.claude/ovmem` — is byte-for-byte unchanged. `status`,
+  `doctor` and `remove` all report and act **per harness**, and `leopold doctor` gained an
+  ovmem line that names any harness still missing its wiring. Covered by `make ovmem-test`
+  (hermetic: temp homes, a stdlib stub for the OpenViking API, no network, no server).
+
+- **The gstack extension installs into every harness you have.**
+  `extensions/gstack/manage.sh` used to clone into `~/.claude/skills/gstack` and look
+  nowhere else, so a Codex-only machine got a Claude directory it would never read. It now
+  drives gstack's own installer once per harness Leopold resolves (`./setup --host claude`,
+  `./setup --host codex`) and `detect`, `status`, `remove` and `doctor` all report **per
+  harness**, counting the skills actually visible in each skills root — never one harness's
+  state passed off as the machine's. On a Codex-only box the checkout goes to
+  `~/.gstack/repos/gstack` (gstack's own out-of-skills home — it refuses a checkout inside
+  the Codex skills dir, to avoid duplicate skill discovery) and the skills land under
+  `~/.codex/skills`, with nothing under `~/.claude`. gstack builds both skills roots from
+  `$HOME`, so when `CLAUDE_HOME`/`CODEX_HOME` are overridden the extension mirrors what
+  setup produced into the resolved root and says so, instead of silently installing where
+  nobody is looking. The skills-root path itself comes from one shared helper
+  (`leo_skills_dir` in `extensions/lib/harness.sh`). `install.sh --with-gstack` and `make
+  gstack-install` now go through the extension rather than hand-rolling a second clone, and
+  `leopold doctor` names any harness still missing it. Covered by `make gstack-test`
+  (hermetic: temp `HOME`/`CLAUDE_HOME`/`CODEX_HOME`, a stubbed `git`, no network, no Bun),
+  including three installs leaving exactly one checkout and one set of skills.
+
+- **`leopold home`, and no skill hardcodes a harness path any more.** The
+  harness-neutral half of the install (hooks, templates, docs, scripts, extensions)
+  lives in an **asset home**, and every consumer now resolves it at run time with the
+  same precedence — `LEOPOLD_HOME`, then `$CLAUDE_HOME/leopold`, then
+  `$CODEX_HOME/leopold`, then where `install.sh --harness auto` would put it. The new
+  `leopold home` prints that one path (pure resolution, never fails, safe to call from
+  a hook), and skills use it with a POSIX-sh fallback for shells with no `leopold` on
+  `PATH`. Every `SKILL.md` also names the tool on both harnesses instead of only
+  Claude's, so the sentence is actionable from either seat. `make skills-test` fails
+  the build if a skill hardcodes `~/.claude`, and
+  `packages/driver/test/provider.test.ts` extracts the documented fallback snippet
+  from `docs/reference/leopold-home.md` and asserts it agrees with the driver's
+  `leopoldHome()` under every environment — so the doc cannot drift from the code.
+
+- **`leopold watch` reads a Codex run: real tokens, real cost, real context.** The
+  dashboard used to parse only Claude Code transcripts, so a Codex run showed a blank
+  panel. It now finds the newest Codex rollout whose `session_meta.cwd` is this project
+  (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`), sniffs which harness wrote the
+  transcript, and reads usage from `event_msg` lines with `payload.type ==
+  "token_count"` (`info.total_token_usage`, cached and reasoning tokens included).
+  Codex reports tokens and never dollars, so cost comes from a built-in per-model
+  table with cached input at 0.1x; an unrecognized model falls back to a **non-zero**
+  default, and a live session that has not reported usage yet says "waiting for
+  session data…" instead of quoting `$0.00` — a run priced at zero would silently
+  disable `--budget-usd`. Covered by `make watch-test`.
+
+- **Extension dashboard tabs resolve their payload instead of hardcoding it.** An
+  `extension.json` `dashboard.module` may now be a path relative to the harness data home
+  (`ovmem/dashboard.py`), which `leopold watch` resolves Claude-first exactly like the
+  installers do; absolute and `~`-rooted values still work. Without it the Memory tab
+  silently vanished on a machine with no `~/.claude`.
+
+- **`make codex-install-test` — the whole Codex install, end to end, hermetically.** The
+  other suites test the pieces; `scripts/test-codex-install.sh` tests the product a
+  Codex-only user actually gets: it runs the real `./install.sh --harness codex` on a
+  simulated machine with no `~/.claude` and neither `claude` nor `codex` on `PATH`, then
+  asserts every skill installed, both hooks wired **and executed from the installed copy**
+  with the payloads codex-cli 0.146.0 sends (the git lock denies `commit`/`push` and passes
+  `git add`; the continuity hook blocks the stop while the plan has work and lets it go
+  when it doesn't), all four extensions present and reporting per harness with no Claude
+  path anywhere, three installs leaving one of everything and a byte-identical
+  `config.toml`, a corrupted target config refused rather than clobbered, a write that
+  lands broken restored from its backup, and `LEOPOLD_HOME` moving the asset home with the
+  wiring following it. Hermetic and it proves it: every command runs under `env -i` with a
+  rebuilt `PATH` of stubs and temp `HOME`/`CLAUDE_HOME`/`CODEX_HOME`, no network and no
+  package install, and the last section re-checks the developer's real homes — entry names
+  plus the mtime and size of the real `~/.codex/config.toml`, the one file this installer
+  edits — so an escaped write fails the suite instead of going unnoticed. Wired into `make
+  test` and into the `hooks` CI job.
+
+### Fixed
+- **`install.sh --harness codex` installed half a product.** The Codex path printed its
+  next steps and exited right after the skills and the two hooks, silently skipping the
+  prompt enhancer, Serena, the `leopold` CLI and the whole verification pass — everything
+  a Claude Code install gets. It now runs the same tail as every other harness; only the
+  `settings.json` merge is Claude-specific, and the verification reports per harness. A
+  Claude-only install is byte-for-byte what it was.
+- **`config.toml` grew on every re-install.** Lifting a managed block out of the middle
+  of the file left its leading blank line behind while the fresh copy brought a new one,
+  so each run added an empty line, forever. The removal now takes the block's own
+  separator with it; blank lines anywhere else, including inside multi-line TOML strings,
+  are preserved exactly. Three installs now leave a byte-identical file.
+- **A finished item never reported its cost, so `--budget-usd` never accumulated.** The
+  worker loop closed the input channel and broke out the moment the conductor ended an
+  item — before consuming the `result` message, the only one carrying `total_cost_usd`.
+  Any worker that finished cleanly on its first turn reported nothing, and the budget sat
+  at zero for the whole run. Found by the first live `leopold run --provider codex`
+  (`spent_usd: 0`, no `cost` event) and confirmed pre-existing on Claude Code by checking
+  an archived run's event log — it bit both harnesses. The loop now drains to `result`
+  before ending, and a live Codex run records `spent_usd: 0.0626` with its `cost` event.
+- **A dead implement agent closed its plan item as done.** `/leopold-workflow`'s script
+  handed the item straight to review without checking the implement agent's return value.
+  When that agent dies (a terminal API error after retries, or a skip) it returns `null`,
+  leaving an empty diff — which reviews clean, so the item closed as DONE on work that
+  never happened. It now charges the round and retries, and reports the item incomplete
+  if the budget runs out. Found when a real run lost two implementers to a dropped
+  connection and still reported 13/13 done.
+- **A stringified `args` payload made a workflow report a clean zero-item run.** The
+  script read `args.waves` off a JSON string, got nothing, and returned
+  `{total: 0, done: 0}` having spawned no agents — indistinguishable from a finished
+  plan. It now parses a string payload, and an empty plan throws instead of reporting
+  success.
+
+### Changed
+- **Docs and metadata describe the universal install.** `docs/concepts/harnesses.md`
+  (and its pt-BR twin) gained the per-harness extension matrix and the dashboard
+  section; `docs/getting-started/install.md`, `docs/reference/hooks.md` and the README
+  no longer read as Claude-only — harness selection, the TOML wiring, the Codex
+  hook-trust step and the shared asset home are all documented, in both languages.
+
+### Notes
+- Codex reports token usage, never a dollar figure, so `--budget-usd` prices a Codex run
+  from a built-in per-model table. An unrecognized model falls back to a default rate rather
+  than zero: pricing a run at zero would silently disable the budget.
+
 ## [0.13.0] - 2026-07-10
 
 ### Added

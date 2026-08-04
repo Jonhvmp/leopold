@@ -1,0 +1,26 @@
+{
+  "name": "leopold",
+  "version": "0.14.0",
+  "description": "An autonomous orchestration harness: brief it like a teammate, it conducts your agent in your seat, deciding from your charter with git locked. Installing as a plugin also arms the git lock without a separate trust step.",
+  "author": { "name": "Jonhvmp", "url": "https://github.com/Jonhvmp" },
+  "homepage": "https://github.com/Jonhvmp/leopold",
+  "repository": "https://github.com/Jonhvmp/leopold",
+  "license": "MIT",
+  "keywords": ["orchestration", "autonomous-agents", "agent-harness", "codex", "planning"],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Leopold",
+    "shortDescription": "Autonomous runs from a brief you wrote, with git locked",
+    "longDescription": "Leopold turns a debated brief (mission, charter, guardrails, plan) into an autonomous run. It burns down the plan one item at a time, decides forks from your charter instead of asking, reviews each item before it closes, and keeps git commit and git push locked so shipping stays your call. Installing as a plugin arms both hooks — the git lock and the continuity engine that keeps the run going — without a separate trust step. You can also conduct a run headlessly with `leopold run --provider codex`.",
+    "developerName": "Jonhvmp",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/Jonhvmp/leopold",
+    "defaultPrompt": [
+      "/leopold-brief — debate the mission and write the brief",
+      "/leopold-status — where is the run?",
+      "/leopold-doctor — check the install"
+    ]
+  }
+}

@@ -1,9 +1,17 @@
 # Hooks
 
-Three hooks are wired into `settings.json` by `install.sh`. The two engine hooks
-live in `~/.claude/leopold/hooks/` and are **no-ops unless a run is active**; the
-prompt enhancer lives in `~/.claude/enhance/` and is a **no-op until you toggle it
-on** — so all three are safe to leave installed in every session.
+Three hooks are wired by `install.sh` into each harness it finds — `settings.json`
+on Claude Code, `config.toml` on Codex CLI. The two engine hooks live in
+`<asset home>/hooks/` and are **no-ops unless a run is active**; the prompt
+enhancer lives in `<asset home>/enhance/` and is a **no-op until you toggle it
+on** — so all three are safe to leave installed in every session. The asset home is
+`~/.claude/leopold` whenever Claude Code is present and `~/.codex/leopold` on a
+Codex-only machine ([Asset Home](leopold-home.md)); the paths below use the Claude
+Code layout.
+
+The two engine hooks are **the same unmodified scripts on both harnesses** — Codex
+reimplemented Claude Code's hook contract nearly field for field, so no portability
+layer exists to go wrong. See [Claude Code and Codex](../concepts/harnesses.md).
 
 ## `stop-continuity.sh` — the Stop hook
 
@@ -30,7 +38,11 @@ halting is always safe.
 
 Runs before every tool call. Contract: read JSON on stdin; print a
 `hookSpecificOutput` with `permissionDecision: "deny"` to block, or exit 0 to
-allow. It only adds denials; it never loosens Claude Code's own permissions.
+allow. It only adds denials; it never loosens the harness's own permissions.
+
+Codex delivers this event with the same keys — `tool_name` (its shell tool is
+reported as `Bash`), `tool_input.command`, `cwd`, `transcript_path` — and honors the
+same deny reply.
 
 See the policy table in [Guardrails](../guardrails.md).
 
@@ -40,7 +52,10 @@ Runs on every prompt you submit (the event takes no matcher, so all gating is
 internal). Contract: read the hook JSON on stdin; plain text on stdout is injected
 as context next to the raw prompt (plain text, not JSON, so it concatenates safely
 with other `UserPromptSubmit` hooks); **always exit 0** — the prompt itself is
-never modified or blocked.
+never modified or blocked. Codex validates hook stdout as strict JSON, so on that
+harness the same text is wrapped in `hookSpecificOutput.additionalContext` instead —
+the plain-text form logs `hook: UserPromptSubmit Failed` there and never reaches the
+model. The engine detects which harness sent the payload and answers in its dialect.
 
 ```mermaid
 flowchart TD
@@ -61,7 +76,9 @@ Fail-open: no `claude` on PATH, timeout, API error, malformed output — nothing
 emitted and the prompt goes through untouched. Full detail (gate table, state,
 ledger, the learn loop): [Prompt Enhancer](enhance.md).
 
-## Settings wiring
+## Wiring, per harness
+
+### Claude Code — `~/.claude/settings.json`
 
 ```json
 {
@@ -79,6 +96,47 @@ ledger, the learn loop): [Prompt Enhancer](enhance.md).
   }
 }
 ```
+
+### Codex CLI — `~/.codex/config.toml`
+
+The same hooks, in TOML, inside a marker-delimited managed block that a re-install
+replaces and nothing else. The two engine hooks:
+
+```toml
+# >>> leopold (managed) >>>
+[[hooks.PreToolUse]]
+matcher = "Bash"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "/home/you/.claude/leopold/hooks/guard-irreversible.sh"
+timeout = 5
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/home/you/.claude/leopold/hooks/stop-continuity.sh"
+timeout = 15
+# <<< leopold (managed) <<<
+```
+
+The prompt enhancer and every extension get their own tagged block
+(`# >>> leopold:enhance (managed) >>>` and friends), so each one is installed,
+updated and removed without touching the others.
+
+The config is backed up before the merge and the result is validated: a write that
+would not parse is rolled back and the block printed for you to paste. Both formats
+are produced by one shared writer, `extensions/lib/harness.sh`, so the two harnesses
+cannot drift.
+
+!!! warning "Codex hooks are inert until trusted"
+    Codex will not execute a hook declared in `config.toml` until you have approved
+    it once (`hooks.state."<id>".trusted_hash`) — no error, it simply does not run.
+    Approve it in one interactive session, or install Leopold as a Codex plugin,
+    which trusts plugin-provided hooks through the install. Headless workers started
+    by `leopold run --provider codex` pass `--dangerously-bypass-hook-trust` so they
+    arm their own git lock. `leopold doctor` reports which state each harness is in.
 
 ## Event log
 

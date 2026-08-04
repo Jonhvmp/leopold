@@ -6,9 +6,13 @@ events.jsonl) AND the Claude Code session transcript (for real token/cost data),
 serves a dashboard on 127.0.0.1 with live (SSE) updates. Read-only except one action:
 a Stop button that touches `.leopold/STOP` — the same kill switch `/leopold-stop` uses.
 
-Cost is parsed from the transcript JSONL (each assistant message carries `usage` +
-`model`); the dashboard finds it via the run state's `transcript_path` or by the cwd's
-project slug under ~/.claude/projects/. Cost is an ESTIMATE from a built-in price map.
+Cost is parsed from the transcript JSONL of whichever harness ran the session: a Claude
+Code transcript (each assistant message carries `usage` + `model`) or a Codex CLI
+rollout (`event_msg` lines with payload.type `token_count`). The dashboard finds it via
+the run state's `transcript_path`, by the cwd's project slug under ~/.claude/projects/,
+or by the newest ~/.codex/sessions rollout whose cwd is this project. Cost is an
+ESTIMATE from a built-in price map; a transcript in neither format reports the cost as
+unavailable rather than showing zeros.
 
 No dependencies (Python 3.8+ stdlib). Nothing leaves the machine; it binds to loopback
 and uses no web fonts. Usage:
@@ -105,10 +109,26 @@ def read_events(limit=60):
 #   {"opus": {"in": 15, "out": 75, "cache_write": 18.75, "cache_read": 1.5},
 #    "claude-my-model-1": {"in": 2, "out": 8}}
 # (cache_write/cache_read optional; merged over these defaults; restart watch to apply.)
+# OpenAI (Codex CLI) models are matched the same way; they bill cached input at 0.1x
+# input and do NOT bill a cache write, so those entries pin cache_write to 0. The last
+# `gpt` entry is the deliberate non-zero fallback for a model this table has not seen
+# yet (a new gpt-5.x): a run priced at 0 would silently disable the budget.
+# Order matters — the first family whose name is a substring of the model wins, so the
+# specific names come before the generic ones.
 PRICES = {
     "opus":   {"in": 15.0, "out": 75.0},
     "sonnet": {"in": 3.0,  "out": 15.0},
     "haiku":  {"in": 1.0,  "out": 5.0},
+    "gpt-5-nano":  {"in": 0.05, "out": 0.40, "cache_write": 0.0},
+    "gpt-5-mini":  {"in": 0.25, "out": 2.0,  "cache_write": 0.0},
+    "gpt-5.1":     {"in": 1.25, "out": 10.0, "cache_write": 0.0},
+    "gpt-5":       {"in": 1.25, "out": 10.0, "cache_write": 0.0},
+    "gpt-4.1-mini": {"in": 0.40, "out": 1.60, "cache_write": 0.0},
+    "gpt-4.1":     {"in": 2.0,  "out": 8.0,  "cache_write": 0.0},
+    "gpt-4o":      {"in": 2.5,  "out": 10.0, "cache_write": 0.0},
+    "o3":          {"in": 2.0,  "out": 8.0,  "cache_write": 0.0},
+    "codex-mini":  {"in": 1.5,  "out": 6.0,  "cache_write": 0.0},
+    "gpt":         {"in": 1.25, "out": 10.0, "cache_write": 0.0},
 }
 _DEFAULT_PRICE = {"in": 3.0, "out": 15.0}
 _PRICES_LOADED = None
@@ -161,8 +181,36 @@ def _projects_dir():
     return os.path.join(base, "projects")
 
 
+def _codex_sessions_dir():
+    base = os.environ.get("CODEX_HOME") or os.path.expanduser("~/.codex")
+    return os.path.join(base, "sessions")
+
+
+def _find_codex_transcript(scan=40):
+    """Newest Codex rollout whose session_meta.cwd is this project.
+    Codex stores sessions under <CODEX_HOME>/sessions/YYYY/MM/DD/rollout-*.jsonl and
+    records the cwd on the first line, so the project is matched from the file itself
+    rather than from a path slug."""
+    project = os.path.abspath(PROJECT or os.getcwd())
+    try:
+        files = glob.glob(os.path.join(_codex_sessions_dir(), "*", "*", "*", "rollout-*.jsonl"))
+    except Exception:
+        return None
+    files = sorted(files, key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0,
+                   reverse=True)[:scan]
+    for p in files:
+        meta = _first_json_line(p)
+        if not meta or meta.get("type") != "session_meta":
+            continue
+        cwd = (meta.get("payload") or {}).get("cwd") or ""
+        if cwd and os.path.abspath(cwd) == project:
+            return p
+    return None
+
+
 def find_transcript():
-    # 1) explicit path recorded by the Stop hook (the run's actual session).
+    # 1) explicit path recorded by the Stop hook (the run's actual session — this is
+    #    what a Codex run gives us, and Codex's Stop payload carries it too).
     tp = read_state().get("transcript_path")
     if tp and os.path.isfile(tp):
         return tp
@@ -173,8 +221,11 @@ def find_transcript():
     try:
         files = [os.path.join(d, f) for f in os.listdir(d) if f.endswith(".jsonl")]
     except OSError:
-        return None
-    return max(files, key=os.path.getmtime) if files else None
+        files = []
+    if files:
+        return max(files, key=os.path.getmtime)
+    # 3) no Claude session for this project — look for a Codex rollout instead.
+    return _find_codex_transcript()
 
 
 _WF_CACHE = {}  # path -> (mtime, parsed-compact-run)
@@ -285,6 +336,163 @@ def _iso_delta(a, b):
 _COST_CACHE = {}  # path -> (mtime, size, result)  — avoid re-parsing on every SSE tick
 
 
+def _first_json_line(tp):
+    """First line of a transcript, parsed. None if unreadable/not JSON."""
+    try:
+        with open(tp, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    o = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    return None
+                return o if isinstance(o, dict) else None
+    except OSError:
+        return None
+    return None
+
+
+_CLAUDE_LINE_TYPES = {"assistant", "user", "system", "summary", "file-history-snapshot"}
+
+
+def detect_harness(tp):
+    """Which agent wrote this transcript: 'codex', 'claude' or 'unknown'.
+
+    A Codex rollout opens with a `session_meta` line; a Claude Code transcript opens
+    with one of its own record types (and carries sessionId/uuid). Anything else is
+    reported as unknown so the dashboard can SAY the cost is unavailable on this
+    harness instead of rendering zeros that read as a free run.
+    """
+    o = _first_json_line(tp)
+    if not isinstance(o, dict):
+        return "unknown"
+    if o.get("type") == "session_meta":
+        return "codex"
+    if o.get("type") in _CLAUDE_LINE_TYPES or "sessionId" in o or "uuid" in o:
+        return "claude"
+    return "unknown"
+
+
+def _parse_cost_codex(tp):
+    """Cost/tokens/context for a Codex CLI rollout JSONL.
+
+    Token usage arrives as `event_msg` lines with payload.type == 'token_count':
+    info.total_token_usage is CUMULATIVE for the session and info.last_token_usage is
+    the live context. Usage is attributed to the model in effect (from the preceding
+    `turn_context` line) by diffing consecutive cumulative snapshots, so a session that
+    switched models still prices each stretch correctly. OpenAI counts cached tokens
+    INSIDE input_tokens, so the uncached remainder is what bills at the input rate.
+    """
+    tot = {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0}
+    usd = 0.0
+    msgs = 0
+    models = {}
+    model = ""
+    session = ""
+    t_first = t_last = None
+    ctx_tokens = ctx_window = 0
+    prev = {"input_tokens": 0, "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0, "output_tokens": 0}
+    try:
+        f = open(tp, "r", encoding="utf-8", errors="replace")
+    except OSError:
+        return {"available": False, "harness": "codex", "reason": "transcript unreadable"}
+    with f:
+        for line in f:
+            if '"session_meta"' not in line and '"turn_context"' not in line \
+               and '"token_count"' not in line and '"agent_message"' not in line:
+                continue
+            try:
+                o = json.loads(line)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            if not isinstance(o, dict):
+                continue
+            kind = o.get("type")
+            payload = o.get("payload") or {}
+            if kind == "session_meta":
+                session = payload.get("session_id") or payload.get("id") or session
+                continue
+            if kind == "turn_context":
+                model = payload.get("model") or model
+                continue
+            if kind != "event_msg":
+                continue
+            ptype = payload.get("type")
+            if ptype == "agent_message":
+                msgs += 1
+                continue
+            if ptype != "token_count":
+                continue
+            info = payload.get("info") or {}
+            cur = info.get("total_token_usage") or {}
+            if not cur:
+                continue
+            ts = o.get("timestamp")
+            if ts:
+                t_first = ts if t_first is None else min(t_first, ts)
+                t_last = ts if t_last is None else max(t_last, ts)
+            last = info.get("last_token_usage") or {}
+            ctx_tokens = int(last.get("total_tokens", 0) or 0) or ctx_tokens
+            ctx_window = int(info.get("model_context_window", 0) or 0) or ctx_window
+
+            def _n(d, k):
+                try:
+                    return int(d.get(k, 0) or 0)
+                except (TypeError, ValueError):
+                    return 0
+            # Cumulative snapshots -> per-turn delta. A resumed/forked session can move
+            # backwards; treat that as a new baseline instead of a negative charge.
+            d = {k: _n(cur, k) - prev[k] for k in prev}
+            if any(v < 0 for v in d.values()):
+                d = {k: max(0, _n(cur, k)) for k in prev}
+            prev = {k: _n(cur, k) for k in prev}
+            inp_all = d["input_tokens"]
+            cr = min(d["cached_input_tokens"], inp_all)
+            cw = d["cache_write_input_tokens"]
+            inp = max(0, inp_all - cr)
+            out = d["output_tokens"]
+            if not (inp or out or cr or cw):
+                continue
+            pr = _price(model or "gpt")
+            c = (inp * pr["in"] + out * pr["out"] + cw * pr["cache_write"] + cr * pr["cache_read"]) / 1e6
+            tot["input"] += inp; tot["output"] += out
+            tot["cache_write"] += cw; tot["cache_read"] += cr
+            usd += c
+            mm = models.setdefault(model or "gpt-5", {"usd": 0.0, "msgs": 0})
+            mm["usd"] += c; mm["msgs"] += 1
+    if not any(tot.values()):
+        # A live rollout that has not reported usage yet — say so instead of quoting $0.
+        return {"available": False, "harness": "codex",
+                "reason": "waiting for session data… (cost shows once the Codex run has a turn)"}
+    tot["total"] = sum(tot.values())
+    cacheable = tot["input"] + tot["cache_write"] + tot["cache_read"]
+    hit = round(tot["cache_read"] / cacheable * 100) if cacheable else 0
+    model_list = sorted(
+        ({"model": k, "usd": round(v["usd"], 4), "msgs": v["msgs"]} for k, v in models.items()),
+        key=lambda x: -x["usd"],
+    )
+    return {
+        "available": True,
+        "harness": "codex",
+        "usd": round(usd, 4),
+        "tokens": tot,
+        "cache_hit_pct": hit,
+        "messages": msgs,
+        "sub_msgs": 0,
+        "main_usd": round(usd, 4),
+        "sub_usd": 0.0,
+        "models": model_list[:4],
+        "duration_s": _iso_delta(t_first, t_last),
+        "session": session,
+        "context_tokens": ctx_tokens,
+        "context_window": ctx_window,
+        "context_pct": round(ctx_tokens / ctx_window * 100) if ctx_window else 0,
+    }
+
+
 def _parse_cost(tp):
     tot = {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0}
     usd = main_usd = sub_usd = 0.0
@@ -341,6 +549,7 @@ def _parse_cost(tp):
     )
     return {
         "available": True,
+        "harness": "claude",
         "usd": round(usd, 4),
         "tokens": tot,
         "cache_hit_pct": hit,
@@ -351,6 +560,21 @@ def _parse_cost(tp):
         "models": model_list[:4],
         "duration_s": _iso_delta(t_first, t_last),
         "session": session,
+    }
+
+
+def parse_transcript(tp):
+    """Cost/tokens/context for whichever harness wrote this transcript."""
+    harness = detect_harness(tp)
+    if harness == "codex":
+        return _parse_cost_codex(tp)
+    if harness == "claude":
+        return _parse_cost(tp)
+    return {
+        "available": False,
+        "harness": "unknown",
+        "reason": "cost unavailable on this harness — the transcript is neither a "
+                  "Claude Code session nor a Codex rollout",
     }
 
 
@@ -365,7 +589,7 @@ def read_cost():
     cached = _COST_CACHE.get(tp)
     if cached and cached[0] == st.st_mtime and cached[1] == st.st_size:
         return cached[2]
-    result = _parse_cost(tp)
+    result = parse_transcript(tp)
     _COST_CACHE[tp] = (st.st_mtime, st.st_size, result)
     return result
 
@@ -749,15 +973,52 @@ def snapshot():
 _EXT_CACHE = None
 
 
+def _harness_homes():
+    """The data homes an installed payload can live under, Claude first — the same
+    order (and the same LEOPOLD_HOME override) the installers resolve with. A
+    Codex-only machine has no ~/.claude at all, so hardcoding it here would drop
+    every extension tab without a word."""
+    home = os.path.expanduser("~")
+    leo = os.environ.get("LEOPOLD_HOME")
+    out = [leo] if leo else []
+    out.append(os.environ.get("CLAUDE_HOME") or os.path.join(home, ".claude"))
+    out.append(os.environ.get("CODEX_HOME") or os.path.join(home, ".codex"))
+    return out
+
+
 def _ext_dirs():
     here = os.path.dirname(os.path.abspath(__file__))
+    cands = [os.path.join(here, "..", "extensions")]
+    leo = os.environ.get("LEOPOLD_HOME")
+    if leo:
+        cands.append(os.path.join(leo, "extensions"))
+    for base in _harness_homes():
+        cands.append(os.path.join(base, "leopold", "extensions"))
     out = []
-    for cand in (os.path.join(here, "..", "extensions"),
-                 os.path.expanduser("~/.claude/leopold/extensions")):
-        cand = os.path.abspath(cand)
+    for cand in cands:
+        cand = os.path.abspath(os.path.expanduser(cand))
         if os.path.isdir(cand) and cand not in out:
             out.append(cand)
     return out
+
+
+def _resolve_ext_module(p):
+    """Resolve an extension dashboard's `module` path.
+
+    An absolute or ~-rooted path is taken as given — that is the historical contract
+    and it still works. A RELATIVE path (e.g. "ovmem/dashboard.py") is resolved
+    against the harness data homes instead, so ONE extension.json points at the right
+    file on a Claude box, on a Codex-only box, and under a LEOPOLD_HOME override.
+    """
+    if not p:
+        return ""
+    if p.startswith("~") or os.path.isabs(p):
+        return os.path.expanduser(p)
+    for base in _harness_homes():
+        cand = os.path.join(base, p)
+        if os.path.isfile(cand):
+            return cand
+    return ""
 
 
 def ext_dashboards():
@@ -781,7 +1042,7 @@ def ext_dashboards():
                 dash = cfg.get("dashboard")
                 if not isinstance(dash, dict):
                     continue
-                mod_path = os.path.expanduser(dash.get("module", ""))
+                mod_path = _resolve_ext_module(dash.get("module", ""))
                 if not mod_path or not os.path.isfile(mod_path):
                     continue
                 spec = importlib.util.spec_from_file_location("ext_dash_%s" % name, mod_path)
@@ -1057,11 +1318,12 @@ const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",
   review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high"};
 function renderCost(c){
   const box=$("#cost");box.innerHTML="";
-  if(!c||!c.available){box.append(el("div","meta","waiting for session data… (cost shows once the run has a turn)"));return;}
-  const hero=el("div");hero.append(el("span","big",fmtUsd(c.usd)),el("span","est","est · "+(c.models[0]?c.models[0].model.replace("claude-",""):"")));
+  if(!c||!c.available){box.append(el("div","meta",c&&c.reason?c.reason:"waiting for session data… (cost shows once the run has a turn)"));return;}
+  const hero=el("div");hero.append(el("span","big",fmtUsd(c.usd)),el("span","est","est · "+(c.models[0]?c.models[0].model.replace("claude-",""):(c.harness||""))));
   box.append(hero);
   const t=c.tokens;
   box.append(el("div","meta",c.messages+" turns · "+fmtTok(t.total)+" tokens · cache "+c.cache_hit_pct+"% · "+fmtDur(c.duration_s)));
+  if(c.context_window)box.append(el("div","meta","context "+fmtTok(c.context_tokens)+" / "+fmtTok(c.context_window)+" ("+c.context_pct+"%)"));
   const grid=el("div","toks");
   [["input",t.input],["output",t.output],["cache write",t.cache_write],["cache read",t.cache_read]].forEach(p=>{
     const d=el("div","tok");d.append(el("div","k",p[0]),el("div","v",fmtTok(p[1])));grid.append(d);
