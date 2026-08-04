@@ -76,6 +76,54 @@ case "$HARNESS" in
   *) echo "install.sh: unknown --harness \"$HARNESS\" (use: auto, claude, codex, all)" >&2; exit 2 ;;
 esac
 
+# Ask ONLY when the choice is real. Two harnesses on the machine (which one is yours?)
+# or none at all (which one are you setting up?) are genuine forks; a machine with
+# exactly one is not, and prompting there is pure friction. An explicit --harness always
+# wins, and a piped/headless install never blocks — it takes the sane default and says
+# what it picked. Read from /dev/tty, not stdin, so `curl ... | bash` can still ask.
+_ask_harness() {
+  local both="$1" prompt default
+  if [ "$both" = "1" ]; then
+    prompt="Both Claude Code and Codex CLI are here. Install Leopold into which?"
+    default="1"
+  else
+    prompt="No agent harness detected. Set Leopold up for which?"
+    default="1"
+  fi
+  {
+    echo
+    echo "$prompt"
+    echo "  1) both        — same brief, same hooks, either seat (recommended)"
+    echo "  2) Claude Code — ~/.claude"
+    echo "  3) Codex CLI   — ~/.codex"
+    printf "Choice [%s]: " "$default"
+  } >&3
+  local ans; read -r ans <&3 || ans=""
+  case "${ans:-$default}" in
+    2) DO_CLAUDE=1; DO_CODEX=0 ;;
+    3) DO_CLAUDE=0; DO_CODEX=1 ;;
+    *) DO_CLAUDE=1; DO_CODEX=1 ;;
+  esac
+}
+
+if [ "$HARNESS" = "auto" ] && [ "${LEOPOLD_NONINTERACTIVE:-0}" != "1" ]; then
+  _both=0
+  { command -v claude >/dev/null 2>&1 || [ -d "$CLAUDE" ]; } \
+    && { command -v codex >/dev/null 2>&1 || [ -d "$CODEX" ]; } && _both=1
+  _none=0
+  ! command -v claude >/dev/null 2>&1 && ! [ -d "$CLAUDE" ] \
+    && ! command -v codex >/dev/null 2>&1 && ! [ -d "$CODEX" ] && _none=1
+  if [ "$_both" = "1" ] || [ "$_none" = "1" ]; then
+    if exec 3<>/dev/tty 2>/dev/null; then
+      _ask_harness "$_both"
+      exec 3>&-
+    elif [ "$_both" = "1" ]; then
+      echo "Both harnesses detected and no terminal to ask — installing into both."
+      echo "  (pick one explicitly with: --harness claude | --harness codex)"
+    fi
+  fi
+fi
+
 # Hand the RESOLVED choice down to every extension installer we call. Without this an
 # extension re-resolves "auto" on its own and a `--harness codex` install on a machine
 # that merely HAS a ~/.claude would still wire itself into Claude Code. On a Claude-only

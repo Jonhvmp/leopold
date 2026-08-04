@@ -39,14 +39,30 @@ git clone https://github.com/Jonhvmp/leopold.git && cd leopold && ./install.sh
 
 ### Escolhendo os harnesses
 
-Por padrão o instalador detecta o que existe na máquina e pluga todo harness que
-achar. Force a escolha quando quiser:
+O instalador detecta o que existe na máquina e **só pergunta quando a escolha é real**.
+Se encontrar os **dois** — ou **nenhum** — ele pergunta:
+
+```
+Both Claude Code and Codex CLI are here. Install Leopold into which?
+  1) both        — same brief, same hooks, either seat (recommended)
+  2) Claude Code — ~/.claude
+  3) Codex CLI   — ~/.codex
+Choice [1]:
+```
+
+Se só existe um harness, ele instala lá e pronto — perguntar seria fricção, não
+escolha. O prompt lê do terminal em vez do stdin, então continua funcionando em
+`curl … | bash`; sem terminal nenhum (CI, máquina headless) ele pega os dois e avisa,
+em vez de travar.
+
+Para pular o prompt, nomeie o harness:
 
 ```bash
-./install.sh                     # auto — todo harness encontrado aqui
+./install.sh                     # auto — detecta, e pergunta se a escolha é real
 ./install.sh --harness claude    # só Claude Code
 ./install.sh --harness codex     # só Codex
 ./install.sh --harness all       # os dois, instalados ou não
+LEOPOLD_NONINTERACTIVE=1 ./install.sh   # nunca pergunta, assume os defaults
 ```
 
 O que o instalador faz:
