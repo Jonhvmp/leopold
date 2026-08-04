@@ -115,6 +115,36 @@ header() {
   printf "%s  %s · %s%s\n\n" "$C_DIM" "$labels" "$EXT_DIR" "$C_RESET"
 }
 
+# Does this MACHINE have both harnesses? Deliberately not leo_has_harness: that one
+# answers "is it in the current scope", which goes false the moment you narrow to one
+# — and then the switch that narrowed it would disappear, with no way back. This asks
+# the machine, not the scope, so the toggle stays reachable in every position.
+both_harnesses() {
+  { command -v claude >/dev/null 2>&1 || [ -d "$(leo_claude_home)" ]; } \
+    && { command -v codex >/dev/null 2>&1 || [ -d "$(leo_codex_home)" ]; } && echo 1 || echo 0
+}
+
+# What every action in this menu will touch, right now.
+scope_label() {
+  case "${LEOPOLD_HARNESS:-auto}" in
+    claude|claude-code) printf 'Claude Code only' ;;
+    codex|openai)       printf 'Codex CLI only' ;;
+    *)                  printf 'both' ;;
+  esac
+}
+
+# Cycle both -> Claude only -> Codex only -> both. Exported, because every extension
+# this menu shells out to reads LEOPOLD_HARNESS to decide what it writes — which is
+# the whole point: narrow the scope once, and install/remove/doctor all follow.
+cycle_harness() {
+  case "${LEOPOLD_HARNESS:-auto}" in
+    claude|claude-code) LEOPOLD_HARNESS=codex ;;
+    codex|openai)       LEOPOLD_HARNESS=all ;;
+    *)                  LEOPOLD_HARNESS=claude ;;
+  esac
+  export LEOPOLD_HARNESS
+}
+
 main_menu() {
   header
   MENU_PATHS=()
@@ -134,8 +164,16 @@ main_menu() {
       "$C_BOLD" "$i" "$C_RESET" "$C_BOLD" "$title" "$C_RESET" "$st" "$C_DIM" "$summary" "$C_RESET"
     i=$((i + 1))
   done < <(list_exts)
-  printf "   %sd%s) Doctor all     %su%s) Uninstall     %sq%s) Quit\n\n" \
-    "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET"
+  # The harness switch only earns a slot when there is a second harness to switch to.
+  # On a one-harness box it would be a control that cannot change anything.
+  if [ "$(both_harnesses)" = "1" ]; then
+    printf "   %sd%s) Doctor all     %su%s) Uninstall     %sh%s) Harness: %s     %sq%s) Quit\n\n" \
+      "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET" "$(scope_label)" \
+      "$C_BOLD" "$C_RESET"
+  else
+    printf "   %sd%s) Doctor all     %su%s) Uninstall     %sq%s) Quit\n\n" \
+      "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET" "$C_BOLD" "$C_RESET"
+  fi
 }
 
 component_menu() {
@@ -341,6 +379,7 @@ while true; do
     q|Q) echo; exit 0 ;;
     d|D) doctor_all ;;
     u|U) uninstall_menu ;;
+    h|H) [ "$(both_harnesses)" = "1" ] && cycle_harness ;;
     ''|*[!0-9]*) ;;  # ignore non-numeric
     *)
       idx=$((choice - 1))

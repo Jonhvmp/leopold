@@ -41,6 +41,8 @@ jobs:
         run: bash scripts/test-codex-install.sh
       - name: Skill path tests (no SKILL.md may hardcode a harness home)
         run: bash scripts/test-skill-paths.sh
+      - name: "Toolchain menu harness switch (hermetic: temp homes, stubbed PATH)"
+        run: bash scripts/test-menu-harness.sh
       - name: "Serena extension per harness (hermetic: temp homes, stubbed CLIs)"
         run: bash scripts/test-serena-ext.sh
       - name: "Enhance extension per harness (hermetic: temp homes)"
