@@ -1,8 +1,11 @@
-# ~/.claude/enhance — leopold prompt enhancer (runtime)
+# leopold prompt enhancer (runtime)
 
-This directory is the enhancer's runtime home. Everything here is **local**: your
-prompts never leave this machine except through your own `claude` account when the
-rewriter runs.
+This directory is the enhancer's runtime home — one per machine (`~/.claude/enhance`
+when Claude Code is present, otherwise `~/.codex/enhance`), shared by every harness
+so the on/off switch and the learned profile are the same everywhere.
+
+Everything here is **local**: your prompts never leave this machine except through
+your own `claude` account when the rewriter runs.
 
 | file | what it is |
 |---|---|
@@ -32,6 +35,7 @@ LEOPOLD_ENHANCE_DISABLE=1     kill switch (stays wired, does nothing)
 LEOPOLD_ENHANCE_DEBUG=1       log decisions to enhance.log
 LEOPOLD_ENHANCE_MIN_SCORE     default 4      LEOPOLD_ENHANCE_MAX_WORDS   default 60
 LEOPOLD_ENHANCE_COOLDOWN_S    default 120    LEOPOLD_ENHANCE_TIMEOUT_S   default 25
+LEOPOLD_ENHANCE_DIR           override this directory (installer/tests)
 ```
 
 Full destroy (unwire + delete this directory): `leopold menu` → Uninstall → enhance.

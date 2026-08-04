@@ -1,10 +1,20 @@
 # ovmem extension
 
-**ovmem** gives Claude Code autonomous, self-managing long-term memory: it wires
+**ovmem** gives your agent autonomous, self-managing long-term memory: it wires
 [OpenViking](https://github.com/volcengine/OpenViking) (a hierarchical context DB) to
-Claude Code through 4 native hooks, so any session stays optimized without destructive
-`/compact` or `/clear`. Distillation, dedup and reconsolidation happen server-side; a
-weekly hotness prune keeps the store from accumulating.
+**Claude Code and Codex CLI** through 4 native hooks, so any session stays optimized
+without destructive `/compact` or `/clear`. Distillation, dedup and reconsolidation
+happen server-side; a weekly hotness prune keeps the store from accumulating.
+
+The four events (`SessionStart`, `UserPromptSubmit`, `PreCompact`, `SessionEnd`) exist on
+both harnesses, and the installer declares them in whichever ones are on this machine —
+`~/.claude/settings.json` in JSON, `~/.codex/config.toml` in TOML — through Leopold's one
+shared hook writer. The memory store is a single one for the machine, so what you decide
+in a Codex session comes back in a Claude Code one. Two Codex specifics are handled for
+you: its hook stdout must be JSON (plain text silently never reaches the model), and it
+caps `SessionEnd` at 3 seconds, so the end-of-session flush runs detached there. Codex
+also holds a config-declared hook inert until you approve it once — open Codex and accept
+them after installing.
 
 The installer is a **provider + model picker**. It runs `detect / status / install /
 update / remove / doctor` like every extension; `install` walks you through:

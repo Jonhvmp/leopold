@@ -38,7 +38,10 @@ export const meta = {
   ],
 }
 
-const brief = args || {}
+// `args` normally arrives as a real object. Accept a JSON string too: a stringified
+// payload would otherwise leave `waves` empty, and the run would report "0 items done,
+// nothing committed" — which reads exactly like a clean finish.
+const brief = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const mission = String(brief.mission || '').trim()
 const charter = String(brief.charter || '').trim()
 const waves = Array.isArray(brief.waves) ? brief.waves : []
@@ -105,7 +108,24 @@ async function runItem(item) {
   let feedback = ''
   let round = 0
   for (;;) {
-    await agent(implPrompt(item, feedback), { label: `impl:${item.id}`, phase: 'Execute', effort: item.effort })
+    const built = await agent(implPrompt(item, feedback), { label: `impl:${item.id}`, phase: 'Execute', effort: item.effort })
+
+    // A dead implementer (skipped by the user, or a terminal API error after retries)
+    // returns null. Reviewing that is worse than useless: it leaves an empty diff, the
+    // reviewer correctly finds nothing blocking, and the item closes as DONE — a false
+    // green on work that never happened. Charge the round and retry instead; if the
+    // budget runs out, the item is reported incomplete, which is the honest answer.
+    if (built === null) {
+      round += 1
+      log(`item ${item.id}: the implement agent died (round ${round}/${MAX_REVIEW}) — not reviewing an empty diff`)
+      if (round > MAX_REVIEW) {
+        return {
+          id: item.id, text: item.text, done: false, rounds: round,
+          blocking: [{ issue: 'the implement agent never returned — nothing was built for this item' }],
+        }
+      }
+      continue
+    }
 
     // Critical/sensitive items face a panel of diverse-lens skeptics; ordinary items
     // get a single correctness reviewer. Refute-to-converge: any blocking finding
@@ -149,6 +169,11 @@ async function runItem(item) {
 }
 
 phase('Plan')
+// An empty plan means the compile handed the run nothing. Fail loudly: a clean
+// "0/0 done, nothing committed" report is indistinguishable from a finished run.
+if (items.length === 0) {
+  throw new Error('Leopold: no plan items reached the workflow (args.waves was empty). Check that args was passed as a real object, not a stringified blob.')
+}
 log(`Leopold: ${items.length} plan item(s) across ${waves.length} dependency wave(s). Git is locked — nothing will be committed; work is left staged for you.`)
 
 // Waves run in dependency order. Items WITHIN a wave are independent by construction

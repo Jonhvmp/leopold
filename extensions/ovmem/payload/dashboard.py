@@ -30,7 +30,30 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HOME = os.path.expanduser("~")
-OVMEM_DIR = os.path.join(HOME, ".claude", "ovmem")
+
+
+def _resolve_ovmem_dir():
+    """The ovmem data dir — resolved, never hardcoded, because a Codex-only machine
+    has no ~/.claude at all. Mirrors leo_ovmem_dir() in extensions/lib/harness.sh and
+    _resolve_ovmem_dir() in ovmem.py; keep the three in step."""
+    env = os.environ.get("LEOPOLD_OVMEM_DIR")
+    if env:
+        return env
+    leo = os.environ.get("LEOPOLD_HOME")
+    if leo:
+        return os.path.join(leo, "ovmem")
+    claude = os.environ.get("CLAUDE_HOME") or os.path.join(HOME, ".claude")
+    codex = os.environ.get("CODEX_HOME") or os.path.join(HOME, ".codex")
+    for base in (claude, codex):
+        if os.path.isdir(os.path.join(base, "ovmem")):
+            return os.path.join(base, "ovmem")
+    for base in (claude, codex):
+        if os.path.isdir(base):
+            return os.path.join(base, "ovmem")
+    return os.path.join(claude, "ovmem")
+
+
+OVMEM_DIR = _resolve_ovmem_dir()
 STATE_DIR = os.path.join(OVMEM_DIR, "state")
 LOG_PATH = os.path.join(OVMEM_DIR, "ovmem.log")
 CONF_PATH = os.path.join(HOME, ".openviking", "ov.conf")

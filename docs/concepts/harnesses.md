@@ -127,6 +127,70 @@ Re-installing replaces the block and nothing else. Your config is backed up firs
 and the merged file is validated — if it would not parse, the install rolls back and
 prints the block for you to paste yourself.
 
+## Extensions install on every harness you have
+
+The four bundled extensions — `serena`, `enhance`, `ovmem`, `gstack` — are not
+Claude-only either. Each one installs, reports and cleans up **per harness**:
+
+| Extension | Claude Code | Codex CLI |
+|---|---|---|
+| serena | `claude mcp add --scope user` + 4 hooks in `settings.json` | `codex mcp add` + the same 4 hooks in `config.toml`, `--context=codex`, `serena-hooks --client=codex` |
+| enhance | `UserPromptSubmit` in `settings.json`, plain-text injection | `UserPromptSubmit` in `config.toml`, JSON `hookSpecificOutput.additionalContext` |
+| ovmem | 4 hooks in `settings.json`, in-process 25s flush | the same 4 in `config.toml`; `SessionEnd` declared at 3s and the flush detached, because Codex hard-caps that hook at 3 seconds |
+| gstack | `./setup --host claude` → `~/.claude/skills` | `./setup --host codex` → `~/.codex/skills` (checkout in `~/.gstack/repos/gstack`) |
+
+Two rules hold across all four. **One writer per format:** the JSON and TOML
+wiring lives in a single shared helper, `extensions/lib/harness.sh`, so the two
+harnesses cannot silently drift apart. And **nothing reports per machine:**
+`status`, `remove` and `doctor` answer one line per harness, so a two-harness box
+never sees one harness's state passed off as both, and Codex's hook-trust gate is
+named instead of being shown as a green that is not live yet.
+
+```bash
+bash extensions/serena/manage.sh doctor   # or ovmem / gstack / enhance
+leopold doctor                            # every harness present, in one pass
+```
+
+The engine data is shared even though the wiring is not: ovmem keeps one memory
+directory for the machine, so a decision recorded in a Codex session comes back in
+a Claude Code one, and the enhancer's ledger and prompt profile are the same files
+from either seat.
+
+Each suite is hermetic — temp `HOME`/`CLAUDE_HOME`/`CODEX_HOME`, stubbed CLIs, no
+network: `make serena-test`, `make ovmem-test`, `make gstack-test`,
+`make enhance-test`, plus `make codex-install-test` for the whole Codex install
+end to end.
+
+## The dashboard reads Codex runs
+
+`leopold watch` shows real tokens, cost and context on a Codex run — the panel is
+not blank and, more importantly, never a zero.
+
+It finds the transcript the same way on both harnesses: the path the hook reported
+in `state.json`, or else the newest session for this project — a Claude Code
+transcript under `~/.claude/projects/`, or a Codex rollout under
+`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` whose `session_meta.cwd` is this
+project. It then sniffs which one it is and parses accordingly: Claude Code's
+per-message `usage` + `model`, or Codex's `event_msg` lines with
+`payload.type == "token_count"` (`info.total_token_usage`, including
+`cached_input_tokens` and `reasoning_output_tokens`).
+
+Codex reports tokens and never dollars, so cost is priced from a built-in
+per-model table, cached input billed at 0.1x. An unrecognized model falls back to
+a non-zero default rate: a run priced at zero would silently disable
+`--budget-usd`, the one failure a budget cannot have. And a live rollout that has
+not reported usage yet says **"waiting for session data…"** rather than quoting
+`$0.00`.
+
+Extension dashboard tabs follow the same rule. An `extension.json`
+`dashboard.module` may be a path relative to the asset home (`ovmem/dashboard.py`),
+resolved Claude-first exactly like the installers do — so the Memory tab shows up
+on a machine with no `~/.claude` instead of silently vanishing.
+
+Covered by `make watch-test` (stdlib only, no network), which asserts Codex
+detection, pricing, discovery by `cwd`, the unknown-model fallback and the
+no-usage-yet case.
+
 ## Choosing a harness for a run
 
 ```bash

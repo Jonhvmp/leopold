@@ -3,6 +3,12 @@
 # switch safely between providers (incl. re-embedding the memory store when the
 # embedding model changes).
 #
+# HARNESS PARITY. The same four hooks are declared once per harness on this machine —
+# ~/.claude/settings.json (JSON) and ~/.codex/config.toml (TOML) — through the one
+# shared writer in ../lib/harness.sh. This file decides WHAT to wire, never HOW to
+# spell it. The engine and its state live in ONE dir for the machine (leo_ovmem_dir),
+# because the memory is about the user, not about the agent they happened to open.
+#
 # Providers:
 #   openai   - one API key (needs embedding + model.request scopes).
 #   bedrock  - AWS Bedrock via LiteLLM; auth = a Bedrock API key (bearer) + region.
@@ -20,7 +26,11 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PAYLOAD="$HERE/payload"; MODELS="$HERE/models.json"
-CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"; OVMEM_DIR="$CLAUDE/ovmem"; SETTINGS="$CLAUDE/settings.json"
+LIB="$HERE/../lib/harness.sh"
+[ -f "$LIB" ] || { echo "ovmem/install.sh: missing $LIB — reinstall Leopold." >&2; exit 1; }
+# shellcheck source=../lib/harness.sh
+. "$LIB"
+OVMEM_DIR="$(leo_ovmem_dir)"
 OV_DIR="$HOME/.openviking"; OV_CONF="$OV_DIR/ov.conf"; WORKSPACE="$OV_DIR/data"; VDB="$WORKSPACE/vectordb"
 BIN="$HOME/.local/bin"; HEALTH="http://127.0.0.1:1933/health"; API="http://127.0.0.1:1933/api/v1"
 OPENVIKING_PIN="openviking==0.3.21"
@@ -295,18 +305,46 @@ mkdir -p "$OVMEM_DIR/state"
 cp "$PAYLOAD/ovmem.py" "$OVMEM_DIR/ovmem.py"; cp "$PAYLOAD/ovmem-cleanup.py" "$OVMEM_DIR/ovmem-cleanup.py"
 cp "$PAYLOAD/dashboard.py" "$OVMEM_DIR/dashboard.py" 2>/dev/null || true
 cp "$PAYLOAD/RUNTIME.md" "$OVMEM_DIR/README.md" 2>/dev/null || true
-[ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"; cp "$SETTINGS" "$SETTINGS.ovmem.bak"
-SS="python3 $OVMEM_DIR/ovmem.py --event session-start"; UP="python3 $OVMEM_DIR/ovmem.py --event user-prompt"
-PC="python3 $OVMEM_DIR/ovmem.py --event pre-compact"; SE="python3 $OVMEM_DIR/ovmem.py --event session-end"
-tmp="$(mktemp)"
-jq --arg ss "$SS" --arg up "$UP" --arg pc "$PC" --arg se "$SE" '
-  .hooks //= {} | .hooks.SessionStart //= [] | .hooks.UserPromptSubmit //= [] | .hooks.PreCompact //= [] | .hooks.SessionEnd //= []
-  | (if any(.hooks.SessionStart[]?.hooks[]?;   .command==$ss) then . else .hooks.SessionStart    += [{hooks:[{type:"command",command:$ss,timeout:12}]}] end)
-  | (if any(.hooks.UserPromptSubmit[]?.hooks[]?;.command==$up) then . else .hooks.UserPromptSubmit += [{hooks:[{type:"command",command:$up,timeout:12}]}] end)
-  | (if any(.hooks.PreCompact[]?.hooks[]?;     .command==$pc) then . else .hooks.PreCompact      += [{hooks:[{type:"command",command:$pc,timeout:25}]}] end)
-  | (if any(.hooks.SessionEnd[]?.hooks[]?;     .command==$se) then . else .hooks.SessionEnd      += [{hooks:[{type:"command",command:$se,timeout:25}]}] end)
-' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
-ok "engine + 4 hooks installed"
+
+# The same four events exist on both harnesses; only the SessionEnd timeout differs.
+# codex-cli 0.146.0 hard-caps a SessionEnd hook at 3s and prints
+# `clamping SessionEnd hook timeout to 3s` for anything higher — verified by writing
+# 4 and 6 into a temp config.toml and reading the warning back. So we declare the 3
+# it will actually honor instead of a 25 it silently rewrites, and ovmem.py hands the
+# session-end flush to a detached child on Codex so the work survives the kill.
+ovmem_specs() { # <harness>
+  printf '%s\n' "SessionStart||python3 $OVMEM_DIR/ovmem.py --event session-start|12"
+  printf '%s\n' "UserPromptSubmit||python3 $OVMEM_DIR/ovmem.py --event user-prompt|12"
+  printf '%s\n' "PreCompact||python3 $OVMEM_DIR/ovmem.py --event pre-compact|25"
+  case "$1" in
+    codex) printf '%s\n' "SessionEnd||python3 $OVMEM_DIR/ovmem.py --event session-end|3" ;;
+    *)     printf '%s\n' "SessionEnd||python3 $OVMEM_DIR/ovmem.py --event session-end|25" ;;
+  esac
+}
+
+for h in $(leo_harness_targets); do
+  specs=(); while IFS= read -r line; do specs+=("$line"); done < <(ovmem_specs "$h")
+  # `|| wired=0` and not a bare `&&`: under `set -e` a failed wiring would otherwise
+  # abort the installer mid-way, right after it has already vendored the engine.
+  wired=1
+  case "$h" in
+    claude) leo_wire_hooks_json "$(leo_settings_file)" ovmem "${specs[@]}" >/dev/null || wired=0 ;;
+    codex)  LEO_TOML_COMMENT="# ovmem (Leopold extension). Autonomous long-term memory: recalls what you have
+# already decided before each turn and distils each session into OpenViking
+# (127.0.0.1:1933) afterwards. Every hook is a silent no-op when the local
+# OpenViking server is down, and OVMEM_DISABLE=1 turns the whole thing off." \
+            leo_wire_hooks_toml "$(leo_config_file)" ovmem "${specs[@]}" >/dev/null || wired=0 ;;
+  esac
+  if [ "$wired" = 1 ]; then
+    ok "$(leo_harness_label "$h"): 4 hooks wired (SessionStart, UserPromptSubmit, PreCompact, SessionEnd)"
+  else
+    warn "$(leo_harness_label "$h"): could not wire the ovmem hooks — see the warning above"
+  fi
+done
+ok "engine installed at $OVMEM_DIR"
+if leo_has_harness codex; then
+  say "Codex keeps a config-declared hook inert until you approve it once — open Codex and accept them."
+fi
 
 # ---- round-trip verify ------------------------------------------------------
 say "verifying end-to-end (commit -> extract)"
@@ -327,5 +365,6 @@ fi
 
 [ -n "$TTY" ] && exec 3>&- || true
 echo
-ok "ovmem ready ($PROVIDER · $CHAT_ID · $EMBED_ID). Active on your NEXT Claude Code session."
-echo "   off: OVMEM_DISABLE=1   ·   debug: OVMEM_DEBUG=1 (~/.claude/ovmem/ovmem.log)   ·   prune: python3 $OVMEM_DIR/ovmem-cleanup.py"
+_labels=""; for h in $(leo_harness_targets); do _labels="${_labels:+$_labels + }$(leo_harness_label "$h")"; done
+ok "ovmem ready ($PROVIDER · $CHAT_ID · $EMBED_ID). Active on your NEXT ${_labels:-agent} session."
+echo "   off: OVMEM_DISABLE=1   ·   debug: OVMEM_DEBUG=1 ($OVMEM_DIR/ovmem.log)   ·   prune: python3 $OVMEM_DIR/ovmem-cleanup.py"

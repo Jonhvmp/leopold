@@ -70,19 +70,90 @@ if [ "$HAVE_CODEX" = "1" ]; then
   fi
 fi
 
-if [ -f "$CLAUDE/enhance/enhance.py" ]; then
-  if grep -q 'enhance.py --event' "$CLAUDE/settings.json" 2>/dev/null; then
-    st="$(python3 "$CLAUDE/enhance/enhance.py" --event status 2>/dev/null || echo '?')"
+# The enhancer keeps ONE data dir for the machine (so the switch and the learned
+# profile are shared) but ONE hook per harness. Resolve both the way the installer
+# does, and report every harness that is missing its wiring.
+if   [ -n "${LEOPOLD_ENHANCE_DIR:-}" ]; then ENH_DIR="$LEOPOLD_ENHANCE_DIR"
+elif [ -n "${LEOPOLD_HOME:-}" ];        then ENH_DIR="$LEOPOLD_HOME/enhance"
+elif [ -d "$CLAUDE/enhance" ];          then ENH_DIR="$CLAUDE/enhance"
+elif [ -d "$CODEX/enhance" ];           then ENH_DIR="$CODEX/enhance"
+elif [ -d "$CLAUDE" ];                  then ENH_DIR="$CLAUDE/enhance"
+else                                         ENH_DIR="$CODEX/enhance"
+fi
+if [ -f "$ENH_DIR/enhance.py" ]; then
+  enh_missing=""
+  [ "$HAVE_CLAUDE" = "1" ] && ! grep -q 'enhance.py --event' "$CLAUDE/settings.json" 2>/dev/null \
+    && enh_missing="Claude Code"
+  [ "$HAVE_CODEX" = "1" ] && ! grep -q 'enhance.py --event' "$CODEX/config.toml" 2>/dev/null \
+    && enh_missing="${enh_missing:+$enh_missing + }Codex CLI"
+  st="$(LEOPOLD_ENHANCE_DIR="$ENH_DIR" python3 "$ENH_DIR/enhance.py" --event status 2>/dev/null || echo '?')"
+  if [ -z "$enh_missing" ]; then
     pass "prompt enhancer installed + wired ($st)"
   else
-    note "prompt enhancer installed but not wired — leopold menu (enhance -> Install)"
+    note "prompt enhancer not wired on $enh_missing — leopold menu (enhance -> Install)"
   fi
 else
   note "prompt enhancer not installed (optional) — leopold menu (enhance -> Install)"
 fi
 
-if [ -d "$CLAUDE/skills/gstack" ] || [ -d "$CLAUDE/skills/spec" ]; then
-  pass "gstack detected — planning toolchain available"
+# ovmem: same shape as the enhancer — ONE data dir for the machine, FOUR hooks per
+# harness. Resolve the dir the way the installer does and name every harness that is
+# missing its wiring; a memory that only fires in one of two agents is the silent
+# half-install this exists to catch.
+if   [ -n "${LEOPOLD_OVMEM_DIR:-}" ]; then OVM_DIR="$LEOPOLD_OVMEM_DIR"
+elif [ -n "${LEOPOLD_HOME:-}" ];      then OVM_DIR="$LEOPOLD_HOME/ovmem"
+elif [ -d "$CLAUDE/ovmem" ];          then OVM_DIR="$CLAUDE/ovmem"
+elif [ -d "$CODEX/ovmem" ];           then OVM_DIR="$CODEX/ovmem"
+elif [ -d "$CLAUDE" ];                then OVM_DIR="$CLAUDE/ovmem"
+else                                       OVM_DIR="$CODEX/ovmem"
+fi
+# How many ovmem hooks a harness config declares. `grep -c` prints "0" AND exits 1
+# when the file exists with no match, so `|| echo 0` would append a second 0 and hand
+# `[` the two-line string "0\n0" — which aborts the test with "integer expression
+# expected", short-circuits the && chain, and reports a half-install as wired. Use
+# `|| true` (what extensions/ovmem/manage.sh:wired_count already does) and default the
+# empty output the missing-file case produces.
+ovm_wired() { # <hooks file> -> count
+  local n
+  [ -f "$1" ] || { echo 0; return; }
+  n="$(grep -c 'ovmem.py --event' "$1" 2>/dev/null || true)"
+  echo "${n:-0}"
+}
+if [ -f "$OVM_DIR/ovmem.py" ]; then
+  ovm_missing=""
+  [ "$HAVE_CLAUDE" = "1" ] && [ "$(ovm_wired "$CLAUDE/settings.json")" -lt 4 ] \
+    && ovm_missing="Claude Code"
+  [ "$HAVE_CODEX" = "1" ] && [ "$(ovm_wired "$CODEX/config.toml")" -lt 4 ] \
+    && ovm_missing="${ovm_missing:+$ovm_missing + }Codex CLI"
+  if [ -z "$ovm_missing" ]; then
+    if curl -s -m 2 http://127.0.0.1:1933/health 2>/dev/null | grep -q '"healthy":true'; then
+      pass "ovmem installed + wired (OpenViking up)"
+    else
+      note "ovmem wired but the OpenViking server is down — every hook is a silent no-op until it starts"
+    fi
+  else
+    note "ovmem not wired on $ovm_missing — leopold menu (ovmem -> Install)"
+  fi
+else
+  note "ovmem not installed (optional) — leopold menu (ovmem -> Install)"
+fi
+
+# gstack is per harness: each one discovers skills in its own skills root, so a
+# machine can easily have it on one and not the other. Say which.
+# `-e` on the SKILL.md, not `-d` on the dir: gstack installs each skill as a dir
+# holding a symlink into the checkout, so a moved or deleted checkout leaves the
+# dirs behind, dangling. Testing the target is the difference between "installed"
+# and "there is a folder with that name".
+gstack_in() { # <skills-dir>
+  [ -e "$1/gstack/SKILL.md" ] || [ -e "$1/spec/SKILL.md" ] || [ -e "$1/gstack-spec/SKILL.md" ]
+}
+gs_have=""; gs_missing=""
+[ "$HAVE_CLAUDE" = "1" ] && { gstack_in "$CLAUDE/skills" && gs_have="Claude Code" || gs_missing="Claude Code"; }
+[ "$HAVE_CODEX" = "1" ]  && { gstack_in "$CODEX/skills"  && gs_have="${gs_have:+$gs_have + }Codex CLI" || gs_missing="${gs_missing:+$gs_missing + }Codex CLI"; }
+if [ -n "$gs_have" ] && [ -z "$gs_missing" ]; then
+  pass "gstack detected on $gs_have — planning toolchain available"
+elif [ -n "$gs_have" ]; then
+  note "gstack on $gs_have but missing on $gs_missing — 'make gstack-install' installs it everywhere"
 else
   note "gstack not installed (optional) — 'make gstack-install' to enable planning"
 fi

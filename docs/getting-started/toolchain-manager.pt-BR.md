@@ -53,9 +53,14 @@ compartilhado no lugar.
 A [Serena](https://github.com/oraios/serena) (MIT) dá ao agente **ferramentas em nível de símbolo,
 com LSP por trás**, via MCP — `find_symbol`, `find_referencing_symbols`, `replace_symbol_body` — em vez
 de grep + leitura de arquivos inteiros. O instalador do Leopold configura tudo automaticamente: instala
-o `serena-agent` via uv se estiver faltando, registra o servidor MCP pra todos os projetos
-(`claude mcp add --scope user serena -- serena start-mcp-server --context=claude-code
---project-from-cwd`) e pluga os hooks recomendados da Serena. É a maior alavanca isolada
+o `serena-agent` via uv se estiver faltando e então registra o servidor MCP pra todos os projetos
+e pluga os hooks recomendados da Serena **uma vez por harness da máquina** — `claude mcp add
+--scope user serena -- serena start-mcp-server --context=claude-code --project-from-cwd` mais
+os hooks no `~/.claude/settings.json` no Claude Code, e `codex mcp add serena -- serena
+start-mcp-server --context=codex --project-from-cwd` mais os hooks no `~/.codex/config.toml`
+no Codex CLI. O `manage.sh status` e o `doctor` reportam cada harness separadamente, então
+numa máquina com os dois você nunca vê o estado de um passando por ambos. (No Codex os hooks
+ficam inertes até você aprovar uma vez — o doctor avisa.) É a maior alavanca isolada
 pra **qualidade de código** *e* **contexto enxuto** (leituras em nível de símbolo custam bem
 menos tokens — a mesma disciplina que os [guardrails de custo](../guardrails.md) impõem),
 e é por isso que ela é obrigatória em vez de opcional. O setup usa o caminho oficial da Serena, não o
@@ -67,19 +72,36 @@ marketplace de MCP (que traz comandos desatualizados). Gerencie com `make serena
 A suíte de skills de planejamento + QA que o Leopold conduz (`/spec`, `/autoplan`, `/plan-*-review`, …).
 Um projeto MIT separado, do Garry Tan; a extensão clona o repositório e roda o setup dele. Precisa de Bun.
 
+As skills do gstack são diretórios `SKILL.md` comuns, e **os dois harnesses as descobrem** —
+o Claude Code em `~/.claude/skills`, o Codex CLI em `~/.codex/skills` — então a extensão roda
+o instalador do próprio gstack uma vez por harness da máquina (`--host claude`, `--host
+codex`), e o `status`, o `remove` e o `doctor` reportam cada um separadamente, contando as
+skills que realmente aparecem naquele skills root. Uma máquina só com Codex mantém o checkout
+no `~/.gstack/repos/gstack` do próprio gstack (ele recusa um checkout dentro do skills dir do
+Codex, o que faria cada skill ser descoberta duas vezes) e não ganha nada em `~/.claude`.
+`make gstack-install` / `make gstack-doctor`.
+
 ### ovmem
 
 Memória RAG de longo prazo autônoma: ela liga o [OpenViking](https://github.com/volcengine/OpenViking)
-ao Claude Code através de 4 hooks nativos (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
+ao seu agente através de 4 hooks nativos (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
 então as sessões ficam otimizadas sem `/compact` ou `/clear` destrutivos. Destilação, dedup e
 reconsolidação acontecem do lado do servidor; uma poda semanal por hotness impede o store de inchar.
+
+Esses quatro eventos existem tanto no **Claude Code quanto no Codex CLI**, e o instalador declara
+todos eles nos harnesses que estiverem na máquina — `~/.claude/settings.json` em JSON,
+`~/.codex/config.toml` em TOML. O store de memória é um só pra máquina, então uma decisão registrada
+numa sessão do Codex volta numa sessão do Claude Code. O Codex mantém um hook declarado em config
+inerte até você aprovar uma vez, e limita o `SessionEnd` a 3 segundos — por isso o flush de fim de
+sessão roda destacado lá. O `leopold doctor` e o doctor da própria extensão nomeiam todo harness que
+ainda está sem a fiação.
 
 O instalador traz o **perfil OpenAI**:
 
 - pede uma chave da OpenAI e **valida contra chat + embeddings** antes de salvar
   (ela precisa do escopo `model.request`, não só de embedding),
-- escreve `~/.openviking/ov.conf` (`chmod 600`), pluga os 4 hooks de forma idempotente e
-  verifica de ponta a ponta com uma ida e volta de commit → extract.
+- escreve `~/.openviking/ov.conf` (`chmod 600`), pluga os 4 hooks de forma idempotente em todo
+  harness presente e verifica de ponta a ponta com uma ida e volta de commit → extract.
 
 Tudo é **local e privado**: o servidor OpenViking faz bind em `127.0.0.1` (loopback) no
 dispositivo do próprio usuário — ele não fica exposto à rede, e nada aponta pra um servidor

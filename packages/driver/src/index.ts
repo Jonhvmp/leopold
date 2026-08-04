@@ -13,7 +13,7 @@ import { runInsights } from "./insights.js";
 import { runWorkflowCommand } from "./workflow-cmd.js";
 import { setProvider, currentProvider } from "./sdk.js";
 import {
-  HARNESSES, describeHarness, installedHarnesses, resolveProvider,
+  HARNESSES, describeHarness, installedHarnesses, leopoldHome, resolveProvider,
   UnknownProviderError, type ProviderId,
 } from "./provider.js";
 
@@ -37,6 +37,7 @@ Usage:
   leopold-driver --version                  print the leopold-driver version
   leopold-driver up                         one-shot setup: install + permissions + extensions
   leopold-driver harness                    which harnesses are here, and what each can do
+  leopold-driver home                       print the resolved Leopold asset home (hooks, scripts)
   leopold-driver install [--with-gstack]   install skills + hooks (Claude Code and/or Codex)
   leopold-driver insights [--json]          summarize the current run (events.jsonl)
   leopold-driver menu                       toolchain manager (serena / gstack / ovmem / enhance)
@@ -145,6 +146,11 @@ switch (sub) {
   case "harness":
   case "harnesses":
     process.exit(harnessReport());
+  case "home":
+    // One line, absolute, nothing else — this is what scripts and skills read to
+    // find the hooks/templates without hardcoding a harness path.
+    console.log(leopoldHome());
+    process.exit(0);
   case "doctor":
     process.exit(runDoctor());
   case "secrets":

@@ -26,7 +26,7 @@
 
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 
 export type ProviderId = "claude" | "codex";
 
@@ -149,6 +149,34 @@ export function isInstalled(id: ProviderId, env: NodeJS.ProcessEnv = process.env
 /** Every harness present on this machine, in preference order. */
 export function installedHarnesses(env: NodeJS.ProcessEnv = process.env): ProviderId[] {
   return (Object.keys(HARNESSES) as ProviderId[]).filter((id) => isInstalled(id, env));
+}
+
+/**
+ * The Leopold asset home: where the installer put the harness-neutral half of
+ * Leopold (hooks, templates, docs, scripts, extensions).
+ *
+ * Same precedence as install.sh and scripts/leopold-doctor.sh, in this order:
+ *   1. LEOPOLD_HOME wins outright.
+ *   2. An existing <CLAUDE_HOME>/leopold — Claude Code stays the asset home
+ *      wherever it is in play, so existing installs never need a migration.
+ *   3. An existing <CODEX_HOME>/leopold — a Codex-only machine gets its own.
+ *   4. Nothing installed yet: predict where install.sh would put it. Claude Code
+ *      unless Codex is the only harness on the machine, which mirrors the
+ *      installer's `auto` harness detection.
+ *
+ * The result is always absolute, and the path is NOT required to exist — callers
+ * that need the assets check for themselves and say so, rather than degrading.
+ *
+ * The documented no-CLI shell fallback (docs/reference/leopold-home.md) resolves
+ * identically; the test suite runs it against this function.
+ */
+export function leopoldHome(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.LEOPOLD_HOME) return resolve(env.LEOPOLD_HOME);
+  const claude = join(harnessHome("claude", env), "leopold");
+  const codex = join(harnessHome("codex", env), "leopold");
+  if (existsSync(claude)) return claude;
+  if (existsSync(codex)) return codex;
+  return isInstalled("claude", env) || !isInstalled("codex", env) ? claude : codex;
 }
 
 export class UnknownProviderError extends Error {}

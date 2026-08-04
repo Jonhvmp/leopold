@@ -22,6 +22,11 @@ You are running Phase 1 of Leopold. Your job is to turn the user's intent into a
 durable brief the autonomous run can execute without you. This is a debate, not
 a form. Push back, surface tradeoffs, and name what is missing.
 
+Leopold runs on either harness. Skills named `/x` below are slash commands on Claude
+Code; on Codex CLI invoke the same skill as `$x` or by naming it in plain text. Where
+a tool is named, use your harness's equivalent: `AskUserQuestion` (Claude Code) /
+`request_user_input` (Codex) to ask, `Task` / `spawn_agent` to spawn a subagent.
+
 The brief is the contract. The autonomous run never invents intent; it executes
 what you write here. The quality of the run is capped by the quality of this
 brief, so do it well.
@@ -32,10 +37,11 @@ Quietly check for a Leopold update; if one is available, tell the user. If
 `~/.leopold/auto-update` exists, update now (the brief is a safe point).
 
 ```bash
-UP="$(bash ~/.claude/leopold/scripts/leopold-update-check.sh 2>/dev/null || true)"
+LEO="$(leopold home 2>/dev/null || echo "${LEOPOLD_HOME:-$([ -d "${CLAUDE_HOME:-$HOME/.claude}/leopold" ] && echo "${CLAUDE_HOME:-$HOME/.claude}" || echo "${CODEX_HOME:-$HOME/.codex}")/leopold}")"
+UP="$(bash "$LEO/scripts/leopold-update-check.sh" 2>/dev/null || true)"
 if [ -n "$UP" ]; then
   echo "$UP"
-  [ -f ~/.leopold/auto-update ] && bash ~/.claude/leopold/scripts/leopold-update.sh || echo "Update with: make update (or /leopold-update)"
+  [ -f ~/.leopold/auto-update ] && bash "$LEO/scripts/leopold-update.sh" || echo "Update with: make update (or /leopold-update)"
 fi
 ```
 
@@ -46,14 +52,16 @@ Run: `mkdir -p .leopold`
 If `.leopold/MISSION.md` already exists, read all existing artifacts and offer to
 revise rather than overwrite.
 
-If this looks like a fresh project — no `CLAUDE.md`, no app run-skill, a thin
-permissions allowlist — suggest running **/leopold-up** first (Phase 0): it generates
-project memory, teaches Claude to run the app, and configures permissions/MCP so the
-brief and run start from a strong footing. Don't block on it; just point it out once.
+If this looks like a fresh project — no agent memory file (`CLAUDE.md` on Claude Code,
+`AGENTS.md` on Codex), no app run-skill, a thin permissions allowlist — suggest running
+**/leopold-up** first (Phase 0): it generates project memory, teaches the agent to run
+the app, and configures permissions/MCP so the brief and run start from a strong
+footing. Don't block on it; just point it out once.
 
 ## Step 1 — Understand the mission (debate it)
 
-Through conversation (use AskUserQuestion for real forks), establish:
+Through conversation (use `AskUserQuestion` / `request_user_input` for real forks),
+establish:
 
 - The problem and why it matters now.
 - The goal, and explicit non-goals (what we are deliberately not doing).
@@ -122,9 +130,14 @@ as before (fully backward compatible). Example:
 
 For a substantial mission (roughly: 6+ items, or architectural choices baked into
 the ordering), a single draft inherits your first framing. If the `Workflow` tool
-is available, offer to draft the plan by **tournament** instead:
+is available, offer to draft the plan by **tournament** instead. Dynamic workflows
+are a Claude Code runtime feature: on Codex CLI the `Workflow` tool does not exist,
+so skip this step and say why — the Step 4 plan stands on its own, and
+`leopold workflow --run` still executes the plan through the driver on either
+harness.
 
-- Copy `~/.claude/skills/leopold-brief/reference/plan-tournament.workflow.js` to
+- Copy `reference/plan-tournament.workflow.js` from this skill's own folder (the
+  directory holding this SKILL.md, wherever the harness loaded it from) to
   `.claude/workflows/leopold-plan-tournament.js` and launch it with `args`:
   `{ mission, charter, projectDir, constraints }` — where `constraints` restates
   the format rules from Step 4 (checkbox lines, `(after: N)` markers, sizing,
@@ -141,13 +154,16 @@ plan is enough.
 
 ## Step 4b — Harden the plan with gstack (optional)
 
-If gstack is installed (check for `~/.claude/skills/gstack/`, or whether the
-`/spec` skill exists), offer to sharpen the plan before writing it. gstack's
-planning skills are excellent here:
+If gstack is installed (check for a `gstack` skill dir under the harness skills
+home — `${CLAUDE_HOME:-$HOME/.claude}/skills` on Claude Code,
+`${CODEX_HOME:-$HOME/.codex}/skills` on Codex — or whether the `/spec` skill
+exists), offer to sharpen the plan before writing it. gstack's
+planning skills are excellent here (invoke each as `/name` on Claude Code, `$name` or
+by naming the skill on Codex):
 
-- Heavy or architectural plan -> offer `/autoplan` or `/plan-eng-review`.
-- Product or scope decision -> offer `/plan-ceo-review`.
-- A fuzzy item that needs an executable spec -> offer `/spec`.
+- Heavy or architectural plan -> offer `autoplan` or `plan-eng-review`.
+- Product or scope decision -> offer `plan-ceo-review`.
+- A fuzzy item that needs an executable spec -> offer `spec`.
 
 Run them in spawned mode (prefix any gstack bash with `OPENCLAW_SESSION=1`) so
 they auto-decide and report instead of prompting, then fold the result back into
@@ -156,8 +172,8 @@ already built is enough. gstack is optional and separate: https://github.com/gar
 
 ## Step 5 — Write the artifacts
 
-Copy the templates from the Leopold install (`~/.claude/leopold/templates/`) and
-fill them in, writing to:
+Copy the templates from the Leopold install (`$LEO/templates/`, with `$LEO`
+resolved as in the preamble above) and fill them in, writing to:
 
 - `.leopold/MISSION.md`
 - `.leopold/CHARTER.md`
@@ -179,6 +195,8 @@ End by telling them how to hand over the seat, and which engine fits:
 - `/leopold-workflow` — compiles this brief into a **dynamic workflow**: the plan runs
   as code (no context drift on a long plan), each item gets an independent adversarial
   review, and the run is resumable and visible in `/workflows`. Reach for it when the
-  plan is large or parallelizable. Requires Dynamic workflows enabled (`/config`).
+  plan is large or parallelizable. Claude Code only — it needs Dynamic workflows
+  enabled (`/config`). On Codex CLI, use `leopold workflow --run` instead: same
+  compiled plan, executed by the driver through `codex exec`.
 
 Both read the same `.leopold/` brief and keep git locked.

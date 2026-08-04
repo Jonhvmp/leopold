@@ -16,7 +16,8 @@ Update the installed Leopold engine to the latest version.
 Run:
 
 ```bash
-bash ~/.claude/leopold/scripts/leopold-update.sh
+LEO="$(leopold home 2>/dev/null || echo "${LEOPOLD_HOME:-$([ -d "${CLAUDE_HOME:-$HOME/.claude}/leopold" ] && echo "${CLAUDE_HOME:-$HOME/.claude}" || echo "${CODEX_HOME:-$HOME/.codex}")/leopold}")"
+bash "$LEO/scripts/leopold-update.sh"
 ```
 
 This pulls the latest source (`~/.local/share/leopold`) and re-runs `install.sh`

@@ -2,9 +2,14 @@
 // and what Leopold is allowed to assume about it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   HARNESSES, harnessHome, skillsDir, settingsPath, parseProvider, resolveProvider,
-  installedHarnesses, describeHarness, UnknownProviderError,
+  installedHarnesses, describeHarness, leopoldHome, UnknownProviderError,
 } from "../src/provider.ts";
 
 /** A machine with no harness at all: nothing on PATH, no harness home on disk. */
@@ -90,4 +95,126 @@ test("describeHarness reports presence, paths and hook support", () => {
   assert.match(line, /Stop\(block\)/);
   assert.match(line, /trust approval/);
   assert.match(line, /continuity=stop-hook/);
+});
+
+// ---------------------------------------------------------------------------
+// The Leopold asset home: `leopold home`, and the shell fallback that has to
+// agree with it. Skills and hooks run in shells that may not have the driver on
+// PATH, so the documented one-liner is part of the product — it is extracted
+// from the docs and executed here, not trusted.
+// ---------------------------------------------------------------------------
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const HOME_DOC = join(REPO, "docs", "reference", "leopold-home.md");
+
+/** The fallback snippet exactly as docs/reference/leopold-home.md publishes it. */
+function documentedFallback(): string {
+  const doc = readFileSync(HOME_DOC, "utf8");
+  const marker = doc.indexOf("<!-- leopold-home:fallback -->");
+  assert.ok(marker >= 0, "the fallback block must stay marked in the docs");
+  const open = doc.indexOf("```sh", marker);
+  const start = doc.indexOf("\n", open) + 1;
+  const end = doc.indexOf("```", start);
+  assert.ok(open >= 0 && end > start, "the marked fallback block must be a ```sh fence");
+  return doc.slice(start, end);
+}
+
+/** Run the documented shell fallback under exactly this environment. The shell is
+ *  spawned by absolute path so the test can hand it a PATH with no harness on it —
+ *  the snippet's `command -v claude` has to see the same machine leopoldHome() does. */
+function shellHome(env: NodeJS.ProcessEnv): string {
+  return execFileSync("/bin/bash", ["-c", `${documentedFallback()}\nleopold_home`], {
+    env: env as NodeJS.ProcessEnv,
+    encoding: "utf8",
+  }).trim();
+}
+
+/** Assert `leopold home` and the documented fallback agree, and return the path. */
+function agreedHome(env: NodeJS.ProcessEnv): string {
+  const fromDriver = leopoldHome(env);
+  assert.equal(shellHome(env), fromDriver, "the documented shell fallback drifted from leopoldHome()");
+  assert.ok(fromDriver.startsWith("/"), `expected an absolute path, got ${fromDriver}`);
+  return fromDriver;
+}
+
+/** A temp harness layout. `dirs` are created; anything else stays absent. */
+function layout(dirs: string[]): { root: string; env: NodeJS.ProcessEnv; cleanup: () => void } {
+  const root = mkdtempSync(join(tmpdir(), "leopold-home-"));
+  for (const d of dirs) mkdirSync(join(root, d), { recursive: true });
+  return {
+    root,
+    env: {
+      PATH: "/nonexistent-leopold-path",
+      HOME: root,
+      CLAUDE_HOME: join(root, ".claude"),
+      CODEX_HOME: join(root, ".codex"),
+    },
+    cleanup: () => rmSync(root, { recursive: true, force: true }),
+  };
+}
+
+test("LEOPOLD_HOME wins outright, on either harness layout", () => {
+  for (const dirs of [[".claude/leopold"], [".codex/leopold"], []]) {
+    const { env, cleanup } = layout(dirs);
+    try {
+      assert.equal(agreedHome({ ...env, LEOPOLD_HOME: "/tmp/leo" }), "/tmp/leo");
+    } finally {
+      cleanup();
+    }
+  }
+});
+
+test("no override and $CLAUDE_HOME/leopold exists -> that path", () => {
+  const { root, env, cleanup } = layout([".claude/leopold"]);
+  try {
+    assert.equal(agreedHome(env), join(root, ".claude/leopold"));
+  } finally {
+    cleanup();
+  }
+});
+
+test("Claude Code keeps the asset home when both harnesses are installed", () => {
+  // No migration for existing installs: a machine that grows a Codex install
+  // must keep reading its hooks from where they already are.
+  const { root, env, cleanup } = layout([".claude/leopold", ".codex/leopold"]);
+  try {
+    assert.equal(agreedHome(env), join(root, ".claude/leopold"));
+  } finally {
+    cleanup();
+  }
+});
+
+test("no override and only $CODEX_HOME exists -> $CODEX_HOME/leopold", () => {
+  // A Codex-only machine, before and after the installer has run.
+  for (const dirs of [[".codex"], [".codex/leopold"]]) {
+    const { root, env, cleanup } = layout(dirs);
+    try {
+      assert.equal(agreedHome(env), join(root, ".codex/leopold"));
+    } finally {
+      cleanup();
+    }
+  }
+});
+
+test("a bare machine predicts the Claude path, like install.sh --harness auto", () => {
+  const { root, env, cleanup } = layout([]);
+  try {
+    assert.equal(agreedHome(env), join(root, ".claude/leopold"));
+  } finally {
+    cleanup();
+  }
+});
+
+test("`leopold home` prints one absolute line and exits 0", () => {
+  const { root, env, cleanup } = layout([".codex/leopold"]);
+  const cli = join(REPO, "packages", "driver", "src", "index.ts");
+  try {
+    const out = execFileSync(process.execPath, ["--import", "tsx", cli, "home"], {
+      env: { PATH: process.env.PATH, ...env } as NodeJS.ProcessEnv,
+      encoding: "utf8",
+    });
+    assert.equal(out, `${join(root, ".codex/leopold")}\n`);
+  } finally {
+    cleanup();
+  }
 });

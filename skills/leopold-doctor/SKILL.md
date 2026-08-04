@@ -13,12 +13,12 @@ triggers:
 
 Verify that Leopold is installed correctly. Read-only.
 
-Run (the assets live under `~/.claude/leopold` when Claude Code is installed,
-otherwise `~/.codex/leopold`):
+Run (the first line resolves the Leopold asset home: `LEOPOLD_HOME` wins, then the
+Claude Code home, then the Codex one — same order as the installer):
 
 ```bash
-bash ~/.claude/leopold/scripts/leopold-doctor.sh 2>/dev/null \
-  || bash ~/.codex/leopold/scripts/leopold-doctor.sh
+LEO="$(leopold home 2>/dev/null || echo "${LEOPOLD_HOME:-$([ -d "${CLAUDE_HOME:-$HOME/.claude}/leopold" ] && echo "${CLAUDE_HOME:-$HOME/.claude}" || echo "${CODEX_HOME:-$HOME/.codex}")/leopold}")"
+bash "$LEO/scripts/leopold-doctor.sh"
 ```
 
 It checks every harness it finds — Claude Code and Codex — since Leopold's skills

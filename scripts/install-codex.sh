@@ -25,8 +25,12 @@ CONFIG="$CODEX/config.toml"
 GUARD="$LEO_HOME/hooks/guard-irreversible.sh"
 STOP="$LEO_HOME/hooks/stop-continuity.sh"
 
-BEGIN="# >>> leopold (managed) >>>"
-END="# <<< leopold (managed) <<<"
+# The TOML/JSON writers live in ONE place (extensions/lib/harness.sh) so this
+# installer and the four extensions cannot drift apart.
+LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/extensions/lib/harness.sh"
+[ -f "$LIB" ] || { echo "install-codex.sh: missing $LIB" >&2; exit 1; }
+# shellcheck source=../extensions/lib/harness.sh
+. "$LIB"
 
 echo "-> installing Leopold into Codex ($CODEX)"
 mkdir -p "$SKILLS"
@@ -45,73 +49,25 @@ fi
 chmod +x "$GUARD" "$STOP" 2>/dev/null || true
 
 # --- wire both hooks into config.toml --------------------------------------
-# Written as a marker-delimited block so a re-install replaces it exactly and a
-# hand-written config is never reformatted. TOML has no merge tool we can rely on
-# being present, so we edit text and then VALIDATE the result; a config that no
-# longer parses is rolled back rather than left behind.
-[ -f "$CONFIG" ] || { mkdir -p "$CODEX"; : > "$CONFIG"; }
-cp "$CONFIG" "$CONFIG.leopold.bak"
+# One managed, marker-delimited block: idempotent, backed up, validated, and
+# rolled back rather than left unparseable. See extensions/lib/harness.sh.
+# shellcheck disable=SC2034  # read by leo_wire_hooks_toml (extensions/lib/harness.sh)
+LEO_TOML_COMMENT="# Leopold. Both hooks are no-ops unless a Leopold run is active in the project
+# (.leopold/state.json), so they are safe to leave installed. Re-run the Leopold
+# installer to update; anything you edit between the markers gets replaced.
+#
+# 1. Git lock: denies git commit / git push during an autonomous run.
+# 2. Continuity: blocks the stop and re-injects the next plan item until the
+#    plan is done or a stop condition fires."
 
-tmp="$(mktemp)"
-# Drop any previous Leopold block (idempotent re-install).
-awk -v b="$BEGIN" -v e="$END" '
-  $0 == b { skip = 1; next }
-  $0 == e { skip = 0; next }
-  !skip   { print }
-' "$CONFIG" > "$tmp"
-
-# Trim trailing blank lines, then append the fresh block.
-awk 'BEGIN{n=0} {lines[NR]=$0} END{last=NR; while (last>0 && lines[last] ~ /^[[:space:]]*$/) last--; for(i=1;i<=last;i++) print lines[i]}' "$tmp" > "$tmp.trim" && mv "$tmp.trim" "$tmp"
-
-{
-  [ -s "$tmp" ] && echo ""
-  echo "$BEGIN"
-  echo "# Leopold. Both hooks are no-ops unless a Leopold run is active in the project"
-  echo "# (.leopold/state.json), so they are safe to leave installed. Re-run the Leopold"
-  echo "# installer to update; anything you edit between the markers gets replaced."
-  echo "#"
-  echo "# 1. Git lock: denies git commit / git push during an autonomous run."
-  echo "[[hooks.PreToolUse]]"
-  echo "matcher = \"Bash\""
-  echo ""
-  echo "[[hooks.PreToolUse.hooks]]"
-  echo "type = \"command\""
-  echo "command = \"$GUARD\""
-  echo "timeout = 5"
-  echo ""
-  echo "# 2. Continuity: blocks the stop and re-injects the next plan item until the"
-  echo "#    plan is done or a stop condition fires."
-  echo "[[hooks.Stop]]"
-  echo ""
-  echo "[[hooks.Stop.hooks]]"
-  echo "type = \"command\""
-  echo "command = \"$STOP\""
-  echo "timeout = 15"
-  echo "$END"
-} >> "$tmp"
-
-if command -v python3 >/dev/null 2>&1; then
-  if ! python3 - "$tmp" <<'PY'
-import sys
-try:
-    import tomllib
-except ModuleNotFoundError:      # Python < 3.11: skip validation rather than fail the install
-    sys.exit(0)
-with open(sys.argv[1], "rb") as fh:
-    tomllib.load(fh)
-PY
-  then
-    echo "   warn: the merged config.toml would not parse — leaving your config untouched."
-    echo "         Add this to $CONFIG by hand:"
-    echo ""
-    sed -n "/^${BEGIN}$/,/^${END}$/p" "$tmp" | sed 's/^/           /'
-    rm -f "$tmp"
-    exit 0
-  fi
+if ! leo_wire_hooks_toml "$CONFIG" leopold \
+      "PreToolUse|Bash|$GUARD|5" \
+      "Stop||$STOP|15"; then
+  echo "   warn: could not wire the hooks — Codex skills are installed, hooks are not."
+  echo "         Paste the block above into $CONFIG and re-run: leopold doctor"
+  exit 0
 fi
-
-mv "$tmp" "$CONFIG"
-echo "   git lock + continuity -> $CONFIG (backup at $CONFIG.leopold.bak)"
+echo "   git lock + continuity -> $CONFIG"
 
 # --- trust ------------------------------------------------------------------
 # Codex will not run a config-declared hook until you have trusted it once. That

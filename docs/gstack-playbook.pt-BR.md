@@ -30,10 +30,14 @@ flowchart LR
 O Leopold não embute o gstack; é um [projeto MIT do Garry Tan](https://github.com/garrytan/gstack) à parte, com instalador e self-update próprios. Instale-o standalone para que o Leopold possa conduzi-lo:
 
 ```bash
-make gstack-install
-# or the official one-liner (needs Bun v1.0+):
-git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup
+make gstack-install      # instala em todos os harnesses desta máquina
+make gstack-doctor       # relatório por harness: checkout, Bun, skills em cada skills root
 ```
+
+O `make gstack-install` roda o instalador do próprio gstack uma vez por harness
+que o Leopold resolve aqui (`--host claude`, `--host codex`), então uma máquina só
+com Codex recebe as skills em `~/.codex/skills` e nada em `~/.claude`. Precisa de
+Bun v1.0+.
 
 O `install.sh` se oferece para configurá-lo se estiver faltando (ou rode `./install.sh --with-gstack`). Ele brilha no planejamento: `/office-hours`, `/spec`, `/autoplan`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`.
 

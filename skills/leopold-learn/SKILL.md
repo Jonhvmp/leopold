@@ -34,7 +34,9 @@ accepted amendments only after the user explicitly picks them.
 
 - The `Workflow` tool must be available (Dynamic workflows enabled in `/config`).
   If not, say so and stop — the mining fan-out is what makes this trustworthy;
-  don't fake it with a single-context pass.
+  don't fake it with a single-context pass. Dynamic workflows are a **Claude Code**
+  runtime feature: on Codex CLI the tool does not exist, so say that plainly and stop
+  rather than degrading to one pass.
 - `.leopold/CHARTER.md` must exist. If not, point to `/leopold-brief` and stop.
 - Best after at least one Leopold run (some `DECISIONS.md` content), but session
   transcripts and git history alone are enough signal to be worth running.
@@ -48,16 +50,20 @@ Build the workflow's `args`:
 - `decisionsPaths`: `.leopold/DECISIONS.md` **plus** every archived
   `.leopold/runs/*/DECISIONS.md` (glob for them). Only include files that exist.
 - `transcriptDir`: this project's Claude Code session directory —
-  `~/.claude/projects/<slug>/` where `<slug>` is the absolute project path with
-  every `/` replaced by `-` (e.g. `/home/me/app` → `-home-me-app`). Verify the
-  directory exists and contains `.jsonl` files; pass `''` if not.
+  `${CLAUDE_HOME:-$HOME/.claude}/projects/<slug>/` where `<slug>` is the absolute
+  project path with every `/` replaced by `-` (e.g. `/home/me/app` →
+  `-home-me-app`). Verify the directory exists and contains `.jsonl` files; pass
+  `''` if not. If there are no Claude transcripts for this project — a fresh install,
+  or the runs happened on Codex — pass `''`, and say so when you report: the transcript
+  miner is dropped (the workflow's `mined N from M source(s)` line will show two
+  sources, not three) and the pass mines decisions plus git history only.
 - `outPath`: `.leopold/CHARTER-amendments.md` (absolute).
 - `maxCandidates`: 12 unless the user asks for more/less.
 
 ## Step 2 — Run the mining workflow
 
-Copy the canonical script from this skill's install
-(`~/.claude/skills/leopold-learn/reference/leopold-learn.workflow.js`) to
+Copy the canonical script `reference/leopold-learn.workflow.js` from this skill's
+own folder (the directory holding this SKILL.md, wherever the harness loaded it from) to
 `.claude/workflows/leopold-learn.js` in the project (create the dir if needed),
 then launch it with the Workflow tool:
 
@@ -82,7 +88,7 @@ proposed rules (rule + evidence, compact). Two honest outcomes:
   runs. That is a good result, not a failure.
 - **Survivors** — for each rule, the user decides: fold it into `CHARTER.md`
   (append to the section the proposal suggests — Always / Never / Tie-breakers /
-  Preferences), or discard. Use AskUserQuestion (multiSelect) when there are
+  Preferences), or discard. Use `AskUserQuestion` (multiSelect) when there are
   several; apply exactly the accepted ones with Edit, keeping the charter's
   existing style. Delete the proposal file afterwards if everything was resolved.
 

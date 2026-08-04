@@ -8,7 +8,6 @@
 DRIVER := packages/driver
 NPM    ?= npm
 MKDOCS ?= python3 -m mkdocs
-GSTACK_DIR ?= $(HOME)/.claude/skills/gstack
 
 .DEFAULT_GOAL := help
 
@@ -42,20 +41,18 @@ ovmem-watch: ## Live dashboard for ovmem long-term memory (http://127.0.0.1:1934
 	@bash extensions/ovmem/manage.sh watch
 
 .PHONY: serena-install serena-doctor
-serena-install: ## Install + register Serena (LSP code intelligence MCP) — mandatory for quality
+serena-install: ## Install + register Serena (LSP code intelligence MCP) on every harness here
 	@bash extensions/serena/manage.sh install
 
-serena-doctor: ## Check the Serena install (CLI, MCP registration, hooks)
+serena-doctor: ## Check the Serena install per harness (CLI, MCP registration, hooks)
 	@bash extensions/serena/manage.sh doctor
 
-.PHONY: gstack-install
-gstack-install: ## Install gstack (optional, MIT by Garry Tan) — the toolchain Leopold conducts
-	@if [ -d "$(GSTACK_DIR)" ]; then \
-		echo "gstack already installed at $(GSTACK_DIR)"; \
-	else \
-		echo "Installing gstack (https://github.com/garrytan/gstack) — needs Bun v1.0+..."; \
-		git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git "$(GSTACK_DIR)" && cd "$(GSTACK_DIR)" && ./setup; \
-	fi
+.PHONY: gstack-install gstack-doctor
+gstack-install: ## Install gstack (optional, MIT by Garry Tan) into every harness here
+	@bash extensions/gstack/manage.sh install
+
+gstack-doctor: ## Check the gstack install per harness (checkout, bun, skills per skills root)
+	@bash extensions/gstack/manage.sh doctor
 
 # ---- Hooks ------------------------------------------------------------------
 
@@ -68,11 +65,43 @@ hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@bash -n hooks/stop-continuity.sh
 	@bash -n hooks/guard-irreversible.sh
 	@bash -n install.sh
+	@bash -n scripts/install-codex.sh
+	@bash -n extensions/lib/harness.sh
+	@bash -n extensions/serena/manage.sh
+	@bash -n extensions/enhance/install.sh
+	@bash -n extensions/enhance/manage.sh
+	@bash -n extensions/ovmem/install.sh
+	@bash -n extensions/ovmem/manage.sh
 	@python3 -m py_compile extensions/enhance/payload/enhance.py
-	@echo "hooks + install.sh + enhance engine: syntax OK"
+	@python3 -m py_compile extensions/ovmem/payload/ovmem.py extensions/ovmem/payload/dashboard.py
+	@echo "hooks + installers + harness lib + enhance/ovmem engines: syntax OK"
 
 hooks-test: ## Run the hook behavior tests
 	@bash scripts/test-hooks.sh
+
+.PHONY: harness-test
+harness-test: ## Run the shared harness-wiring tests (hermetic: temp CLAUDE_HOME/CODEX_HOME)
+	@bash scripts/test-harness-lib.sh
+
+.PHONY: codex-install-test
+codex-install-test: ## Run the end-to-end Codex install test (hermetic: temp homes, stubbed PATH, no network)
+	@bash scripts/test-codex-install.sh
+
+.PHONY: serena-test
+serena-test: ## Run the serena extension tests (hermetic: temp HOME/CLAUDE_HOME/CODEX_HOME, stubbed CLIs)
+	@bash scripts/test-serena-ext.sh
+
+.PHONY: ovmem-test
+ovmem-test: ## Run the ovmem extension tests (hermetic: temp homes, stubbed OpenViking, no network)
+	@bash scripts/test-ovmem-ext.sh
+
+.PHONY: gstack-test
+gstack-test: ## Run the gstack extension tests (hermetic: temp homes, stubbed git, no bun)
+	@bash scripts/test-gstack-ext.sh
+
+.PHONY: skills-test
+skills-test: ## Run the skill path tests (no SKILL.md may hardcode a harness home)
+	@bash scripts/test-skill-paths.sh
 
 .PHONY: test-guard
 test-guard: ## Run the guard red-team suite (bypass attempts must stay blocked)
@@ -81,6 +110,7 @@ test-guard: ## Run the guard red-team suite (bypass attempts must stay blocked)
 .PHONY: enhance-test
 enhance-test: ## Run the prompt-enhancer behavior tests (stubbed claude, no network)
 	@bash scripts/test-enhance.sh
+	@bash scripts/test-enhance-ext.sh
 
 .PHONY: watch-test
 watch-test: ## Run the dashboard DAG-builder + steer-command tests (stdlib, no network)
@@ -130,7 +160,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test test-guard enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

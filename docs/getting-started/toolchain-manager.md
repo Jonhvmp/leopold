@@ -53,9 +53,14 @@ server in place.
 [Serena](https://github.com/oraios/serena) (MIT) gives the agent **LSP-backed, symbol-level
 tools** over MCP — `find_symbol`, `find_referencing_symbols`, `replace_symbol_body` — instead
 of grep + whole-file reads. Leopold's installer sets it up automatically: it installs
-`serena-agent` via uv if missing, registers the MCP server for all projects
-(`claude mcp add --scope user serena -- serena start-mcp-server --context=claude-code
---project-from-cwd`), and wires Serena's recommended hooks. It is the biggest single lever
+`serena-agent` via uv if missing, then registers the MCP server for all projects and wires
+Serena's recommended hooks **once per harness on the machine** — `claude mcp add --scope
+user serena -- serena start-mcp-server --context=claude-code --project-from-cwd` plus hooks
+in `~/.claude/settings.json` for Claude Code, and `codex mcp add serena -- serena
+start-mcp-server --context=codex --project-from-cwd` plus hooks in `~/.codex/config.toml`
+for Codex CLI. `manage.sh status` and `doctor` report each harness separately, so a
+two-harness box never sees one harness's state passed off as both. (On Codex, hooks stay
+inert until you approve them once — doctor says so.) It is the biggest single lever
 for **code quality** *and* **lean context** (symbol-level reads cost far fewer tokens — the
 same discipline the [cost guardrails](../guardrails.md) enforce),
 which is why it is mandatory rather than optional. Setup uses Serena's official path, not the
@@ -67,19 +72,36 @@ MCP marketplace (which ships stale commands). Manage with `make serena-install` 
 The planning + QA skill suite Leopold conducts (`/spec`, `/autoplan`, `/plan-*-review`, …).
 A separate MIT project by Garry Tan; the extension clones it and runs its setup. Needs Bun.
 
+gstack skills are plain `SKILL.md` dirs, and **both harnesses discover them** — Claude Code
+under `~/.claude/skills`, Codex CLI under `~/.codex/skills` — so the extension runs gstack's
+own installer once per harness on this machine (`--host claude`, `--host codex`) and
+`status`, `remove` and `doctor` report each one separately, counting the skills actually
+visible in that skills root. A Codex-only box keeps the checkout in gstack's own
+`~/.gstack/repos/gstack` (it refuses a checkout inside the Codex skills dir, which would
+make every skill get discovered twice) and gets nothing under `~/.claude`. `make
+gstack-install` / `make gstack-doctor`.
+
 ### ovmem
 
 Autonomous RAG long-term memory: it wires [OpenViking](https://github.com/volcengine/OpenViking)
-to Claude Code through 4 native hooks (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
+to your agent through 4 native hooks (SessionStart, UserPromptSubmit, PreCompact, SessionEnd),
 so sessions stay optimized without destructive `/compact` or `/clear`. Distillation, dedup and
 reconsolidation happen server-side; a weekly hotness prune keeps the store from accumulating.
+
+Those four events exist on **Claude Code and Codex CLI**, and the installer declares them in
+whichever harnesses are on the machine — `~/.claude/settings.json` in JSON, `~/.codex/config.toml`
+in TOML. The memory store is a single one for the machine, so a decision recorded in a Codex
+session comes back in a Claude Code one. Codex holds a config-declared hook inert until you
+approve it once, and it caps `SessionEnd` at 3 seconds — so the end-of-session flush runs
+detached there. `leopold doctor` and the extension's own doctor name every harness that is
+still missing its wiring.
 
 The installer ships the **OpenAI profile**:
 
 - prompts for an OpenAI key, **validates it against chat + embeddings** before saving
   (it needs the `model.request` scope, not just embedding),
-- writes `~/.openviking/ov.conf` (`chmod 600`), wires the 4 hooks idempotently, and
-  verifies end-to-end with a commit → extract round-trip.
+- writes `~/.openviking/ov.conf` (`chmod 600`), wires the 4 hooks idempotently into every
+  harness present, and verifies end-to-end with a commit → extract round-trip.
 
 Everything is **local and private**: the OpenViking server binds to `127.0.0.1` (loopback) on
 the user's own device — it is not exposed to the network, and nothing points to a central

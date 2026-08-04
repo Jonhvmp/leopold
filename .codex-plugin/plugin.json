@@ -1,6 +1,6 @@
 {
   "name": "leopold",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "An autonomous orchestration harness: brief it like a teammate, it conducts your agent in your seat, deciding from your charter with git locked. Installing as a plugin also arms the git lock without a separate trust step.",
   "author": { "name": "Jonhvmp", "url": "https://github.com/Jonhvmp" },
   "homepage": "https://github.com/Jonhvmp/leopold",

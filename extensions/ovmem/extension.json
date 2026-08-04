@@ -8,7 +8,7 @@
   "capabilities": ["network", "settings.write", "filesystem.home", "package.install", "process.spawn"],
   "dashboard": {
     "label": "Memory",
-    "module": "~/.claude/ovmem/dashboard.py",
+    "module": "ovmem/dashboard.py",
     "view": "dashboard_view",
     "search": "dashboard_search"
   }

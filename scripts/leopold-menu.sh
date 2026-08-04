@@ -4,18 +4,36 @@
 # is a self-contained folder with an extension.json (metadata) and a manage.sh that
 # implements: detect | status | install | update | remove | doctor.
 #
-# Works both from a clone (./scripts/leopold-menu.sh) and from an install
-# (~/.claude/leopold/scripts/leopold-menu.sh) - the extensions dir is resolved
-# relative to this script.
+# Works from a clone (./scripts/leopold-menu.sh) and from an install under any
+# harness - ~/.claude/leopold/scripts/ on a Claude Code machine,
+# ~/.codex/leopold/scripts/ on a Codex-only one. The registry is resolved relative
+# to this script first, then against the asset home each harness would use, so a
+# machine with no ~/.claude still finds all four extensions.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CANDIDATES=(
+  "$HERE/../extensions"
+  "${LEOPOLD_HOME:-}/extensions"
+  "${CLAUDE_HOME:-$HOME/.claude}/leopold/extensions"
+  "${CODEX_HOME:-$HOME/.codex}/leopold/extensions"
+)
 EXT_DIR=""
-for cand in "$HERE/../extensions" "${CLAUDE_HOME:-$HOME/.claude}/leopold/extensions"; do
-  if [ -d "$cand" ]; then EXT_DIR="$(cd "$cand" && pwd)"; break; fi
+for cand in "${CANDIDATES[@]}"; do
+  if [ -n "$cand" ] && [ -d "$cand" ]; then EXT_DIR="$(cd "$cand" && pwd)"; break; fi
 done
 if [ -z "$EXT_DIR" ]; then
-  echo "No extensions registry found (looked for ../extensions and ~/.claude/leopold/extensions)." >&2
+  echo "No extensions registry found. Looked in:" >&2
+  for cand in "${CANDIDATES[@]}"; do [ -n "$cand" ] && echo "  $cand" >&2; done
+  exit 1
+fi
+
+# The shared harness helper ships inside the registry, so it is found wherever the
+# registry was. It answers which harnesses are on this machine and where their
+# files live - the menu must never assume ~/.claude exists.
+# shellcheck source=../extensions/lib/harness.sh
+if [ -f "$EXT_DIR/lib/harness.sh" ]; then . "$EXT_DIR/lib/harness.sh"; else
+  echo "Extensions registry at $EXT_DIR is missing lib/harness.sh - reinstall Leopold." >&2
   exit 1
 fi
 
@@ -44,7 +62,21 @@ list_exts() { # prints extension dirs, sorted by .order
 }
 
 ext_installed() { bash "$1/manage.sh" detect >/dev/null 2>&1; }
-ext_status()    { bash "$1/manage.sh" status 2>/dev/null || true; }
+
+# A status probe can be slow (it may ask an MCP server or the network), and the menu
+# draws one per installed extension. Bound it so opening the menu is never a 30s
+# freeze - and say so when it trips, because a blank status that reads as "fine" is
+# exactly the silent degradation this tool must not do.
+ext_status() { # dir -> one status line
+  local out rc
+  if command -v timeout >/dev/null 2>&1; then
+    out="$(timeout "${LEOPOLD_MENU_STATUS_TIMEOUT:-8}" bash "$1/manage.sh" status 2>/dev/null)"; rc=$?
+    [ "$rc" = 124 ] && { printf 'status check timed out'; return 0; }
+  else
+    out="$(bash "$1/manage.sh" status 2>/dev/null)"
+  fi
+  printf '%s' "$out"
+}
 ext_run()       { bash "$1/manage.sh" "$2"; }
 
 ext_caps() { # extension.json -> space-separated capabilities (empty if none)
@@ -74,7 +106,13 @@ header() {
   clear 2>/dev/null || true
   printf "%s========================================%s\n" "$C_CYAN" "$C_RESET"
   printf "%s  Leopold%s - toolchain manager\n" "$C_BOLD" "$C_RESET"
-  printf "%s========================================%s\n\n" "$C_CYAN" "$C_RESET"
+  printf "%s========================================%s\n" "$C_CYAN" "$C_RESET"
+  # Which harnesses this menu is managing, and where it will read/write. Silent
+  # here would mean uninstalling "everything" on a two-harness box without saying
+  # which two.
+  local h labels=""
+  for h in $(leo_harness_targets); do labels="${labels:+$labels + }$(leo_harness_label "$h")"; done
+  printf "%s  %s · %s%s\n\n" "$C_DIM" "$labels" "$EXT_DIR" "$C_RESET"
 }
 
 main_menu() {
@@ -150,9 +188,30 @@ confirm() { # prompt -> 0 if yes
   case "$a" in [yY]*) return 0 ;; *) echo "  skipped." ; return 1 ;; esac
 }
 ext_path() { [ -d "$EXT_DIR/$1" ] && printf "%s" "$EXT_DIR/$1"; }
-CLAUDE="${CLAUDE_HOME:-$HOME/.claude}"
+CLAUDE="$(leo_claude_home)"
+CODEX="$(leo_codex_home)"
 
-remove_core() {
+# The asset home to uninstall. It is NOT re-derived from the environment: install.sh
+# picks the home from the explicit --harness flag and persists that choice nowhere, so
+# leo_asset_home would answer ~/.claude/leopold on any box that merely has a `claude`
+# binary — while the real install sits under ~/.codex/leopold. Deleting the wrong path
+# and reporting success is the exact half-uninstall this must never do.
+# This menu ships INSIDE the asset home, so the registry we already resolved knows the
+# truth: the home is the registry's parent. Only trust it when that parent looks like an
+# install (hooks/ + VERSION) and not like a source clone (.git / install.sh / skills/) —
+# running the menu out of a checkout must never rm -rf the repo.
+_ext_parent="$(cd "$EXT_DIR/.." && pwd)"
+if [ -d "$_ext_parent/hooks" ] && [ -f "$_ext_parent/VERSION" ] \
+   && [ ! -d "$_ext_parent/.git" ] && [ ! -f "$_ext_parent/install.sh" ] && [ ! -d "$_ext_parent/skills" ]; then
+  ASSETS="$_ext_parent"
+else
+  ASSETS="$(leo_asset_home)"
+fi
+
+# Unwire + delete per harness. Removing Leopold from a Codex machine while leaving
+# its hooks declared in config.toml would be the worst kind of half-uninstall: the
+# UI says gone, the harness still calls scripts that no longer exist.
+remove_core_claude() {
   local settings="$CLAUDE/settings.json" tmp d
   if [ -f "$settings" ] && command -v jq >/dev/null 2>&1; then
     cp "$settings" "$settings.leopold.bak"
@@ -165,9 +224,50 @@ remove_core() {
     echo "  unwired Leopold's Stop/PreToolUse/UserPromptSubmit hooks (backup at $settings.leopold.bak)"
   fi
   for d in "$CLAUDE"/skills/leopold-*; do [ -d "$d" ] && rm -rf "$d"; done
-  rm -rf "$CLAUDE/leopold" 2>/dev/null || true
-  rm -rf "$CLAUDE/enhance" 2>/dev/null || true
-  echo "  removed the leopold-* skills, $CLAUDE/leopold and $CLAUDE/enhance"
+  echo "  removed the leopold-* skills from $CLAUDE/skills"
+  # The enhance dir is DATA (ledger + learned prompt profile). This screen promises the
+  # data is kept unless a DATA item is picked, so core removal leaves it — item 6 is the
+  # one that deletes it, and it says so in yellow.
+  _enh="$(leo_enhance_dir)"
+  [ -d "$_enh" ] && echo "  kept your enhance data at $_enh (delete it with uninstall item 6)" || true
+}
+
+remove_core_codex() {
+  local config="$CODEX/config.toml" d
+  if [ -f "$config" ]; then
+    cp "$config" "$config.leopold.bak"
+    local tmp; tmp="$(mktemp)"
+    # Drop every managed block: "# >>> leopold (managed) >>>" and "# >>> leopold:<tag> ...".
+    awk '
+      /^# >>> leopold(:[A-Za-z0-9_-]+)? \(managed\) >>>$/ { skip = 1; next }
+      /^# <<< leopold(:[A-Za-z0-9_-]+)? \(managed\) <<<$/ { skip = 0; next }
+      !skip { print }
+    ' "$config" > "$tmp" && mv "$tmp" "$config"
+    echo "  removed Leopold's managed hook blocks from $config (backup at $config.leopold.bak)"
+  fi
+  for d in "$CODEX"/skills/leopold-*; do [ -d "$d" ] && rm -rf "$d"; done
+  echo "  removed the leopold-* skills from $CODEX/skills"
+  # Same rule as the Claude side: the enhance dir is data, and only the DATA item removes it.
+  # One dir for the machine (leo_enhance_dir), so this is the same data either way.
+  _enh="$(leo_enhance_dir)"
+  [ -d "$_enh" ] && echo "  kept your enhance data at $_enh (delete it with uninstall item 6)" || true
+}
+
+remove_core() {
+  local h
+  for h in $(leo_harness_targets); do
+    case "$h" in
+      claude) remove_core_claude ;;
+      codex)  remove_core_codex ;;
+    esac
+  done
+  if [ -d "$ASSETS" ]; then
+    rm -rf "$ASSETS" 2>/dev/null || true
+    if [ -d "$ASSETS" ]; then echo "  could not remove the asset home $ASSETS — remove it by hand"
+    else echo "  removed the asset home $ASSETS"; fi
+  else
+    echo "  no asset home at $ASSETS — nothing to remove there"
+  fi
 }
 
 remove_cli() {
@@ -200,12 +300,12 @@ uninstall_menu() {
   header
   printf "  %sUninstall Leopold%s — pick exactly what to remove.\n" "$C_BOLD" "$C_RESET"
   printf "  %sYour data is KEPT unless you pick a DATA item; each pick is confirmed.%s\n\n" "$C_DIM" "$C_RESET"
-  printf "   1) Leopold core        skills + hooks + %s/leopold (the harness)\n" "$CLAUDE"
+  printf "   1) Leopold core        skills + hooks + %s (the harness)\n" "$ASSETS"
   printf "   2) leopold CLI         npm uninstall -g leopold-driver\n"
   printf "   3) serena              unregister MCP + unwire hooks (keeps the serena CLI)\n"
   printf "   4) gstack              remove the skill suite\n"
   printf "   5) ovmem               unwire hooks + remove engine %s(keeps your memory)%s\n" "$C_DIM" "$C_RESET"
-  printf "   6) enhance              unwire hook + %sDELETE%s %s/enhance (ledger + learned profile)\n" "$C_YELLOW" "$C_RESET" "$CLAUDE"
+  printf "   6) enhance              unwire hook + %sDELETE%s the enhance dir (ledger + learned profile)\n" "$C_YELLOW" "$C_RESET"
   printf "   7) %sovmem DATA + server   ~/.openviking + OpenViking — DELETES memory!%s\n\n" "$C_YELLOW" "$C_RESET"
   printf "   a) everything except ovmem DATA (1-6)      q) cancel\n\n"
   printf "pick (space-separated, e.g. \"1 2 5\"): "

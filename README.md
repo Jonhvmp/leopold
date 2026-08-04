@@ -4,13 +4,14 @@
 
 # Leopold
 
-**Brief it like a teammate. It conducts Claude Code in your seat.**
+**Brief it like a teammate. It conducts Claude Code — or Codex — in your seat.**
 
 <p align="center">
   <a href="https://github.com/Jonhvmp/leopold/actions/workflows/ci.yml"><img src="https://github.com/Jonhvmp/leopold/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://www.npmjs.com/package/leopold-driver"><img src="https://img.shields.io/npm/v/leopold-driver?label=leopold-driver" alt="npm" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Jonhvmp/leopold" alt="license" /></a>
   <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/works%20with-Claude%20Code-d97757" alt="works with Claude Code" /></a>
+  <a href="https://github.com/openai/codex"><img src="https://img.shields.io/badge/works%20with-Codex%20CLI-10a37f" alt="works with Codex CLI" /></a>
   <a href="https://github.com/Jonhvmp/leopold/stargazers"><img src="https://img.shields.io/github/stars/Jonhvmp/leopold?style=social" alt="stars" /></a>
 </p>
 
@@ -18,7 +19,9 @@
   <img src="assets/leopold.gif" alt="Leopold the conductor (Bugs Bunny, Long-Haired Hare, 1949)" width="380" />
 </p>
 
-Leopold is an autonomous orchestration harness for [Claude Code](https://claude.com/claude-code). You debate the work with it — goals, constraints, taste, what "done" means — and that becomes a durable brief. Then it takes the seat and drives Claude Code continuously, deciding the way you would instead of stopping at every fork, until the plan is done or a stop condition fires — **with your git locked the whole time.**
+Leopold is an autonomous orchestration harness for [Claude Code](https://claude.com/claude-code) and [Codex CLI](https://github.com/openai/codex). You debate the work with it — goals, constraints, taste, what "done" means — and that becomes a durable brief. Then it takes the seat and drives your agent continuously, deciding the way you would instead of stopping at every fork, until the plan is done or a stop condition fires — **with your git locked the whole time.**
+
+It is the same product on either agent: the same skills, the same two hooks (unmodified scripts — Codex reimplemented Claude Code's hook contract nearly field for field), the same four extensions, the same dashboard, the same driver.
 
 > The name nods to Bugs Bunny: in *Long-Haired Hare* (1949) he seizes the podium as the conductor **Leopold** and runs the orchestra with a wave of the baton. You are the composer, Leopold the conductor, Claude Code the orchestra.
 
@@ -40,7 +43,10 @@ curl -fsSL https://raw.githubusercontent.com/Jonhvmp/leopold/main/install.sh | b
 
 Either way, the installer finds whichever harness you have and wires it: skills + hooks into
 `~/.claude/` (merged into `settings.json`), and/or into `~/.codex/` (merged into
-`config.toml`). Pick one explicitly with `--harness claude|codex|all`. See
+`config.toml`). Pick one explicitly with `--harness claude|codex|all`. The extensions
+(serena, gstack, ovmem, enhance) install and report **per harness**, and `leopold watch`
+reads a Codex run's real tokens, cost and context — a Codex-only machine gets the whole
+product with nothing pointing at a Claude path. See
 [Claude Code and Codex](docs/concepts/harnesses.md).
 
 With the npm package, the bundled `leopold` CLI runs the whole toolchain **without the
@@ -109,7 +115,7 @@ Leopold extracts the most from Claude Code's native power, in one command. See [
 - **Root-cause panel when an item is stuck.** A failed item isn't just retried: three investigators form hypotheses over *disjoint* evidence (the diff, the verification output, the item's assumptions vs the codebase), refuters try to kill each one, and the surviving theory becomes a concrete lead for the next attempt — the structural fix for an agent doubling down on its own wrong theory. In a worktree-isolated run a **literal reset** also throws out the failed diff and restarts the retry from the pre-attempt snapshot, and `--best-of-k N` settles a critical item by a tournament of N independent attempts, applying the winner.
 - **Effort by risk — keywords or research.** Each item is classified and the worker's reasoning effort is set automatically — `low` for a typo, `max` for a migration or payment change. `--smart-routing` upgrades this: a short read-only session researches the item's *real* blast radius (how many callers, what it touches) before routing; it always falls back to the deterministic classifier and never lowers a critical floor. Add `--slice-scope` and that researched file set is handed to the worker as an explicit "start with these files" scope.
 - **A charter that learns you (`/leopold-learn`).** Your recorded behavior beats your self-description: independent miners sweep the decision log, your session corrections, and git history for recurring judgment calls; a skeptic kills the weak candidates; the survivors become proposed charter amendments you review. Each pass makes the next run decide more like you. The SDK driver can close this loop automatically — `learn_on_finish: on` (or `--learn-on-finish`) mines each clean run into `CHARTER-amendments.md` the moment it finishes, without ever editing the charter itself.
-- **A prompt enhancer that reads your shorthand (`enhance`).** Everyday prompts are thin by habit ("fix login"). One global `UserPromptSubmit` hook scores each prompt; genuinely weak ones get a structured interpretation from Haiku **on your own account** — charter-aware, conversation-aware — injected next to the raw prompt, which always wins on conflict. Strong prompts (anything anchored to a path or symbol) never pay the latency; failures fail open. Off by default: `leopold menu` → enhance → Toggle. `/leopold-enhance learn` mines the local ledger for interpretations you corrected and proposes prompt-profile rules — you review, it never self-edits. [Docs](docs/reference/enhance.md).
+- **A prompt enhancer that reads your shorthand (`enhance`).** Everyday prompts are thin by habit ("fix login"). One global `UserPromptSubmit` hook (on both harnesses) scores each prompt; genuinely weak ones get a structured interpretation from Haiku **on your own account** — charter-aware, conversation-aware — injected next to the raw prompt, which always wins on conflict. Strong prompts (anything anchored to a path or symbol) never pay the latency; failures fail open. Off by default: `leopold menu` → enhance → Toggle. `/leopold-enhance learn` mines the local ledger for interpretations you corrected and proposes prompt-profile rules — you review, it never self-edits. [Docs](docs/reference/enhance.md).
 - **Parallel items.** `leopold-driver run --parallel N` runs independent plan items at once, each in its own worktree, replaying each diff onto the main tree (staged, never committed). Declare order with `- [ ] (after: 2) …`.
 - **One-command setup.** `leopold up` + `/leopold-up` wire the things people skip — `CLAUDE.md` (`/init`), an app run-skill (`/run-skill-generator`), a permissions allowlist, MCP — so a project starts at full power.
 - **Insights.** `leopold-driver insights` summarizes a run: effort mix, review pass-rate, decisions, escalations, real spend.
@@ -160,6 +166,8 @@ Each component lives under [`extensions/`](extensions/) (an `extension.json` + a
 - **gstack** — the planning/QA skill suite Leopold conducts.
 - **ovmem** — autonomous RAG long-term memory (OpenViking + 4 hooks; OpenAI or AWS Bedrock; runs entirely on `127.0.0.1`).
 
+Every one of them installs, reports status and runs its doctor **per harness** — `claude mcp add` + `settings.json` on Claude Code, `codex mcp add` + `config.toml` on Codex, written by one shared helper so the two can't drift. A two-harness box never sees one harness's state passed off as both.
+
 Walkthrough: [Toolchain Manager](docs/getting-started/toolchain-manager.md).
 
 ---
@@ -186,6 +194,7 @@ Full design in [`docs/architecture.md`](docs/architecture.md).
 - [x] Multi-worker fan-out (`run --parallel N`, one worktree per item) + `leopold watch` web dashboard (cost meters, decision log, workflow phase tree)
 - [x] Dynamic-workflow engine: `/leopold-workflow`, `leopold workflow` (compiler as tested code), `/leopold-learn`, `/leopold-triage`, plan-by-tournament
 - [x] Quality panels: diverse-lens review + conformance scenarios, root-cause hypotheses + literal reset, smart routing + slice scope, best-of-k tournaments; 161 driver tests + CLI smoke in CI (Ubuntu + macOS)
+- [x] Harness-universal: skills, both hooks, all four extensions, the dashboard and the driver on Claude Code **and** Codex CLI, with a hermetic end-to-end Codex install test in CI
 - [ ] Headless `workflow --run` exercised end to end; sandboxed workers (E2B/Daytona) — see the [full roadmap](docs/roadmap.md)
 
 ---

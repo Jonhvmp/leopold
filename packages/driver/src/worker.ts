@@ -90,7 +90,14 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
         const captured = turnText;
         turnText = "";
         const next = await onTurn(status as WorkerStatus, captured);
-        if (next === null) { channel.close(); break; }
+        if (next === null) {
+          // Close the input and keep draining. The item's real cost only arrives on
+          // the `result` message, so breaking here — as this used to — meant a worker
+          // that finished cleanly never reported a cent, and --budget-usd silently
+          // never accumulated. The result branch below is what ends the loop.
+          channel.close();
+          continue;
+        }
         channel.push(next);
       }
     } else if (msg.type === "result") {

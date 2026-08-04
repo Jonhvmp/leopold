@@ -1,5 +1,5 @@
 site_name: Leopold
-site_description: An autonomous orchestration harness for Claude Code. Brief it like a teammate; it conducts Claude Code in your seat.
+site_description: An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.
 site_url: https://jonhvmp.github.io/leopold/
 site_author: Jonhvmp
 repo_url: https://github.com/Jonhvmp/leopold
@@ -93,7 +93,7 @@ plugins:
         - locale: pt-BR
           name: Português (Brasil)
           build: true
-          site_description: Um harness de orquestração autônoma para o Claude Code. Faça o brief como para um colega; ele conduz o Claude Code na sua cadeira.
+          site_description: Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.
           nav_translations:
             Home: Início
             Getting Started: Primeiros passos
@@ -164,6 +164,7 @@ nav:
       - Prompt Enhancer: reference/enhance.md
       - Brief Artifacts: reference/artifacts.md
       - Driver Config: reference/driver-config.md
+      - Asset Home: reference/leopold-home.md
   - Comparisons:
       - Leopold vs Ralph: comparisons/ralph.md
   - Roadmap: roadmap.md

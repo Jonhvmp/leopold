@@ -17,10 +17,13 @@ It only **reads** `.leopold/` (state, plan, decisions, events) and serves on loo
 nothing leaves the machine. The one action it offers is a Stop button, which touches
 `.leopold/STOP` — the same kill switch as `/leopold-stop`.
 
-Run this (idempotent — if it is already up, just report the URL):
+Run this (idempotent — if it is already up, just report the URL). The first line
+resolves the Leopold asset home: `LEOPOLD_HOME` wins, then the Claude Code home,
+then the Codex one — same order as the installer:
 
 ```bash
-WATCH="$HOME/.claude/leopold/scripts/leopold-watch.py"; [ -f "$WATCH" ] || WATCH="scripts/leopold-watch.py"
+LEO="$(leopold home 2>/dev/null || echo "${LEOPOLD_HOME:-$([ -d "${CLAUDE_HOME:-$HOME/.claude}/leopold" ] && echo "${CLAUDE_HOME:-$HOME/.claude}" || echo "${CODEX_HOME:-$HOME/.codex}")/leopold}")"
+WATCH="$LEO/scripts/leopold-watch.py"; [ -f "$WATCH" ] || WATCH="scripts/leopold-watch.py"
 PORT="${LEOPOLD_WATCH_PORT:-4179}"
 if curl -sf "http://127.0.0.1:$PORT/api/state" >/dev/null 2>&1; then
   echo "Dashboard already running -> http://127.0.0.1:$PORT"

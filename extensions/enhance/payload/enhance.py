@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-leopold-enhance - global prompt enhancer for Claude Code.
+leopold-enhance - global prompt enhancer, on every harness Leopold runs on.
 
-A UserPromptSubmit hook. When the user's prompt is weak (short, vague, unanchored),
+A UserPromptSubmit hook, wired into Claude Code (settings.json) and Codex CLI
+(config.toml) by extensions/enhance/install.sh through the shared harness helper.
+Both harnesses send the same payload fields (session_id, prompt, cwd,
+transcript_path); they differ only in how an injected reading is handed back, and
+emit() below owns that difference.
+
+When the user's prompt is weak (short, vague, unanchored),
 it calls `claude -p --model haiku` headless (the user's own connected account) to
 produce a structured interpretation - Objective / Context / Constraints / Done when /
 Assumptions - and injects it as plain-text context next to the raw prompt. The raw
@@ -11,7 +17,7 @@ prompt is never replaced; the injected block ends with "THE RAW PROMPT WINS".
 Charter-aware: if the project has .leopold/CHARTER.md (or MISSION.md), an excerpt
 feeds the rewriter, so the interpretation reads the prompt the way THIS user would.
 Self-learning: every injection is logged to a ledger that /leopold-enhance learn
-mines for corrections, proposing amendments to ~/.claude/enhance/PROMPT-PROFILE.md.
+mines for corrections, proposing amendments to <enhance dir>/PROMPT-PROFILE.md.
 
 Golden rule (same as ovmem): NEVER break the session. On any error -> exit 0, no stdout.
 
@@ -23,9 +29,10 @@ Usage:
   enhance.py --event status               (one-line status for manage.sh / the menu)
 
 Env controls:
+  LEOPOLD_ENHANCE_DIR           data dir override (state/ledger/profile); see _resolve_enhance_dir
   LEOPOLD_ENHANCE_ACTIVE=1      recursion guard - set by our own subprocess, makes the hook a no-op
   LEOPOLD_ENHANCE_DISABLE=1     kill switch (no-op while staying wired)
-  LEOPOLD_ENHANCE_DEBUG=1       log to ~/.claude/enhance/enhance.log
+  LEOPOLD_ENHANCE_DEBUG=1       log to <enhance dir>/enhance.log
   LEOPOLD_ENHANCE_CLAUDE_BIN    claude binary override (tests use a stub)
   LEOPOLD_ENHANCE_MIN_SCORE     weak-prompt score needed to enhance (default 4)
   LEOPOLD_ENHANCE_MAX_WORDS     prompts longer than this are skipped (default 60)
@@ -40,8 +47,39 @@ import subprocess
 import sys
 import time
 
-CLAUDE_HOME = os.environ.get("CLAUDE_HOME") or os.path.join(os.path.expanduser("~"), ".claude")
-ENHANCE_DIR = os.path.join(CLAUDE_HOME, "enhance")
+
+def _resolve_enhance_dir():
+    """ONE data dir for the machine, whichever harness fired the hook.
+
+    The enhancer is a single user-level preference: turning it on inside Codex has
+    to read as on inside Claude Code, and its learned prompt profile is about the
+    user, not about the agent. Two dirs would mean two contradictory answers and
+    two half-learned profiles.
+
+    This mirrors leo_enhance_dir() in extensions/lib/harness.sh EXACTLY. Keep the
+    two in step — the installer resolves the dir with the bash one and the hook it
+    wires resolves it again here at run time.
+    """
+    home = os.path.expanduser("~")
+    env = os.environ.get("LEOPOLD_ENHANCE_DIR")
+    if env:
+        return env
+    leo = os.environ.get("LEOPOLD_HOME")
+    if leo:
+        return os.path.join(leo, "enhance")
+    # Claude first at every step: an existing ~/.claude install is never migrated.
+    claude = os.environ.get("CLAUDE_HOME") or os.path.join(home, ".claude")
+    codex = os.environ.get("CODEX_HOME") or os.path.join(home, ".codex")
+    for base in (claude, codex):
+        if os.path.isdir(os.path.join(base, "enhance")):
+            return os.path.join(base, "enhance")
+    for base in (claude, codex):
+        if os.path.isdir(base):
+            return os.path.join(base, "enhance")
+    return os.path.join(claude, "enhance")
+
+
+ENHANCE_DIR = _resolve_enhance_dir()
 STATE_PATH = os.path.join(ENHANCE_DIR, "state.json")
 PROFILE_PATH = os.path.join(ENHANCE_DIR, "PROMPT-PROFILE.md")
 LEDGER_PATH = os.path.join(ENHANCE_DIR, "enhancements.jsonl")
@@ -424,9 +462,33 @@ def ledger_count():
 
 # ---------- events ----------
 
-def emit(body):
-    sys.stdout.write("\n%s — structured interpretation of the prompt above]\n%s\n%s\n"
-                     % (MARKER, body, FOOTER))
+def harness_of(data):
+    """Which agent fired this hook. Codex CLI's UserPromptSubmit payload carries a
+    turn_id; Claude Code's never does (it sends prompt_id instead). Verified against
+    codex-cli 0.146.0 by logging a real hook payload."""
+    return "codex" if data.get("turn_id") else "claude"
+
+
+def emit(body, harness="claude"):
+    """Hand the interpretation to the harness in the shape that harness accepts.
+
+    Claude Code injects a UserPromptSubmit hook's plain stdout as context — that is
+    the path Leopold has always used and it stays byte-for-byte unchanged.
+
+    Codex CLI does NOT: its user-prompt-submit.command.output schema is strict JSON
+    (additionalProperties:false), so plain text makes the hook FAIL — verified on
+    codex-cli 0.146.0: a text-emitting hook logged "hook: UserPromptSubmit Failed"
+    and nothing reached the model, while the JSON form below logged "Completed" and
+    the model read the injected block. Same content, two envelopes.
+    """
+    text = ("\n%s — structured interpretation of the prompt above]\n%s\n%s\n"
+            % (MARKER, body, FOOTER))
+    if harness == "codex":
+        json.dump({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit",
+                                          "additionalContext": text}}, sys.stdout)
+        sys.stdout.write("\n")
+    else:
+        sys.stdout.write(text)
 
 
 # /skill briefs: a slash prompt whose argument is a real task ("/leopold-brief
@@ -515,6 +577,7 @@ def handle_user_prompt(data):
         "skill_brief": text != prompt,  # gated on a /skill argument, not the raw prompt
         "score": score,
         "signals": signals,
+        "harness": harness_of(data),
         "mode": "safe" if safe_mode else "normal",
         "model": st.get("model", "haiku"),
         "latency_ms": int((time.time() - t0) * 1000),
@@ -527,7 +590,7 @@ def handle_user_prompt(data):
     }
     ledger_append(entry)
     if body:
-        emit(body)
+        emit(body, harness_of(data))
         stamp_cooldown(data.get("session_id"))
     log("enhanced=%s score=%d err=%s latency=%dms" % (bool(body), score, err, entry["latency_ms"]))
 
@@ -615,6 +678,12 @@ def handle_status():
         print("off")
         return
     extra = []
+    # The rewriter is Haiku via the `claude` CLI — the one Claude-specific piece,
+    # and deliberately so: a `codex exec` turn takes minutes and this runs inside a
+    # 30s prompt hook. On a box without that CLI the hook is a permanent silent
+    # pass-through, so "on" alone would be a lie. Say it here and in doctor.
+    if not find_claude():
+        extra.append("rewriter unavailable: no claude CLI on PATH — prompts pass through")
     if st.get("safe_mode") is not False:
         extra.append("safe-mode")
     fails = int(st.get("consecutive_failures", 0))

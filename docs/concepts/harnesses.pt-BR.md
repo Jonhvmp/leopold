@@ -128,6 +128,69 @@ Reinstalar troca o bloco e mais nada. Sua config é copiada antes, e o arquivo m
 é validado — se não fosse parsear, a instalação volta atrás e imprime o bloco para
 você colar na mão.
 
+## As extensions instalam em todo harness que você tem
+
+As quatro extensions embutidas — `serena`, `enhance`, `ovmem`, `gstack` — também não
+são exclusivas do Claude. Cada uma instala, reporta e remove **por harness**:
+
+| Extension | Claude Code | Codex CLI |
+|---|---|---|
+| serena | `claude mcp add --scope user` + 4 hooks no `settings.json` | `codex mcp add` + os mesmos 4 hooks no `config.toml`, `--context=codex`, `serena-hooks --client=codex` |
+| enhance | `UserPromptSubmit` no `settings.json`, injeção em texto puro | `UserPromptSubmit` no `config.toml`, JSON `hookSpecificOutput.additionalContext` |
+| ovmem | 4 hooks no `settings.json`, flush de 25s em processo | os mesmos 4 no `config.toml`; `SessionEnd` declarado com 3s e o flush destacado, porque o Codex limita esse hook a 3 segundos |
+| gstack | `./setup --host claude` → `~/.claude/skills` | `./setup --host codex` → `~/.codex/skills` (checkout em `~/.gstack/repos/gstack`) |
+
+Duas regras valem para as quatro. **Um escritor por formato:** o wiring em JSON e em
+TOML mora num único helper compartilhado, `extensions/lib/harness.sh`, então os dois
+harnesses não têm como divergir em silêncio. E **nada reporta por máquina:**
+`status`, `remove` e `doctor` respondem uma linha por harness, então uma máquina com
+dois harnesses nunca vê o estado de um passado como o dos dois, e o gate de confiança
+dos hooks do Codex é nomeado em vez de aparecer como um verde que ainda não está no ar.
+
+```bash
+bash extensions/serena/manage.sh doctor   # ou ovmem / gstack / enhance
+leopold doctor                            # todo harness presente, numa passada só
+```
+
+Os dados do engine são compartilhados mesmo com o wiring não sendo: o ovmem mantém um
+diretório de memória por máquina, então uma decisão registrada numa sessão do Codex
+volta numa do Claude Code, e o ledger e o prompt profile do enhancer são os mesmos
+arquivos de qualquer cadeira.
+
+Cada suíte é hermética — `HOME`/`CLAUDE_HOME`/`CODEX_HOME` temporários, CLIs stubadas,
+sem rede: `make serena-test`, `make ovmem-test`, `make gstack-test`,
+`make enhance-test`, mais o `make codex-install-test` para a instalação do Codex
+inteira, de ponta a ponta.
+
+## O dashboard lê runs do Codex
+
+O `leopold watch` mostra tokens, custo e contexto reais num run do Codex — o painel
+não fica em branco e, mais importante, nunca vira zero.
+
+Ele acha o transcript do mesmo jeito nos dois harnesses: o caminho que o hook reportou
+no `state.json`, ou então a sessão mais nova deste projeto — um transcript do Claude
+Code em `~/.claude/projects/`, ou um rollout do Codex em
+`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` cujo `session_meta.cwd` é este projeto.
+Depois ele fareja qual é qual e parseia de acordo: o `usage` + `model` por mensagem do
+Claude Code, ou as linhas `event_msg` do Codex com `payload.type == "token_count"`
+(`info.total_token_usage`, incluindo `cached_input_tokens` e
+`reasoning_output_tokens`).
+
+O Codex reporta tokens e nunca dólares, então o custo é precificado por uma tabela
+interna por modelo, com input cacheado cobrado a 0.1x. Um modelo desconhecido cai numa
+taxa padrão diferente de zero: um run precificado em zero desligaria o `--budget-usd`
+em silêncio, o único modo de falha que um orçamento não pode ter. E um rollout vivo que
+ainda não reportou uso diz **"waiting for session data…"** em vez de cravar `$0.00`.
+
+As abas de dashboard das extensions seguem a mesma regra. Um `dashboard.module` no
+`extension.json` pode ser um caminho relativo ao asset home (`ovmem/dashboard.py`),
+resolvido Claude-first exatamente como os instaladores fazem — então a aba de memória
+aparece numa máquina sem `~/.claude` em vez de sumir calada.
+
+Coberto pelo `make watch-test` (só stdlib, sem rede), que checa a detecção do Codex, a
+precificação, a descoberta por `cwd`, o fallback de modelo desconhecido e o caso do
+"sem uso ainda".
+
 ## Escolhendo o harness de um run
 
 ```bash

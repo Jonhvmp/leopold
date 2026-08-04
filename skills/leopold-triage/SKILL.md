@@ -53,10 +53,13 @@ Ask the user (or infer from their words) whether they want `mode: 'report'`
 ## Step 2 — Run the workflow
 
 Requires the `Workflow` tool (Dynamic workflows enabled in `/config`); if absent,
-say so and stop rather than triaging a large queue in one context.
+say so and stop rather than triaging a large queue in one context. Dynamic workflows
+are a **Claude Code** runtime feature — on Codex CLI the tool does not exist, so name
+that as the reason and stop; the quarantine boundary is the whole point and a
+single-context pass would break it.
 
-Copy the canonical script from
-`~/.claude/skills/leopold-triage/reference/leopold-triage.workflow.js` to
+Copy the canonical script `reference/leopold-triage.workflow.js` from this skill's
+own folder (the directory holding this SKILL.md, wherever the harness loaded it from) to
 `.claude/workflows/leopold-triage.js` (create the dir if needed) and launch:
 
 ```
