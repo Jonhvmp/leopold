@@ -246,6 +246,46 @@ has "status counts it as zero" "$(run "$H6" "$TD/h6-claude" "$XH6" codex status)
 
 # =============================================================================
 echo
+echo "8. Issue #48 — partial coverage must not read as \"gstack detected\""
+# =============================================================================
+# The exact reproduction: gstack installed under Claude Code only, then both
+# harnesses targeted. `detect` says yes (it asks "is gstack on this machine"), and
+# install.sh used to print "gstack detected" and skip setup — leaving Codex with
+# nothing. `detect-all` asks the question the installer actually needs.
+H8="$TD/h8"; CH8="$TD/h8-claude"; XH8="$TD/h8-codex"
+mkdir -p "$H8" "$CH8" "$XH8"
+run "$H8" "$CH8" "$XH8" claude install >/dev/null 2>&1
+
+check "Claude sees the skills"  "$(run "$H8" "$CH8" "$XH8" claude status | grep -o 'Claude Code: [0-9]* skills')" "Claude Code: 4 skills"
+check "Codex sees none"         "$(run "$H8" "$CH8" "$XH8" codex  status | grep -o 'Codex CLI: [0-9]* skills')"   "Codex CLI: 0 skills"
+
+# Targeting BOTH is where the two questions diverge.
+run "$H8" "$CH8" "$XH8" all detect >/dev/null 2>&1 \
+  && ok "detect still says gstack is on the machine" \
+  || bad "detect should still succeed — it answers a different question"
+run "$H8" "$CH8" "$XH8" all detect-all >/dev/null 2>&1 \
+  && bad "detect-all must FAIL while Codex has no gstack" \
+  || ok "detect-all fails on partial coverage"
+check "missing names the uncovered harness" "$(run "$H8" "$CH8" "$XH8" all missing | paste -sd, -)" "Codex CLI"
+
+# And the repair the installer now performs is idempotent and covers both.
+run "$H8" "$CH8" "$XH8" all install >/dev/null 2>&1
+run "$H8" "$CH8" "$XH8" all detect-all >/dev/null 2>&1 \
+  && ok "after the repair, detect-all passes" \
+  || bad "the repair did not cover every harness"
+check "missing is empty once repaired" "$(run "$H8" "$CH8" "$XH8" all missing | paste -sd, -)" ""
+check "Codex now sees the skills" "$(run "$H8" "$CH8" "$XH8" codex status | grep -o 'Codex CLI: [0-9]* skills')" "Codex CLI: 4 skills"
+
+# A checkout that no harness links to covers nobody — detect-all must not be fooled
+# by the clone existing on disk.
+H9="$TD/h9"; CH9="$TD/h9-claude"; XH9="$TD/h9-codex"
+mkdir -p "$H9" "$CH9" "$XH9" "$H9/.gstack/repos/gstack/.git"
+run "$H9" "$CH9" "$XH9" all detect-all >/dev/null 2>&1 \
+  && bad "detect-all must not pass on a checkout no harness can see" \
+  || ok "a checkout alone does not count as coverage"
+
+# =============================================================================
+echo
 echo "7. The developer's real homes were never touched"
 # =============================================================================
 check "HOME unchanged"        "$HOME" "$REAL_HOME"

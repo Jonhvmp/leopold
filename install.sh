@@ -276,14 +276,25 @@ echo
 # above (LEOPOLD_HARNESS is already exported) and reports each one. Cloning it
 # from here would hardcode a Claude skills path into a Codex-only install.
 GSTACK_EXT="$SRC/extensions/gstack/manage.sh"
-gstack_present() { bash "$GSTACK_EXT" detect >/dev/null 2>&1; }
+gstack_present()  { bash "$GSTACK_EXT" detect     >/dev/null 2>&1; }
+gstack_complete() { bash "$GSTACK_EXT" detect-all >/dev/null 2>&1; }
+gstack_missing()  { bash "$GSTACK_EXT" missing 2>/dev/null | paste -sd', ' -; }
 install_gstack() {
   echo "-> installing gstack (MIT, by Garry Tan: https://github.com/garrytan/gstack)"
   bash "$GSTACK_EXT" install || echo "   gstack install did not finish; retry with: make gstack-install"
 }
 
-if gstack_present; then
+if gstack_complete; then
   echo "gstack detected: Leopold will conduct its planning toolchain (/spec, /autoplan, /plan-*-review, ...)."
+elif gstack_present; then
+  # gstack is on this machine but not reachable from every harness we are wiring —
+  # the exact half-install this installer exists to close. Repair it rather than
+  # reporting "detected" over a harness that sees nothing. `manage.sh install` reuses
+  # the existing checkout (no re-clone, no network) and links the skills per harness,
+  # so completing is cheap and idempotent; the user already opted into gstack, and
+  # extending it to the seat they are also wiring is finishing that choice, not a new one.
+  echo "gstack is installed here, but not on: $(gstack_missing) — completing it (existing checkout is reused)."
+  install_gstack
 elif [ "$WITH_GSTACK" = "1" ]; then
   install_gstack
 else

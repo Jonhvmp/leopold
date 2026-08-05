@@ -215,6 +215,25 @@ case "${1:-}" in
     exit 1
     ;;
 
+  detect-all)
+    # Is gstack usable from EVERY resolved harness? `detect` answers "is gstack on this
+    # machine at all", which is the right question for the menu but the wrong one for
+    # the installer: a checkout linked into Codex only makes `detect` succeed while
+    # Claude sees nothing, and the installer then skips setup and calls it detected.
+    # Deliberately ignores the checkout — a clone nobody's skills dir points at covers
+    # no harness.
+    for h in $(leo_harness_targets); do [ "$(harness_count "$h")" -gt 0 ] || exit 1; done
+    exit 0
+    ;;
+
+  missing)
+    # The resolved harnesses that cannot see gstack, one label per line (empty = none).
+    # Lets a caller name them instead of reporting a vague "incomplete".
+    for h in $(leo_harness_targets); do
+      [ "$(harness_count "$h")" -gt 0 ] || leo_harness_label "$h"
+    done
+    ;;
+
   status)
     # One line (the menu renders it inline), but never one harness's truth passed off
     # as the machine's: every resolved harness gets its own segment.
