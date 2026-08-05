@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-08-04
+
+### Fixed
+- **The installer checked gstack globally and could leave a harness with nothing.**
+  The gate asked `manage.sh detect`, which answers "is gstack on this machine" — true
+  if the checkout exists *or* if *any* resolved harness sees its skills. On a box where
+  gstack lived under Claude Code only, installing into both harnesses printed
+  `gstack detected`, skipped setup, and left Codex with zero skills. A checkout that no
+  skills dir points at satisfied the same gate, in which case *neither* harness got
+  anything. `detect` was not wrong, it was answering the menu's question; the installer
+  needs a different one, so `detect-all` (every resolved harness sees the skills,
+  ignoring a checkout nobody links to) and `missing` (which harnesses are uncovered)
+  join it. The installer now reports complete coverage, repairs partial coverage with
+  the existing checkout — no re-clone, no network — or falls back to the usual prompt.
+  Reported as #48, and seen on a real install: `gstack detected` while Claude had 0 skills.
+
 ## [0.14.0] - 2026-08-03
 
 ### Added
