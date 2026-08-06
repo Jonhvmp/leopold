@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.2] - 2026-08-06
+
+### Fixed
+- **A dying agent took the whole workflow down.** `leopold workflow --run` parsed the
+  brief, logged the Plan phase and `wave 1/N`, then stopped with `reason: error` and no
+  items done. The native Claude Code runtime returns `null` when an agent dies, and the
+  canonical script is written against that contract — it checks for null and charges the
+  round. The in-driver runtime let the exception propagate instead, and the script's wave
+  loop has no try/catch, so one transient failure unwound past every remaining item and
+  out to the CLI. `agent()` now honors the same contract: a dead agent becomes `null`, the
+  run continues, and the failure is reported through `onAgentError`. The agent cap and the
+  token budget still abort the run — those are deliberate stops, not one agent
+  misbehaving. Reported as #51.
+- **The audit trail recorded that a run failed, never why.** The stop event was a bare
+  `{"event":"stop","reason":"error"}`, so the one artifact a user can hand over — their
+  `events.jsonl` — could not say what went wrong. #51 was filed with a flawless repro and
+  no root cause for exactly this reason. The event now carries `error`, and every failing
+  agent becomes a `wf_agent_error` with its label and message.
+
 ## [0.14.1] - 2026-08-04
 
 ### Fixed
