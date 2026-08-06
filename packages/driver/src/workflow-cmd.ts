@@ -106,6 +106,10 @@ export async function runWorkflowCommand(cwd: string, argv: string[]): Promise<n
         runAgent,
         onPhase: (t) => { console.log(`— phase: ${t}`); logEvent(brief.leoDir, { event: "wf_phase", title: t }); },
         onLog: (m) => { console.log(`  ${m}`); logEvent(brief.leoDir, { event: "wf_log", msg: m }); },
+        onAgentError: (label, message) => {
+          console.error(`  agent ${label} failed: ${message}`);
+          logEvent(brief.leoDir, { event: "wf_agent_error", label, message });
+        },
         tokensSpent: () => tokens,
       });
       logEvent(brief.leoDir, { event: "stop", reason: "plan_complete", mode: "workflow", agents: out.agentCount });
@@ -114,8 +118,13 @@ export async function runWorkflowCommand(cwd: string, argv: string[]): Promise<n
         `Ran ${items} item(s) across ${compiled.waves.length} wave(s) via ${out.agentCount} agents. Staged for your review.`);
       return 0;
     } catch (e) {
-      console.error(`leopold workflow --run: ${(e as Error).message}`);
-      logEvent(brief.leoDir, { event: "stop", reason: "error", mode: "workflow" });
+      // Record WHAT failed, not just that something did. The audit trail used to log
+      // a bare `reason: error`, so the one artifact a user can hand over — their
+      // events.jsonl — could not say why the run stopped. #51 was reported without a
+      // root cause for exactly this reason.
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`leopold workflow --run: ${message}`);
+      logEvent(brief.leoDir, { event: "stop", reason: "error", mode: "workflow", error: message });
       return 1;
     }
   }
