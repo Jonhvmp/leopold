@@ -1358,6 +1358,8 @@
       
         
       
+        
+      
     
     
     
@@ -1502,6 +1504,34 @@
     
   
     Brief Artifacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan Grammar
   
 
     
@@ -1814,6 +1844,16 @@ runtime writes, and lays them out as a directed graph with a hand-rolled layered
 (no framework, no bundler, no web fonts — it works fully offline):</p>
 <ul>
 <li><strong>Plan items</strong> as nodes, with <code>(after: N)</code> dependencies as edges.</li>
+<li><strong>The node kinds you authored.</strong> An item that declares one — <code>@gate</code>, <code>@human</code>,
+  <code>@tool</code>, <code>@verify</code> — wears it on the node, with its label (<code>@gate security</code> reads
+  <code>GATE · SECURITY</code>). An item that declares none is a plain work node, exactly as before.</li>
+<li><strong>Conditional edges.</strong> An <code>@on &lt;condition&gt; -&gt; &lt;item&gt;</code> route is drawn as a bowed, dashed
+  edge in its own colour, carrying the condition <strong>as written</strong> (<code>migrated=false</code>), so a
+  branch never reads like a dependency. The inspector lists an item's routes, the signals
+  it <code>@emit</code>s and the ones it <code>@needs</code>.</li>
+<li><strong>A <code>@human</code> node waiting on you.</strong> When either engine reaches one it logs
+  <code>awaiting_human</code>, and the node switches to a distinct <code>awaiting</code> state — amber, pulsing,
+  labelled <em>needs you</em>. Nothing is inferred: the node waits only when the run says it does.</li>
 <li><strong>Dynamic-workflow</strong> phases and agents: phase→phase (<code>seq</code>), phase→agent (<code>contains</code>),
   and each adversarial-verify agent linked to the exact node it reviews (<code>verifies</code>).
   The edge is precise wherever Leopold's own scripts label agents <code>impl:&lt;id&gt;</code> /

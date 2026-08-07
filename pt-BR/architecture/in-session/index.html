@@ -1386,6 +1386,8 @@
       
         
       
+        
+      
     
     
     
@@ -1530,6 +1532,34 @@
     
   
     Artefatos do brief
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gramática do plano
   
 
     
@@ -1879,7 +1909,7 @@ dois hooks que implementam a run autônoma.</p>
     end
     ENDTURN --&gt; STOP{{"Stop hook&lt;br/&gt;stop-continuity.sh"}}
     STOP -- "ainda tem trabalho,&lt;br/&gt;sem condição de parada" --&gt; CONT["bloqueia a parada ·&lt;br/&gt;reinjeta continue"]
-    STOP -- "plano concluído / kill / budget" --&gt; HALT([permite parar])
+    STOP -- "plano concluído / kill / budget /&lt;br/&gt;próximo é nó @human" --&gt; HALT([permite parar])
     CONT --&gt; Turn</code></pre>
 <h3 id="stop-hook-continuidade">Stop hook — continuidade<a class="headerlink" href="#stop-hook-continuidade" title="Permanent link">&para;</a></h3>
 <p>Quando o agente termina um turno, o hook de <code>Stop</code> lê <code>.leopold/state.json</code> e
@@ -1889,6 +1919,11 @@ de parada foi atingida, ele retorna <code>{"decision":"block","reason":"..."}</c
 agente ler o plano, pegar o próximo item, aplicar o protocolo de decisão, logar
 e não perguntar. Cada continuação incrementa um contador de iteração, que
 alimenta a condição de parada por budget.</p>
+<p>Um construto do plano muda essa resposta: se o próximo item aberto é um nó
+<strong><code>@human</code></strong>, ninguém além de você pode fechá-lo, então o hook permite a parada
+com <code>awaiting_human</code> e nomeia o item em vez de reinjetar — exatamente o que o
+driver faz ao chegar num nó humano. Veja
+<a href="../../reference/hooks/#tipos-de-no">Hooks → Tipos de nó</a>.</p>
 <div class="admonition info">
 <p class="admonition-title">Fail-open por design</p>
 <p>Um Stop hook quebrado nunca pode prender uma sessão num loop, então

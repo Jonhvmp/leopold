@@ -923,6 +923,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quando-o-plano-declara-um-grafo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quando o plano declara um grafo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#tres-formas-de-rodar" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1369,6 +1380,8 @@
       
         
       
+        
+      
     
     
     
@@ -1513,6 +1526,34 @@
     
   
     Artefatos do brief
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gramática do plano
   
 
     
@@ -1772,6 +1813,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quando-o-plano-declara-um-grafo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quando o plano declara um grafo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#tres-formas-de-rodar" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1854,6 +1906,42 @@ diversas → corrige</strong>, em loop até <code>maxReviewRounds</code>, com os
 (seguro em uma única working tree) e o fan-out de review de cada item rodando em paralelo
 (somente leitura). O git fica travado de graça — um workflow não consegue commitar; ele deixa
 staged, você commita.</p>
+<h2 id="quando-o-plano-declara-um-grafo">Quando o plano declara um grafo<a class="headerlink" href="#quando-o-plano-declara-um-grafo" title="Permanent link">&para;</a></h2>
+<p>Ondas só conseguem dizer "isto vem depois daquilo". Um plano que declara
+<a href="../../reference/driver-config/#pre-voo-do-grafo-leopold-graph">gramática de grafo</a>
+diz mais: um tipo de nó (<code>@gate</code>, <code>@human</code>, <code>@tool</code>, <code>@verify</code>), uma aresta condicional
+(<code>@on &lt;cond&gt; -&gt; &lt;alvo&gt;</code>), um sinal (<code>@emit chave=valor</code>, <code>@needs chave</code>). Para esses, o
+compilador emite uma chave extra ao lado das ondas:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;waves&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">…</span><span class="w"> </span><span class="p">],</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;graph&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">&quot;nodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;index&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;i2&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Run the database migration&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;work&quot;</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">        </span><span class="nt">&quot;deps&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;needs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span><span class="w"> </span><span class="nt">&quot;emits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;migrated&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false&quot;</span><span class="w"> </span><span class="p">}],</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">        </span><span class="nt">&quot;routes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;when&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;migrated=false&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;signal&quot;</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="p">]</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Com <code>graph</code> presente, o script canônico troca o loop de ondas pelo <strong>loop roteado</strong>: ele
+despacha a partir da mesma função de roteamento determinística que o scheduler do
+<code>/leopold-run</code> usa, então o mesmo plano segue o mesmo caminho nos dois engines. Um nó
+emite um sinal, o canal de estado carrega esse sinal, e o grafo decide para onde ele
+leva — nenhuma chamada de modelo escolhe uma aresta. Um nó <code>@human</code> para a run e
+pergunta; um nó <code>@tool</code> roteia pelo exit status do comando; um nó <code>@gate</code> ou <code>@verify</code>
+julga o diff e não pode editá-lo.</p>
+<p>Duas garantias sustentam essa chave:</p>
+<ul>
+<li><strong><code>graph</code> só aparece quando o plano realmente declara um.</strong> Um checklist escrito antes
+  dessa gramática existir compila para um payload byte a byte idêntico e roda o loop de
+  ondas intocado — mesmos prompts, mesmo formato de relatório.</li>
+<li><strong>Um grafo malformado é recusado antes do primeiro agente rodar.</strong> Um ciclo, uma rota
+  para um item que não existe, um item inalcançável ou um <code>@needs</code> que ninguém emite
+  falham na compilação, nomeando o item ofensor por índice e por texto.</li>
+</ul>
+<p>Como ondas não conseguem expressar um branch, um plano com gramática de grafo precisa ser
+compilado pelo <code>leopold workflow</code> em vez de à mão — a <code>/leopold-workflow</code> diz isso e
+delega para ele.</p>
 <h2 id="tres-formas-de-rodar">Três formas de rodar<a class="headerlink" href="#tres-formas-de-rodar" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

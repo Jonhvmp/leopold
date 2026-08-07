@@ -941,6 +941,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choosing a harness for a run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#one-run-two-harnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One run, two harnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1424,6 +1441,8 @@
       
         
       
+        
+      
     
     
     
@@ -1568,6 +1587,34 @@
     
   
     Brief Artifacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan Grammar
   
 
     
@@ -1901,6 +1948,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choosing a harness for a run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#one-run-two-harnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One run, two harnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2149,10 +2213,28 @@ no-usage-yet case.</p>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex<span class="w">       </span><span class="c1"># conduct on Codex</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run<span class="w"> </span><span class="c1"># same, from the environment</span>
 </span></code></pre></div>
-<p>Precedence is <code>--provider</code> → <code>LEOPOLD_PROVIDER</code> → whatever is installed → Claude Code
-as the tie-break. A name Leopold does not recognize is an error, not a silent
-fallback — conducting a run on the wrong harness because of a typo is not a failure
-mode worth having.</p>
+<p>Precedence is <code>--provider</code> → <code>LEOPOLD_PROVIDER</code> → the only harness installed → <strong>the
+harness whose session Leopold was launched from</strong> → Claude Code as the last resort. A
+name Leopold does not recognize is an error, not a silent fallback — conducting a run
+on the wrong harness because of a typo is not a failure mode worth having.</p>
+<p>That fourth step exists because the tie-break used to be the third: on a machine with
+both, <code>workflow --run</code> launched from a Codex session started the Claude Agent SDK. Each
+CLI marks its child environment — Codex exports <code>CODEX_THREAD_ID</code> (and <code>CODEX_CI</code>),
+Claude Code exports <code>CLAUDECODE</code> / <code>CLAUDE_CODE_SESSION_ID</code> — so the run now belongs to
+the seat you launched it from. With no marker at all, the Claude fallback is unchanged.</p>
+<h3 id="one-run-two-harnesses">One run, two harnesses<a class="headerlink" href="#one-run-two-harnesses" title="Permanent link">&para;</a></h3>
+<p>A run does not have to pick one. <code>--provider hybrid</code> assigns a harness <strong>per role</strong>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
+</span></code></pre></div>
+<p><code>executor</code> is the workers, <code>review</code> is the review lenses, hypothesis panels and
+tournament judges, <code>conductor</code> is the turn decisions and routing. A role left unset
+inherits the resolved default. Every agent's provider lands in <code>.leopold/events.jsonl</code>
+(<code>run_start</code>, <code>wf_phase</code>, <code>wf_agent_start</code>), because a run split across two harnesses
+that does not record which one answered is a run you cannot debug.</p>
+<p>A run with no hybrid flags gets no role assignment at all — which is exactly why a
+single-provider run is byte-for-byte what it always was.</p>
 <h2 id="how-the-driver-reaches-each-harness">How the driver reaches each harness<a class="headerlink" href="#how-the-driver-reaches-each-harness" title="Permanent link">&para;</a></h2>
 <p>Everything in the driver — worker turns, conductor decisions, review lenses,
 hypothesis panels, routing, tournament judges — goes through one seam,

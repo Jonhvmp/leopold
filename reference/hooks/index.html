@@ -1275,6 +1275,8 @@
       
         
       
+        
+      
     
     
     
@@ -1426,6 +1428,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="stop-continuity.sh — the Stop hook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#node-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node kinds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1552,6 +1571,34 @@
     
   
     Brief Artifacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan Grammar
   
 
     
@@ -1808,6 +1855,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="stop-continuity.sh — the Stop hook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#node-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node kinds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1926,9 +1990,22 @@ layer exists to go wrong. See <a href="../../concepts/harnesses/">Claude Code an
     Budget -- yes --&gt; Allow
     Budget -- no --&gt; Plan{open plan items?}
     Plan -- no --&gt; Allow
-    Plan -- yes --&gt; Block["increment iteration ·&lt;br/&gt;block · re-inject continue"]</code></pre>
+    Plan -- yes --&gt; Human{"next open item&lt;br/&gt;is a @human node?"}
+    Human -- yes --&gt; Ask(["exit 0 · allow stop ·&lt;br/&gt;awaiting_human"])
+    Human -- no --&gt; Block["increment iteration ·&lt;br/&gt;block · re-inject continue"]</code></pre>
 <p>Fail-open: any unexpected error allows the stop. Continuity is best-effort;
 halting is always safe.</p>
+<h3 id="node-kinds">Node kinds<a class="headerlink" href="#node-kinds" title="Permanent link">&para;</a></h3>
+<p><code>PLAN.md</code> items may declare a node kind (<code>@node work|gate|human|tool|verify|feedback</code>, or
+the <code>@gate</code> / <code>@human</code> / <code>@tool</code> / <code>@verify</code> / <code>@feedback</code> shorthands). The in-session engine acts on one
+of them: when the next open item is a <strong><code>@human</code></strong> node, the hook allows the stop with
+<code>stopped_reason: awaiting_human</code>, names the item on stderr and logs an <code>awaiting_human</code>
+event — the same thing the driver does when a run reaches a human node, so a plan means
+the same on both engines. Answer it, mark the item <code>[x]</code>, and <code>/leopold-run</code> resumes.</p>
+<p>Every other kind continues exactly as before, and an item that declares no kind is a
+<code>work</code> node — so a plan written before the grammar existed takes an identical path
+through the hook. <code>packages/driver/test/hook-kinds.test.ts</code> parses the same plans with
+the hook and with the driver's parser and fails the build if they ever disagree.</p>
 <h2 id="guard-irreversiblesh-the-pretooluse-hook"><code>guard-irreversible.sh</code> — the PreToolUse hook<a class="headerlink" href="#guard-irreversiblesh-the-pretooluse-hook" title="Permanent link">&para;</a></h2>
 <p>Runs before every tool call. Contract: read JSON on stdin; print a
 <code>hookSpecificOutput</code> with <code>permissionDecision: "deny"</code> to block, or exit 0 to

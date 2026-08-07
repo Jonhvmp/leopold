@@ -1275,6 +1275,8 @@
       
         
       
+        
+      
     
     
     
@@ -1426,6 +1428,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="stop-continuity.sh — o hook de Stop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tipos-de-no" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tipos de nó
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1552,6 +1571,34 @@
     
   
     Artefatos do brief
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gramática do plano
   
 
     
@@ -1808,6 +1855,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="stop-continuity.sh — o hook de Stop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tipos-de-no" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tipos de nó
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1927,9 +1991,23 @@ campo, então não existe camada de portabilidade pra dar errado. Veja
     Budget -- sim --&gt; Allow
     Budget -- não --&gt; Plan{itens do plano em aberto?}
     Plan -- não --&gt; Allow
-    Plan -- sim --&gt; Block["incrementa iteração ·&lt;br/&gt;bloqueia · reinjeta continue"]</code></pre>
+    Plan -- sim --&gt; Human{"próximo item aberto&lt;br/&gt;é um nó @human?"}
+    Human -- sim --&gt; Ask(["exit 0 · permite parar ·&lt;br/&gt;awaiting_human"])
+    Human -- não --&gt; Block["incrementa iteração ·&lt;br/&gt;bloqueia · reinjeta continue"]</code></pre>
 <p>Fail-open: qualquer erro inesperado permite a parada. A continuidade é melhor esforço;
 parar é sempre seguro.</p>
+<h3 id="tipos-de-no">Tipos de nó<a class="headerlink" href="#tipos-de-no" title="Permanent link">&para;</a></h3>
+<p>Itens do <code>PLAN.md</code> podem declarar um tipo de nó (<code>@node work|gate|human|tool|verify|feedback</code>,
+ou os atalhos <code>@gate</code> / <code>@human</code> / <code>@tool</code> / <code>@verify</code> / <code>@feedback</code>). O motor in-session age sobre um
+deles: quando o próximo item aberto é um nó <strong><code>@human</code></strong>, o hook permite a parada com
+<code>stopped_reason: awaiting_human</code>, nomeia o item no stderr e registra um evento
+<code>awaiting_human</code> — exatamente o que o driver faz ao chegar num nó humano, então um plano
+significa a mesma coisa nos dois motores. Responda, marque o item como <code>[x]</code> e
+<code>/leopold-run</code> retoma.</p>
+<p>Qualquer outro tipo continua como antes, e um item que não declara tipo é um nó <code>work</code> —
+ou seja, um plano escrito antes da gramática existir percorre o hook por um caminho
+idêntico. O <code>packages/driver/test/hook-kinds.test.ts</code> parseia os mesmos planos com o hook
+e com o parser do driver e quebra o build se os dois discordarem.</p>
 <h2 id="guard-irreversiblesh-o-hook-de-pretooluse"><code>guard-irreversible.sh</code> — o hook de PreToolUse<a class="headerlink" href="#guard-irreversiblesh-o-hook-de-pretooluse" title="Permanent link">&para;</a></h2>
 <p>Roda antes de toda chamada de ferramenta. Contrato: lê JSON no stdin; imprime um
 <code>hookSpecificOutput</code> com <code>permissionDecision: "deny"</code> para bloquear, ou sai com 0 para

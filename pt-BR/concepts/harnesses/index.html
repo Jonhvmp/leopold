@@ -941,6 +941,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Escolhendo o harness de um run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#um-run-dois-harnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um run, dois harnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1424,6 +1441,8 @@
       
         
       
+        
+      
     
     
     
@@ -1568,6 +1587,34 @@
     
   
     Artefatos do brief
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gramática do plano
   
 
     
@@ -1901,6 +1948,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Escolhendo o harness de um run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#um-run-dois-harnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um run, dois harnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2149,10 +2213,28 @@ precificação, a descoberta por <code>cwd</code>, o fallback de modelo desconhe
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex<span class="w">       </span><span class="c1"># conduz no Codex</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run<span class="w"> </span><span class="c1"># o mesmo, pelo ambiente</span>
 </span></code></pre></div>
-<p>A precedência é <code>--provider</code> → <code>LEOPOLD_PROVIDER</code> → o que estiver instalado → Claude
-Code como desempate. Um nome que o Leopold não reconhece é erro, não fallback
-silencioso — conduzir um run no harness errado por causa de typo não é um modo de
-falha que valha a pena existir.</p>
+<p>A precedência é <code>--provider</code> → <code>LEOPOLD_PROVIDER</code> → o único harness instalado → <strong>o
+harness de cuja sessão o Leopold foi lançado</strong> → Claude Code como último recurso. Um
+nome que o Leopold não reconhece é erro, não fallback silencioso — conduzir um run no
+harness errado por causa de typo não é um modo de falha que valha a pena existir.</p>
+<p>Esse quarto passo existe porque o desempate era o terceiro: numa máquina com os dois, o
+<code>workflow --run</code> lançado de uma sessão Codex iniciava o Agent SDK do Claude. Cada CLI
+marca o ambiente do filho — o Codex exporta <code>CODEX_THREAD_ID</code> (e <code>CODEX_CI</code>), o Claude
+Code exporta <code>CLAUDECODE</code> / <code>CLAUDE_CODE_SESSION_ID</code> — então o run agora pertence à
+cadeira de onde você o lançou. Sem marcador nenhum, o fallback para Claude é o de sempre.</p>
+<h3 id="um-run-dois-harnesses">Um run, dois harnesses<a class="headerlink" href="#um-run-dois-harnesses" title="Permanent link">&para;</a></h3>
+<p>Um run não precisa escolher um. O <code>--provider hybrid</code> atribui um harness <strong>por papel</strong>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
+</span></code></pre></div>
+<p><code>executor</code> são os workers, <code>review</code> são as lentes de review, painéis de hipótese e
+juízes de torneio, <code>conductor</code> são as decisões de turno e o roteamento. Um papel sem
+flag herda o default resolvido. O provider de cada agente cai no <code>.leopold/events.jsonl</code>
+(<code>run_start</code>, <code>wf_phase</code>, <code>wf_agent_start</code>), porque um run dividido entre dois harnesses
+que não registra qual respondeu é um run que você não consegue depurar.</p>
+<p>Um run sem flag de híbrido não gera atribuição de papel nenhuma — que é exatamente por
+que um run single-provider continua byte-idêntico ao que sempre foi.</p>
 <h2 id="como-o-driver-alcanca-cada-harness">Como o driver alcança cada harness<a class="headerlink" href="#como-o-driver-alcanca-cada-harness" title="Permanent link">&para;</a></h2>
 <p>Tudo no driver — turnos do worker, decisões do conductor, lentes de review, painéis
 de hipótese, roteamento, juízes de torneio — passa por um único seam,

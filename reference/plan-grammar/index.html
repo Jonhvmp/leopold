@@ -1,46 +1,46 @@
 
 <!doctype html>
-<html lang="pt" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/reference/driver-config/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/reference/plan-grammar/">
       
       
-        <link rel="prev" href="../plan-grammar/">
+        <link rel="prev" href="../artifacts/">
       
       
-        <link rel="next" href="../leopold-home/">
+        <link rel="next" href="../driver-config/">
       
       
         
-          <link rel="alternate" href="../../../reference/driver-config/" hreflang="en">
+          <link rel="alternate" href="./" hreflang="en">
         
-          <link rel="alternate" href="./" hreflang="pt-BR">
+          <link rel="alternate" href="../../pt-BR/reference/plan-grammar/" hreflang="pt-BR">
         
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Config do driver - Leopold</title>
+        <title>Plan Grammar - Leopold</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -59,7 +59,7 @@
       
     
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -84,8 +84,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#configuracao-do-driver" class="md-skip">
-          Pular para conteúdo
+        <a href="#plan-grammar" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -99,8 +99,8 @@
   
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
-    <a href="../../" title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Config do driver
+              Plan Grammar
             
           </span>
         </div>
@@ -160,20 +160,20 @@
       <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Selecione o idioma">
+    <button class="md-header__button md-icon" aria-label="Select language">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="../../../reference/driver-config/" hreflang="en" class="md-select__link">
+            <a href="./" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="./" hreflang="pt-BR" class="md-select__link">
+            <a href="../../pt-BR/reference/plan-grammar/" hreflang="pt-BR" class="md-select__link">
               Português (Brasil)
             </a>
           </li>
@@ -194,21 +194,21 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Buscar" placeholder="Buscar" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Pesquisar">
+      <nav class="md-search__options" aria-label="Search">
         
-          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Compartilhar" aria-label="Compartilhar" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
             
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
           </a>
         
-        <button type="reset" class="md-search__icon md-icon" title="Limpar" aria-label="Limpar" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -221,7 +221,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Inicializando busca
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -233,7 +233,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+        <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -248,7 +248,7 @@
   
     
       
-<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -258,13 +258,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../" class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
     
   
-  Início
+  Home
 
       </a>
     </li>
@@ -285,7 +285,7 @@
   
     
   
-  Primeiros passos
+  Getting Started
 
         </a>
       </li>
@@ -307,7 +307,7 @@
   
     
   
-  Conceitos
+  Concepts
 
         </a>
       </li>
@@ -329,7 +329,7 @@
   
     
   
-  Arquitetura
+  Architecture
 
         </a>
       </li>
@@ -353,7 +353,7 @@
   
     
   
-  Referência
+  Reference
 
         </a>
       </li>
@@ -375,7 +375,7 @@
   
     
   
-  Comparações
+  Comparisons
 
         </a>
       </li>
@@ -414,7 +414,7 @@
   
     
   
-  Como contribuir
+  Contributing
 
       </a>
     </li>
@@ -447,9 +447,9 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navegação" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../" title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href="../.." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -459,7 +459,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+      <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -479,14 +479,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Início
+    Home
   
 
     
@@ -539,7 +539,7 @@
   <span class="md-ellipsis">
     
   
-    Primeiros passos
+    Getting Started
   
 
     
@@ -555,7 +555,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Primeiros passos
+    Getting Started
   
 
           </label>
@@ -575,7 +575,7 @@
   <span class="md-ellipsis">
     
   
-    Instalação
+    Install
   
 
     
@@ -603,7 +603,7 @@
   <span class="md-ellipsis">
     
   
-    Início rápido
+    Quickstart
   
 
     
@@ -631,7 +631,7 @@
   <span class="md-ellipsis">
     
   
-    Sua primeira run
+    Your First Run
   
 
     
@@ -659,7 +659,7 @@
   <span class="md-ellipsis">
     
   
-    Gerenciador de toolchain
+    Toolchain Manager
   
 
     
@@ -734,7 +734,7 @@
   <span class="md-ellipsis">
     
   
-    Conceitos
+    Concepts
   
 
     
@@ -750,7 +750,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Conceitos
+    Concepts
   
 
           </label>
@@ -770,7 +770,7 @@
   <span class="md-ellipsis">
     
   
-    O que é um harness
+    What Is a Harness
   
 
     
@@ -798,7 +798,7 @@
   <span class="md-ellipsis">
     
   
-    Claude Code e Codex
+    Claude Code and Codex
   
 
     
@@ -826,7 +826,7 @@
   <span class="md-ellipsis">
     
   
-    As duas fases
+    The Two Phases
   
 
     
@@ -854,7 +854,7 @@
   <span class="md-ellipsis">
     
   
-    Workflows dinâmicos
+    Dynamic Workflows
   
 
     
@@ -882,7 +882,7 @@
   <span class="md-ellipsis">
     
   
-    O Canvas
+    The Canvas
   
 
     
@@ -910,7 +910,7 @@
   <span class="md-ellipsis">
     
   
-    Qualidade e orquestração
+    Quality & Orchestration
   
 
     
@@ -938,7 +938,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo de decisão
+    Decision Protocol
   
 
     
@@ -994,7 +994,7 @@
   <span class="md-ellipsis">
     
   
-    Custo e segurança
+    Cost & Security
   
 
     
@@ -1022,7 +1022,7 @@
   <span class="md-ellipsis">
     
   
-    Isolamento da run
+    Run Isolation
   
 
     
@@ -1050,7 +1050,7 @@
   <span class="md-ellipsis">
     
   
-    Playbook do gstack
+    gstack Playbook
   
 
     
@@ -1111,7 +1111,7 @@
   <span class="md-ellipsis">
     
   
-    Arquitetura
+    Architecture
   
 
     
@@ -1127,7 +1127,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Arquitetura
+    Architecture
   
 
           </label>
@@ -1147,7 +1147,7 @@
   <span class="md-ellipsis">
     
   
-    Visão geral
+    Overview
   
 
     
@@ -1175,7 +1175,7 @@
   <span class="md-ellipsis">
     
   
-    Engine in-session
+    In-Session Engine
   
 
     
@@ -1203,7 +1203,7 @@
   <span class="md-ellipsis">
     
   
-    Driver SDK
+    SDK Driver
   
 
     
@@ -1231,7 +1231,7 @@
   <span class="md-ellipsis">
     
   
-    Protocolo maestro–worker
+    Conductor & Worker Protocol
   
 
     
@@ -1303,7 +1303,7 @@
   <span class="md-ellipsis">
     
   
-    Referência
+    Reference
   
 
     
@@ -1319,7 +1319,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência
+    Reference
   
 
           </label>
@@ -1423,35 +1423,7 @@
   <span class="md-ellipsis">
     
   
-    Artefatos do brief
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../plan-grammar/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Gramática do plano
+    Brief Artifacts
   
 
     
@@ -1488,7 +1460,7 @@
   <span class="md-ellipsis">
     
   
-    Config do driver
+    Plan Grammar
   
 
     
@@ -1506,7 +1478,7 @@
   <span class="md-ellipsis">
     
   
-    Config do driver
+    Plan Grammar
   
 
     
@@ -1518,7 +1490,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1527,15 +1499,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Índice
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#uso" class="md-nav__link">
+  <a href="#the-item-line" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uso
+        The item line
       
     </span>
   </a>
@@ -1543,10 +1515,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-voo-do-grafo-leopold-graph" class="md-nav__link">
+  <a href="#after-n-static-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pré-voo do grafo (leopold graph)
+        (after: N) — static dependencies
       
     </span>
   </a>
@@ -1554,10 +1526,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#autenticacao" class="md-nav__link">
+  <a href="#scenario-the-acceptance-cases" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Autenticação
+        @scenario — the acceptance cases
       
     </span>
   </a>
@@ -1565,22 +1537,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#escolhendo-o-harness" class="md-nav__link">
+  <a href="#node-kinds" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Escolhendo o harness
+        Node kinds
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Escolhendo o harness">
+    <nav class="md-nav" aria-label="Node kinds">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hibrido-um-harness-por-papel" class="md-nav__link">
+  <a href="#labels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Híbrido: um harness por papel
+        Labels
       
     </span>
   </a>
@@ -1593,10 +1565,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#flags" class="md-nav__link">
+  <a href="#emit-and-needs-the-state-channel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Flags
+        @emit and @needs — the state channel
       
     </span>
   </a>
@@ -1604,10 +1576,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#variaveis-de-ambiente" class="md-nav__link">
+  <a href="#on-condition-target-conditional-edges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Variáveis de ambiente
+        @on &lt;condition&gt; -&gt; &lt;target&gt; — conditional edges
       
     </span>
   </a>
@@ -1615,10 +1587,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#toggles-no-brief-guardrailsmd" class="md-nav__link">
+  <a href="#validation-a-malformed-graph-fails-before-the-first-agent-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Toggles no brief (GUARDRAILS.md)
+        Validation — a malformed graph fails before the first agent runs
       
     </span>
   </a>
@@ -1626,10 +1598,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#condicoes-de-parada" class="md-nav__link">
+  <a href="#feedback-nodes-and-amendments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Condições de parada
+        Feedback nodes and amendments
       
     </span>
   </a>
@@ -1637,10 +1609,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#notificacoes" class="md-nav__link">
+  <a href="#worked-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notificações
+        Worked example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cheat-sheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cheat sheet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
       
     </span>
   </a>
@@ -1651,6 +1645,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../driver-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Driver Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1725,7 +1747,7 @@
   <span class="md-ellipsis">
     
   
-    Comparações
+    Comparisons
   
 
     
@@ -1741,7 +1763,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Comparações
+    Comparisons
   
 
           </label>
@@ -1823,7 +1845,7 @@
   <span class="md-ellipsis">
     
   
-    Como contribuir
+    Contributing
   
 
     
@@ -1849,7 +1871,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1858,15 +1880,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Índice
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#uso" class="md-nav__link">
+  <a href="#the-item-line" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uso
+        The item line
       
     </span>
   </a>
@@ -1874,10 +1896,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-voo-do-grafo-leopold-graph" class="md-nav__link">
+  <a href="#after-n-static-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pré-voo do grafo (leopold graph)
+        (after: N) — static dependencies
       
     </span>
   </a>
@@ -1885,10 +1907,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#autenticacao" class="md-nav__link">
+  <a href="#scenario-the-acceptance-cases" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Autenticação
+        @scenario — the acceptance cases
       
     </span>
   </a>
@@ -1896,22 +1918,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#escolhendo-o-harness" class="md-nav__link">
+  <a href="#node-kinds" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Escolhendo o harness
+        Node kinds
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Escolhendo o harness">
+    <nav class="md-nav" aria-label="Node kinds">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hibrido-um-harness-por-papel" class="md-nav__link">
+  <a href="#labels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Híbrido: um harness por papel
+        Labels
       
     </span>
   </a>
@@ -1924,10 +1946,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#flags" class="md-nav__link">
+  <a href="#emit-and-needs-the-state-channel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Flags
+        @emit and @needs — the state channel
       
     </span>
   </a>
@@ -1935,10 +1957,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#variaveis-de-ambiente" class="md-nav__link">
+  <a href="#on-condition-target-conditional-edges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Variáveis de ambiente
+        @on &lt;condition&gt; -&gt; &lt;target&gt; — conditional edges
       
     </span>
   </a>
@@ -1946,10 +1968,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#toggles-no-brief-guardrailsmd" class="md-nav__link">
+  <a href="#validation-a-malformed-graph-fails-before-the-first-agent-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Toggles no brief (GUARDRAILS.md)
+        Validation — a malformed graph fails before the first agent runs
       
     </span>
   </a>
@@ -1957,10 +1979,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#condicoes-de-parada" class="md-nav__link">
+  <a href="#feedback-nodes-and-amendments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Condições de parada
+        Feedback nodes and amendments
       
     </span>
   </a>
@@ -1968,10 +1990,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#notificacoes" class="md-nav__link">
+  <a href="#worked-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notificações
+        Worked example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cheat-sheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cheat sheet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
       
     </span>
   </a>
@@ -1998,330 +2042,393 @@
   
 
 
-<h1 id="configuracao-do-driver">Configuração do Driver<a class="headerlink" href="#configuracao-do-driver" title="Permanent link">&para;</a></h1>
-<p>Configuração do <a href="../../architecture/driver/">driver SDK</a>. Ele lê o brief em
-<code>.leopold/</code> do projeto atual e roda o loop de orquestração.</p>
-<h2 id="uso">Uso<a class="headerlink" href="#uso" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>npm<span class="w"> </span>i<span class="w"> </span>-g<span class="w"> </span>leopold-driver<span class="w">      </span><span class="c1"># or: cd packages/driver &amp;&amp; npm install &amp;&amp; npm run build</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># from a project that has a .leopold/ brief, with Claude Code logged in:</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>leopold<span class="w"> </span>run<span class="w">                          </span><span class="c1"># conduct the run (serial)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>leopold<span class="w"> </span>run<span class="w"> </span>--dry-run<span class="w">                </span><span class="c1"># load the brief, show the plan, do nothing</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>leopold<span class="w"> </span>run<span class="w"> </span>--parallel<span class="w"> </span><span class="m">3</span><span class="w">             </span><span class="c1"># independent plan items concurrently, one worktree each</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>leopold<span class="w"> </span>run<span class="w"> </span>--worktree<span class="w">               </span><span class="c1"># isolate the whole run in a git worktree</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>leopold<span class="w"> </span>run<span class="w"> </span>--budget-usd<span class="w"> </span><span class="m">5</span><span class="w">           </span><span class="c1"># hard-stop at a USD cap</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>leopold<span class="w"> </span>workflow<span class="w">                     </span><span class="c1"># compile the brief into a dynamic workflow (emit)</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--print<span class="w">             </span><span class="c1"># dump the compiled args JSON</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w">               </span><span class="c1"># execute it headlessly (experimental runtime)</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>leopold<span class="w"> </span>graph<span class="w">                        </span><span class="c1"># print + validate the plan&#39;s graph (exit 1 if invalid)</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>leopold<span class="w"> </span>graph<span class="w"> </span>--mermaid<span class="w">              </span><span class="c1"># the same graph as a fenced mermaid diagram</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>leopold<span class="w"> </span>insights<span class="w">                     </span><span class="c1"># summarize the run&#39;s events.jsonl</span>
+<h1 id="plan-grammar">Plan Grammar<a class="headerlink" href="#plan-grammar" title="Permanent link">&para;</a></h1>
+<p><code>PLAN.md</code> is the graph. Not a rendering of one, not a file some tool derives a graph
+from — the markdown you type <em>is</em> what the scheduler executes and what
+<a href="../driver-config/#graph-pre-flight-leopold-graph"><code>leopold graph</code></a> and the Canvas draw.</p>
+<p>Every construct on this page is <strong>opt-in</strong>. A plan that uses none of them parses and
+runs exactly as it did before the grammar existed — that is a gate in the test suite,
+not a hope. So read this page as "what you <em>may</em> write", never as "what you now have
+to write".</p>
+<p>Two rules govern everything below:</p>
+<ul>
+<li><strong>The repository is the truth of what was built. The state channel is the truth of
+  what was decided.</strong> Work product never goes on the channel; routing signals never go
+  in the repo.</li>
+<li><strong>Routing is deterministic.</strong> A model may <em>emit a signal</em>; only the graph decides
+  where that leads. No model call picks an edge.</li>
+</ul>
+<hr />
+<h2 id="the-item-line">The item line<a class="headerlink" href="#the-item-line" title="Permanent link">&para;</a></h2>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Add a <span class="sb">`--json`</span> flag to the CLI — done when: <span class="sb">`mycli --json`</span> emits valid JSON
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">- [x]</span> Something already finished
 </span></code></pre></div>
-<h2 id="pre-voo-do-grafo-leopold-graph">Pré-voo do grafo (<code>leopold graph</code>)<a class="headerlink" href="#pre-voo-do-grafo-leopold-graph" title="Permanent link">&para;</a></h2>
-<p>O comando que você roda antes de confiar em um plano. Ele lê o <code>.leopold/PLAN.md</code> e
-monta o mesmo grafo em que o scheduler roteia — tipos de nó (<code>@gate</code>, <code>@human</code>,
-<code>@tool</code>, <code>@verify</code>), arestas de dependência <code>(after:)</code>, rotas condicionais <code>@on</code>,
-sinais <code>@emit</code>/<code>@needs</code> —, imprime e valida. <strong>Um grafo malformado falha aqui, antes
-do primeiro agente rodar</strong>, com os itens culpados nomeados:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>✗ Cycle: item 4 (&quot;Run the migration&quot;) -&gt; item 9 (&quot;Roll back&quot;) -&gt; item 4 (…). …
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>✗ item 7 (&quot;Ship it&quot;) routes to item 12, which does not exist (`@on fail`).
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>✗ item 5 (&quot;Deploy&quot;) needs signal &quot;approved&quot;, which no item emits.
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>✗ item 8 (&quot;Clean up&quot;) is unreachable: no wave and no route can dispatch it.
+<p>One markdown checkbox is one node. Its <strong>1-based position among all checkboxes</strong> (open
+and done) is its index, and that index is what <code>(after: N)</code> and <code>@on … -&gt; N</code> speak in.</p>
+<div class="admonition warning">
+<p class="admonition-title">Indices are addresses</p>
+<p>Inserting an item in the middle renumbers everything after it and silently
+repoints every reference. Add at the end, or re-read your <code>@on</code>/<code>(after:)</code> targets
+after any insertion — <code>leopold graph</code> will catch the ones that end up dangling, not
+the ones that end up pointing at the wrong existing item.</p>
+</div>
+<p>Markers attach to an item either <strong>inline</strong> on its own line, or on <strong>their own line
+indented under it</strong>. Both forms are equivalent:</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">- [ ]</span> <span class="ni">@gate</span> security Review the auth diff
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">- [ ]</span> Review the auth diff
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>      <span class="ni">@gate</span> security
 </span></code></pre></div>
+<hr />
+<h2 id="after-n-static-dependencies"><code>(after: N)</code> — static dependencies<a class="headerlink" href="#after-n-static-dependencies" title="Permanent link">&para;</a></h2>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">- [ ]</span> Build the API
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">- [ ]</span> Build the UI
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">- [ ]</span> (after: 1, 2) Wire the UI to the API
+</span></code></pre></div>
+<p>A leading <code>(after: N)</code> (or <code>(deps: N)</code>) marker declares that this item must wait for
+those items. Items with no marker are independent and may run concurrently under
+<code>leopold-driver run --parallel N</code>, each in its own worktree. Only declare real
+dependencies, and make items that touch the same files depend on each other so they
+cannot collide.</p>
+<p>The marker must be at the <strong>start</strong> of the item's text, before or after a node-kind
+marker — both orders work.</p>
+<hr />
+<h2 id="scenario-the-acceptance-cases"><code>@scenario</code> — the acceptance cases<a class="headerlink" href="#scenario-the-acceptance-cases" title="Permanent link">&para;</a></h2>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">- [ ]</span> Add a <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>      <span class="ni">@scenario</span> no flag → the human-readable table prints, exactly as before
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table&#39;s exact fields
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> with no rows → prints <span class="sb">`[]`</span> and exits 0
+</span></code></pre></div>
+<p>One case per line, <code>given X → when Y → then Z</code>, phrased so a caller could observe it.
+The run hands these to the worker as the definition of done, and to a <strong>conformance</strong>
+reviewer that checks the diff satisfies <em>every</em> one before the item closes; an unmet
+scenario comes back as the concrete fix. An item with no <code>@scenario</code> lines just uses
+its prose done-check, unchanged.</p>
+<hr />
+<h2 id="node-kinds">Node kinds<a class="headerlink" href="#node-kinds" title="Permanent link">&para;</a></h2>
+<p><code>@node &lt;kind&gt;</code>, or the shorthands <code>@work</code> <code>@gate</code> <code>@verify</code> <code>@tool</code> <code>@human</code>
+<code>@feedback</code>. The default is <code>work</code>, which is what every plan written before this
+grammar existed compiles to. When an item declares a kind more than once, the last one
+written wins.</p>
 <table>
 <thead>
 <tr>
-<th>Flag</th>
-<th>Propósito</th>
+<th>Kind</th>
+<th>What the engine does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><em>(nenhuma)</em></td>
-<td>árvore ASCII: uma linha por nó com tipo, checkbox, dependências e sinais; rotas aparecem sob a origem como <code>→ on &lt;cond&gt; → item N</code></td>
+<td><code>@work</code></td>
+<td>The default. A fresh worker session that edits the repo.</td>
 </tr>
 <tr>
-<td><code>--mermaid</code></td>
-<td>um bloco <code>mermaid</code> — uma forma por tipo de nó, setas pontilhadas rotuladas para as rotas</td>
+<td><code>@gate</code></td>
+<td>A <strong>review-only</strong> session over the uncommitted diff. Every editing tool is denied — on the session <em>and</em> in the driver's guard. Its verdict is the node's outcome: <code>done</code> → ok, <code>blocked</code> → <code>fail</code>, which an <code>@on fail -&gt; N</code> route can catch.</td>
 </tr>
 <tr>
-<td><code>--json</code></td>
-<td>a forma de máquina: <code>{ plan, nodes, edges, diagnostics }</code></td>
+<td><code>@verify</code></td>
+<td>The same review-only node aimed at proof instead of judgement: re-run the build/lint/tests and say whether the work actually holds.</td>
 </tr>
 <tr>
-<td><code>--quiet</code></td>
-<td>não imprime nada quando está tudo certo — para um pré-voo em script</td>
+<td><code>@tool</code></td>
+<td>The item's text <strong>is a shell command</strong> (or the first backticked span in it). The driver runs it — no model turn — and its exit status lands on the channel as <code>exit</code>, so <code>@on exit=0 -&gt; 5</code> works with no <code>@emit</code> line. The git lock still applies: <code>@tool git push</code> is refused, not run. A command is killed after 30 minutes and recorded as <code>exit=124</code>.</td>
 </tr>
 <tr>
-<td><code>--plan CAMINHO</code></td>
-<td>valida um plano fora do <code>.leopold/</code></td>
+<td><code>@human</code></td>
+<td>A <strong>person</strong> decides this item. The run stops with <code>awaiting_human</code>, names the item and stages everything. The Stop hook does the same in-session, on both harnesses.</td>
+</tr>
+<tr>
+<td><code>@feedback</code></td>
+<td>The run reads <strong>its own evidence</strong> (<code>events.jsonl</code> + the run metrics) read-only and may <em>propose</em> plan amendments. It never writes the plan — see <a href="#feedback-nodes-and-amendments">Feedback nodes</a>.</td>
 </tr>
 </tbody>
 </table>
-<p>Códigos de saída: <code>0</code> grafo sadio, <code>1</code> malformado (diagnósticos no stderr), <code>2</code> não
-havia plano para ler. Então um gate é só:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>leopold<span class="w"> </span>graph<span class="w"> </span>--quiet<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<h3 id="labels">Labels<a class="headerlink" href="#labels" title="Permanent link">&para;</a></h3>
+<p>An optional label may follow the kind: <code>name:</code> (explicit, any case), or a bare
+lowercase word when item text follows it.</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">- [ ]</span> <span class="ni">@gate</span> security Review the auth diff     ← kind gate, label &quot;security&quot;
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">- [ ]</span> <span class="ni">@human</span> Ask the team                     ← no label (&quot;Ask&quot; is capitalised: it is text)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> build: make test                  ← label &quot;build&quot;, command <span class="sb">`make test`</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> make test                         ← NO label; the text is the command, word for word
 </span></code></pre></div>
-<p>Um plano que não usa nada da gramática de grafo nunca falha nessa checagem: arestas
-<code>(after:)</code> só apontam para itens anteriores, então não podem ciclar, apontar para o
-vazio nem isolar nada.</p>
-<h2 id="autenticacao">Autenticação<a class="headerlink" href="#autenticacao" title="Permanent link">&para;</a></h2>
-<p>Usa o seu login existente do harness — Claude Code ou Codex — para o worker, o maestro
-e cada agente de painel. <strong>Nenhuma API key é necessária.</strong> <code>ANTHROPIC_API_KEY</code> só entra
-em um ambiente headless sem autenticação do Claude Code.</p>
-<h2 id="escolhendo-o-harness">Escolhendo o harness<a class="headerlink" href="#escolhendo-o-harness" title="Permanent link">&para;</a></h2>
-<p>Todo comando que fala com um modelo aceita <code>--provider claude|codex</code> — o <code>run</code> <strong>e</strong> o
-<code>workflow --run</code>. Ordem de resolução:</p>
+<p>A <code>@tool</code> node never takes a bare label. Its text is the command, so eating the first
+word would run something other than what the plan says (and would hide <code>git</code> from the
+guard). Label a tool node the explicit way.</p>
+<hr />
+<h2 id="emit-and-needs-the-state-channel"><code>@emit</code> and <code>@needs</code> — the state channel<a class="headerlink" href="#emit-and-needs-the-state-channel" title="Permanent link">&para;</a></h2>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">- [ ]</span> Run the database migration
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>      <span class="ni">@emit</span> migrated=true
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>      <span class="ni">@emit</span> migrated=false
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">- [ ]</span> (after: 1) Announce the release
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>      <span class="ni">@needs</span> migrated
+</span></code></pre></div>
+<p><code>@emit key=value</code> declares a signal this node <strong>may</strong> put on the channel
+(<code>.leopold/bus.json</code>); a bare <code>@emit key</code> means <code>key=true</code>. A node may only write keys
+it declared — anything else is refused and logged. <code>@needs key</code> declares a signal this
+node <strong>requires</strong> before it may run; keys may be separated by commas or spaces.</p>
+<p>A worker reports the signals it actually decided on the <code>SIGNALS:</code> line of its
+end-of-turn status block:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>```leopold-status
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>STATUS: done
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>ITEM: Run the database migration
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>SUMMARY: the migration failed on the unique index and was rolled back
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>SIGNALS: migrated=false
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>```
+</span></code></pre></div>
+<p>The channel is deliberately tiny, and the ceilings are enforced in code, not prose:</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Bound</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td>matches <code>^[A-Za-z][A-Za-z0-9_.-]{0,63}$</code></td>
+</tr>
+<tr>
+<td>value</td>
+<td>a scalar, serialized to one line, ≤ 256 characters</td>
+</tr>
+<tr>
+<td>signals</td>
+<td>≤ 128 keys on the channel at once</td>
+</tr>
+<tr>
+<td>file</td>
+<td>≤ 64 KiB</td>
+</tr>
+</tbody>
+</table>
+<p>A value big enough to hold a diff, a patch or a log is a value the channel refuses.
+That ceiling is exactly what stops it becoming a second repository nobody reviews.</p>
+<hr />
+<h2 id="on-condition-target-conditional-edges"><code>@on &lt;condition&gt; -&gt; &lt;target&gt;</code> — conditional edges<a class="headerlink" href="#on-condition-target-conditional-edges" title="Permanent link">&para;</a></h2>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">- [ ]</span> Run the database migration
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>      <span class="ni">@emit</span> migrated=true
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>      <span class="ni">@emit</span> migrated=false
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>      <span class="ni">@on</span> migrated=true  -&gt; 3
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>      <span class="ni">@on</span> migrated=false -&gt; 4
+</span></code></pre></div>
+<p><code>-&gt;</code>, <code>=&gt;</code> and <code>→</code> all work. The target is the 1-based index of another item. Two kinds
+of condition:</p>
+<ul>
+<li><strong>Signal</strong> — the condition contains <code>=</code> or <code>!=</code> (<code>migrated=false</code>, <code>exit!=0</code>). It
+  compares a key on the channel. An <strong>absent key never matches</strong>, in either direction:
+  unknown is not "different from", and routing on something nobody emitted is the bug
+  this rule prevents.</li>
+<li><strong>Status</strong> — a bare word (<code>fail</code>, <code>blocked</code>, <code>ok</code>). It tests the node's own recorded
+  outcome. When the node recorded no outcome, a truthy signal of the same name matches,
+  so <code>@emit ok</code> + <code>@on ok -&gt; 5</code> reads the way it looks.</li>
+</ul>
+<p>Three behaviours worth internalising:</p>
 <ol>
-<li><code>--provider claude|codex</code></li>
-<li><code>LEOPOLD_PROVIDER</code></li>
-<li>o único harness instalado, se só houver um</li>
-<li><strong>o harness de cuja sessão o Leopold foi lançado</strong></li>
-<li>Claude Code</li>
+<li><strong>A route is an edge control may take, never a dependency the scheduler waits on.</strong>
+   <code>@on</code> never widens <code>deps</code>.</li>
+<li><strong>When a node steers, its other static successors are bypassed.</strong> That is what makes
+   the two-branch idiom in the worked example run exactly one branch.</li>
+<li><strong>Routing latches.</strong> Once a node has settled, the edges it took are frozen. A later
+   node overwriting the same key cannot retroactively un-take a route.</li>
 </ol>
-<p>O passo 4 é o que importa numa máquina com os dois. Cada CLI marca o ambiente do filho
-— o Codex exporta <code>CODEX_THREAD_ID</code> (e <code>CODEX_CI</code>), o Claude Code exporta <code>CLAUDECODE</code> /
-<code>CLAUDE_CODE_SESSION_ID</code> — então um run lançado de uma sessão Codex pertence ao Codex em
-vez de cair no desempate. Sem marcador nenhum, o fallback para Claude é o de sempre.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>codex
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run
-</span></code></pre></div>
-<h3 id="hibrido-um-harness-por-papel">Híbrido: um harness por papel<a class="headerlink" href="#hibrido-um-harness-por-papel" title="Permanent link">&para;</a></h3>
-<p>Um mesmo run pode executar num harness e revisar no outro:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
-</span></code></pre></div>
+<hr />
+<h2 id="validation-a-malformed-graph-fails-before-the-first-agent-runs">Validation — a malformed graph fails before the first agent runs<a class="headerlink" href="#validation-a-malformed-graph-fails-before-the-first-agent-runs" title="Permanent link">&para;</a></h2>
+<p><code>leopold graph</code> prints the graph and validates it, exiting non-zero when it is unsound;
+the same check runs as pre-flight before any agent starts. Four defect classes, each
+naming the offender:</p>
 <table>
 <thead>
 <tr>
-<th>Papel</th>
-<th>Cobre</th>
+<th>Code</th>
+<th>Example message</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>executor</code></td>
-<td>os workers que fazem os itens do plano</td>
+<td><code>cycle</code></td>
+<td><code>Cycle: item 4 ("Retry") -&gt; item 2 ("Build") -&gt; item 4 ("Retry"). The run could never finish, so nothing was dispatched.</code></td>
 </tr>
 <tr>
-<td><code>review</code></td>
-<td>lentes de review, painéis de hipótese, juízes de torneio</td>
+<td><code>dangling-edge</code></td>
+<td><code>item 4 ("Step 4") routes to item 99, which does not exist (`@on fail`).</code></td>
 </tr>
 <tr>
-<td><code>conductor</code></td>
-<td>decisões de turno e smart routing</td>
+<td><code>unmet-need</code></td>
+<td>an item <code>@needs</code> a key no reachable item ever emits</td>
+</tr>
+<tr>
+<td><code>unreachable</code></td>
+<td>no dependency path and no takeable route ever reaches the item</td>
 </tr>
 </tbody>
 </table>
-<p>Um papel sem flag herda o default resolvido, então <code>--provider hybrid</code> sozinho é todo
-papel no mesmo harness, e não um run meio configurado. O provider de cada agente é
-registrado no <code>.leopold/events.jsonl</code> (<code>run_start</code>, <code>wf_phase</code>, <code>wf_agent_start</code>), então
-a trilha de auditoria diz quem rodou o quê em vez de deixar isso para inferência.</p>
-<p>Equivalentes em env: <code>LEOPOLD_EXECUTOR_PROVIDER</code>, <code>LEOPOLD_REVIEW_PROVIDER</code>,
-<code>LEOPOLD_CONDUCTOR_PROVIDER</code>. Uma flag ganha da env para o mesmo papel.</p>
-<p>Um run sem flag de híbrido não gera atribuição de papel nenhuma — é isso que mantém um
-run single-provider byte-idêntico.</p>
-<h2 id="flags">Flags<a class="headerlink" href="#flags" title="Permanent link">&para;</a></h2>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="gp">$ </span>leopold<span class="w"> </span>graph<span class="w">            </span><span class="c1"># the ASCII tree + diagnostics on stderr</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="gp">$ </span>leopold<span class="w"> </span>graph<span class="w"> </span>--mermaid<span class="w">  </span><span class="c1"># the same graph as a fenced mermaid diagram</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="gp">$ </span>leopold<span class="w"> </span>graph<span class="w"> </span>--json<span class="w">     </span><span class="c1"># the machine form</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="gp">$ </span>leopold<span class="w"> </span>graph<span class="w"> </span>--quiet<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span><span class="w">   </span><span class="c1"># pre-flight in a script</span>
+</span></code></pre></div>
+<p>A plan that declares no <code>@on</code>, <code>@emit</code> or <code>@needs</code> <strong>can never produce a diagnostic</strong>:
+<code>(after:)</code> edges only point backwards at existing items, so they cannot cycle, dangle
+or strand anything. Validation is a gate for the new grammar, never a new way for an
+old plan to fail.</p>
+<hr />
+<h2 id="feedback-nodes-and-amendments">Feedback nodes and amendments<a class="headerlink" href="#feedback-nodes-and-amendments" title="Permanent link">&para;</a></h2>
+<p>A <code>@feedback</code> node may propose plan amendments in a fenced <code>leopold-amend</code> block. It
+never applies one: the node is read-only, and the driver enforces the bounds in code.</p>
 <table>
 <thead>
 <tr>
-<th>Flag</th>
-<th>Padrão</th>
-<th>Propósito</th>
+<th>Bound</th>
+<th>Rule</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>--parallel N</code></td>
-<td><code>1</code></td>
-<td>roda até N itens independentes do plano ao mesmo tempo, cada um na própria worktree, reaplicando cada diff na árvore principal como um patch staged</td>
+<td>add-budget</td>
+<td>at most <strong>3</strong> items added per run (the counter lives in <code>state.json</code>, so a resumed run inherits what it spent)</td>
 </tr>
 <tr>
-<td><code>--worktree</code></td>
-<td>desligado</td>
-<td>isola uma run serial em uma worktree git dedicada</td>
+<td>add-only</td>
+<td><code>add</code> is the only verb that ever applies</td>
 </tr>
 <tr>
-<td><code>--budget-usd N</code></td>
-<td>nenhum</td>
-<td>interrompe a run quando o gasto real acumulado atinge N</td>
+<td>no-delete</td>
+<td>an item is never removed</td>
 </tr>
 <tr>
-<td><code>--no-review</code></td>
-<td>review ligado</td>
-<td>desliga o painel de revisão de lentes diversas</td>
+<td>no-touch-done</td>
+<td>an item already <code>[x]</code> is never rewritten</td>
 </tr>
 <tr>
-<td><code>--no-conformance</code></td>
-<td>conformidade ligada</td>
-<td>desliga a lente de conformidade (só ativa em itens que declaram linhas de aceite <code>@scenario</code>)</td>
+<td>no-guardrails</td>
+<td><code>GUARDRAILS.md</code> is never amended</td>
 </tr>
 <tr>
-<td><code>--max-review-rounds N</code></td>
-<td><code>2</code></td>
-<td>rodadas de revisão→correção por item antes de ele fechar mesmo assim</td>
-</tr>
-<tr>
-<td><code>--no-hypotheses</code></td>
-<td>painel ligado</td>
-<td>desliga o painel de causa raiz em itens em nova tentativa</td>
-</tr>
-<tr>
-<td><code>--no-literal-reset</code></td>
-<td>reset ligado</td>
-<td>para de restaurar o snapshot pré-tentativa em nova tentativa numa run isolada (numa run não isolada cai para reenquadrar)</td>
-</tr>
-<tr>
-<td><code>--best-of-k N</code></td>
-<td><code>1</code></td>
-<td>resolve um item crítico e isolado em worktree por um torneio de N tentativas independentes (limitado a 2..6; opt-in, custa N×)</td>
-</tr>
-<tr>
-<td><code>--smart-routing</code></td>
-<td>desligado</td>
-<td>pesquisa o raio de impacto real de cada item antes de rotear esforço (cai para palavras-chave; nunca rebaixa um piso critical)</td>
-</tr>
-<tr>
-<td><code>--slice-scope</code></td>
-<td>desligado</td>
-<td>entrega o conjunto de arquivos do smart-routing ao worker como uma nota de escopo "comece por estes arquivos" (precisa de <code>--smart-routing</code>)</td>
-</tr>
-<tr>
-<td><code>--learn-on-finish</code></td>
-<td>desligado</td>
-<td>em um término limpo, minera a run em propostas de emendas ao charter</td>
-</tr>
-<tr>
-<td><code>--dry-run</code></td>
-<td>—</td>
-<td>carrega o brief e reporta; não roda nada</td>
+<td>work-only</td>
+<td>an added item is a plain work item — never a <code>@tool</code>, <code>@human</code>, gate or feedback node</td>
 </tr>
 </tbody>
 </table>
-<h2 id="variaveis-de-ambiente">Variáveis de ambiente<a class="headerlink" href="#variaveis-de-ambiente" title="Permanent link">&para;</a></h2>
+<p>Accepted items are appended at the <strong>end</strong> of <code>PLAN.md</code>, so no existing index moves.
+Every accepted amendment writes a <code>DECISIONS.md</code> block whose <code>Reversal:</code> line names the
+exact line to delete; every refusal is logged to <code>events.jsonl</code> with the bound that
+refused it.</p>
+<hr />
+<h2 id="worked-example">Worked example<a class="headerlink" href="#worked-example" title="Permanent link">&para;</a></h2>
+<p>A migration that either lands or has to be rolled back. This is the exact plan the
+driver's test suite parses, validates and routes — not a second copy that can drift.</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="gh"># Plan</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">- [ ]</span> Add the <span class="sb">`users.locale`</span> column and its migration — done when: <span class="sb">`make migrate`</span> applies cleanly on a fresh database
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>      <span class="ni">@scenario</span> a fresh database → <span class="sb">`make migrate`</span> → the column exists with default <span class="sb">`en`</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>      <span class="ni">@scenario</span> a database already migrated → <span class="sb">`make migrate`</span> → exits 0 and changes nothing
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="k">- [ ]</span> (after: 1) <span class="ni">@tool</span> make migrate
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>      <span class="ni">@on</span> exit=0  -&gt; 3
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>      <span class="ni">@on</span> exit!=0 -&gt; 5
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="k">- [ ]</span> (after: 2) <span class="ni">@verify</span> Prove the app boots and reads locales against the migrated schema
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>      <span class="ni">@emit</span> migrated=true
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>      <span class="ni">@emit</span> migrated=false
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>      <span class="ni">@on</span> migrated=false -&gt; 5
+</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="k">- [ ]</span> (after: 3) <span class="ni">@gate</span> release Review the staged diff for anything that should not ship
+</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="k">- [ ]</span> (after: 2) Roll the migration back and record why it failed — done when: the schema is back at the previous revision
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="k">- [ ]</span> (after: 4) <span class="ni">@feedback</span> Read this run&#39;s evidence and propose at most 3 follow-ups
+</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="k">- [ ]</span> (after: 6) <span class="ni">@human</span> Decide whether this ships today
+</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>      <span class="ni">@needs</span> migrated
+</span></code></pre></div>
+<p>What the run does with it:</p>
+<pre class="mermaid"><code>flowchart TD
+    n1["1 · add the column"]
+    n2[["2 · make migrate"]]
+    n3(["3 · verify the app boots"])
+    n4{{"4 · release gate"}}
+    n5["5 · roll back"]
+    n6("6 · feedback")
+    n7{"7 · human: ship today?"}
+    n1 --&gt; n2
+    n2 -. "exit=0" .-&gt; n3
+    n2 -. "exit!=0" .-&gt; n5
+    n3 -. "migrated=false" .-&gt; n5
+    n3 --&gt; n4
+    n4 --&gt; n6
+    n6 --&gt; n7</code></pre>
+<ol>
+<li>Item 1 is an ordinary work item; the two <code>@scenario</code> lines are what its reviewer
+   checks the diff against.</li>
+<li>Item 2 is a command. No model turn is spent — the driver runs <code>make migrate</code> and
+   puts its exit status on the channel as <code>exit</code>.</li>
+<li>If the command fails, the <code>exit!=0</code> edge steers to item 5 (the rollback) and item 3
+   is bypassed. If it succeeds, item 3 runs and item 5 is bypassed. <strong>Exactly one
+   branch runs</strong>, because a node that steers bypasses its other static successors.</li>
+<li>Item 3 is a read-only proof node. It emits <code>migrated=true</code> or <code>migrated=false</code>, and
+   the false case steers to the rollback the same way.</li>
+<li>Item 4 is a review-only gate that cannot edit anything it judges.</li>
+<li>Item 6 reads the run itself and may propose up to three appended follow-ups.</li>
+<li>Item 7 stops the run and hands the seat back to a person — and only once <code>migrated</code>
+   is actually on the channel.</li>
+</ol>
+<p><code>leopold graph</code> reports no diagnostics for this plan: nothing cycles, every route
+target exists, <code>migrated</code> is emitted upstream of the item that needs it, and every item
+is reachable.</p>
+<hr />
+<h2 id="cheat-sheet">Cheat sheet<a class="headerlink" href="#cheat-sheet" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Var</th>
-<th>Padrão</th>
-<th>Propósito</th>
+<th>Construct</th>
+<th>Means</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>LEOPOLD_CONDUCTOR_MODEL</code></td>
-<td>o padrão do seu Claude Code</td>
-<td>o modelo do maestro (e dos painéis)</td>
+<td><code>- [ ] text</code></td>
+<td>one node; its 1-based position is its index</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_WORKER_MODEL</code></td>
-<td>o padrão do seu Claude Code</td>
-<td>o modelo do worker</td>
+<td><code>(after: 1, 3)</code></td>
+<td>wait for items 1 and 3</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_MAX_TURNS_PER_ITEM</code></td>
-<td><code>40</code></td>
-<td>budget de turnos do worker por item</td>
+<td><code>@scenario …</code></td>
+<td>one acceptance case, verified by the conformance reviewer</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_WEBHOOK</code></td>
-<td>nenhum</td>
-<td>URL para notificações JSON via POST (Slack/Discord/etc.)</td>
+<td><code>@node &lt;kind&gt;</code> / <code>@work</code> <code>@gate</code> <code>@verify</code> <code>@tool</code> <code>@human</code> <code>@feedback</code></td>
+<td>the node kind (default <code>work</code>)</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_WORKTREE</code></td>
-<td><code>0</code></td>
-<td><code>1</code> = o mesmo que <code>--worktree</code></td>
+<td><code>@gate security …</code> / <code>@tool build: make test</code></td>
+<td>kind + label</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_BUDGET_USD</code></td>
-<td>nenhum</td>
-<td>o mesmo que <code>--budget-usd</code></td>
+<td><code>@emit key=value</code> / <code>@emit key</code></td>
+<td>a signal this node may write (<code>key</code> alone = <code>key=true</code>)</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_REVIEW</code></td>
-<td><code>1</code></td>
-<td><code>0</code> = o mesmo que <code>--no-review</code></td>
+<td><code>@needs key</code></td>
+<td>a signal this node requires before it runs</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_CONFORMANCE</code></td>
-<td><code>1</code></td>
-<td><code>0</code> = o mesmo que <code>--no-conformance</code></td>
+<td><code>@on fail -&gt; 5</code></td>
+<td>route on the node's own outcome</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_MAX_REVIEW_ROUNDS</code></td>
-<td><code>2</code></td>
-<td>o mesmo que <code>--max-review-rounds</code></td>
+<td><code>@on migrated=false -&gt; 5</code></td>
+<td>route on a channel signal</td>
 </tr>
 <tr>
-<td><code>LEOPOLD_PARALLEL</code></td>
-<td><code>1</code></td>
-<td>o mesmo que <code>--parallel</code></td>
-</tr>
-<tr>
-<td><code>LEOPOLD_HYPOTHESES</code></td>
-<td><code>1</code></td>
-<td><code>0</code> = o mesmo que <code>--no-hypotheses</code></td>
-</tr>
-<tr>
-<td><code>LEOPOLD_LITERAL_RESET</code></td>
-<td><code>1</code></td>
-<td><code>0</code> = o mesmo que <code>--no-literal-reset</code></td>
-</tr>
-<tr>
-<td><code>LEOPOLD_BEST_OF_K</code></td>
-<td><code>1</code></td>
-<td>o mesmo que <code>--best-of-k</code> (&gt;1 ativa; limitado a 2..6)</td>
-</tr>
-<tr>
-<td><code>LEOPOLD_SMART_ROUTING</code></td>
-<td><code>0</code></td>
-<td><code>1</code> = o mesmo que <code>--smart-routing</code></td>
-</tr>
-<tr>
-<td><code>LEOPOLD_SLICE_SCOPE</code></td>
-<td><code>0</code></td>
-<td><code>1</code> = o mesmo que <code>--slice-scope</code></td>
-</tr>
-<tr>
-<td><code>LEOPOLD_LEARN_ON_FINISH</code></td>
-<td><code>0</code></td>
-<td><code>1</code> = o mesmo que <code>--learn-on-finish</code></td>
-</tr>
-<tr>
-<td><code>ANTHROPIC_API_KEY</code></td>
-<td>nenhum</td>
-<td>só para ambientes headless sem autenticação do Claude Code</td>
+<td><code>@on exit!=0 -&gt; 5</code></td>
+<td>route on a <code>@tool</code> node's exit status</td>
 </tr>
 </tbody>
 </table>
-<h2 id="toggles-no-brief-guardrailsmd">Toggles no brief (GUARDRAILS.md)<a class="headerlink" href="#toggles-no-brief-guardrailsmd" title="Permanent link">&para;</a></h2>
-<p>A postura de orquestração pode viver junto com o brief em vez da linha de comando.
-O <code>GUARDRAILS.md</code> pode definir qualquer um destes como <code>key: on|off</code>:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">-</span><span class="w"> </span>review: on
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">-</span><span class="w"> </span>conformance: on
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
-</span></code></pre></div>
-<p>Precedência: <strong>flag de CLI / env var explícita → GUARDRAILS.md → padrão embutido.</strong></p>
-<h2 id="condicoes-de-parada">Condições de parada<a class="headerlink" href="#condicoes-de-parada" title="Permanent link">&para;</a></h2>
-<p>Vêm do <code>.leopold/GUARDRAILS.md</code>, as mesmas do engine in-session: plano completo,
-kill switch (<code>touch .leopold/STOP</code>), falhas repetidas e o budget de iterações.</p>
-<h2 id="notificacoes">Notificações<a class="headerlink" href="#notificacoes" title="Permanent link">&para;</a></h2>
-<p>Ao concluir ou escalar, o driver escreve no terminal e no <code>events.jsonl</code>,
-e faz POST de JSON para <code>LEOPOLD_WEBHOOK</code> se estiver definido:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Leopold finished&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plan complete; everything staged.&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;leopold&quot;</span><span class="w"> </span><span class="p">}</span>
-</span></code></pre></div>
-<p>Quando <code>learn_on_finish</code> está ligado, o aviso de conclusão também lista as emendas
-propostas ao charter (escritas em <code>.leopold/CHARTER-amendments.md</code>; o charter
-em si nunca é editado).</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../driver-config/#graph-pre-flight-leopold-graph"><code>leopold graph</code></a> — print and
+  validate before you trust a plan.</li>
+<li><a href="../artifacts/">Brief Artifacts</a> — where <code>PLAN.md</code> sits among the other artifacts.</li>
+<li><a href="../../canvas/">The Canvas</a> — the same graph, drawn live.</li>
+</ul>
 
 
 
@@ -2347,7 +2454,7 @@ em si nunca é editado).</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Voltar para o topo
+  Back to top
 </button>
         
       </main>
@@ -2356,33 +2463,33 @@ em si nunca é editado).</p>
   
     
       
-      <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../plan-grammar/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Gramática do plano">
+          <a href="../artifacts/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Brief Artifacts">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Anterior
+                Previous
               </span>
               <div class="md-ellipsis">
-                Gramática do plano
+                Brief Artifacts
               </div>
             </div>
           </a>
         
         
           
-          <a href="../leopold-home/" class="md-footer__link md-footer__link--next" aria-label="Próximo: Asset Home">
+          <a href="../driver-config/" class="md-footer__link md-footer__link--next" aria-label="Next: Driver Config">
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Próximo
+                Next
               </span>
               <div class="md-ellipsis">
-                Asset Home
+                Driver Config
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2434,10 +2541,10 @@ em si nunca é editado).</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -1358,6 +1358,8 @@
       
         
       
+        
+      
     
     
     
@@ -1502,6 +1504,34 @@
     
   
     Artefatos do brief
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/plan-grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gramática do plano
   
 
     
@@ -1814,6 +1844,16 @@ que o runtime grava, e dispõe tudo como um grafo dirigido com um layout em cama
 mão (sem framework, sem bundler, sem web fonts — funciona 100% offline):</p>
 <ul>
 <li><strong>Itens do plano</strong> como nós, com dependências <code>(after: N)</code> como arestas.</li>
+<li><strong>Os tipos de nó que você escreveu.</strong> Um item que declara um — <code>@gate</code>, <code>@human</code>,
+  <code>@tool</code>, <code>@verify</code> — exibe o tipo no nó, junto do rótulo (<code>@gate security</code> aparece como
+  <code>GATE · SECURITY</code>). Um item que não declara nada é um nó de trabalho comum, igual antes.</li>
+<li><strong>Arestas condicionais.</strong> Uma rota <code>@on &lt;condição&gt; -&gt; &lt;item&gt;</code> é desenhada como uma
+  aresta arqueada e tracejada, em cor própria, carregando a condição <strong>como foi escrita</strong>
+  (<code>migrated=false</code>) — assim um desvio nunca se confunde com uma dependência. O inspector
+  lista as rotas do item, os sinais que ele emite (<code>@emit</code>) e os que exige (<code>@needs</code>).</li>
+<li><strong>Um nó <code>@human</code> esperando por você.</strong> Quando qualquer um dos engines chega nele,
+  registra <code>awaiting_human</code> e o nó entra num estado <code>awaiting</code> distinto — âmbar, pulsando,
+  escrito <em>needs you</em>. Nada é inferido: o nó só espera quando a run diz que espera.</li>
 <li>Fases e agents de <strong>dynamic workflow</strong>: fase→fase (<code>seq</code>), fase→agent (<code>contains</code>), e
   cada agent de verificação adversarial ligado ao nó exato que ele revisa (<code>verifies</code>).
   A aresta é precisa onde os próprios scripts do Leopold rotulam os agents como
