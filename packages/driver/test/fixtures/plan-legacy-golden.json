@@ -1,0 +1,533 @@
+{
+  "run-canvas.md": [
+    {
+      "index": 1,
+      "text": "Build the **graph data model** in `leopold-watch.py`: a `graph(run)` builder that turns a run into `{nodes, edges}` — nodes from `workflow_agent` / `workflow_phase` items plus conductor signals (`item_start`/`item_done`/`subagent_spawn`/`review`/`hypothesis` in `events.jsonl`) and open PLAN items; edges inferred from `phaseIndex` order, PLAN `(after: N)` markers, and label conventions (`verify:* → the node it checked`, `fork → parent`). Expose it at `/api/graph`. Keep the existing phase-tree endpoints intact.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 2,
+      "text": "Emit **explicit edge hints** from Leopold's own workflow scripts (`skills/**/reference/*.workflow.js`) and the compiler (`packages/driver/src/compile.ts`) — a lightweight `deps`/`parentLabel` signal on agent calls or a phase-adjacency record — so the DAG is exact where Leopold drives the run; the `/api/graph` inferer from item 1 stays the fallback for generic workflows. No new runtime deps.",
+      "done": true,
+      "deps": [
+        1
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 3,
+      "text": "Add a **node-detail endpoint** `/api/node/<id>` to `leopold-watch.py`: return the full node record (`promptPreview`, `resultPreview`, `model`, `tokens`, `toolCalls`, `lastToolSummary`, `durationMs`, per-node cost estimate) and, for a decision node, the matching rationale block parsed from `DECISIONS.md`.",
+      "done": true,
+      "deps": [
+        1
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 4,
+      "text": "Write a **hand-rolled layered graph layout** as a standalone served asset (e.g. `scripts/leopold-canvas-layout.js`, mirrored into `packages/driver/assets/`): a pure `layout(nodes, edges) -> positions` doing longest-path layering + barycenter crossing reduction, acyclic-safe (breaks cycles deterministically), no dependencies, unit-testable in isolation. Vanilla JS, no framework.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 5,
+      "text": "Build the **SVG canvas renderer + \"Canvas\" tab** in the `leopold-watch.py` PAGE: nodes as cards (status color, live pulse, label, tokens/cost), dependency edges as SVG paths, pan (drag background) + zoom (wheel) + node-drag with positions persisted to `localStorage`, and fit-to-view. Drive it live off the existing `/api/events` SSE with incremental re-render. Reuse the current design system (cream/dark, Geist, no web fonts).",
+      "done": true,
+      "deps": [
+        3,
+        4
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 6,
+      "text": "Add the **node inspector** side-panel: clicking a node calls `/api/node/<id>` and shows model, tokens, per-node cost, tool calls, prompt/result preview; decision nodes show their `DECISIONS.md` rationale; verify/review nodes render their verdict as children hanging off the node they checked.",
+      "done": true,
+      "deps": [
+        5
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 7,
+      "text": "Add the **command channel** to the driver: `loop.ts` polls `.leopold/commands.jsonl` at the same turn boundaries it checks `STOP` (via `config.ts`), supporting `approve`, `redirect{text}`, `inject{text}`, `kill-item`, `rerun-item`; each is applied at the next boundary, logged to `DECISIONS.md` + `events.jsonl`, and cleared on consumption and on stop (extend `clearTokens`). Git stays locked: a command is never a path to `ALLOW_GIT`/`ALLOW_PUSH` or a commit/push.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 8,
+      "text": "Wire the **canvas write-path**: node actions (approve / redirect / inject / kill / re-run subtree) POST to a new `leopold-watch.py` endpoint that appends to `.leopold/commands.jsonl` for a live `/leopold-run`, OR writes a labeled entry to `.leopold/workflow-directives.json` (\"applies on next resume/re-run\") for a non-preemptible workflow node. Destructive actions confirm in the UI first.",
+      "done": true,
+      "deps": [
+        6,
+        7
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 9,
+      "text": "Add **tests + red-team**: unit tests for the graph builder (edge-inference cases: phase order, `(after: N)`, `verify→finding`, `fork→parent`), the layout function (deterministic positions, cycle-safe, no NaN), and the command parser (malformed lines ignored, injection-safe); plus a red-team DENY case proving a channel command cannot unlock git or smuggle `git commit`/`push`.",
+      "done": true,
+      "deps": [
+        1,
+        4,
+        7
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 10,
+      "text": "Update **docs + integration**: rewrite `skills/leopold-watch/SKILL.md`, the README, the docs site, and `leopold watch` CLI help to describe the Canvas + steering; add screenshots/gif; state the workflow-directive-vs-live-preempt distinction and the non-goals honestly. No claim without a backing test.",
+      "done": true,
+      "deps": [
+        2,
+        5,
+        6,
+        8
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 11,
+      "text": "Run the **full gate and stage everything**: `make test` if the target works here, else the fallback (driver `npm test` + `npm run typecheck`, `node --check` on every `*.workflow.js`, `npm pack --dry-run`) plus the new tests. Fix anything red until green; leave the tree staged, nothing committed. Write the final summary of what is ready for the human to merge and tag.",
+      "done": true,
+      "deps": [
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "scenarios": []
+    }
+  ],
+  "run-dist-v0.1.0.md": [
+    {
+      "index": 1,
+      "text": "Rename the driver package to `leopold-driver` (unscoped) in package.json; add `files` allowlist (dist, README), `prepublishOnly` build, `engines`, and `bin` with a shebang in the built entry.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 2,
+      "text": "Add a package-level README for npm and verify `npm pack` yields a clean tarball (no src/node_modules leakage).",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 3,
+      "text": "Document `npm i -g leopold-driver` for the driver in the root README and docs.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 4,
+      "text": "Research the current Claude Code plugin spec and the official marketplace submission process (use /find-docs or the claude-code-guide; do not guess the schema).",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 5,
+      "text": "Add `.claude-plugin/plugin.json` (name, version, description, author, license) and a `hooks/hooks.json` wiring the Stop + PreToolUse hooks; expose the four leopold skills.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 6,
+      "text": "Validate the plugin structure; add a plugin install section to README/docs.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 7,
+      "text": "Prepare official-marketplace submission materials: the marketplace entry metadata and a ready PR description/checklist (do NOT open the PR).",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 8,
+      "text": "Add a `VERSION` file (0.1.0), finalize the CHANGELOG `0.1.0` section, and draft GitHub Release notes from it.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 9,
+      "text": "Update README/docs so all three install paths (curl, npm, plugin) are clear; verify with `make test` + `npm pack`.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 10,
+      "text": "Write a final report listing the exact human commands left (npm publish, marketplace PR, git tag + Release).",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    }
+  ],
+  "run-ed-principles.md": [
+    {
+      "index": 1,
+      "text": "Add the new driver toggles to `types.ts` (`DriverConfig`: conformance, literalReset, bestOfK:number, sliceScope) and resolve them in `config.ts` with the existing CLI/env > GUARDRAILS > default precedence; list them in `templates/GUARDRAILS.md`. — done when: `config.test.ts` covers each toggle's default (conformance on, literal_reset on, best_of_k 1/off, slice_scope off) and that a CLI flag + a GUARDRAILS line each override correctly; `npm run typecheck` is clean.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 2,
+      "text": "Extend `plan.ts` to parse `@scenario <text>` lines that follow a checkbox item into `PlanItem.scenarios: string[]`, whitespace/marker-tolerant and backward compatible. — done when: `plan.test.ts` proves an item with two `@scenario` lines yields `scenarios.length === 2` (text captured, item `text` unchanged), AND the existing PLAN fixture still parses to the identical `{index,text,done,deps}` with `scenarios: []` for every item.",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 3,
+      "text": "Add a `\"conformance\"` lens to `review.ts`: given an item's scenarios, verify the uncommitted diff satisfies each and return unmet ones as blocking findings; make `lensesFor` include it whenever the item has scenarios; phrase the blocking finding as the concrete unmet scenario. — done when: `review.test.ts` shows `lensesFor` includes `conformance` iff scenarios are present, and `parseReview` surfaces an unmet-scenario finding as blocking; typecheck clean.",
+      "done": true,
+      "deps": [
+        1,
+        2
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 4,
+      "text": "Wire scenarios end-to-end: thread `item.scenarios` from the plan through `loop.ts` into both the worker prompt (as the definition of done) and the `reviewItem` call, so an item whose change violates a scenario cannot close. — done when: the worker prompt for an item with scenarios lists them as acceptance criteria, the review gate receives them, and an item with no scenarios takes the exact path it does today (verified by a focused test on the prompt/gate builder).",
+      "done": true,
+      "deps": [
+        3
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 5,
+      "text": "Teach the authoring path: update `leopold-brief` SKILL.md (Step 4) and `templates/PLAN.md` to document and show a real `@scenario` block, and have the brief write scenario lines for behavioral items. — done when: `templates/PLAN.md` shows a working `@scenario` example that `plan.ts` parses into scenarios, and the SKILL documents the grammar; docs build stays green.",
+      "done": true,
+      "deps": [
+        2
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 6,
+      "text": "Add `snapshotTree(cwd)` and `restoreTree(cwd, patch)` to `git.ts` (orchestrator-only, never commit/push): snapshot = uncommitted patch vs HEAD; restore = reset --hard HEAD then re-apply the patch staged, fail-safe on a bad patch. — done when: `git.test.ts` shows snapshot → mutate files → restore returns the tree exactly to the snapshot, and a corrupt patch leaves the tree unchanged and returns not-ok (prior work never lost).",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 7,
+      "text": "Literal fresh restart on serial retry (R2): in `loop.ts`, snapshot the tree before an item's first attempt; on a retry, if `literalReset` is on AND the run is worktree-isolated (`cwd !== brief.root`), restore the snapshot before dispatching the fresh worker (failed diff discarded, prior items intact); keep `retryLead` framing as the fallback for non-isolated runs. — done when: an isolated retry discards the failed diff while earlier items' staged work survives (asserted via a driver-level test/log), and the non-isolated path still uses framing only.",
+      "done": true,
+      "deps": [
+        4,
+        6
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 8,
+      "text": "New `tournament.ts` for best-of-k (R3): given an item and K, run K attempts in parallel worktrees off HEAD, judge the diffs with a review-style panel, and select the winner's diff (or null); keep the winner-selection pure. — done when: a unit test on the pure winner-selection picks the highest-judged result deterministically, and the module typechecks.",
+      "done": true,
+      "deps": [
+        1
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 9,
+      "text": "Route best-of-k in `loop.ts`: when `bestOfK > 1` AND the item is critical/max-effort, run the tournament instead of the single `processItem`, apply the winner staged, and fall back to the single path on any tournament failure; log K and the winner. — done when: with the toggle off the loop behaves identically to today, with it on a critical item emits a `tournament` event and a forced tournament failure falls back cleanly.",
+      "done": true,
+      "deps": [
+        7,
+        8
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 10,
+      "text": "Slice-scoped context (bonus): extend `route.ts` to return the researched file set on `ItemClass`, and in `loop.ts`, when `sliceScope` is on, add a scope note to the worker prompt listing those files. — done when: `route.test.ts` covers the file-set field, and the worker prompt includes the scope note only when the toggle is on and a non-empty set exists (off = unchanged).",
+      "done": true,
+      "deps": [
+        1,
+        9
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 11,
+      "text": "Update docs honestly: README, driver README, `leopold-run`/`leopold-brief` SKILL.md, and the docs-site pages describe scenario verification, literal reset, best-of-k, and slice-scope — every new claim backed by a test. — done when: `mkdocs build --strict` (or the repo's docs check) is green, and a grep for the new toggle names finds them documented, none claiming untested behavior.",
+      "done": true,
+      "deps": [
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 12,
+      "text": "Final gate, staged: run the full `make test` (hooks + driver typecheck/build + docs strict + red-team) and `npm pack` dry-run, fix anything red, stage everything, and write the final summary. — done when: `make test` exits 0, `npm pack` dry-run is clean, and `git status` shows staged changes with zero commits made by the run.",
+      "done": true,
+      "deps": [
+        11
+      ],
+      "scenarios": []
+    }
+  ],
+  "run-universal-harness.md": [
+    {
+      "index": 1,
+      "text": "Add a `leopold home` subcommand to the driver that prints the resolved Leopold",
+      "done": true,
+      "deps": [],
+      "scenarios": [
+        "`LEOPOLD_HOME=/tmp/leo` set → `leopold home` prints `/tmp/leo`",
+        "no override, `$CLAUDE_HOME/leopold` exists → prints that path",
+        "no override, only `$CODEX_HOME` exists → prints `$CODEX_HOME/leopold`",
+        "the documented shell fallback, run with the same env, prints the same"
+      ]
+    },
+    {
+      "index": 2,
+      "text": "Replace every hardcoded `~/.claude` path in `skills/*/SKILL.md` with",
+      "done": true,
+      "deps": [
+        1
+      ],
+      "scenarios": [
+        "`grep -rl '~/.claude' skills/*/SKILL.md` → no matches",
+        "a Claude-only machine runs `/leopold-doctor` → it finds and runs the",
+        "a Codex-only machine runs the same skill → it resolves"
+      ]
+    },
+    {
+      "index": 3,
+      "text": "Make the skills' prose harness-neutral: say \"the agent\"/\"the harness\"",
+      "done": true,
+      "deps": [
+        2
+      ],
+      "scenarios": [
+        "a reader on Codex hits a tool instruction → it names the Codex",
+        "every SKILL.md still parses: frontmatter `name` + `description` intact,"
+      ]
+    },
+    {
+      "index": 4,
+      "text": "Extract one shared hook-wiring helper for the extensions (e.g.",
+      "done": true,
+      "deps": [],
+      "scenarios": [
+        "wiring the same hook three times into a temp `config.toml` → exactly",
+        "wiring the same hook three times into a temp `settings.json` → exactly",
+        "the write would produce an unparseable file → the original is restored"
+      ]
+    },
+    {
+      "index": 5,
+      "text": "Port the **serena** extension to Codex: register the MCP server with",
+      "done": true,
+      "deps": [
+        4
+      ],
+      "scenarios": [
+        "`CODEX_HOME=<temp>` install → serena appears in Codex's MCP config",
+        "`manage.sh status` on a machine with both harnesses → reports serena's",
+        "`manage.sh install` run twice → second run reports \"already installed\""
+      ]
+    },
+    {
+      "index": 6,
+      "text": "Port the **enhance** extension to Codex: wire its UserPromptSubmit",
+      "done": true,
+      "deps": [
+        4
+      ],
+      "scenarios": [
+        "Codex-only temp home, enhance installed → `hooks.UserPromptSubmit` in",
+        "enhance disabled → the hook is still wired but a prompt passes through",
+        "`scripts/test-enhance.sh` → passes with no edits"
+      ]
+    },
+    {
+      "index": 7,
+      "text": "Port the **ovmem** extension to Codex: wire its UserPromptSubmit,",
+      "done": true,
+      "deps": [
+        4
+      ],
+      "scenarios": [
+        "Codex-only temp home, ovmem installed → all four hook events present",
+        "a Codex SessionStart payload reaches `ovmem.py` → it returns without",
+        "re-running the installer → no duplicate hook entries"
+      ]
+    },
+    {
+      "index": 8,
+      "text": "Make the **gstack** extension harness-aware: install its skills into",
+      "done": true,
+      "deps": [
+        4
+      ],
+      "scenarios": [
+        "`CODEX_HOME=<temp>` install → gstack skills resolve under the Codex",
+        "`manage.sh status` with both harnesses present → reports each"
+      ]
+    },
+    {
+      "index": 9,
+      "text": "Teach `scripts/leopold-watch.py` to read a Codex transcript: detect a Codex",
+      "done": true,
+      "deps": [],
+      "scenarios": [
+        "a Codex rollout file is the run's `transcript_path` → the dashboard",
+        "a Claude transcript → every number matches what the dashboard reported",
+        "a transcript in neither format → the panel says the cost is unavailable"
+      ]
+    },
+    {
+      "index": 10,
+      "text": "Make `scripts/leopold-menu.sh` and `scripts/leopold-up.sh` harness-aware:",
+      "done": true,
+      "deps": [],
+      "scenarios": [
+        "Codex-only temp home → `leopold-menu.sh` finds its extensions registry",
+        "Codex-only project → `leopold-up` reports the Codex memory file"
+      ]
+    },
+    {
+      "index": 11,
+      "text": "Add a hermetic `scripts/test-codex-install.sh` covering the",
+      "done": true,
+      "deps": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "scenarios": [
+        "the suite runs with `CODEX_HOME`/`CLAUDE_HOME`/`LEOPOLD_HOME` in a",
+        "a deliberately corrupted target `config.toml` → the installer restores",
+        "`make test` → runs this suite alongside the existing ones"
+      ]
+    },
+    {
+      "index": 12,
+      "text": "Update the docs and metadata for the universal install:",
+      "done": true,
+      "deps": [
+        3,
+        9,
+        10,
+        11
+      ],
+      "scenarios": [
+        "`mkdocs build --strict` → exits 0",
+        "every harness-parity claim in README/docs maps to a test in the suite",
+        "`VERSION`, `packages/driver/package.json` and the CHANGELOG heading"
+      ]
+    },
+    {
+      "index": 13,
+      "text": "Final verification sweep and hand-off: `make test`, the guard",
+      "done": true,
+      "deps": [
+        12
+      ],
+      "scenarios": [
+        "every suite listed above → green, with the output quoted in the report",
+        "`git status` → all mission changes staged, nothing committed",
+        "the report names the riskiest change and how to undo it"
+      ]
+    }
+  ],
+  "template-plan.md": [
+    {
+      "index": 1,
+      "text": "Add a `--json` flag to the CLI — done when: `mycli --json` emits valid JSON",
+      "done": false,
+      "deps": [],
+      "scenarios": [
+        "no flag → the human-readable table prints, exactly as before",
+        "`--json` set → stdout is valid JSON with the table's exact fields",
+        "`--json` with no rows → prints `[]` and exits 0"
+      ]
+    },
+    {
+      "index": 2,
+      "text": "Second item — done when: <observable check>",
+      "done": false,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 3,
+      "text": "Third item — done when: <observable check>",
+      "done": false,
+      "deps": [
+        1
+      ],
+      "scenarios": []
+    }
+  ],
+  "<classic-inline>": [
+    {
+      "index": 1,
+      "text": "Set up the repo",
+      "done": true,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 2,
+      "text": "Add the API layer",
+      "done": false,
+      "deps": [],
+      "scenarios": []
+    },
+    {
+      "index": 3,
+      "text": "Wire the UI to the API",
+      "done": false,
+      "deps": [
+        2
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 4,
+      "text": "Write the e2e tests",
+      "done": false,
+      "deps": [
+        2,
+        3
+      ],
+      "scenarios": []
+    },
+    {
+      "index": 5,
+      "text": "Independent docs pass",
+      "done": false,
+      "deps": [],
+      "scenarios": []
+    }
+  ]
+}

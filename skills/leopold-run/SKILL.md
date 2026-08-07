@@ -52,6 +52,31 @@ the user to run `/leopold-brief` first. Do not improvise a brief.
 
 Read all four artifacts in full. They are your authority.
 
+**Graph pre-flight (a bad plan costs zero tokens).** `PLAN.md` is a graph: node kinds,
+`(after:)` dependency edges and conditional `@on` routes. Validate it BEFORE you spawn
+anything — a cycle, a route to an item that does not exist, an item nothing can reach,
+or an `@needs` no item `@emit`s is cheap to find now and expensive to find after ten
+agents have run:
+
+```bash
+if command -v leopold >/dev/null 2>&1; then LEO_CLI=leopold
+elif command -v leopold-driver >/dev/null 2>&1; then LEO_CLI=leopold-driver
+else LEO_CLI=""; fi
+if [ -n "$LEO_CLI" ]; then
+  "$LEO_CLI" graph --quiet || echo "GRAPH_INVALID"
+else
+  echo "GRAPH_UNVALIDATED"
+fi
+```
+
+- Exit 0 and no marker: the graph is sound. Say nothing about it and carry on.
+- `GRAPH_INVALID`: **stop.** Do not write `state.json`, do not spawn a single agent.
+  Show the diagnostics it printed (each one names the offending item by index and
+  text), tell the user to fix `.leopold/PLAN.md`, and end the turn.
+- `GRAPH_UNVALIDATED`: the `leopold` CLI is not on PATH, so the graph could not be
+  checked. Say so in one line — never pretend it passed — and continue; a plan that
+  uses no graph grammar cannot be malformed.
+
 **Single-run guard (one run per checkout).** A project supports one active Leopold
 run at a time: parallel runs share `.leopold/` and the same working tree, so they
 would collide. Before activating, check for another active run:
@@ -166,7 +191,10 @@ explicit-over-clever, bias-toward-action.
 
 Each turn:
 
-1. Read `.leopold/PLAN.md`; pick the next unchecked item.
+1. Read `.leopold/PLAN.md`; pick the next unchecked item. If that item declares
+   `@human` (a node kind: `@node human`, or the `@human` shorthand), it is not
+   yours to close — say what you need decided, leave it unchecked, and finish
+   the turn. The Stop hook ends the run there with `awaiting_human`.
 2. Complete it. Reach for the gstack playbook skill that fits the situation
    (`spec` before non-trivial builds, `code-review` after changes, `verify`
    to confirm behavior, `investigate` when something breaks, `find-docs`

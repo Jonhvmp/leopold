@@ -14,6 +14,16 @@ que o runtime grava, e dispõe tudo como um grafo dirigido com um layout em cama
 mão (sem framework, sem bundler, sem web fonts — funciona 100% offline):
 
 - **Itens do plano** como nós, com dependências `(after: N)` como arestas.
+- **Os tipos de nó que você escreveu.** Um item que declara um — `@gate`, `@human`,
+  `@tool`, `@verify` — exibe o tipo no nó, junto do rótulo (`@gate security` aparece como
+  `GATE · SECURITY`). Um item que não declara nada é um nó de trabalho comum, igual antes.
+- **Arestas condicionais.** Uma rota `@on <condição> -> <item>` é desenhada como uma
+  aresta arqueada e tracejada, em cor própria, carregando a condição **como foi escrita**
+  (`migrated=false`) — assim um desvio nunca se confunde com uma dependência. O inspector
+  lista as rotas do item, os sinais que ele emite (`@emit`) e os que exige (`@needs`).
+- **Um nó `@human` esperando por você.** Quando qualquer um dos engines chega nele,
+  registra `awaiting_human` e o nó entra num estado `awaiting` distinto — âmbar, pulsando,
+  escrito *needs you*. Nada é inferido: o nó só espera quando a run diz que espera.
 - Fases e agents de **dynamic workflow**: fase→fase (`seq`), fase→agent (`contains`), e
   cada agent de verificação adversarial ligado ao nó exato que ele revisa (`verifies`).
   A aresta é precisa onde os próprios scripts do Leopold rotulam os agents como

@@ -106,6 +106,7 @@ async function runOneReview(cfg: DriverConfig, brief: Brief, lens: ReviewLens, d
     prompt: "Review the current uncommitted diff now and return the JSON verdict.",
     options: {
       cwd: brief.worktreeRoot ?? brief.root,
+      leopoldRole: "review",
       systemPrompt: reviewSystem(lens, scenarios),
       allowedTools: ["Bash", "Read", "Grep", "Glob", "Skill"],
       disallowedTools: ["Edit", "Write", "MultiEdit", "NotebookEdit"],

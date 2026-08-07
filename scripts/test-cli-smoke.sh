@@ -3,7 +3,7 @@
 # fixture brief. Unit tests cover the modules; this catches what they can't — a
 # broken dist entry, bad subcommand dispatch, a path bug in emit. No network, no
 # agents: only the deterministic paths (help, dry-run, workflow compile/emit/print,
-# insights).
+# graph print/validate + its exit codes, insights).
 #
 # Usage: bash scripts/test-cli-smoke.sh   (expects packages/driver already built)
 set -euo pipefail
@@ -83,6 +83,28 @@ run workflow | grep -q "Compiled the brief" || fail "workflow emit must report c
 [ -f .leopold/workflow-args.json ] || fail "emit must write .leopold/workflow-args.json"
 node --check .claude/workflows/leopold-run.js || fail "emitted workflow script must parse"
 node -e 'JSON.parse(require("fs").readFileSync(".leopold/workflow-args.json","utf8"))' || fail "emitted args must be valid JSON"
+
+echo "-> graph (prints + validates the plan's graph, and the exit code is the contract)"
+run graph | grep -q "Leopold graph" || fail "graph must print the tree"
+run graph | grep -q "Graph is valid" || fail "the fixture plan's graph must validate clean"
+node "$CLI" graph >/dev/null 2>&1 || fail "a valid plan must exit 0"
+run graph --mermaid | head -1 | grep -q '^```mermaid$' || fail "--mermaid must open a mermaid fence"
+run graph --json | node -e 'const g=JSON.parse(require("fs").readFileSync(0,"utf8"));
+  if(g.nodes.length!==5) {console.error("cli-smoke FAIL: graph --json must carry 5 nodes");process.exit(1)}
+  if(g.diagnostics.length) {console.error("cli-smoke FAIL: fixture plan must have no diagnostics");process.exit(1)}' \
+  || fail "graph --json must be the machine form of the same graph"
+cat > "$TMP/cycle.md" <<'EOF'
+- [ ] Ship it
+      @on again -> 2
+- [ ] Roll back
+      @on again -> 1
+EOF
+code=0; node "$CLI" graph --plan "$TMP/cycle.md" >/dev/null 2>&1 || code=$?
+[ "$code" = "1" ] || fail "a cycle must exit 1, got $code"
+out="$(run graph --plan "$TMP/cycle.md" || true)"
+echo "$out" | grep -q 'Cycle: item 1' || fail "the cycle diagnostic must name the items"
+code=0; node "$CLI" graph --plan "$TMP/nope.md" >/dev/null 2>&1 || code=$?
+[ "$code" = "2" ] || fail "a missing plan must exit 2, got $code"
 
 echo "-> insights (empty run is a clean report, not a crash)"
 : > .leopold/events.jsonl

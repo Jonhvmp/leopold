@@ -56,9 +56,10 @@ test("a dependency cycle is rejected, not silently dropped", () => {
   // parsePlan only keeps deps that reference EARLIER items, so a true forward cycle
   // can't be expressed; an unsatisfiable dep (referencing a done-less missing index
   // via manual construction) is what wavesOf must catch. Simulate with a hand-built graph.
+  const node = { kind: "work" as const, kindLabel: "", routes: [], emits: [], needs: [] };
   const items = [
-    { index: 1, text: "a", done: false, deps: [2], scenarios: [] }, // waits on a later item → unsatisfiable
-    { index: 2, text: "b", done: false, deps: [1], scenarios: [] },
+    { index: 1, text: "a", done: false, deps: [2], scenarios: [], ...node }, // waits on a later item → unsatisfiable
+    { index: 2, text: "b", done: false, deps: [1], scenarios: [], ...node },
   ];
   assert.throws(() => wavesOf(items), /cycle|unsatisfiable/i);
 });

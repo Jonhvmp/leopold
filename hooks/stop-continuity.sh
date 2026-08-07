@@ -100,11 +100,137 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
   [ "$(( ${ctx_bytes:-0} / 1048576 ))" -ge "$max_ctx_mb" ] 2>/dev/null && allow_stop "context_budget"
 fi
 
+# ---- The plan grammar: node kinds -------------------------------------------------
+# PLAN.md is a graph. An item may declare a node kind -- `@node work|gate|human|tool|
+# verify|feedback`, or the shorthands `@work` / `@gate` / `@human` / `@tool` /
+# `@verify` / `@feedback` -- inline
+# after the checkbox or on a marker line under it, each optionally followed by a label
+# (`@gate security Review auth`). The last kind written wins; an item that declares none
+# is `work`, so a plan written before this grammar existed parses to exactly what it
+# parsed to before and takes an identical path through this hook.
+#
+# The in-session engine acts on ONE kind: `human`. The others -- including `feedback`,
+# whose plan amendments are bounded and applied by the driver (packages/driver/src/
+# amend.ts) -- are the driver's business, and re-inject exactly as they always have.
+#
+# This mirrors packages/driver/src/plan.ts. The two cannot share code -- this hook is
+# bash + jq on purpose, so it runs with no Node and no install -- so
+# packages/driver/test/hook-kinds.test.ts parses the same plans with both and fails the
+# build the moment they disagree.
+
+DEP_RE='^\((after|deps)[[:space:]]*:[[:space:]]*[0-9,[:space:]]+\)[[:space:]]*'
+KIND_RE='^@(node([[:space:]]+|[[:space:]]*:[[:space:]]*))?(work|gate|human|tool|verify|feedback)'
+CHECKBOX_RE='^[[:space:]]*- \[( |x|X)\](.*)$'
+LABEL_EXPLICIT_RE='^[A-Za-z][A-Za-z0-9_./-]*:([[:space:]]+|$)'
+LABEL_BARE_RE='^[a-z][a-z0-9_./-]*([[:space:]]+|$)'
+SEP_RE='^[[:space:]]*:?[[:space:]]*'
+
+_trim() { # echo $1 without leading/trailing blanks
+  local s="$1"
+  while [ "${s#[[:space:]]}" != "$s" ]; do s="${s#[[:space:]]}"; done
+  while [ "${s%[[:space:]]}" != "$s" ]; do s="${s%[[:space:]]}"; done
+  printf '%s' "$s"
+}
+_ltrim() { local s="$1"; while [ "${s#[[:space:]]}" != "$s" ]; do s="${s#[[:space:]]}"; done; printf '%s' "$s"; }
+_lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+# Does $1 start with a node-kind marker? Sets KIND_MATCH (the kind) and KIND_REST (what
+# follows it, label stripped); returns 1 when there is no marker. $2 is 1 on the item's
+# own line, where a bare lowercase label only counts when item text follows it.
+match_kind() {
+  local s="$1" inline="$2" low after tail
+  low="$(_lower "$s")"
+  [[ "$low" =~ $KIND_RE ]] || return 1
+  KIND_MATCH="${BASH_REMATCH[3]}"
+  after="${s:${#BASH_REMATCH[0]}}"
+  # A marker ends at a word boundary: `@workflow` is prose, not `@work`.
+  case "$after" in [A-Za-z0-9_]*) return 1 ;; esac
+  [[ "$after" =~ $SEP_RE ]] && after="${after:${#BASH_REMATCH[0]}}"
+  if [[ "$after" =~ $LABEL_EXPLICIT_RE ]]; then
+    after="${after:${#BASH_REMATCH[0]}}"
+  elif [ "$KIND_MATCH" != "tool" ] && [[ "$after" =~ $LABEL_BARE_RE ]]; then
+    # Never on a `@tool` node: its text IS the command, so `make` in `@tool make test`
+    # is a word of the command, not a label. Tool nodes label the explicit way.
+    tail="${after:${#BASH_REMATCH[0]}}"
+    if [ "$inline" -eq 0 ] || [ -n "$(_trim "$tail")" ]; then after="$tail"; fi
+  fi
+  KIND_REST="$after"
+  return 0
+}
+
+# The kind and text an item's own line declares -> ITEM_KIND, ITEM_TEXT. Strips the one
+# leading `(after: 1, 3)` marker and any node-kind markers, in either order.
+parse_item_line() {
+  local rest="$1" saw_dep=0 low s
+  ITEM_KIND="work"
+  while :; do
+    if [ "$saw_dep" -eq 0 ]; then
+      low="$(_lower "$rest")"
+      if [[ "$low" =~ $DEP_RE ]]; then
+        saw_dep=1
+        rest="${rest:${#BASH_REMATCH[0]}}"
+        continue
+      fi
+    fi
+    s="$(_ltrim "$rest")"
+    if match_kind "$s" 1; then
+      ITEM_KIND="$KIND_MATCH"
+      rest="$(_trim "$KIND_REST")"
+      continue
+    fi
+    break
+  done
+  ITEM_TEXT="$(_trim "$rest")"
+}
+
+# The first OPEN item of a plan -> FIRST_OPEN_INDEX (1-based over all checkboxes, 0 when
+# there is none), FIRST_OPEN_KIND, FIRST_OPEN_TEXT. That item is the one the re-injected
+# instruction tells the agent to pick, so it is the node the in-session engine is at.
+plan_scan_first_open() {
+  FIRST_OPEN_INDEX=0; FIRST_OPEN_KIND=""; FIRST_OPEN_TEXT=""
+  [ -f "$1" ] || return 0
+  local idx=0 line body bare
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ "$line" =~ $CHECKBOX_RE ]]; then
+      [ "$FIRST_OPEN_INDEX" -gt 0 ] && break   # the open item's marker lines ended
+      idx=$((idx + 1))
+      [ "${BASH_REMATCH[1]}" = " " ] || continue
+      body="${BASH_REMATCH[2]}"
+      case "$body" in [[:space:]]*) body="${body#?}" ;; esac
+      parse_item_line "$body"
+      FIRST_OPEN_INDEX=$idx; FIRST_OPEN_KIND="$ITEM_KIND"; FIRST_OPEN_TEXT="$ITEM_TEXT"
+      continue
+    fi
+    [ "$FIRST_OPEN_INDEX" -gt 0 ] || continue
+    bare="$(_trim "$line")"
+    case "$bare" in
+      @*) if match_kind "$bare" 0; then FIRST_OPEN_KIND="$KIND_MATCH"; fi ;;
+    esac
+  done < "$1"
+  return 0
+}
+
 # Plan complete? (no unchecked checkboxes remain)
 PLAN="$LEO/PLAN.md"
 open_items="$(grep -cE '^[[:space:]]*- \[ \]' "$PLAN" 2>/dev/null || true)"
 open_items="${open_items:-0}"
 if [ "$open_items" -eq 0 ] 2>/dev/null; then allow_stop "plan_complete"; fi
+
+# A `@human` node means a PERSON decides this item. The driver stops the run with
+# `awaiting_human` when it reaches one; the in-session engine does the same thing here,
+# so a plan means the same on both engines: end the turn, name the item, ask -- instead
+# of re-injecting "keep going" at an item no agent is allowed to finish.
+plan_scan_first_open "$PLAN"
+if [ "$FIRST_OPEN_KIND" = "human" ]; then
+  log_event "$(jq -cn --arg ts "$now" --argjson i "$FIRST_OPEN_INDEX" --arg t "$FIRST_OPEN_TEXT" \
+    '{ts:$ts,event:"awaiting_human",item:$i,text:$t}' 2>/dev/null || echo '{}')"
+  {
+    echo "Leopold: plan item $FIRST_OPEN_INDEX is a @human node -- a person decides it."
+    [ -n "$FIRST_OPEN_TEXT" ] && echo "  $FIRST_OPEN_TEXT"
+    echo "The run is paused (awaiting_human). Answer it, mark the item [x] in .leopold/PLAN.md, then /leopold-run to resume."
+  } >&2
+  allow_stop "awaiting_human"
+fi
 
 # Loop detection: if the SET of open plan items is byte-identical for N consecutive
 # turns, the run is thrashing without progress (no item checked off, no item added) ->

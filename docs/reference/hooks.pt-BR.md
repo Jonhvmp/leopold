@@ -29,11 +29,28 @@ flowchart TD
     Budget -- sim --> Allow
     Budget -- não --> Plan{itens do plano em aberto?}
     Plan -- não --> Allow
-    Plan -- sim --> Block["incrementa iteração ·<br/>bloqueia · reinjeta continue"]
+    Plan -- sim --> Human{"próximo item aberto<br/>é um nó @human?"}
+    Human -- sim --> Ask(["exit 0 · permite parar ·<br/>awaiting_human"])
+    Human -- não --> Block["incrementa iteração ·<br/>bloqueia · reinjeta continue"]
 ```
 
 Fail-open: qualquer erro inesperado permite a parada. A continuidade é melhor esforço;
 parar é sempre seguro.
+
+### Tipos de nó
+
+Itens do `PLAN.md` podem declarar um tipo de nó (`@node work|gate|human|tool|verify|feedback`,
+ou os atalhos `@gate` / `@human` / `@tool` / `@verify` / `@feedback`). O motor in-session age sobre um
+deles: quando o próximo item aberto é um nó **`@human`**, o hook permite a parada com
+`stopped_reason: awaiting_human`, nomeia o item no stderr e registra um evento
+`awaiting_human` — exatamente o que o driver faz ao chegar num nó humano, então um plano
+significa a mesma coisa nos dois motores. Responda, marque o item como `[x]` e
+`/leopold-run` retoma.
+
+Qualquer outro tipo continua como antes, e um item que não declara tipo é um nó `work` —
+ou seja, um plano escrito antes da gramática existir percorre o hook por um caminho
+idêntico. O `packages/driver/test/hook-kinds.test.ts` parseia os mesmos planos com o hook
+e com o parser do driver e quebra o build se os dois discordarem.
 
 ## `guard-irreversible.sh` — o hook de PreToolUse
 

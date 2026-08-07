@@ -35,6 +35,47 @@ fix**, looping up to `maxReviewRounds`, with the items in a wave run serially (s
 single working tree) and each item's review fan-out run in parallel (read-only). Git is
 locked for free — a workflow can't commit; it stages, you commit.
 
+## When the plan authors a graph
+
+Waves can only say "this comes after that". A plan that declares
+[graph grammar](../reference/driver-config.md#graph-pre-flight-leopold-graph) says more:
+a node kind (`@gate`, `@human`,
+`@tool`, `@verify`), a conditional edge (`@on <cond> -> <target>`), a signal
+(`@emit key=value`, `@needs key`). For those, the compiler emits one extra key beside
+the waves:
+
+```json
+{
+  "waves": [ … ],
+  "graph": {
+    "nodes": [
+      { "index": 2, "id": "i2", "text": "Run the database migration", "kind": "work",
+        "deps": [1], "needs": [], "emits": [{ "key": "migrated", "value": "false" }],
+        "routes": [{ "when": "migrated=false", "target": 4, "kind": "signal" }] }
+    ]
+  }
+}
+```
+
+`graph` present flips the canonical script from its wave loop to its **routed loop**: it
+dispatches from the same deterministic routing function `/leopold-run`'s scheduler uses,
+so the same plan takes the same path on both engines. A node emits a signal, the state
+channel carries it, the graph decides where it leads — no model call ever picks an edge.
+A `@human` node stops the run and asks; a `@tool` node routes on its command's exit
+status; a `@gate` or `@verify` node judges the diff and may not edit it.
+
+Two guarantees hold around that switch:
+
+- **`graph` only appears when the plan actually authors one.** A checklist written
+  before this grammar existed compiles to a byte-identical payload and runs the wave
+  loop untouched — same prompts, same report shape.
+- **A malformed graph is refused before the first agent runs.** A cycle, a route to an
+  item that does not exist, an unreachable item, or a `@needs` nobody emits fails the
+  compile, naming the offending item by index and text.
+
+Because waves cannot express a branch, a plan with graph grammar must be compiled by
+`leopold workflow` rather than by hand — `/leopold-workflow` says so and defers to it.
+
 ## Three ways to run it
 
 | Path | Who runs it | When |

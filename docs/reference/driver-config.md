@@ -17,14 +17,100 @@ leopold run --budget-usd 5           # hard-stop at a USD cap
 leopold workflow                     # compile the brief into a dynamic workflow (emit)
 leopold workflow --print             # dump the compiled args JSON
 leopold workflow --run               # execute it headlessly (experimental runtime)
+leopold graph                        # print + validate the plan's graph (exit 1 if invalid)
+leopold graph --mermaid              # the same graph as a fenced mermaid diagram
 leopold insights                     # summarize the run's events.jsonl
 ```
 
+## Graph pre-flight (`leopold graph`)
+
+The command to run before you trust a plan. It parses `.leopold/PLAN.md` into the
+same graph the scheduler routes on — node kinds (`@gate`, `@human`, `@tool`,
+`@verify`), `(after:)` dependency edges, conditional `@on` routes, `@emit`/`@needs`
+signals — prints it, and validates it. **A malformed graph fails here, before the
+first agent runs**, with the offending items named:
+
+```
+✗ Cycle: item 4 ("Run the migration") -> item 9 ("Roll back") -> item 4 (…). …
+✗ item 7 ("Ship it") routes to item 12, which does not exist (`@on fail`).
+✗ item 5 ("Deploy") needs signal "approved", which no item emits.
+✗ item 8 ("Clean up") is unreachable: no wave and no route can dispatch it.
+```
+
+| Flag | Purpose |
+| --- | --- |
+| *(none)* | ASCII tree: one line per node with its kind, checkbox, deps and signals; routes hang under their source as `→ on <cond> → item N` |
+| `--mermaid` | a fenced `mermaid` diagram — one shape per node kind, dotted labelled arrows for routes |
+| `--json` | the machine form: `{ plan, nodes, edges, diagnostics }` |
+| `--quiet` | print nothing on success — for a pre-flight in a script |
+| `--plan PATH` | validate a plan outside `.leopold/` |
+
+Exit codes: `0` the graph is sound, `1` it is malformed (diagnostics on stderr),
+`2` there was no plan to read. So a gate is just:
+
+```bash
+leopold graph --quiet || exit 1
+```
+
+A plan that uses none of the graph grammar can never fail this check: `(after:)`
+edges only ever point at an earlier item, so they cannot cycle, dangle or strand
+anything.
+
 ## Auth
 
-Uses your existing Claude Code login for the worker, the conductor, and every
-panel agent. **No API key required.** `ANTHROPIC_API_KEY` is only needed in a
-headless environment with no Claude Code auth.
+Uses your existing harness login — Claude Code or Codex — for the worker, the
+conductor, and every panel agent. **No API key required.** `ANTHROPIC_API_KEY` is only
+needed in a headless environment with no Claude Code auth.
+
+## Choosing a harness
+
+Every command that reaches a model takes `--provider claude|codex` — `run` **and**
+`workflow --run`. Resolution order:
+
+1. `--provider claude|codex`
+2. `LEOPOLD_PROVIDER`
+3. the only harness installed, if just one is
+4. **the harness whose session Leopold was launched from**
+5. Claude Code
+
+Step 4 is the one that matters on a machine with both. Each CLI marks its child
+environment — Codex exports `CODEX_THREAD_ID` (and `CODEX_CI`), Claude Code exports
+`CLAUDECODE` / `CLAUDE_CODE_SESSION_ID` — so a run launched from a Codex session
+belongs to Codex instead of falling through to the tie-break. With no marker at all,
+the Claude fallback is unchanged.
+
+```bash
+leopold run --provider codex
+leopold workflow --run --provider codex
+LEOPOLD_PROVIDER=codex leopold run
+```
+
+### Hybrid: a harness per role
+
+One run can execute on one harness and review on the other:
+
+```bash
+leopold workflow --run --provider hybrid \
+  --executor-provider codex \
+  --review-provider claude
+```
+
+| Role | Covers |
+| --- | --- |
+| `executor` | the workers that do the plan items |
+| `review` | review lenses, hypothesis panels, tournament judges |
+| `conductor` | turn decisions and smart routing |
+
+A role left unset inherits the resolved default, so `--provider hybrid` alone is every
+role on the same harness rather than a half-configured run. Every agent's provider is
+recorded in `.leopold/events.jsonl` (`run_start`, `wf_phase`, `wf_agent_start`), so the
+audit trail says who ran what instead of leaving it to be inferred.
+
+Env equivalents: `LEOPOLD_EXECUTOR_PROVIDER`, `LEOPOLD_REVIEW_PROVIDER`,
+`LEOPOLD_CONDUCTOR_PROVIDER`. A flag beats the env for the same role.
+
+A run with no hybrid flags gets no role assignment at all — that is what keeps a
+single-provider run byte-for-byte unchanged.
 
 ## Flags
 

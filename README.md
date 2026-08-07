@@ -59,8 +59,9 @@ leopold enhance toggle       # global prompt enhancer: Haiku interprets weak pro
 leopold watch                # live dashboard at http://127.0.0.1:4179 (incl. workflow phase tree)
 leopold harness              # which harnesses are here, and what each one can do
 leopold run --parallel 3     # conduct the run, independent items in parallel
-leopold run --provider codex # conduct the same brief on Codex instead
+leopold run --provider codex # conduct the same brief on Codex instead (hybrid: a harness per role)
 leopold workflow             # compile the brief into a dynamic workflow (--run: headless, exp.)
+leopold graph                # print + validate the plan's graph before trusting it (exit 1 if invalid)
 leopold insights             # summarize a run (effort mix, review pass-rate, spend)
 leopold doctor               # health check
 ```
@@ -103,6 +104,18 @@ Then, in any project:
 
 **Phase 2 — Run (`/leopold-run`).** Leopold loops: pick the next `PLAN.md` item → do the work, reaching for the right [gstack](https://github.com/garrytan/gstack) skill → at a fork, consult `CHARTER.md`; if the call is reversible and the charter is clear, **decide, log it to `DECISIONS.md`, and keep going** → mark it done, pick the next. A **Stop hook** re-injects "continue" while work remains; a **PreToolUse guard** keeps `git commit`/`push` locked. Everything it decided for you is in `DECISIONS.md` to review.
 
+**The plan is a graph you author.** `PLAN.md` is still a checklist, and a plan with no new syntax runs exactly as it always did — but it can now declare node kinds and edges that depend on what happened:
+
+```markdown
+- [ ] Migrate the schema
+      @emit migrated=false
+      @on migrated=false -> 3      # the run goes to item 3 if this fails
+- [ ] (after: 1) Ship it
+- [ ] @human Approve the rollback  # halts and asks
+```
+
+`@gate` / `@verify` review without touching a file, `@tool` runs a command with no model turn, `@human` stops for you, `@feedback` may amend the plan within bounds it cannot exceed. **No model call decides an edge** — a node emits a signal, the graph decides where it leads, which is what makes the Canvas worth trusting. `leopold graph` prints and validates before a single agent runs: a cycle or a route to an item that does not exist exits 1 naming the offender, so a malformed plan costs zero tokens. See [Plan Grammar](docs/reference/plan-grammar.md).
+
 **Phase 2, the workflow way (`/leopold-workflow`).** Same brief, stronger engine. Leopold **compiles the brief into a [dynamic workflow](https://code.claude.com/docs/en/workflows)** — a JavaScript harness Claude Code's runtime runs in the background. The plan lives in *code* instead of one growing context window, so the run doesn't drift into agentic laziness, self-preferential bias, or goal drift on a long plan. `PLAN.md` becomes dependency-ordered waves; each item gets an **independent** adversarial reviewer (a panel with a security lens on critical items) that did not write the code it judges. The run is **resumable** and streams a live phase tree into `/workflows` (and into `leopold watch`). Git is locked for free — a workflow can't commit; it stages, you commit. The compiler is also a first-class driver command: `leopold-driver workflow` emits the script + args deterministically (CI-checkable), and `--run` executes it headlessly through an experimental in-driver runtime. Use `/leopold-run` for a short or interactive plan; reach for `/leopold-workflow` when the plan is large or parallelizable. See the [Dynamic Workflows](docs/concepts/dynamic-workflows.md) concept page.
 
 ---
@@ -118,6 +131,7 @@ Leopold extracts the most from Claude Code's native power, in one command. See [
 - **A prompt enhancer that reads your shorthand (`enhance`).** Everyday prompts are thin by habit ("fix login"). One global `UserPromptSubmit` hook (on both harnesses) scores each prompt; genuinely weak ones get a structured interpretation from Haiku **on your own account** — charter-aware, conversation-aware — injected next to the raw prompt, which always wins on conflict. Strong prompts (anything anchored to a path or symbol) never pay the latency; failures fail open. Off by default: `leopold menu` → enhance → Toggle. `/leopold-enhance learn` mines the local ledger for interpretations you corrected and proposes prompt-profile rules — you review, it never self-edits. [Docs](docs/reference/enhance.md).
 - **Parallel items.** `leopold-driver run --parallel N` runs independent plan items at once, each in its own worktree, replaying each diff onto the main tree (staged, never committed). Declare order with `- [ ] (after: 2) …`.
 - **One-command setup.** `leopold up` + `/leopold-up` wire the things people skip — `CLAUDE.md` (`/init`), an app run-skill (`/run-skill-generator`), a permissions allowlist, MCP — so a project starts at full power.
+- **Graph pre-flight.** `leopold-driver graph` prints the plan as the graph the scheduler actually routes on — node kinds, `(after:)` edges, conditional `@on` routes, signals — and validates it. A cycle, a route to an item that does not exist, an unreachable item or an unmet `@needs` exits non-zero with the offending items named, *before the first agent runs*. `--mermaid` for a diagram, `--quiet` for a script gate.
 - **Insights.** `leopold-driver insights` summarizes a run: effort mix, review pass-rate, decisions, escalations, real spend.
 
 ---

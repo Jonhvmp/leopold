@@ -4,6 +4,139 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-08-06
+
+### Fixed
+- **`workflow --run` started the wrong harness, and the audit trail never said which.**
+  The resolver's precedence ended at "both installed → Claude", so `leopold workflow
+  --run` launched from a Codex session started the Claude Agent SDK — and nothing in
+  `events.jsonl` recorded the provider, so the run could not be diagnosed after the
+  fact. Resolution now consults the harness whose session Leopold was launched from
+  (Codex exports `CODEX_THREAD_ID`, Claude Code exports `CLAUDECODE` — both verified
+  against the live binaries) before falling back to Claude, and `--provider` is
+  documented for `workflow --run`, not only for `run`. `run_start`, `wf_phase` and a
+  new `wf_agent_start` all carry the provider. Reported as #54.
+- **Hybrid runs: a harness per role.** `--provider hybrid` with
+  `--executor-provider` / `--review-provider` / `--conductor-provider` (or the
+  `LEOPOLD_*_PROVIDER` env vars) lets one run execute on one harness and review on the
+  other. A call site tags itself with a role and the seam routes on it; a role left
+  unset inherits the resolved default, and a run with no hybrid flags gets no role map
+  at all — which is what keeps single-provider runs byte-for-byte unchanged.
+
+### Added
+- **`PLAN.md` is a graph you author, not a graph Leopold derives.** The Canvas has drawn
+  a directed graph since v0.13.0, but you could never write one: every item was the same
+  kind of node, every edge was a static `(after: N)` pointing backwards, and nothing a
+  run learned could change where it went next. Now the markdown you type *is* the graph
+  the scheduler executes, and `leopold graph` prints it. Two rules hold the whole design
+  together — **the repository is the truth of what was built, the state channel is the
+  truth of what was decided**, and **routing is deterministic**: a model may emit a
+  signal, only the graph decides where that signal leads. No model call ever picks an
+  edge. The full grammar is the
+  [Plan Grammar reference](https://jonhvmp.github.io/leopold/reference/plan-grammar/).
+- **Node kinds — `@node <kind>`, or the `@work` `@gate` `@verify` `@tool` `@human`
+  `@feedback` shorthands, with an optional label (`@gate security`).** The engine treats
+  each one differently instead of wrapping the same fixed verify gate around everything.
+  `@gate` and `@verify` are review-only sessions over the uncommitted diff — every
+  editing tool is denied on the session *and* in the driver's guard, so a node cannot
+  write to the diff it is judging, and its verdict is the node's outcome (`blocked` →
+  `fail`, which a route can catch). `@tool` means the item's text *is* a shell command:
+  the driver runs it with no model turn and puts its exit status on the channel as
+  `exit`, so `@on exit!=0 -> 5` needs no `@emit` line — and the git lock still applies,
+  `@tool git push` is refused, not run. `@human` stops the run with `awaiting_human`,
+  names the item and stages everything for whoever picks it up. `@work` is the default,
+  and it is what every plan written before this grammar compiles to.
+- **Conditional edges — `@on <condition> -> <target>`** (`->`, `=>` and `→` all parse).
+  A condition is either a channel signal (`migrated=false`, `exit!=0`) or the node's own
+  recorded outcome (`fail`, `blocked`, `ok`). Three behaviors are load-bearing and
+  tested: a route is an edge control *may* take and never a dependency the scheduler
+  waits on; a node that steers bypasses its other static successors, so a two-branch
+  idiom runs exactly one branch; and routing latches — once a node has settled, a later
+  node overwriting the same key cannot retroactively un-take a route. An absent key
+  never matches, in either direction, because routing on something nobody emitted is
+  precisely the bug that rule prevents.
+- **A typed state channel — `@emit key=value` and `@needs key`.** A node declares the
+  signals it may write and the ones it requires before it runs; a worker reports what it
+  actually decided on a new optional `SIGNALS:` line in its status block, and the loop
+  accepts only keys that item declared. The channel lives in `.leopold/bus.json` and is
+  deliberately tiny, with the ceilings enforced in code: keys match
+  `^[A-Za-z][A-Za-z0-9_.-]{0,63}$`, values are one-line scalars ≤ 256 characters, ≤ 128
+  keys at once, ≤ 64 KiB total. A value big enough to hold a diff, a patch or a log is a
+  value the channel refuses — that ceiling is what stops it becoming a second repository
+  nobody reviews.
+- **A malformed graph is refused before the first agent runs, and the diagnostic names
+  the offender.** "Invalid graph" is not a diagnostic; ``item 7 ("Ship it") routes to item
+  12, which does not exist (`@on fail`)`` is. Four defect classes — `cycle`,
+  `dangling-edge`, `unmet-need`, `unreachable` — are checked as pre-flight by
+  `leopold run`, by `--dry-run`, by `leopold workflow`, and by the `/leopold-run` skill
+  before it activates a run. Zero agents are spawned when the graph is unsound.
+- **`leopold graph`** — the command to run before you trust a plan. Bare, it prints an
+  ASCII tree with each node's kind, checkbox, deps and signals, routes hanging under
+  their source; `--mermaid` emits the same graph as a fenced diagram with a distinct
+  shape per node kind; `--json` gives `{ plan, nodes, edges, diagnostics }`; `--quiet`
+  prints nothing on success, so a pre-flight in a script is just
+  `leopold graph --quiet || exit 1`. Exit `0` sound, `1` malformed, `2` no plan to read.
+- **`@feedback` nodes may amend the plan, within bounds enforced in code and logged.** A
+  feedback node reads the run's own evidence (`events.jsonl` plus the run metrics),
+  read-only, and *proposes* amendments in a fenced `leopold-amend` block — it never
+  applies one. The driver enforces the bounds: at most **3** added items per run (the
+  counter lives in `state.json`, so a resumed run inherits what it already spent instead
+  of getting a fresh purse), `add` is the only verb, nothing is ever deleted, an item
+  already `[x]` is never rewritten, `GUARDRAILS.md` is never amended, and an added item
+  is always a plain work item. Accepted items append at the end of `PLAN.md`, so no
+  existing index moves; every acceptance writes a `DECISIONS.md` block whose `Reversal:`
+  line names the exact line to delete, and every refusal is logged with the bound that
+  refused it.
+- **Both engines run the same graph.** One compilation, two consumers: `leopold workflow`
+  emits a `graph` key beside the waves, which flips the canonical dynamic-workflow script
+  from its wave loop to a **routed loop** dispatching from the same deterministic routing
+  function the driver's scheduler uses, so a plan takes the same path whether it runs
+  through the SDK driver or as a dynamic workflow. `hooks/stop-continuity.sh` learned the
+  node kinds too, and allows the stop with `awaiting_human` when the next open item is a
+  `@human` node — identically on Claude Code and Codex CLI.
+  `packages/driver/test/hook-kinds.test.ts` parses the same plans with the hook and with
+  the driver's parser and fails the build if they ever disagree.
+- **The Canvas draws what you actually wrote.** Node kinds are rendered on the node with
+  their label (`@gate security` reads `GATE · SECURITY`); an `@on` route is a bowed,
+  dashed edge in its own color carrying the condition *as written*, so a branch never
+  reads like a dependency; the inspector lists an item's routes and the signals it emits
+  and needs; and a `@human` node the run is actually waiting on switches to a distinct
+  amber `awaiting` state. Nothing is inferred — the node waits only when the run says it
+  does.
+
+### Compatibility
+- **Every plan written before this release parses to a byte-identical graph and runs the
+  identical path. That is a gate in the test suite, not a hope.** Every construct above
+  is opt-in, and absence means today's behavior. `plan.test.ts` reparses the real plans
+  Leopold has run — its own briefs, the shipped template, the fixtures — against a golden
+  captured from the parser *as it stood before the grammar existed*, plus an edge-case
+  corpus, and fails if a single legacy field moves. `leopold workflow` emits the `graph`
+  key **only** when the plan actually authors one, so an old brief compiles to the same
+  payload and runs the same wave loop with the same prompts and the same report shape.
+  Validation cannot turn an old plan into a new failure either: `(after:)` edges only
+  ever point backwards at existing items, so they cannot cycle, dangle or strand
+  anything — a plan that declares no `@on`, `@emit` or `@needs` can never produce a
+  diagnostic. The `SIGNALS:` status line is optional, and a status block without it
+  parses exactly as it did before. Node-kind-less items are `work` nodes everywhere: in
+  the driver, in the compiled workflow, in the Stop hook, and on the Canvas.
+
+### Changed
+- The driver's guard gained denials, never permissions. A read-only node (`@gate`,
+  `@verify`, `@feedback`) additionally denies every editing tool *and* any shell command
+  that would write under the run's own `.leopold/` — without that second half the first
+  is theatre, since a node that can reach `PLAN.md` through `sed -i` walks around every
+  amendment bound. Work nodes are locked exactly as before: `git commit` and `git push`,
+  nothing else.
+- Read-only nodes are checked against a receipt, not trusted. The tree signature now
+  covers file *contents* as well as which paths are dirty — `git status --porcelain` is
+  byte-identical before and after a write to a file that is already dirty, which is
+  precisely the kind of file a gate reviews — computed through a throwaway
+  `GIT_INDEX_FILE` so taking the signature never stages anything in the repo it measures.
+  The brief itself gets a second receipt, with `PLAN.md` hashed with its checkboxes
+  blanked (a `--parallel` run legitimately closes another item mid-node) and the
+  checkbox state covered by its own flip ledger, so a node that marks the plan done to
+  end the run on `plan_complete` is caught and restored.
+
 ## [0.14.2] - 2026-08-06
 
 ### Fixed

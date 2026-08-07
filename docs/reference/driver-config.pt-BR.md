@@ -17,14 +17,99 @@ leopold run --budget-usd 5           # hard-stop at a USD cap
 leopold workflow                     # compile the brief into a dynamic workflow (emit)
 leopold workflow --print             # dump the compiled args JSON
 leopold workflow --run               # execute it headlessly (experimental runtime)
+leopold graph                        # print + validate the plan's graph (exit 1 if invalid)
+leopold graph --mermaid              # the same graph as a fenced mermaid diagram
 leopold insights                     # summarize the run's events.jsonl
 ```
 
+## Pré-voo do grafo (`leopold graph`)
+
+O comando que você roda antes de confiar em um plano. Ele lê o `.leopold/PLAN.md` e
+monta o mesmo grafo em que o scheduler roteia — tipos de nó (`@gate`, `@human`,
+`@tool`, `@verify`), arestas de dependência `(after:)`, rotas condicionais `@on`,
+sinais `@emit`/`@needs` —, imprime e valida. **Um grafo malformado falha aqui, antes
+do primeiro agente rodar**, com os itens culpados nomeados:
+
+```
+✗ Cycle: item 4 ("Run the migration") -> item 9 ("Roll back") -> item 4 (…). …
+✗ item 7 ("Ship it") routes to item 12, which does not exist (`@on fail`).
+✗ item 5 ("Deploy") needs signal "approved", which no item emits.
+✗ item 8 ("Clean up") is unreachable: no wave and no route can dispatch it.
+```
+
+| Flag | Propósito |
+| --- | --- |
+| *(nenhuma)* | árvore ASCII: uma linha por nó com tipo, checkbox, dependências e sinais; rotas aparecem sob a origem como `→ on <cond> → item N` |
+| `--mermaid` | um bloco `mermaid` — uma forma por tipo de nó, setas pontilhadas rotuladas para as rotas |
+| `--json` | a forma de máquina: `{ plan, nodes, edges, diagnostics }` |
+| `--quiet` | não imprime nada quando está tudo certo — para um pré-voo em script |
+| `--plan CAMINHO` | valida um plano fora do `.leopold/` |
+
+Códigos de saída: `0` grafo sadio, `1` malformado (diagnósticos no stderr), `2` não
+havia plano para ler. Então um gate é só:
+
+```bash
+leopold graph --quiet || exit 1
+```
+
+Um plano que não usa nada da gramática de grafo nunca falha nessa checagem: arestas
+`(after:)` só apontam para itens anteriores, então não podem ciclar, apontar para o
+vazio nem isolar nada.
+
 ## Autenticação
 
-Usa o seu login existente do Claude Code para o worker, o maestro e cada agente de
-painel. **Nenhuma API key é necessária.** `ANTHROPIC_API_KEY` só entra em um
-ambiente headless sem autenticação do Claude Code.
+Usa o seu login existente do harness — Claude Code ou Codex — para o worker, o maestro
+e cada agente de painel. **Nenhuma API key é necessária.** `ANTHROPIC_API_KEY` só entra
+em um ambiente headless sem autenticação do Claude Code.
+
+## Escolhendo o harness
+
+Todo comando que fala com um modelo aceita `--provider claude|codex` — o `run` **e** o
+`workflow --run`. Ordem de resolução:
+
+1. `--provider claude|codex`
+2. `LEOPOLD_PROVIDER`
+3. o único harness instalado, se só houver um
+4. **o harness de cuja sessão o Leopold foi lançado**
+5. Claude Code
+
+O passo 4 é o que importa numa máquina com os dois. Cada CLI marca o ambiente do filho
+— o Codex exporta `CODEX_THREAD_ID` (e `CODEX_CI`), o Claude Code exporta `CLAUDECODE` /
+`CLAUDE_CODE_SESSION_ID` — então um run lançado de uma sessão Codex pertence ao Codex em
+vez de cair no desempate. Sem marcador nenhum, o fallback para Claude é o de sempre.
+
+```bash
+leopold run --provider codex
+leopold workflow --run --provider codex
+LEOPOLD_PROVIDER=codex leopold run
+```
+
+### Híbrido: um harness por papel
+
+Um mesmo run pode executar num harness e revisar no outro:
+
+```bash
+leopold workflow --run --provider hybrid \
+  --executor-provider codex \
+  --review-provider claude
+```
+
+| Papel | Cobre |
+| --- | --- |
+| `executor` | os workers que fazem os itens do plano |
+| `review` | lentes de review, painéis de hipótese, juízes de torneio |
+| `conductor` | decisões de turno e smart routing |
+
+Um papel sem flag herda o default resolvido, então `--provider hybrid` sozinho é todo
+papel no mesmo harness, e não um run meio configurado. O provider de cada agente é
+registrado no `.leopold/events.jsonl` (`run_start`, `wf_phase`, `wf_agent_start`), então
+a trilha de auditoria diz quem rodou o quê em vez de deixar isso para inferência.
+
+Equivalentes em env: `LEOPOLD_EXECUTOR_PROVIDER`, `LEOPOLD_REVIEW_PROVIDER`,
+`LEOPOLD_CONDUCTOR_PROVIDER`. Uma flag ganha da env para o mesmo papel.
+
+Um run sem flag de híbrido não gera atribuição de papel nenhuma — é isso que mantém um
+run single-provider byte-idêntico.
 
 ## Flags
 

@@ -141,6 +141,7 @@ async function ask(cfg: DriverConfig, brief: Brief, cwd: string, system: string,
     prompt,
     options: {
       cwd,
+      leopoldRole: "review",
       systemPrompt: system,
       allowedTools: ["Bash", "Read", "Grep", "Glob"],
       disallowedTools: ["Edit", "Write", "MultiEdit", "NotebookEdit"],

@@ -193,20 +193,79 @@ export function parseProvider(raw: string): ProviderId {
 }
 
 /**
+ * The harness whose session this process is running INSIDE, if any.
+ *
+ * Both CLIs mark their child environment, verified against the live binaries:
+ * Codex exports `CODEX_THREAD_ID` (plus `CODEX_CI`, `CODEX_SANDBOX_*`), and Claude
+ * Code exports `CLAUDECODE` / `CLAUDE_CODE_SESSION_ID`. That marker is what lets a
+ * two-harness machine stop guessing: if you launched Leopold from a Codex session,
+ * the run belongs on Codex, and picking Claude by alphabetical luck is a bug.
+ */
+export function enclosingHarness(env: NodeJS.ProcessEnv = process.env): ProviderId | undefined {
+  if (env.CODEX_THREAD_ID || env.CODEX_CI) return "codex";
+  if (env.CLAUDECODE || env.CLAUDE_CODE_SESSION_ID) return "claude";
+  return undefined;
+}
+
+/**
  * Which harness should conduct this run.
  *
- * Precedence: `--provider X` > LEOPOLD_PROVIDER > whatever is installed > claude.
- * Claude stays the tie-break default because it is what Leopold is developed
- * against; both harnesses support every surface Leopold uses.
+ * Precedence: `--provider X` > LEOPOLD_PROVIDER > the only harness installed >
+ * the harness whose session we are running inside > claude.
+ *
+ * That fourth step is the one that matters on a machine with both: `workflow --run`
+ * launched from a Codex session used to start the Claude Agent SDK, because "both
+ * installed" fell straight through to the tie-break. Reported as #54.
  */
 export function resolveProvider(argv: string[] = [], env: NodeJS.ProcessEnv = process.env): ProviderId {
   const i = argv.indexOf("--provider");
   const flag = i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined;
-  if (flag) return parseProvider(flag);
-  if (env.LEOPOLD_PROVIDER) return parseProvider(env.LEOPOLD_PROVIDER);
+  // `--provider hybrid` names a STRATEGY, not a harness: it says "assign per role",
+  // and the per-role flags say which. It falls through so the rest of the precedence
+  // still resolves the BASE any unassigned role inherits.
+  if (flag && !/^hybrid$/i.test(flag)) return parseProvider(flag);
+  if (env.LEOPOLD_PROVIDER && !/^hybrid$/i.test(env.LEOPOLD_PROVIDER)) return parseProvider(env.LEOPOLD_PROVIDER);
   const installed = installedHarnesses(env);
   if (installed.length === 1) return installed[0];
+  const inside = enclosingHarness(env);
+  if (inside && installed.includes(inside)) return inside;
   return "claude";
+}
+
+/** Roles a run assigns work to. Hybrid mode gives each one its own harness. */
+export type AgentRole = "executor" | "review" | "conductor";
+export const AGENT_ROLES: readonly AgentRole[] = ["executor", "review", "conductor"];
+
+/** A resolved hybrid assignment: which harness runs which role. */
+export type RoleProviders = Record<AgentRole, ProviderId>;
+
+/**
+ * Parse the hybrid flags into a per-role assignment, or return undefined when the
+ * run is single-provider (the overwhelmingly common case, and the one that must stay
+ * byte-for-byte unchanged).
+ *
+ *   --provider hybrid --executor-provider codex --review-provider claude
+ *
+ * A role left unspecified falls back to `base`, so `--provider hybrid` alone is not
+ * a half-configured run — it is every role on the resolved default.
+ */
+export function resolveRoleProviders(
+  argv: string[], base: ProviderId, env: NodeJS.ProcessEnv = process.env,
+): RoleProviders | undefined {
+  const flag = (name: string): string | undefined => {
+    const i = argv.indexOf(name);
+    return i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined;
+  };
+  const raw: Partial<Record<AgentRole, string>> = {
+    executor: flag("--executor-provider") ?? env.LEOPOLD_EXECUTOR_PROVIDER,
+    review: flag("--review-provider") ?? env.LEOPOLD_REVIEW_PROVIDER,
+    conductor: flag("--conductor-provider") ?? env.LEOPOLD_CONDUCTOR_PROVIDER,
+  };
+  const asked = argv.includes("--provider") && /^hybrid$/i.test(flag("--provider") ?? "");
+  if (!asked && !AGENT_ROLES.some((r) => raw[r])) return undefined;
+  const out = {} as RoleProviders;
+  for (const role of AGENT_ROLES) out[role] = raw[role] ? parseProvider(raw[role]) : base;
+  return out;
 }
 
 /** One-line capability summary per harness, for `leopold doctor` / `harness`. */

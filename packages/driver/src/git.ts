@@ -5,11 +5,17 @@
 // leaves everything staged for the human, exactly like the serial loop.
 
 import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export interface GitResult { ok: boolean; out: string; err: string; }
 
-export function git(cwd: string, args: string[], input?: string): GitResult {
-  const r = spawnSync("git", ["--no-pager", ...args], { cwd, encoding: "utf8", input, maxBuffer: 64 * 1024 * 1024 });
+export function git(cwd: string, args: string[], input?: string, env?: NodeJS.ProcessEnv): GitResult {
+  const r = spawnSync("git", ["--no-pager", ...args], {
+    cwd, encoding: "utf8", input, maxBuffer: 64 * 1024 * 1024, ...(env ? { env } : {}),
+  });
   return { ok: r.status === 0, out: r.stdout ?? "", err: r.stderr ?? "" };
 }
 
@@ -30,6 +36,46 @@ export function applyStaged(cwd: string, patch: string): GitResult {
   if (!patch.trim()) return { ok: true, out: "", err: "" };
   // --3way lets git fall back to a real merge when context drifted; --index stages.
   return git(cwd, ["apply", "--index", "--3way", "--whitespace=nowarn"], patch);
+}
+
+/** Stage everything (tracked, untracked, deletions) without committing. Used when the
+ *  run stops at a `@human` node: whoever picks the item up finds the work so far in a
+ *  reviewable index. Staging is the ONLY thing the driver ever does to git. */
+export function stageAll(cwd: string): GitResult {
+  return git(cwd, ["add", "-A"]);
+}
+
+/** The working tree's dirty-file signature (`git status --porcelain`): which paths are
+ *  dirty and how they are staged. Names and states only — NOT content. */
+export function treeSignature(cwd: string): string {
+  return git(cwd, ["status", "--porcelain"]).out;
+}
+
+/** Everything a review-only node must leave exactly as it found it: which files are
+ *  dirty, how they are staged, AND what is inside them.
+ *
+ *  `treeSignature` alone is not enough, and that gap was a real hole: `git status
+ *  --porcelain` is byte-identical before and after a write to a file that is ALREADY
+ *  dirty — precisely the files a `@gate` node reviews. A gate whose read-only shell ran
+ *  `sed -i`, `>>` or a redirect against the diff it was judging moved the tree while the
+ *  status output never blinked, so the run reported a clean gate over an edited diff.
+ *
+ *  Content comes from a patch of the whole tree vs HEAD, computed through a THROWAWAY
+ *  index (`GIT_INDEX_FILE`) so that — unlike `snapshotTree` — taking the signature never
+ *  stages anything in the repo it is measuring. Concatenating the porcelain status keeps
+ *  staged-ness in scope too, which the patch alone flattens away. */
+export function treeStateSignature(cwd: string): string {
+  const status = treeSignature(cwd);
+  const idx = join(tmpdir(), `leopold-idx-${process.pid}-${randomBytes(6).toString("hex")}`);
+  const env = { ...process.env, GIT_INDEX_FILE: idx };
+  try {
+    // Seed the scratch index from HEAD so `add -A` records deletions, not just writes.
+    if (!git(cwd, ["read-tree", "HEAD"], undefined, env).ok) return status; // no HEAD yet
+    git(cwd, ["add", "-A"], undefined, env);
+    return `${status}\n${git(cwd, ["diff", "--cached", "--binary", "HEAD"], undefined, env).out}`;
+  } finally {
+    rmSync(idx, { force: true });
+  }
 }
 
 /** A complete snapshot of the working tree vs HEAD as a single patch — staged,

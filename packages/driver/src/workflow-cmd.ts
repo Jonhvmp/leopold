@@ -13,7 +13,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { query } from "./sdk.js";
+import { query, currentProvider, providerForRole, roleProviders } from "./sdk.js";
 import { loadBrief } from "./config.js";
 import { compileBrief } from "./compile.js";
 import { executeWorkflow, type AgentOpts } from "./runtime.js";
@@ -31,9 +31,24 @@ function findCanonicalScript(): string | null {
 
 /** A query-backed agent for the runtime. Runs a fresh Claude Code session with the
  *  prompt; git stays locked via the same guard the worker uses. */
-function makeRunAgent(leoDir: string, root: string, addTokens: (n: number) => void) {
-  const guard = makeGuard(leoDir, (tool, reason) => logEvent(leoDir, { event: "guard_block", tool, reason }));
+function makeRunAgent(
+  leoDir: string, root: string, addTokens: (n: number) => void,
+  onAgent?: (label: string, provider: string, role: string) => void,
+) {
+  const onBlock = (tool: string, reason: string): void => logEvent(leoDir, { event: "guard_block", tool, reason });
+  const guard = makeGuard(leoDir, onBlock);
+  // The workflow's judging nodes get the same read-only guard the SDK driver gives
+  // them: they may read the run and the diff, and may write neither. The label is the
+  // seam the compiled script already carries (`node:feedback:i7`), so the two engines
+  // enforce the bounds the same way instead of one of them merely asking.
+  const readOnlyGuard = makeGuard(leoDir, onBlock, { readOnly: true });
+  const READ_ONLY_LABEL = /^node:(feedback|gate|verify):/;
   return async function runAgent(prompt: string, opts: AgentOpts): Promise<unknown> {
+    // A verify lens is review work; everything else the script dispatches is the
+    // executor. Under --provider hybrid that decides which harness answers, and the
+    // choice is recorded so the audit trail says who ran what — never inferred later.
+    const role = String(opts.label || "").startsWith("verify:") ? "review" as const : "executor" as const;
+    onAgent?.(opts.label ?? "agent", providerForRole(role), role);
     const wantsJson = !!opts.schema;
     const full = wantsJson
       ? `${prompt}\n\nReturn ONLY a single JSON object (no prose, no code fence) matching this shape:\n${JSON.stringify(opts.schema)}`
@@ -44,8 +59,9 @@ function makeRunAgent(leoDir: string, root: string, addTokens: (n: number) => vo
         cwd: root,
         maxTurns: 30,
         permissionMode: "acceptEdits",
-        canUseTool: guard as never,
+        canUseTool: (READ_ONLY_LABEL.test(opts.label ?? "") ? readOnlyGuard : guard) as never,
         settingSources: ["user", "project"] as never,
+        leopoldRole: role,
         ...(opts.effort ? { effort: opts.effort } : {}),
         ...(opts.model ? { model: opts.model } : {}),
         systemPrompt: { type: "preset", preset: "claude_code" } as never,
@@ -97,14 +113,22 @@ export async function runWorkflowCommand(cwd: string, argv: string[]): Promise<n
 
   if (argv.includes("--run")) {
     console.log(`Leopold workflow (EXPERIMENTAL runtime): ${items} item(s), ${compiled.waves.length} wave(s). Git is locked.\n${waveDesc}\n`);
-    logEvent(brief.leoDir, { event: "run_start", mode: "workflow", items, waves: compiled.waves.length });
+    const hybrid = roleProviders();
+    logEvent(brief.leoDir, {
+      event: "run_start", mode: "workflow", items, waves: compiled.waves.length,
+      provider: currentProvider(), ...(hybrid ? { roleProviders: hybrid } : {}),
+    });
+    if (hybrid) {
+      console.log(`Hybrid providers — executor: ${hybrid.executor} · review: ${hybrid.review} · conductor: ${hybrid.conductor}\n`);
+    }
     let tokens = 0;
-    const runAgent = makeRunAgent(brief.leoDir, brief.root, (n) => { tokens += n; });
+    const runAgent = makeRunAgent(brief.leoDir, brief.root, (n) => { tokens += n; },
+      (label, provider, role) => logEvent(brief.leoDir, { event: "wf_agent_start", label, provider, role }));
     try {
       const out = await executeWorkflow(fs.readFileSync(script, "utf8"), {
         args: compiled,
         runAgent,
-        onPhase: (t) => { console.log(`— phase: ${t}`); logEvent(brief.leoDir, { event: "wf_phase", title: t }); },
+        onPhase: (t) => { console.log(`— phase: ${t}`); logEvent(brief.leoDir, { event: "wf_phase", title: t, provider: currentProvider() }); },
         onLog: (m) => { console.log(`  ${m}`); logEvent(brief.leoDir, { event: "wf_log", msg: m }); },
         onAgentError: (label, message) => {
           console.error(`  agent ${label} failed: ${message}`);

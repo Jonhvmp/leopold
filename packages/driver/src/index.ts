@@ -6,14 +6,15 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runDriver } from "./loop.js";
+import { runDriver, InvalidPlanGraphError } from "./loop.js";
 import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harness.js";
 import { runSecrets } from "./secrets.js";
 import { runInsights } from "./insights.js";
+import { runGraphCommand } from "./graph-cmd.js";
 import { runWorkflowCommand } from "./workflow-cmd.js";
-import { setProvider, currentProvider } from "./sdk.js";
+import { setProvider, setRoleProviders, currentProvider } from "./sdk.js";
 import {
-  HARNESSES, describeHarness, installedHarnesses, leopoldHome, resolveProvider,
+  HARNESSES, describeHarness, installedHarnesses, leopoldHome, resolveProvider, resolveRoleProviders,
   UnknownProviderError, type ProviderId,
 } from "./provider.js";
 
@@ -39,6 +40,7 @@ Usage:
   leopold-driver harness                    which harnesses are here, and what each can do
   leopold-driver home                       print the resolved Leopold asset home (hooks, scripts)
   leopold-driver install [--with-gstack]   install skills + hooks (Claude Code and/or Codex)
+  leopold-driver graph [--mermaid|--json]   print + validate the plan's graph (exit 1 if invalid)
   leopold-driver insights [--json]          summarize the current run (events.jsonl)
   leopold-driver menu                       toolchain manager (serena / gstack / ovmem / enhance)
   leopold-driver watch [--port N]           live dashboard + Canvas DAG (http://127.0.0.1:4179)
@@ -49,18 +51,36 @@ Usage:
   leopold-driver run [--provider claude|codex] [--worktree] [--parallel N] [--budget-usd N]
                      [--no-review] [--no-hypotheses] [--smart-routing] [--learn-on-finish]
                      [--dry-run]             conduct the .leopold run (the SDK driver)
-  leopold-driver workflow [--print] [--run] compile the brief into a dynamic workflow
+  leopold-driver workflow [--print] [--run] [--provider claude|codex|hybrid]
+                                            compile the brief into a dynamic workflow
                                             (emit by default; --run executes it, experimental)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
+
+'graph' is the pre-flight: it prints the plan as a graph (node kinds, dependency edges,
+conditional @on routes) and validates it — a cycle, a route to an item that does not exist,
+an unreachable item or an unmet @needs exits 1 with the offending items named, before a
+single agent runs. --mermaid emits a fenced diagram, --json the machine form, --plan PATH
+checks a plan outside .leopold/.
 
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
 Newer version: npm i -g leopold-driver@latest.
 
-Conducting a run uses your existing harness login — Claude Code by default, or Codex with
---provider codex (LEOPOLD_PROVIDER also works). The brief in .leopold/ is the same on both,
-and so are the hooks; only the seam that reaches the model differs. Codex keeps a hook inert
-until you trust it once, so headless Codex workers arm their own git lock — see
-"leopold harness".
+Every command that reaches a model takes --provider claude|codex — 'run' AND 'workflow
+--run'. With both CLIs installed and no flag, Leopold picks the harness whose session it
+was launched from (Codex exports CODEX_THREAD_ID, Claude Code exports CLAUDECODE); only
+when that is unknowable does it fall back to Claude. LEOPOLD_PROVIDER also works.
+
+--provider hybrid assigns a harness PER ROLE, so one run can execute on one and review on
+the other:
+  leopold workflow --run --provider hybrid --executor-provider codex --review-provider claude
+Roles: executor (the workers), review (review lenses, hypotheses, tournament judges),
+conductor (turn decisions, routing). A role left unset inherits the resolved default, and
+every agent's provider is recorded in .leopold/events.jsonl. Env equivalents:
+LEOPOLD_EXECUTOR_PROVIDER, LEOPOLD_REVIEW_PROVIDER, LEOPOLD_CONDUCTOR_PROVIDER.
+
+The brief in .leopold/ is the same on both, and so are the hooks; only the seam that
+reaches the model differs. Codex keeps a hook inert until you trust it once, so headless
+Codex workers arm their own git lock — see "leopold harness".
 --worktree isolates the run in a git worktree; --budget-usd stops it at a USD cap.
 --parallel N runs up to N independent plan items at once, each in its own worktree, replaying
 each item's diff onto the main tree (staged, never committed). Declare order in PLAN.md with
@@ -101,6 +121,12 @@ function harnessReport(): number {
 
 function conduct(): void {
   runDriver(process.cwd(), process.argv.slice(2)).catch((err: unknown) => {
+    // A rejected graph is not a driver failure: the pre-flight already printed the
+    // named offenders, so this only adds the one-line verdict, unprefixed.
+    if (err instanceof InvalidPlanGraphError) {
+      console.error(err.message);
+      process.exit(1);
+    }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("leopold-driver error:", msg);
     process.exit(1);
@@ -110,7 +136,11 @@ function conduct(): void {
 // Resolve the harness before dispatching, so a typo in --provider fails here with a
 // usable message rather than halfway through a run.
 try {
-  setProvider(resolveProvider(process.argv.slice(2)));
+  const base = resolveProvider(process.argv.slice(2));
+  setProvider(base);
+  // Hybrid is opt-in and per role; undefined leaves every role on `base`, which is what
+  // keeps a single-provider run byte-for-byte unchanged.
+  setRoleProviders(resolveRoleProviders(process.argv.slice(2), base));
 } catch (err) {
   if (err instanceof UnknownProviderError) {
     console.error(`leopold-driver: ${err.message}`);
@@ -125,6 +155,8 @@ switch (sub) {
   case "install":
   case "update":
     process.exit(runInstall(rest));
+  case "graph":
+    process.exit(runGraphCommand(process.cwd(), rest));
   case "insights":
     process.exit(runInsights(rest));
   case "workflow":

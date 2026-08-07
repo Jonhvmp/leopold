@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { parseBudgetUsd } from "./budget.js";
 import type { Brief, RunState, DriverConfig } from "./types.js";
 
@@ -59,6 +60,17 @@ function resolveBool(explicitOn: boolean, explicitOff: boolean, fromGuardrails: 
   return dflt;
 }
 
+/** How many plan items `@feedback` nodes have already added, as recorded on disk.
+ *  0 when the field, the file, or the JSON is absent or unreadable — a counter that
+ *  cannot be read is not a licence to spend, but it must not crash a run either. */
+export function readAmendmentsAdded(leoDir: string): number {
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(leoDir, "state.json"), "utf8")) as { amendments_added?: unknown };
+    const n = Math.floor(Number(raw.amendments_added));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch { return 0; }
+}
+
 export function initState(brief: Brief): RunState {
   const state: RunState = {
     active: true,
@@ -69,8 +81,48 @@ export function initState(brief: Brief): RunState {
     started_at: new Date().toISOString(),
     orchestrator_pid: process.pid,
   };
+  // The amendment budget is the ONE counter that survives re-entry. Re-running the
+  // driver is the documented way to resume (every escalation and failure notice says
+  // "re-run leopold-driver"), and `writeState` only ever merges forward — so a fresh
+  // literal here handed every restart a full purse of 3 more items, which is exactly
+  // the unbounded plan growth the bound exists to prevent. `/leopold-run` writes a
+  // brand-new state.json when it activates a NEW run, so a real new run still starts
+  // at zero; only a resume inherits what it already spent.
+  const spent = readAmendmentsAdded(brief.leoDir);
+  if (spent > 0) state.amendments_added = spent;
   writeState(brief.leoDir, state);
   return state;
+}
+
+/** Brief files a READ-ONLY node (`@gate` / `@verify` / `@feedback`) must leave exactly
+ *  as it found them, hashed into one receipt. The guard refuses the shell commands that
+ *  would write these (guard.ts), and this is the second net: if the bytes moved anyway,
+ *  the run SAYS SO instead of passing the node's verdict off as clean.
+ *
+ *  Deliberately NOT the whole directory: `events.jsonl`, `state.json` and `DECISIONS.md`
+ *  are written by the DRIVER while the node runs, so hashing them would cry wolf on
+ *  every single node. PLAN.md is hashed with its checkboxes blanked, because a
+ *  `--parallel` run legitimately closes another item mid-node — a deleted, rewritten or
+ *  injected line still moves the hash, which is what the bounds are actually about.
+ *
+ *  Blanking them is NOT a licence to forge one. This digest covers the plan's TEXT; its
+ *  checkbox state has its own receipt, `checkboxVector` + the driver's flip ledger in
+ *  plan.ts, which loop.ts checks alongside this one. A checkbox that moved and is on
+ *  nobody's ledger is a forgery, and gets restored — the failure the two nets exist to
+ *  stop is exactly a node marking the plan done and the run ending on `plan_complete`. */
+const BRIEF_RECEIPT_FILES = ["PLAN.md", "GUARDRAILS.md", "MISSION.md", "CHARTER.md", "ALLOW_GIT", "ALLOW_PUSH"] as const;
+
+export function briefDigest(leoDir: string): string {
+  return BRIEF_RECEIPT_FILES.map((name) => {
+    let body: string;
+    try {
+      body = fs.readFileSync(path.join(leoDir, name), "utf8");
+    } catch {
+      return `${name} -`; // absent is a state too: creating ALLOW_GIT must move the digest
+    }
+    if (name === "PLAN.md") body = body.replace(/^([ \t]*-[ \t]*)\[[ xX]\]/gm, "$1[]");
+    return `${name} ${createHash("sha256").update(body).digest("hex")}`;
+  }).join("\n");
 }
 
 /** Persist run state by MERGING over what's already on disk. The bash skill and

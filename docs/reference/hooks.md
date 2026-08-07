@@ -28,11 +28,27 @@ flowchart TD
     Budget -- yes --> Allow
     Budget -- no --> Plan{open plan items?}
     Plan -- no --> Allow
-    Plan -- yes --> Block["increment iteration ·<br/>block · re-inject continue"]
+    Plan -- yes --> Human{"next open item<br/>is a @human node?"}
+    Human -- yes --> Ask(["exit 0 · allow stop ·<br/>awaiting_human"])
+    Human -- no --> Block["increment iteration ·<br/>block · re-inject continue"]
 ```
 
 Fail-open: any unexpected error allows the stop. Continuity is best-effort;
 halting is always safe.
+
+### Node kinds
+
+`PLAN.md` items may declare a node kind (`@node work|gate|human|tool|verify|feedback`, or
+the `@gate` / `@human` / `@tool` / `@verify` / `@feedback` shorthands). The in-session engine acts on one
+of them: when the next open item is a **`@human`** node, the hook allows the stop with
+`stopped_reason: awaiting_human`, names the item on stderr and logs an `awaiting_human`
+event — the same thing the driver does when a run reaches a human node, so a plan means
+the same on both engines. Answer it, mark the item `[x]`, and `/leopold-run` resumes.
+
+Every other kind continues exactly as before, and an item that declares no kind is a
+`work` node — so a plan written before the grammar existed takes an identical path
+through the hook. `packages/driver/test/hook-kinds.test.ts` parses the same plans with
+the hook and with the driver's parser and fails the build if they ever disagree.
 
 ## `guard-irreversible.sh` — the PreToolUse hook
 

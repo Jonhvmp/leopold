@@ -12,6 +12,22 @@ export function logEvent(leoDir: string, event: Record<string, unknown>): void {
 
 let decisionCounter = 0;
 
+/** The width the trail's field names are padded to (`Fork:` + 8 spaces). */
+const FIELD_WIDTH = 13;
+
+/** Append one block to DECISIONS.md. ONE WRITER for that file: the conductor's calls
+ *  and a `@feedback` node's plan amendments both land here, so the audit trail cannot
+ *  end up with two shapes depending on who wrote the entry. */
+export function appendDecisionBlock(
+  leoDir: string,
+  heading: string,
+  fields: Array<[string, string]>,
+): void {
+  const block =
+    ["", `## ${heading}`, ...fields.map(([k, v]) => `${`${k}:`.padEnd(FIELD_WIDTH)}${v}`), ""].join("\n") + "\n";
+  fs.appendFileSync(path.join(leoDir, "DECISIONS.md"), block);
+}
+
 export function logDecision(
   leoDir: string,
   iteration: number,
@@ -20,19 +36,18 @@ export function logDecision(
 ): void {
   if (!v.logTitle) return; // mechanical calls are not logged as blocks
   decisionCounter += 1;
-  const block =
+  appendDecisionBlock(
+    leoDir,
+    `D${decisionCounter} — ${v.logTitle}   (turn ${iteration}, ${new Date().toISOString()})`,
     [
-      "",
-      `## D${decisionCounter} — ${v.logTitle}   (turn ${iteration}, ${new Date().toISOString()})`,
-      `Fork:        ${status.decisionNeeded ?? status.summary}`,
-      `Class:       ${v.classification}`,
-      `Charter:     ${v.charterBasis}`,
-      `Decision:    ${v.reply ?? "(finish item)"}`,
-      `Why:         ${v.logWhy ?? ""}`,
-      `Reversal:    ${v.reversal ?? ""}`,
-      "",
-    ].join("\n") + "\n";
-  fs.appendFileSync(path.join(leoDir, "DECISIONS.md"), block);
+      ["Fork", status.decisionNeeded ?? status.summary],
+      ["Class", v.classification],
+      ["Charter", v.charterBasis],
+      ["Decision", v.reply ?? "(finish item)"],
+      ["Why", v.logWhy ?? ""],
+      ["Reversal", v.reversal ?? ""],
+    ],
+  );
 }
 
 export function openItems(planPath: string): number {

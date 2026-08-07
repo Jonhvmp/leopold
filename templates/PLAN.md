@@ -17,6 +17,18 @@
 >
 > Declare a real dependency with a leading `(after: N)` marker (N = an earlier
 > item's 1-based position); independent items run concurrently under --parallel.
+>
+> The plan is a GRAPH, and everything past this point is optional — a plan that uses
+> none of it runs exactly as it always has. An item may declare a node kind
+> (`@gate` / `@verify` review the diff without editing it, `@tool` IS a shell command
+> the driver runs with no model turn, `@human` stops the run for a person,
+> `@feedback` lets the run propose at most 3 appended follow-ups), emit and require
+> routing signals (`@emit key=value`, `@needs key`), and route on what happened
+> (`@on fail -> 5`, `@on exit!=0 -> 5`). The repo is the truth of what was BUILT; the
+> signal channel is the truth of what was DECIDED — never put work product in it.
+> Run `leopold graph` to print and validate the graph before trusting it; it names a
+> dangling route, a cycle or an unreachable item before a single agent runs. Full
+> grammar: docs/reference/plan-grammar.md.
 
 - [ ] Add a `--json` flag to the CLI — done when: `mycli --json` emits valid JSON
       @scenario no flag → the human-readable table prints, exactly as before
@@ -24,3 +36,8 @@
       @scenario `--json` with no rows → prints `[]` and exits 0
 - [ ] Second item — done when: <observable check>
 - [ ] (after: 1) Third item — done when: <observable check>
+- [ ] (after: 3) @tool make test
+      @on exit=0  -> 5
+      @on exit!=0 -> 6
+- [ ] (after: 4) Fourth item, reached only when the suite is green — done when: <observable check>
+- [ ] (after: 4) Fix what the suite caught — done when: `make test` is green
