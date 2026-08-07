@@ -39,6 +39,9 @@ export interface RuntimeCtx {
   tokensSpent?: () => number;
   /** Hard cap on total agent() calls in a run (runaway-loop backstop). */
   maxAgents?: number;
+  /** Called when one agent dies. The run continues — this is how the failure gets
+   *  RECORDED instead of vanishing into a caught exception two frames up. */
+  onAgentError?: (label: string, message: string) => void;
 }
 
 /** A minimal counting semaphore: at most `n` holders run concurrently. */
@@ -70,7 +73,22 @@ export async function executeWorkflow(scriptText: string, ctx: RuntimeCtx): Prom
       throw new Error(`workflow hit its ${ctx.budgetTokens}-token budget`);
     }
     agentCount += 1;
-    return gate(() => ctx.runAgent(prompt, opts));
+    // A dead agent returns null; it does NOT throw. That is the contract the native
+    // Claude Code workflow runtime gives, and the canonical script is written against
+    // it — it checks for null and retries the round. Letting the exception propagate
+    // instead killed the WHOLE run on the first transient failure: the wave loop has
+    // no try/catch, so one bad agent unwound past every item, past executeWorkflow,
+    // and out to the caller, which logged `reason: error` with zero items done.
+    // Reported as #51 — a run that stopped right after the wave-1 log.
+    return gate(async () => {
+      try {
+        return await ctx.runAgent(prompt, opts);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        ctx.onAgentError?.(opts.label ?? "agent", msg);
+        return null;
+      }
+    });
   };
 
   const pipeline = async (items: unknown[], ...stages: Array<(prev: unknown, item: unknown, i: number) => unknown>) => {
