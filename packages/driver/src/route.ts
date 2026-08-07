@@ -70,6 +70,7 @@ export async function smartRoute(
       prompt: `Classify this plan item now and return the JSON verdict:\n\n  ${item}`,
       options: {
         cwd,
+        leopoldRole: "conductor",
         systemPrompt: routeSystem(brief.charter),
         allowedTools: ["Bash", "Read", "Grep", "Glob"],
         disallowedTools: ["Edit", "Write", "MultiEdit", "NotebookEdit"],

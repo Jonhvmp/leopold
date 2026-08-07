@@ -83,6 +83,7 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
       cwd: opts.cwd ?? brief.worktreeRoot ?? brief.root,
       env: { ...process.env },
       maxTurns: cfg.maxTurnsPerItem,
+      leopoldRole: "executor",
       permissionMode: "default",
       canUseTool: guard as never,
       settingSources: ["user", "project"] as never,

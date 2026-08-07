@@ -74,6 +74,7 @@ Return the JSON verdict now.`;
     prompt: userText,
     options: {
       ...(cfg.conductorModel ? { model: cfg.conductorModel } : {}),
+      leopoldRole: "conductor",
       systemPrompt: system(brief),
       allowedTools: [],
       settingSources: [],

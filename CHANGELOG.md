@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.15.0] - 2026-08-06
 
+### Fixed
+- **`workflow --run` started the wrong harness, and the audit trail never said which.**
+  The resolver's precedence ended at "both installed → Claude", so `leopold workflow
+  --run` launched from a Codex session started the Claude Agent SDK — and nothing in
+  `events.jsonl` recorded the provider, so the run could not be diagnosed after the
+  fact. Resolution now consults the harness whose session Leopold was launched from
+  (Codex exports `CODEX_THREAD_ID`, Claude Code exports `CLAUDECODE` — both verified
+  against the live binaries) before falling back to Claude, and `--provider` is
+  documented for `workflow --run`, not only for `run`. `run_start`, `wf_phase` and a
+  new `wf_agent_start` all carry the provider. Reported as #54.
+- **Hybrid runs: a harness per role.** `--provider hybrid` with
+  `--executor-provider` / `--review-provider` / `--conductor-provider` (or the
+  `LEOPOLD_*_PROVIDER` env vars) lets one run execute on one harness and review on the
+  other. A call site tags itself with a role and the seam routes on it; a role left
+  unset inherits the resolved default, and a run with no hybrid flags gets no role map
+  at all — which is what keeps single-provider runs byte-for-byte unchanged.
+
 ### Added
 - **`PLAN.md` is a graph you author, not a graph Leopold derives.** The Canvas has drawn
   a directed graph since v0.13.0, but you could never write one: every item was the same

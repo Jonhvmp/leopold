@@ -86,6 +86,7 @@ async function judgeAttempt(cfg: DriverConfig, cwd: string, item: string, scenar
     prompt: "Judge the current diff now and return the JSON score.",
     options: {
       cwd,
+      leopoldRole: "review",
       systemPrompt: judgeSystem(item, scenarios),
       allowedTools: ["Bash", "Read", "Grep", "Glob"],
       disallowedTools: ["Edit", "Write", "MultiEdit", "NotebookEdit"],
