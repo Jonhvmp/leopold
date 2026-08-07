@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWorktree } from "../src/worktree.ts";
-import { headSha, diffAgainst, applyStaged, git, snapshotTree, restoreTree } from "../src/git.ts";
+import { headSha, diffAgainst, applyStaged, git, snapshotTree, restoreTree, treeSignature, treeStateSignature } from "../src/git.ts";
 
 function sh(cwd: string, args: string[]): void {
   execFileSync("git", args, { cwd, stdio: "ignore" });
@@ -122,4 +122,55 @@ test("restoreTree with an empty snapshot resets the tree to a clean HEAD", () =>
   assert.equal(r.ok, true);
   assert.equal(fs.readFileSync(path.join(root, "a.txt"), "utf8"), "base\n", "tracked change discarded");
   assert.equal(fs.existsSync(path.join(root, "untracked.txt")), false, "untracked discarded");
+});
+
+// --- treeStateSignature: the receipt a review-only node is measured against ---------
+
+test("treeStateSignature moves when an ALREADY-DIRTY file's content changes", () => {
+  const { root } = tmpRepo();
+  const a = path.join(root, "a.txt");
+  fs.appendFileSync(a, "work in progress\n"); // the diff a gate would be judging
+  const namesBefore = treeSignature(root);
+  const before = treeStateSignature(root);
+
+  fs.appendFileSync(a, "the gate snuck this in\n"); // `sed -i` / `>>` from a gate's shell
+
+  assert.equal(treeSignature(root), namesBefore,
+    "precondition: the names-only signature is blind to this — that was the hole");
+  assert.notEqual(treeStateSignature(root), before, "the content-sensitive one is not");
+});
+
+test("treeStateSignature also moves on staged-ness, new files and deletions", () => {
+  const { root } = tmpRepo();
+  const clean = treeStateSignature(root);
+
+  fs.appendFileSync(path.join(root, "a.txt"), "x\n");
+  const dirty = treeStateSignature(root);
+  assert.notEqual(dirty, clean);
+
+  sh(root, ["add", "a.txt"]); // same content, different staged-ness
+  assert.notEqual(treeStateSignature(root), dirty, "staging alone is a change to the tree state");
+
+  const staged = treeStateSignature(root);
+  fs.writeFileSync(path.join(root, "new.txt"), "untracked\n");
+  assert.notEqual(treeStateSignature(root), staged);
+
+  const withNew = treeStateSignature(root);
+  fs.rmSync(path.join(root, "b.txt"));
+  assert.notEqual(treeStateSignature(root), withNew, "a deletion is a change too");
+});
+
+test("treeStateSignature never stages anything in the repo it measures", () => {
+  const { root } = tmpRepo();
+  fs.appendFileSync(path.join(root, "a.txt"), "dirty\n");
+  fs.writeFileSync(path.join(root, "new.txt"), "untracked\n");
+  const status = treeSignature(root);
+  const sig = treeStateSignature(root);
+
+  assert.equal(treeSignature(root), status,
+    "unlike snapshotTree, taking the signature leaves the index untouched");
+  assert.equal(treeStateSignature(root), sig, "and it is stable for an unchanged tree");
+  // snapshotTree is the contrast: it DOES stage, which is why it cannot be this probe.
+  snapshotTree(root);
+  assert.notEqual(treeSignature(root), status);
 });

@@ -53,16 +53,147 @@ def read_state():
         return {"_invalid": True}
 
 
-def read_plan():
-    items, done, opened = [], 0, 0
-    for line in _read("PLAN.md").splitlines():
+# ---- the PLAN.md graph grammar, mirrored from packages/driver/src/plan.ts ----------
+# The dashboard cannot import the TypeScript parser, so it re-reads the same markers.
+# ONE parser inside this file: _item_markers() is the only thing that splits an item
+# line, and _parse_after/_strip_after are thin views onto it, so the Canvas can never
+# disagree with itself about what an item declared.
+#
+#   - [ ] @gate security Review the auth diff   kind + label, inline on the item line
+#         @node human ops                       ...or the kind on a line of its own
+#         @needs schema_ready                   a signal this node requires
+#         @emit migrated=true                   a signal this node may put on the channel
+#         @on migrated=false -> 7               a conditional edge (route)
+#
+# ABSENCE MEANS TODAY'S BEHAVIOR: an item that declares none of it parses to kind
+# "work" with no routes, emits or needs — exactly what it parsed to before this existed.
+_DEP_MARKER = re.compile(r"^\((?:after|deps)\s*:\s*([0-9,\s]+)\)\s*", re.I)
+_KIND_MARKER = re.compile(r"^@(node|work|gate|human|tool|verify|feedback)\b[ \t]*:?[ \t]*", re.I)
+_KIND_NAME = re.compile(r"^([A-Za-z]+)[ \t]*:?[ \t]*")
+_LABEL_EXPLICIT = re.compile(r"^([A-Za-z][A-Za-z0-9_./-]*):(?:[ \t]+|$)[ \t]*")
+_LABEL_BARE = re.compile(r"^([a-z][a-z0-9_./-]*)(?:[ \t]+|$)[ \t]*")
+_KINDS = ("work", "gate", "human", "tool", "verify", "feedback")
+_ROUTE_LINE = re.compile(r"^[ \t]*@on\b[ \t:]*(.*)$", re.I)
+_EMIT_LINE = re.compile(r"^[ \t]*@emit\b[ \t:]*(.*)$", re.I)
+_NEEDS_LINE = re.compile(r"^[ \t]*@needs\b[ \t:]*(.*)$", re.I)
+_ARROW = re.compile(r"^(.*)(?:->|=>|→)[ \t]*(.*)$", re.S)
+
+
+def _match_kind(raw, inline):
+    """Parse a leading node-kind marker. Returns (kind, label, rest) or None.
+    `inline` is True on the item's own line, where a bare lowercase label only counts
+    when text follows it (so `@human Ask the team` keeps "Ask the team" as its text)."""
+    m = _KIND_MARKER.match(raw or "")
+    if not m:
+        return None
+    rest = raw[m.end():]
+    kind = m.group(1).lower()
+    if kind == "node":
+        k = _KIND_NAME.match(rest)
+        name = (k.group(1).lower() if k else "")
+        if not k or name not in _KINDS:
+            return None          # `@node` without a known kind is prose, not a marker
+        kind = name
+        rest = rest[k.end():]
+    label = ""
+    exp = _LABEL_EXPLICIT.match(rest)
+    if exp:
+        label, rest = exp.group(1), rest[exp.end():]
+    elif kind != "tool":
+        # Never on a `@tool` node: its text IS the command, so the first word of
+        # `@tool make test` is part of the command, not a label.
+        bare = _LABEL_BARE.match(rest)
+        if bare:
+            after = rest[bare.end():]
+            if not inline or after.strip():
+                label, rest = bare.group(1), after
+    return kind, label, rest.strip()
+
+
+def _item_markers(text):
+    """Split an item's line into {deps, kind, kindLabel, label}. `(after: 1, 3)` and the
+    node-kind marker may appear in either order; both are optional."""
+    rest = text or ""
+    deps, kind, kind_label, saw_dep = [], "work", "", False
+    while True:
+        d = None if saw_dep else _DEP_MARKER.match(rest)
+        if d:
+            saw_dep = True
+            deps += [int(x) for x in re.findall(r"\d+", d.group(1))]
+            rest = rest[d.end():]
+            continue
+        k = _match_kind(rest.lstrip(), True)
+        if k:
+            kind, lbl, rest = k[0], k[1], k[2]
+            if lbl:
+                kind_label = lbl
+            continue
+        break
+    seen, uniq = set(), []
+    for d in deps:
+        if d >= 1 and d not in seen:
+            seen.add(d)
+            uniq.append(d)
+    return {"deps": uniq, "kind": kind, "kindLabel": kind_label, "label": rest.strip()}
+
+
+def _parse_route(raw):
+    """`@on <condition> -> <target>` → {when, target}. Target 0 when none was written —
+    recorded, not dropped, exactly like the driver's parser."""
+    written = (raw or "").strip()
+    if not written:
+        return None
+    split = _ARROW.match(written)
+    when = (split.group(1) if split else written).strip()
+    tgt = re.match(r"^#?(\d+)$", split.group(2).strip()) if split else None
+    return {"when": when, "target": int(tgt.group(1)) if tgt else 0}
+
+
+def read_plan(name="PLAN.md"):
+    items, done, opened, cur = [], 0, 0, None
+    for line in _read(name).splitlines():
         s = line.strip()
-        if s.startswith("- [ ]"):
-            opened += 1
-            items.append({"done": False, "text": s[5:].strip()})
-        elif s.lower().startswith("- [x]"):
-            done += 1
-            items.append({"done": True, "text": s[5:].strip()})
+        low = s.lower()
+        if s.startswith("- [ ]") or low.startswith("- [x]"):
+            is_done = low.startswith("- [x]")
+            if is_done:
+                done += 1
+            else:
+                opened += 1
+            raw = s[5:].strip()
+            mk = _item_markers(raw)
+            cur = {"done": is_done, "text": raw, "kind": mk["kind"],
+                   "kindLabel": mk["kindLabel"], "routes": [], "emits": [], "needs": []}
+            items.append(cur)
+            continue
+        # A marker line attaches to the item above it; everything else is ignored,
+        # exactly as before this grammar existed.
+        if cur is None or not s.startswith("@"):
+            continue
+        r = _ROUTE_LINE.match(s)
+        if r:
+            route = _parse_route(r.group(1))
+            if route:
+                cur["routes"].append(route)
+            continue
+        e = _EMIT_LINE.match(s)
+        if e:
+            sig = e.group(1).strip()
+            if sig:
+                cur["emits"].append(sig if "=" in sig else sig + "=true")
+            continue
+        nd = _NEEDS_LINE.match(s)
+        if nd:
+            for tok in re.split(r"[,\s]+", nd.group(1).strip()):
+                key = tok.split("=")[0].strip()
+                if key and key not in cur["needs"]:
+                    cur["needs"].append(key)
+            continue
+        k = _match_kind(s, False)
+        if k:
+            cur["kind"] = k[0]
+            if k[1]:
+                cur["kindLabel"] = k[1]
     return {"open": opened, "done": done, "total": opened + done, "items": items}
 
 
@@ -605,7 +736,6 @@ def read_cost():
 # to the readers and is what /api/graph serves.
 
 _VERIFY_RE = re.compile(r"^(verify|review|judge|skeptic|refute|critic|check)", re.I)
-_AFTER_RE = re.compile(r"^\s*\(after:\s*([0-9,\s]+)\)")
 
 
 def _label_role_key(label):
@@ -620,13 +750,15 @@ def _label_role_key(label):
 
 
 def _parse_after(text):
-    """1-based dependency positions from a leading '(after: 2, 3)' marker."""
-    m = _AFTER_RE.match(text or "")
-    return [int(x) for x in re.findall(r"\d+", m.group(1))] if m else []
+    """1-based dependency positions from an item's '(after: 2, 3)' / '(deps: 2)' marker.
+    One view onto _item_markers, so a dep the driver honors is a dep the Canvas draws."""
+    return _item_markers(text)["deps"]
 
 
 def _strip_after(text):
-    return re.sub(r"^\s*\(after:[^)]*\)\s*", "", text or "")
+    """The item's display label: dependency and node-kind markers stripped, so the
+    Canvas shows the work, not the syntax that wired it."""
+    return _item_markers(text)["label"]
 
 
 def _match_item(txt, plan_items):
@@ -645,25 +777,36 @@ def build_graph(plan_items, events, workflows):
     """Pure DAG builder. Returns {nodes, edges, groups}. No file I/O — testable.
 
     nodes: {id, kind, label, state, group, tokens, toolCalls, model, source, detail}
-    edges: {from, to, kind}   kind in {seq, contains, verifies, after, fork}
+    edges: {from, to, kind}   kind in {seq, contains, verifies, after, fork, route}
+
+    WHAT THE PLAN AUTHORED, NOT AN APPROXIMATION. A PLAN item that declares a node kind
+    carries `nodeKind` (plus `nodeLabel`/`needs`/`emits` when declared), and each `@on`
+    edge is a `route` edge carrying the condition exactly as written, in `when`. Those
+    keys appear ONLY when the item declared them, so a plan with none of the new grammar
+    produces byte-identical nodes and edges to the ones this built before it existed.
     """
     nodes, edges, ids, groups = [], [], set(), []
 
-    def node(nid, kind, label, state="", grp="", **ex):
+    def node(nid, kind, label, state="", grp="", extra=None, **ex):
         if nid in ids:
             return nid
         ids.add(nid)
-        nodes.append({
+        n = {
             "id": nid, "kind": kind, "label": label, "state": state or "", "group": grp,
             "tokens": int(ex.get("tokens", 0) or 0),
             "toolCalls": int(ex.get("toolCalls", 0) or 0),
             "model": (ex.get("model") or "").replace("claude-", ""),
             "source": ex.get("source", "conductor"), "detail": ex.get("detail", ""),
-        })
+        }
+        n.update(extra or {})
+        nodes.append(n)
         return nid
 
-    def edge(a, b, kind):
-        edges.append({"from": a, "to": b, "kind": kind})
+    def edge(a, b, kind, when=None):
+        e = {"from": a, "to": b, "kind": kind}
+        if when is not None:
+            e["when"] = when
+        edges.append(e)
 
     def group(name):
         if name and name not in groups:
@@ -709,17 +852,46 @@ def build_graph(plan_items, events, workflows):
             elif prev:
                 edge(prev, vid, "verifies")
 
-    # ---- conductor sub-graph: PLAN items + (after: N) dependencies ----
+    # ---- conductor sub-graph: PLAN items, (after: N) deps and @on routes ----
     plan_items = plan_items or []
     group("plan")
     n = len(plan_items)
+    # A `@human` node is the one kind that waits on a PERSON. Both engines log
+    # `awaiting_human` with the item's index when they reach one; that event — not a
+    # guess about which item is next — is what puts the node in the `awaiting` state.
+    awaiting = set()
+    for e in events or []:
+        if e.get("event") == "awaiting_human":
+            try:
+                awaiting.add(int(e.get("item")))
+            except (TypeError, ValueError):
+                pass
     for i, it in enumerate(plan_items, start=1):
-        node("item-%d" % i, "item", _strip_after(it["text"])[:90],
-             "done" if it.get("done") else "open", "plan", source="conductor")
+        mk = _item_markers(it.get("text"))
+        kind = (it.get("kind") or mk["kind"] or "work").lower()
+        label = it.get("kindLabel") or mk["kindLabel"]
+        extra = {}
+        if kind != "work":
+            extra["nodeKind"] = kind
+        if label:
+            extra["nodeLabel"] = label
+        if it.get("needs"):
+            extra["needs"] = list(it["needs"])
+        if it.get("emits"):
+            extra["emits"] = list(it["emits"])
+        state = "done" if it.get("done") else ("awaiting" if i in awaiting else "open")
+        node("item-%d" % i, "item", mk["label"][:90], state, "plan",
+             extra=extra or None, source="conductor")
     for i, it in enumerate(plan_items, start=1):
-        for dep in _parse_after(it["text"]):
+        for dep in _parse_after(it.get("text")):
             if 1 <= dep <= n and dep != i:
                 edge("item-%d" % dep, "item-%d" % i, "after")
+        # Conditional edges: drawn from the node that declares them at the node they
+        # may hand control to, carrying the condition exactly as authored.
+        for r in it.get("routes") or []:
+            tgt = int(r.get("target") or 0)
+            if 1 <= tgt <= n:
+                edge("item-%d" % i, "item-%d" % tgt, "route", when=r.get("when", ""))
 
     # ---- conductor events: subagents / reviews / hypotheses on the active item ----
     cur = None
@@ -852,10 +1024,27 @@ def node_detail(node_id):
         if 1 <= idx <= len(plan):
             it = plan[idx - 1]
             label = _strip_after(it["text"])
-            return {"id": node_id, "kind": "item", "label": label,
-                    "state": "done" if it["done"] else "open", "source": "conductor",
-                    "position": idx, "after": _parse_after(it["text"]),
-                    "decisions": _decisions_for(label)}
+            awaiting = any(e.get("event") == "awaiting_human" and str(e.get("item")) == str(idx)
+                           for e in read_events(limit=500))
+            d = {"id": node_id, "kind": "item", "label": label,
+                 "state": "done" if it["done"] else ("awaiting" if awaiting else "open"),
+                 "source": "conductor",
+                 "position": idx, "after": _parse_after(it["text"]),
+                 "decisions": _decisions_for(label)}
+            # What the item authored, verbatim — the inspector is where a human checks
+            # that the graph on screen is the graph they wrote.
+            if (it.get("kind") or "work") != "work":
+                d["nodeKind"] = it["kind"]
+            if it.get("kindLabel"):
+                d["nodeLabel"] = it["kindLabel"]
+            if it.get("routes"):
+                d["routes"] = ["@on %s -> %s" % (r.get("when", ""), r.get("target") or "?")
+                               for r in it["routes"]]
+            if it.get("emits"):
+                d["emits"] = list(it["emits"])
+            if it.get("needs"):
+                d["needs"] = list(it["needs"])
+            return d
     # conductor event nodes (rev-/hyp-/sub-)
     return _event_node_detail(node_id, plan) or {"id": node_id, "error": "node not found"}
 
@@ -1084,6 +1273,7 @@ PAGE = r"""<!doctype html><html lang="en" class="dark"><head><meta charset="utf-
  --border:#d7cfbe;--ring:#333;--destructive:#ae1f1f;--dfg:#f7f3ea;--success:#248052;
  --hairline:rgba(20,20,20,.15);--radius:12px;
  --sev-crit:#b91c1c;--sev-high:#c2410c;--sev-med:#b45309;--sev-low:#0369a1;--warnbar:#b45309;
+ --route:#6d28d9;--await:#b45309;
  --sans:"Geist","Neue Montreal","General Sans","Inter",ui-sans-serif,system-ui,sans-serif;
  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
@@ -1092,6 +1282,7 @@ html.dark{
  --border:#262626;--ring:#d9d9d9;--destructive:#7d2020;--dfg:#fafafa;--success:#45c98a;
  --hairline:rgba(217,217,217,.15);
  --sev-crit:#fecaca;--sev-high:#fed7aa;--sev-med:#fde68a;--sev-low:#bae6fd;--warnbar:#d29922;
+ --route:#c4b5fd;--await:#d29922;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
@@ -1220,6 +1411,11 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 .cv-edge.k-contains{stroke:var(--hairline)}
 .cv-edge.k-verifies{stroke:var(--sev-med);stroke-dasharray:4 3}
 .cv-edge.k-fork{stroke:var(--sev-high);stroke-dasharray:1 4;stroke-linecap:round}
+/* a conditional edge is NOT a dependency: long dash, its own colour, and it carries
+   the condition that was authored so the picture argues for itself */
+.cv-edge.k-route{stroke:var(--route);stroke-width:2;stroke-dasharray:9 5}
+.cv-elbl{fill:var(--route);font-family:var(--mono);font-size:9px;letter-spacing:.04em;paint-order:stroke;
+ stroke:var(--card);stroke-width:3px;stroke-linejoin:round;text-anchor:middle;pointer-events:none}
 .cv-node{cursor:grab}
 .cv-node .box{fill:var(--secondary);stroke:var(--border);stroke-width:1.5}
 .cv-node.sel .box{stroke:var(--fg);stroke-width:2}
@@ -1227,6 +1423,19 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
 .cv-node.s-running .box{stroke:var(--sev-low);animation:wfpulse 1.4s ease-in-out infinite}
 .cv-node.s-error .box{stroke:var(--destructive)}
 .cv-node.s-open .box{stroke-dasharray:5 4}
+/* a @human node waiting on a PERSON: it is not running, not failed, not merely open —
+   it is stopped ON YOU, and it says so */
+.cv-node.s-awaiting .box{fill:var(--secondary);stroke:var(--await);stroke-width:2.5;animation:wfpulse 1.4s ease-in-out infinite}
+.cv-node.s-awaiting .kind,.cv-node.s-awaiting .meta{fill:var(--await)}
+/* authored node kinds — the shape of the plan, not of the run */
+.cv-node.nk-human .box,.cv-node.nk-gate .box{stroke-width:2}
+.cv-node.nk-gate .kind{fill:var(--sev-med)}
+.cv-node.nk-verify .kind{fill:var(--sev-med)}
+.cv-node.nk-human .kind{fill:var(--await)}
+.cv-node.nk-tool .kind{fill:var(--sev-low)}
+/* a @feedback node reads the RUN itself and may amend the plan within bounds */
+.cv-node.nk-feedback .box{stroke-dasharray:2 3}
+.cv-node.nk-feedback .kind{fill:var(--route)}
 .cv-node .lbl{fill:var(--fg);font-family:var(--mono);font-size:11px}
 .cv-node .meta{fill:var(--muted-fg);font-family:var(--mono);font-size:9px}
 .cv-node .kind{fill:var(--muted-fg);font-family:var(--mono);font-size:8px;letter-spacing:.14em}
@@ -1297,6 +1506,8 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
       <span style="color:var(--muted-fg)"><i></i>dep</span>
       <span style="color:var(--sev-med)"><i></i>verify</span>
       <span style="color:var(--sev-high)"><i></i>fork</span>
+      <span style="color:var(--route)"><i style="border-top-style:dashed"></i>route</span>
+      <span style="color:var(--await)">◍ awaiting you</span>
     </div>
     <svg class="canvas-svg" id="cv-svg"><g id="cv-view"></g></svg>
     <div class="canvas-hint">drag bg to pan · wheel to zoom · drag node to pin · click to select</div>
@@ -1315,7 +1526,8 @@ function fmtUsd(x){if(x==null)return"$0";return x>=1?("$"+x.toFixed(2)):("$"+x.t
 function fmtTok(n){return n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":(""+(n||0));}
 function fmtDur(s){if(!s)return"0m";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?(h+"h"+m+"m"):(m+"m"+(m?"":(s%60+"s")));}
 const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med",
-  review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high"};
+  review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high",
+  awaiting_human:"sev-high"};
 function renderCost(c){
   const box=$("#cost");box.innerHTML="";
   if(!c||!c.available){box.append(el("div","meta",c&&c.reason?c.reason:"waiting for session data… (cost shows once the run has a turn)"));return;}
@@ -1366,6 +1578,7 @@ function render(s){
     else if(e.event==="subagent_spawn")d=(e.prompt_kb||0)+"KB"+(e.fork?" · FORK":"")+" · #"+(e.total||"");
     else if(e.event==="stop")d="reason: "+(e.reason||"");
     else if(e.event==="state_invalid")d=e.reason||"";
+    else if(e.event==="awaiting_human")d="item "+(e.item||"?")+" needs you · "+(e.text||"").slice(0,80);
     else if(e.event==="review")d=(e.ok?"clean":(e.blocking+" blocking"))+" · round "+(e.round||1)+(e.panel?(" · panel "+e.panel):(e.lenses?(" · "+e.lenses+" lens"):""));
     else if(e.event==="hypothesis")d=e.theory?("survivor ("+(e.angle||"?")+", "+(e.confidence==null?"?":e.confidence)+"/10): "+e.theory):("no survivor · "+(e.considered||0)+" considered");
     else if(e.event==="item_start")d=(e.item||"").slice(0,80)+" · effort "+(e.effort||"?")+(e.critical?" · CRITICAL":"");
@@ -1444,9 +1657,21 @@ const Canvas=(()=>{
   function txt(x,y,s,c){const n=e("text",{x,y},c);n.textContent=s;return n;}
   function clip(s,n){s=s||"";return s.length>n?s.slice(0,n-1)+"…":s;}
   function applyVp(){view().setAttribute("transform","translate("+vp.x+","+vp.y+") scale("+vp.k+")");}
-  function scls(st){st=(st||"").toLowerCase();return st==="done"?"s-done":(st==="running"||st==="queued")?"s-running":(st==="error"||st==="failed")?"s-error":st==="open"?"s-open":"";}
+  function scls(st){st=(st||"").toLowerCase();return st==="done"?"s-done":(st==="running"||st==="queued")?"s-running":(st==="error"||st==="failed")?"s-error":st==="awaiting"?"s-awaiting":st==="open"?"s-open":"";}
+  // A node's classes: the canvas kind, the AUTHORED kind (@gate/@human/@tool/@verify/@feedback)
+  // when the plan declared one, and the run state.
+  function ncls(n){return "cv-node k-"+(n.kind||"")+(n.nodeKind?" nk-"+n.nodeKind:"")+" "+scls(n.state)+(n.id===selId?" sel":"");}
+  // The badge a node wears: what you authored wins over what the canvas calls it.
+  function nkind(n){return ((n.nodeKind||n.kind||"")+(n.nodeLabel?" · "+n.nodeLabel:"")).toUpperCase();}
+  function nmeta(n){if((n.state||"")==="awaiting")return "needs you";
+    return (n.tokens?fmtTok(n.tokens)+"tok":"")+(n.model?(" · "+n.model):"");}
   function anchor(p,side){if(dir==="LR")return side==="out"?[p.x+NW,p.y+NH/2]:[p.x,p.y+NH/2];return side==="out"?[p.x+NW/2,p.y+NH]:[p.x+NW/2,p.y];}
-  function edgeD(a,b){const o=anchor(a,"out"),i=anchor(b,"in");if(dir==="LR"){const mx=(o[0]+i[0])/2;return "M"+o[0]+","+o[1]+" C"+mx+","+o[1]+" "+mx+","+i[1]+" "+i[0]+","+i[1];}const my=(o[1]+i[1])/2;return "M"+o[0]+","+o[1]+" C"+o[0]+","+my+" "+i[0]+","+my+" "+i[0]+","+i[1];}
+  // `bow` bends the curve sideways: a route edge is bowed so it stays readable even
+  // when it runs between the same two nodes as a static (after:) edge.
+  function edgeD(a,b,bow){bow=bow||0;const o=anchor(a,"out"),i=anchor(b,"in");
+    if(dir==="LR"){const mx=(o[0]+i[0])/2;return "M"+o[0]+","+o[1]+" C"+mx+","+(o[1]+bow)+" "+mx+","+(i[1]+bow)+" "+i[0]+","+i[1];}
+    const my=(o[1]+i[1])/2;return "M"+o[0]+","+o[1]+" C"+(o[0]+bow)+","+my+" "+(i[0]+bow)+","+my+" "+i[0]+","+i[1];}
+  function bowOf(ed){return ed.kind==="route"?34:0;}
   function relayout(){
     if(!window.LeopoldLayout)return;
     const r=window.LeopoldLayout.layout(nodes,edges,{dir:dir,nodeW:NW+30,nodeH:NH+34});
@@ -1454,22 +1679,36 @@ const Canvas=(()=>{
     for(const id in pinned){if(P[id])P[id]={x:pinned[id].x,y:pinned[id].y,layer:P[id].layer,order:P[id].order};}
     draw();
   }
+  // A point ON the curve (the same cubic edgeD draws), so a condition label sits on its
+  // own edge. t=.3 rather than the midpoint: two routes between the same pair in
+  // opposite directions then label at different points instead of writing over each other.
+  function edgePt(a,b,bow,t){bow=bow||0;t=(t==null?0.3:t);
+    const o=anchor(a,"out"),i=anchor(b,"in");let c1,c2;
+    if(dir==="LR"){const mx=(o[0]+i[0])/2;c1=[mx,o[1]+bow];c2=[mx,i[1]+bow];}
+    else{const my=(o[1]+i[1])/2;c1=[o[0]+bow,my];c2=[i[0]+bow,my];}
+    const u=1-t,k0=u*u*u,k1=3*u*u*t,k2=3*u*t*t,k3=t*t*t;
+    return [k0*o[0]+k1*c1[0]+k2*c2[0]+k3*i[0],k0*o[1]+k1*c1[1]+k2*c2[1]+k3*i[1]-3];}
   function draw(){
     const g=view();g.innerHTML="";
-    edges.forEach(ed=>{const a=P[ed.from],b=P[ed.to];if(!a||!b)return;g.append(e("path",{d:edgeD(a,b)},"cv-edge k-"+ed.kind));});
+    edges.forEach(ed=>{const a=P[ed.from],b=P[ed.to];if(!a||!b)return;g.append(e("path",{d:edgeD(a,b,bowOf(ed))},"cv-edge k-"+ed.kind));});
     nodes.forEach(n=>{const p=P[n.id];if(!p)return;
-      const gg=e("g",{transform:"translate("+p.x+","+p.y+")","data-id":n.id},"cv-node k-"+(n.kind||"")+" "+scls(n.state)+(n.id===selId?" sel":""));
+      const gg=e("g",{transform:"translate("+p.x+","+p.y+")","data-id":n.id},ncls(n));
       gg.append(e("rect",{x:0,y:0,width:NW,height:NH,rx:9},"box"));
-      gg.append(txt(11,16,(n.kind||"").toUpperCase(),"kind"));
+      gg.append(txt(11,16,clip(nkind(n),24),"kind"));
       gg.append(txt(11,32,clip(n.label,25),"lbl"));
-      const meta=(n.tokens?fmtTok(n.tokens)+"tok":"")+(n.model?(" · "+n.model):"");
-      if(meta)gg.append(txt(11,46,meta,"meta"));
+      gg.append(txt(11,46,nmeta(n),"meta"));
       g.append(gg);});
+    // The condition a route edge carries, drawn on top of the nodes so it always reads.
+    edges.forEach(ed=>{if(!ed.when)return;const a=P[ed.from],b=P[ed.to];if(!a||!b)return;
+      const m=edgePt(a,b,bowOf(ed));g.append(txt(m[0],m[1],clip(ed.when,26),"cv-elbl"));});
     const em=document.getElementById("cv-empty");if(em)em.style.display=nodes.length?"none":"";
   }
-  function redrawEdges(){const paths=view().querySelectorAll(".cv-edge");let i=0;edges.forEach(ed=>{const a=P[ed.from],b=P[ed.to];if(!a||!b)return;const pt=paths[i++];if(pt)pt.setAttribute("d",edgeD(a,b));});}
+  function redrawEdges(){const v=view(),paths=v.querySelectorAll(".cv-edge"),lbls=v.querySelectorAll(".cv-elbl");let i=0,j=0;
+    edges.forEach(ed=>{const a=P[ed.from],b=P[ed.to];if(!a||!b)return;const pt=paths[i++];if(pt)pt.setAttribute("d",edgeD(a,b,bowOf(ed)));
+      if(ed.when){const lb=lbls[j++];if(lb){const m=edgePt(a,b,bowOf(ed));lb.setAttribute("x",m[0]);lb.setAttribute("y",m[1]);}}});}
   function updateStates(){const map={};view().querySelectorAll(".cv-node").forEach(nd=>map[nd.getAttribute("data-id")]=nd);
-    nodes.forEach(n=>{const nd=map[n.id];if(nd)nd.setAttribute("class","cv-node k-"+(n.kind||"")+" "+scls(n.state)+(n.id===selId?" sel":""));});}
+    nodes.forEach(n=>{const nd=map[n.id];if(!nd)return;nd.setAttribute("class",ncls(n));
+      const mt=nd.querySelector(".meta");if(mt)mt.textContent=nmeta(n);});}
   function select(id){selId=id;view().querySelectorAll(".cv-node").forEach(nd=>nd.classList.toggle("sel",nd.getAttribute("data-id")===id));if(selectCb)selectCb(id);}
   function onDown(ev){const nodeEl=ev.target.closest(".cv-node");
     if(nodeEl){const id=nodeEl.getAttribute("data-id");if(!P[id])return;drag={mode:"node",id,el:nodeEl,sx:ev.clientX,sy:ev.clientY,px:P[id].x,py:P[id].y,moved:false};}
@@ -1484,7 +1723,10 @@ const Canvas=(()=>{
   function fit(){if(!nodes.length)return;let a=1e9,b=1e9,c=-1e9,d=-1e9;nodes.forEach(n=>{const p=P[n.id];if(!p)return;a=Math.min(a,p.x);b=Math.min(b,p.y);c=Math.max(c,p.x+NW);d=Math.max(d,p.y+NH);});
     const s=svg().getBoundingClientRect(),gw=c-a||1,gh=d-b||1,k=Math.min(2,Math.max(0.2,Math.min((s.width-70)/gw,(s.height-70)/gh)));vp.k=k;vp.x=(s.width-gw*k)/2-a*k;vp.y=(s.height-gh*k)/2-b*k;applyVp();}
   async function tick(){let g;try{g=await(await fetch("/api/graph")).json();}catch(e){return;}
-    nodes=g.nodes||[];edges=g.edges||[];const ns=nodes.map(n=>n.id).sort().join(",")+"|"+edges.length+"|"+dir;
+    nodes=g.nodes||[];edges=g.edges||[];
+    // The signature covers the AUTHORED graph too: edit a kind or a route condition in
+    // PLAN.md and the canvas redraws, instead of showing yesterday's plan.
+    const ns=nodes.map(n=>n.id+(n.nodeKind||"")).sort().join(",")+"|"+edges.map(ed=>ed.kind+(ed.when||"")).join(",")+"|"+dir;
     if(ns!==sig){sig=ns;relayout();if(!fitted&&nodes.length){fitted=true;setTimeout(fit,20);}}else updateStates();}
   return {
     start(){pinned=loadPinned();
@@ -1510,7 +1752,7 @@ const Inspector=(()=>{
     let d;try{d=await(await fetch("/api/node/"+encodeURIComponent(id))).json();}catch(e){return;}if(openId!==id)return;render(d);}
   function render(d){
     const b=box();b.innerHTML="";
-    const head=el("div","ihead");head.append(el("span","ikind",(d.kind||"node").toUpperCase()));
+    const head=el("div","ihead");head.append(el("span","ikind",(d.nodeKind||d.kind||"node").toUpperCase()+(d.nodeLabel?" · "+d.nodeLabel:"")));
     const x=el("button","iclose","×");x.onclick=close;head.append(x);b.append(head);
     if(d.error){b.append(el("div","ititle",d.error));return;}
     b.append(el("div","ititle",d.label||d.id));
@@ -1528,6 +1770,9 @@ const Inspector=(()=>{
     if(d.confidence!=null)g.append(kv("confidence",d.confidence+"/10"));
     if(g.children.length)b.append(g);
     if(d.after&&d.after.length){b.append(el("div","isec","depends on"));b.append(el("div","idec","plan items "+d.after.join(", ")));}
+    if(d.needs&&d.needs.length){b.append(el("div","isec","needs signals"));b.append(el("div","idec",d.needs.join(", ")));}
+    if(d.emits&&d.emits.length){b.append(el("div","isec","emits signals"));b.append(el("div","idec",d.emits.join("\n")));}
+    if(d.routes&&d.routes.length){b.append(el("div","isec","routes"));b.append(el("div","idec",d.routes.join("\n")));}
     if(d.theory){b.append(el("div","isec","hypothesis"));b.append(el("div","idec",d.theory));}
     if(d.detail){b.append(el("div","isec","verdict"));b.append(el("div","idec",d.detail));}
     if(d.promptPreview){b.append(el("div","isec","prompt"));b.append(el("pre","iprev",d.promptPreview));}

@@ -1,0 +1,265 @@
+{
+  "cases": {
+    "double-space before dep marker": "- [ ]  (after: 2) x\n- [ ] y\n",
+    "two dep markers on one item": "- [ ] one\n- [ ] (after: 1) (deps: 1) two\n",
+    "tab-indented checkbox": "\t- [ ] indented item\n\t- [x] (after: 1) done one\n",
+    "uppercase X and casing in marker": "- [X] a\n- [ ] (AFTER: 1) b\n- [ ] (Deps: 1, 2) c\n",
+    "dep marker with junk and spaces": "- [ ] a\n- [ ] (after:  1 ,, 1 ) b\n",
+    "text containing an arrow and @": "- [ ] Route the @on click handler -> the reducer\n",
+    "text starting with an at-word": "- [ ] @nodemon must stay in devDeps\n- [ ] @toolbox rename\n",
+    "scenario lines and prose continuation": "- [ ] Build login\n  @scenario ok → 200\n  continued prose line\n  @Scenario: colon form\n- [ ] next\n",
+    "empty item text": "- [ ]\n- [x] \n",
+    "no trailing newline": "- [ ] a\n- [ ] (after: 1) b",
+    "windows line endings": "- [ ] a\r\n- [ ] (after: 1) b\r\n",
+    "forward and self references": "- [ ] (after: 2, 9) a\n- [ ] (after: 2) b\n",
+    "nested bullet checkboxes": "- [ ] parent\n  - [ ] child (after: 1)\n    - [x] grandchild\n",
+    "markdown emphasis and links": "- [ ] Ship [the thing](http://x/y) **now** — done when: `x` is true\n",
+    "colon-word at item start": "- [ ] security: review the auth diff\n",
+    "at-scenario inside text": "- [ ] Document the @scenario grammar in templates/PLAN.md\n"
+  },
+  "expected": {
+    "double-space before dep marker": [
+      {
+        "index": 1,
+        "text": "(after: 2) x",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "y",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "two dep markers on one item": [
+      {
+        "index": 1,
+        "text": "one",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "(deps: 1) two",
+        "done": false,
+        "deps": [
+          1
+        ],
+        "scenarios": []
+      }
+    ],
+    "tab-indented checkbox": [
+      {
+        "index": 1,
+        "text": "indented item",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "done one",
+        "done": true,
+        "deps": [
+          1
+        ],
+        "scenarios": []
+      }
+    ],
+    "uppercase X and casing in marker": [
+      {
+        "index": 1,
+        "text": "a",
+        "done": true,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "b",
+        "done": false,
+        "deps": [
+          1
+        ],
+        "scenarios": []
+      },
+      {
+        "index": 3,
+        "text": "c",
+        "done": false,
+        "deps": [
+          1,
+          2
+        ],
+        "scenarios": []
+      }
+    ],
+    "dep marker with junk and spaces": [
+      {
+        "index": 1,
+        "text": "a",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "b",
+        "done": false,
+        "deps": [
+          1
+        ],
+        "scenarios": []
+      }
+    ],
+    "text containing an arrow and @": [
+      {
+        "index": 1,
+        "text": "Route the @on click handler -> the reducer",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "text starting with an at-word": [
+      {
+        "index": 1,
+        "text": "@nodemon must stay in devDeps",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "@toolbox rename",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "scenario lines and prose continuation": [
+      {
+        "index": 1,
+        "text": "Build login",
+        "done": false,
+        "deps": [],
+        "scenarios": [
+          "ok → 200",
+          "colon form"
+        ]
+      },
+      {
+        "index": 2,
+        "text": "next",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "empty item text": [
+      {
+        "index": 1,
+        "text": "",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "",
+        "done": true,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "no trailing newline": [
+      {
+        "index": 1,
+        "text": "a",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "b",
+        "done": false,
+        "deps": [
+          1
+        ],
+        "scenarios": []
+      }
+    ],
+    "windows line endings": [],
+    "forward and self references": [
+      {
+        "index": 1,
+        "text": "a",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "b",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "nested bullet checkboxes": [
+      {
+        "index": 1,
+        "text": "parent",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 2,
+        "text": "child (after: 1)",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      },
+      {
+        "index": 3,
+        "text": "grandchild",
+        "done": true,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "markdown emphasis and links": [
+      {
+        "index": 1,
+        "text": "Ship [the thing](http://x/y) **now** — done when: `x` is true",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "colon-word at item start": [
+      {
+        "index": 1,
+        "text": "security: review the auth diff",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ],
+    "at-scenario inside text": [
+      {
+        "index": 1,
+        "text": "Document the @scenario grammar in templates/PLAN.md",
+        "done": false,
+        "deps": [],
+        "scenarios": []
+      }
+    ]
+  }
+}

@@ -14,6 +14,16 @@ runtime writes, and lays them out as a directed graph with a hand-rolled layered
 (no framework, no bundler, no web fonts — it works fully offline):
 
 - **Plan items** as nodes, with `(after: N)` dependencies as edges.
+- **The node kinds you authored.** An item that declares one — `@gate`, `@human`,
+  `@tool`, `@verify` — wears it on the node, with its label (`@gate security` reads
+  `GATE · SECURITY`). An item that declares none is a plain work node, exactly as before.
+- **Conditional edges.** An `@on <condition> -> <item>` route is drawn as a bowed, dashed
+  edge in its own colour, carrying the condition **as written** (`migrated=false`), so a
+  branch never reads like a dependency. The inspector lists an item's routes, the signals
+  it `@emit`s and the ones it `@needs`.
+- **A `@human` node waiting on you.** When either engine reaches one it logs
+  `awaiting_human`, and the node switches to a distinct `awaiting` state — amber, pulsing,
+  labelled *needs you*. Nothing is inferred: the node waits only when the run says it does.
 - **Dynamic-workflow** phases and agents: phase→phase (`seq`), phase→agent (`contains`),
   and each adversarial-verify agent linked to the exact node it reviews (`verifies`).
   The edge is precise wherever Leopold's own scripts label agents `impl:<id>` /

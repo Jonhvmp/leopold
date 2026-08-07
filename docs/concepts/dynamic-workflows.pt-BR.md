@@ -36,6 +36,48 @@ diversas → corrige**, em loop até `maxReviewRounds`, com os itens de uma onda
 (somente leitura). O git fica travado de graça — um workflow não consegue commitar; ele deixa
 staged, você commita.
 
+## Quando o plano declara um grafo
+
+Ondas só conseguem dizer "isto vem depois daquilo". Um plano que declara
+[gramática de grafo](../reference/driver-config.pt-BR.md#pre-voo-do-grafo-leopold-graph)
+diz mais: um tipo de nó (`@gate`, `@human`, `@tool`, `@verify`), uma aresta condicional
+(`@on <cond> -> <alvo>`), um sinal (`@emit chave=valor`, `@needs chave`). Para esses, o
+compilador emite uma chave extra ao lado das ondas:
+
+```json
+{
+  "waves": [ … ],
+  "graph": {
+    "nodes": [
+      { "index": 2, "id": "i2", "text": "Run the database migration", "kind": "work",
+        "deps": [1], "needs": [], "emits": [{ "key": "migrated", "value": "false" }],
+        "routes": [{ "when": "migrated=false", "target": 4, "kind": "signal" }] }
+    ]
+  }
+}
+```
+
+Com `graph` presente, o script canônico troca o loop de ondas pelo **loop roteado**: ele
+despacha a partir da mesma função de roteamento determinística que o scheduler do
+`/leopold-run` usa, então o mesmo plano segue o mesmo caminho nos dois engines. Um nó
+emite um sinal, o canal de estado carrega esse sinal, e o grafo decide para onde ele
+leva — nenhuma chamada de modelo escolhe uma aresta. Um nó `@human` para a run e
+pergunta; um nó `@tool` roteia pelo exit status do comando; um nó `@gate` ou `@verify`
+julga o diff e não pode editá-lo.
+
+Duas garantias sustentam essa chave:
+
+- **`graph` só aparece quando o plano realmente declara um.** Um checklist escrito antes
+  dessa gramática existir compila para um payload byte a byte idêntico e roda o loop de
+  ondas intocado — mesmos prompts, mesmo formato de relatório.
+- **Um grafo malformado é recusado antes do primeiro agente rodar.** Um ciclo, uma rota
+  para um item que não existe, um item inalcançável ou um `@needs` que ninguém emite
+  falham na compilação, nomeando o item ofensor por índice e por texto.
+
+Como ondas não conseguem expressar um branch, um plano com gramática de grafo precisa ser
+compilado pelo `leopold workflow` em vez de à mão — a `/leopold-workflow` diz isso e
+delega para ele.
+
 ## Três formas de rodar
 
 | Caminho | Quem roda | Quando |

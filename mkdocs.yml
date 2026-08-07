@@ -120,6 +120,7 @@ plugins:
             Reference: Referência
             Prompt Enhancer: Prompt Enhancer
             Brief Artifacts: Artefatos do brief
+            Plan Grammar: Gramática do plano
             Driver Config: Config do driver
             Comparisons: Comparações
             Contributing: Como contribuir
@@ -163,6 +164,7 @@ nav:
       - Hooks: reference/hooks.md
       - Prompt Enhancer: reference/enhance.md
       - Brief Artifacts: reference/artifacts.md
+      - Plan Grammar: reference/plan-grammar.md
       - Driver Config: reference/driver-config.md
       - Asset Home: reference/leopold-home.md
   - Comparisons:

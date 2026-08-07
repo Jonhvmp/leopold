@@ -17,8 +17,44 @@ leopold run --budget-usd 5           # hard-stop at a USD cap
 leopold workflow                     # compile the brief into a dynamic workflow (emit)
 leopold workflow --print             # dump the compiled args JSON
 leopold workflow --run               # execute it headlessly (experimental runtime)
+leopold graph                        # print + validate the plan's graph (exit 1 if invalid)
+leopold graph --mermaid              # the same graph as a fenced mermaid diagram
 leopold insights                     # summarize the run's events.jsonl
 ```
+
+## Graph pre-flight (`leopold graph`)
+
+The command to run before you trust a plan. It parses `.leopold/PLAN.md` into the
+same graph the scheduler routes on — node kinds (`@gate`, `@human`, `@tool`,
+`@verify`), `(after:)` dependency edges, conditional `@on` routes, `@emit`/`@needs`
+signals — prints it, and validates it. **A malformed graph fails here, before the
+first agent runs**, with the offending items named:
+
+```
+✗ Cycle: item 4 ("Run the migration") -> item 9 ("Roll back") -> item 4 (…). …
+✗ item 7 ("Ship it") routes to item 12, which does not exist (`@on fail`).
+✗ item 5 ("Deploy") needs signal "approved", which no item emits.
+✗ item 8 ("Clean up") is unreachable: no wave and no route can dispatch it.
+```
+
+| Flag | Purpose |
+| --- | --- |
+| *(none)* | ASCII tree: one line per node with its kind, checkbox, deps and signals; routes hang under their source as `→ on <cond> → item N` |
+| `--mermaid` | a fenced `mermaid` diagram — one shape per node kind, dotted labelled arrows for routes |
+| `--json` | the machine form: `{ plan, nodes, edges, diagnostics }` |
+| `--quiet` | print nothing on success — for a pre-flight in a script |
+| `--plan PATH` | validate a plan outside `.leopold/` |
+
+Exit codes: `0` the graph is sound, `1` it is malformed (diagnostics on stderr),
+`2` there was no plan to read. So a gate is just:
+
+```bash
+leopold graph --quiet || exit 1
+```
+
+A plan that uses none of the graph grammar can never fail this check: `(after:)`
+edges only ever point at an earlier item, so they cannot cycle, dangle or strand
+anything.
 
 ## Auth
 

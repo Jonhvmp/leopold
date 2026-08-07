@@ -4,11 +4,16 @@
 // and the conductor exchange real messages through the input channel (the part
 // Ralph lacks): the worker closes a turn with a status block, the conductor
 // reads and judges it, and either pushes the next instruction or ends the item.
+//
+// The same session shape serves a REVIEW-ONLY node (`@gate` / `@verify`): identical
+// protocol, opposite authority — `readOnly` swaps the system prompt for the review
+// node's and denies every editing tool twice over (session + guard).
 
 import { query } from "./sdk.js";
 import { InputChannel } from "./channel.js";
 import { parseStatus, isTurnComplete } from "./protocol.js";
 import { makeGuard } from "./guard.js";
+import { EDIT_TOOLS } from "./kinds.js";
 import { applySecretsEnv } from "./secrets.js";
 import type { Brief, WorkerStatus, DriverConfig } from "./types.js";
 import type { Effort } from "./classify.js";
@@ -52,13 +57,21 @@ export interface RunItemOpts {
   /** Override the worker's cwd (the parallel scheduler gives each item its own
    *  worktree). Defaults to the run's worktree, then the repo root. */
   cwd?: string;
+  /** A review-only node (`@gate` / `@verify`): the session runs under the review-node
+   *  system prompt and every editing tool is denied — by `disallowedTools` AND by the
+   *  guard, so "this node does not edit" is enforced, not merely instructed. Absent
+   *  (the default) is the ordinary work node, byte-for-byte as before. */
+  readOnly?: boolean;
+  /** System prompt append for a read-only node (kinds.ts builds it per kind). Ignored
+   *  unless `readOnly` is set. */
+  systemAppend?: string;
 }
 
 export async function runItem(opts: RunItemOpts): Promise<void> {
   const { brief, cfg, item, workerPrompt, onBlock, onTurn } = opts;
   const channel = new InputChannel();
   channel.push(workerPrompt);
-  const guard = makeGuard(brief.leoDir, onBlock);
+  const guard = makeGuard(brief.leoDir, onBlock, { readOnly: opts.readOnly === true });
   // Inject the run's secrets as env vars for this item: they reach the worker's Bash
   // tool as $NAME but never enter the prompt. Restored after the loop (runs are
   // sequential, so there is no env overlap between items).
@@ -75,7 +88,11 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
       settingSources: ["user", "project"] as never,
       ...(opts.effort ? { effort: opts.effort } : {}),
       ...(cfg.workerModel ? { model: cfg.workerModel } : {}),
-      systemPrompt: { type: "preset", preset: "claude_code", append: WORKER_APPEND } as never,
+      ...(opts.readOnly ? { disallowedTools: [...EDIT_TOOLS] } : {}),
+      systemPrompt: {
+        type: "preset", preset: "claude_code",
+        append: opts.readOnly ? (opts.systemAppend ?? WORKER_APPEND) : WORKER_APPEND,
+      } as never,
     } as never,
   });
 

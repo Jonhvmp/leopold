@@ -22,7 +22,7 @@ flowchart TB
     end
     ENDTURN --> STOP{{"Stop hook<br/>stop-continuity.sh"}}
     STOP -- "ainda tem trabalho,<br/>sem condição de parada" --> CONT["bloqueia a parada ·<br/>reinjeta continue"]
-    STOP -- "plano concluído / kill / budget" --> HALT([permite parar])
+    STOP -- "plano concluído / kill / budget /<br/>próximo é nó @human" --> HALT([permite parar])
     CONT --> Turn
 ```
 
@@ -35,6 +35,12 @@ de parada foi atingida, ele retorna `{"decision":"block","reason":"..."}`. O
 agente ler o plano, pegar o próximo item, aplicar o protocolo de decisão, logar
 e não perguntar. Cada continuação incrementa um contador de iteração, que
 alimenta a condição de parada por budget.
+
+Um construto do plano muda essa resposta: se o próximo item aberto é um nó
+**`@human`**, ninguém além de você pode fechá-lo, então o hook permite a parada
+com `awaiting_human` e nomeia o item em vez de reinjetar — exatamente o que o
+driver faz ao chegar num nó humano. Veja
+[Hooks → Tipos de nó](../reference/hooks.pt-BR.md#tipos-de-no).
 
 !!! info "Fail-open por design"
     Um Stop hook quebrado nunca pode prender uma sessão num loop, então

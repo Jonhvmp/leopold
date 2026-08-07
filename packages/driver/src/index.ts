@@ -6,10 +6,11 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runDriver } from "./loop.js";
+import { runDriver, InvalidPlanGraphError } from "./loop.js";
 import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harness.js";
 import { runSecrets } from "./secrets.js";
 import { runInsights } from "./insights.js";
+import { runGraphCommand } from "./graph-cmd.js";
 import { runWorkflowCommand } from "./workflow-cmd.js";
 import { setProvider, currentProvider } from "./sdk.js";
 import {
@@ -39,6 +40,7 @@ Usage:
   leopold-driver harness                    which harnesses are here, and what each can do
   leopold-driver home                       print the resolved Leopold asset home (hooks, scripts)
   leopold-driver install [--with-gstack]   install skills + hooks (Claude Code and/or Codex)
+  leopold-driver graph [--mermaid|--json]   print + validate the plan's graph (exit 1 if invalid)
   leopold-driver insights [--json]          summarize the current run (events.jsonl)
   leopold-driver menu                       toolchain manager (serena / gstack / ovmem / enhance)
   leopold-driver watch [--port N]           live dashboard + Canvas DAG (http://127.0.0.1:4179)
@@ -52,6 +54,12 @@ Usage:
   leopold-driver workflow [--print] [--run] compile the brief into a dynamic workflow
                                             (emit by default; --run executes it, experimental)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
+
+'graph' is the pre-flight: it prints the plan as a graph (node kinds, dependency edges,
+conditional @on routes) and validates it — a cycle, a route to an item that does not exist,
+an unreachable item or an unmet @needs exits 1 with the offending items named, before a
+single agent runs. --mermaid emits a fenced diagram, --json the machine form, --plan PATH
+checks a plan outside .leopold/.
 
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
 Newer version: npm i -g leopold-driver@latest.
@@ -101,6 +109,12 @@ function harnessReport(): number {
 
 function conduct(): void {
   runDriver(process.cwd(), process.argv.slice(2)).catch((err: unknown) => {
+    // A rejected graph is not a driver failure: the pre-flight already printed the
+    // named offenders, so this only adds the one-line verdict, unprefixed.
+    if (err instanceof InvalidPlanGraphError) {
+      console.error(err.message);
+      process.exit(1);
+    }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("leopold-driver error:", msg);
     process.exit(1);
@@ -125,6 +139,8 @@ switch (sub) {
   case "install":
   case "update":
     process.exit(runInstall(rest));
+  case "graph":
+    process.exit(runGraphCommand(process.cwd(), rest));
   case "insights":
     process.exit(runInsights(rest));
   case "workflow":

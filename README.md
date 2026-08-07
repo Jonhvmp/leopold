@@ -61,6 +61,7 @@ leopold harness              # which harnesses are here, and what each one can d
 leopold run --parallel 3     # conduct the run, independent items in parallel
 leopold run --provider codex # conduct the same brief on Codex instead
 leopold workflow             # compile the brief into a dynamic workflow (--run: headless, exp.)
+leopold graph                # print + validate the plan's graph before trusting it (exit 1 if invalid)
 leopold insights             # summarize a run (effort mix, review pass-rate, spend)
 leopold doctor               # health check
 ```
@@ -118,6 +119,7 @@ Leopold extracts the most from Claude Code's native power, in one command. See [
 - **A prompt enhancer that reads your shorthand (`enhance`).** Everyday prompts are thin by habit ("fix login"). One global `UserPromptSubmit` hook (on both harnesses) scores each prompt; genuinely weak ones get a structured interpretation from Haiku **on your own account** — charter-aware, conversation-aware — injected next to the raw prompt, which always wins on conflict. Strong prompts (anything anchored to a path or symbol) never pay the latency; failures fail open. Off by default: `leopold menu` → enhance → Toggle. `/leopold-enhance learn` mines the local ledger for interpretations you corrected and proposes prompt-profile rules — you review, it never self-edits. [Docs](docs/reference/enhance.md).
 - **Parallel items.** `leopold-driver run --parallel N` runs independent plan items at once, each in its own worktree, replaying each diff onto the main tree (staged, never committed). Declare order with `- [ ] (after: 2) …`.
 - **One-command setup.** `leopold up` + `/leopold-up` wire the things people skip — `CLAUDE.md` (`/init`), an app run-skill (`/run-skill-generator`), a permissions allowlist, MCP — so a project starts at full power.
+- **Graph pre-flight.** `leopold-driver graph` prints the plan as the graph the scheduler actually routes on — node kinds, `(after:)` edges, conditional `@on` routes, signals — and validates it. A cycle, a route to an item that does not exist, an unreachable item or an unmet `@needs` exits non-zero with the offending items named, *before the first agent runs*. `--mermaid` for a diagram, `--quiet` for a script gate.
 - **Insights.** `leopold-driver insights` summarizes a run: effort mix, review pass-rate, decisions, escalations, real spend.
 
 ---

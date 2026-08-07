@@ -126,6 +126,45 @@ as before (fully backward compatible). Example:
           @scenario `--json` set → stdout is valid JSON with the table's exact fields
           @scenario `--json` with no rows → prints `[]` and exits 0
 
+**Route the plan when the work actually branches.** The plan is a graph, and every
+construct below is optional — a plan that uses none of them runs exactly as it always
+has, so only reach for one when the mission's own shape asks for it. In the debate,
+listen for these four cues and offer the matching construct:
+
+- *"and if that fails we'd have to roll it back"* → a **conditional edge**.
+  `@on fail -> 7` routes on the item's own outcome; `@on migrated=false -> 7` routes
+  on a signal. Put both branches statically after the deciding item (`(after: N)` on
+  each) and give it one `@on` per branch: the branch that is not steered to is
+  bypassed, so exactly one runs.
+- *"a person has to sign this off"* → `@human`. The run stops, names the item, stages
+  everything, and hands the seat back.
+- *"that step is just running the suite / the migration"* → `@tool`, whose text IS the
+  command. No model turn is spent, and the exit status lands on the channel as `exit`,
+  so `@on exit!=0 -> 7` needs no `@emit` line. Git stays locked: `@tool git push` is
+  refused, not run.
+- *"someone should check this before we build on it"* → `@gate` (judge the diff) or
+  `@verify` (re-run the build/tests and prove it). Both are review-only sessions that
+  cannot edit what they judge.
+
+A routing decision needs something to route on: `@emit key=value` declares a signal an
+item may put on the state channel, `@needs key` holds an item back until that signal
+exists. **The repository is the truth of what was built; the channel is the truth of
+what was decided** — never a diff, a payload or a log, only a decision.
+
+    - [ ] (after: 1) @tool make migrate
+          @on exit=0  -> 3
+          @on exit!=0 -> 4
+    - [ ] (after: 2) @verify Prove the app boots against the migrated schema
+          @emit migrated=true
+          @emit migrated=false
+          @on migrated=false -> 4
+    - [ ] (after: 2) Roll the migration back — done when: the schema is at the previous revision
+
+If you author any routing, run `leopold graph` in the project before handing over: it
+prints the graph and exits non-zero on a dangling route, a cycle, an unreachable item
+or a `@needs` nobody emits — naming the offending item, before a single agent runs.
+The full grammar is `docs/reference/plan-grammar.md` in the Leopold install.
+
 ## Step 4a — Draft the plan by tournament (optional, workflow)
 
 For a substantial mission (roughly: 6+ items, or architectural choices baked into

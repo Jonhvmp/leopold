@@ -22,6 +22,9 @@ export interface InsightsReport {
   critical: number;
   reviews: { total: number; blocked: number; clean: number; sensitive: number; panel: number };
   hypotheses: { runs: number; survivors: number };
+  /** Plan amendments a `@feedback` node proposed: what the bounds let through, and
+   *  what they refused. Both stay 0 for a run with no feedback node. */
+  amendments: { applied: number; refused: number };
   learnProposed?: number;
   guardBlocks: number;
   escalations: number;
@@ -38,6 +41,7 @@ export function summarize(lines: string[], state: Record<string, unknown> = {}):
     effort: {}, critical: 0,
     reviews: { total: 0, blocked: 0, clean: 0, sensitive: 0, panel: 0 },
     hypotheses: { runs: 0, survivors: 0 },
+    amendments: { applied: 0, refused: 0 },
     guardBlocks: 0, escalations: 0, decisions: 0, costUsd: 0,
   };
   for (const line of lines) {
@@ -73,6 +77,8 @@ export function summarize(lines: string[], state: Record<string, unknown> = {}):
       case "learn":
         r.learnProposed = num(e.proposed);
         break;
+      case "amendment": r.amendments.applied += 1; break;
+      case "amendment_refused": r.amendments.refused += 1; break;
       case "guard_block": r.guardBlocks += 1; break;
       case "cost": r.costUsd += num(e.usd); break;
     }
@@ -125,6 +131,10 @@ export function renderInsights(r: InsightsReport): string {
     `                 ${r.reviews.sensitive} security-sensitive · ${r.reviews.panel} multi-lens panel`,
     `Root-cause panel ${r.hypotheses.runs} run · ${r.hypotheses.survivors} produced a lead`,
     ...(r.learnProposed !== undefined ? [`Charter amendments ${r.learnProposed} proposed (learn-on-finish)`] : []),
+    // A run that rewrote its own plan says so. Silent only when it did not touch it.
+    ...(r.amendments.applied || r.amendments.refused
+      ? [`Plan amendments  ${r.amendments.applied} applied · ${r.amendments.refused} refused by a bound (@feedback)`]
+      : []),
     `Decisions logged ${r.decisions}     Escalations ${r.escalations}     Guard blocks ${r.guardBlocks}`,
   ].join("\n");
 }

@@ -7,6 +7,13 @@ Wired into `make test` via the `watch-test` target.
 Covers:
   - build_graph() edge inference (conductor (after:N) deps, workflow seq/contains/
     verifies, no dangling edges, no self-deps, empty-safe)
+  - the PLAN.md graph grammar the Canvas reads: node kinds, `@on` route edges with
+    their condition, `@emit`/`@needs`, and the `awaiting` state of a `@human` node
+  - BACKWARD COMPATIBILITY: a plan with none of that grammar produces a payload
+    byte-identical to the one this built before the grammar existed (asserted against
+    a literal snapshot, so a stray new key fails the test)
+  - the Python parser AGREES with the driver's TypeScript parser on the repo's own
+    plan fixtures (runs when packages/driver/dist is built)
   - _parse_after marker parsing
   - apply_canvas_command routing + the RED-TEAM invariant: a canvas command never
     writes a git-unlock token (ALLOW_GIT / ALLOW_PUSH / STOP).
@@ -14,6 +21,7 @@ Covers:
 import importlib.util
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 
@@ -117,6 +125,230 @@ class ParseAfter(unittest.TestCase):
         self.assertEqual(lw._parse_after("(after: 2, 3) do it"), [2, 3])
         self.assertEqual(lw._parse_after("no marker here"), [])
         self.assertEqual(lw._strip_after("(after: 1) label"), "label")
+
+
+# --------------------------------------------------------------------------- grammar
+# The Canvas must draw the graph the human AUTHORED. These tests are the contract:
+# what a kind marker, a route and the state channel look like once they reach
+# /api/graph — and, first, that a plan using none of them is untouched.
+
+LEGACY_PLAN = [
+    {"done": True, "text": "Build the thing"},
+    {"done": False, "text": "(after: 1) Check the thing"},
+]
+
+# Exactly what build_graph() emitted for LEGACY_PLAN before the graph grammar existed.
+# A new key on a node or an edge — even a harmless one — fails here, which is the point:
+# "identical" is a gate, not an aspiration.
+LEGACY_PAYLOAD = {
+    "nodes": [
+        {"id": "item-1", "kind": "item", "label": "Build the thing", "state": "done",
+         "group": "plan", "tokens": 0, "toolCalls": 0, "model": "", "source": "conductor",
+         "detail": ""},
+        {"id": "item-2", "kind": "item", "label": "Check the thing", "state": "open",
+         "group": "plan", "tokens": 0, "toolCalls": 0, "model": "", "source": "conductor",
+         "detail": ""},
+    ],
+    "edges": [{"from": "item-1", "to": "item-2", "kind": "after"}],
+    "groups": ["plan"],
+}
+
+ROUTING_PLAN_MD = """# Plan
+
+- [x] @gate security Review the auth diff
+      @emit reviewed=true
+- [ ] (after: 1) Run the migration
+      @needs reviewed
+      @emit migrated=true
+      @emit migrated=false
+      @on migrated=false -> 4
+- [ ] (after: 2) Ship it
+- [ ] @human Decide whether to roll back
+"""
+
+LEGACY_PLAN_MD = """# Plan
+
+- [x] Build the thing
+- [ ] (after: 1) Check the thing
+"""
+
+
+class GraphGrammar(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.old = lw.LEO
+        lw.LEO = self.tmp
+
+    def tearDown(self):
+        lw.LEO = self.old
+
+    def _plan(self, text):
+        with open(os.path.join(self.tmp, "PLAN.md"), "w", encoding="utf-8") as f:
+            f.write(text)
+        return lw.read_plan()["items"]
+
+    def test_legacy_payload_is_byte_identical(self):
+        self.assertEqual(lw.build_graph(LEGACY_PLAN, [], []), LEGACY_PAYLOAD)
+
+    def test_legacy_plan_read_from_disk_builds_the_same_payload(self):
+        # read_plan() now carries the grammar fields; a plan that declares none of them
+        # must still reach the Canvas as the payload above, defaults and all.
+        self.assertEqual(lw.build_graph(self._plan(LEGACY_PLAN_MD), [], []), LEGACY_PAYLOAD)
+
+    def test_kinds_and_routes_reach_the_payload(self):
+        items = self._plan(ROUTING_PLAN_MD)
+        self.assertEqual([i["kind"] for i in items], ["gate", "work", "work", "human"])
+        self.assertEqual(items[0]["kindLabel"], "security")
+        self.assertEqual(items[1]["needs"], ["reviewed"])
+        self.assertEqual(items[1]["emits"], ["migrated=true", "migrated=false"])
+        g = lw.build_graph(items, [], [])
+        by_id = {n["id"]: n for n in g["nodes"]}
+        # each node's kind, as authored
+        self.assertEqual(by_id["item-1"]["nodeKind"], "gate")
+        self.assertEqual(by_id["item-1"]["nodeLabel"], "security")
+        self.assertEqual(by_id["item-1"]["label"], "Review the auth diff")
+        self.assertEqual(by_id["item-4"]["nodeKind"], "human")
+        self.assertNotIn("nodeKind", by_id["item-2"], "a work node carries no kind key")
+        self.assertEqual(by_id["item-2"]["needs"], ["reviewed"])
+        # each route edge's condition, as authored
+        routes = [e for e in g["edges"] if e["kind"] == "route"]
+        self.assertEqual(routes, [{"from": "item-2", "to": "item-4", "kind": "route",
+                                   "when": "migrated=false"}])
+        # ...and it is NOT confused with the static dependency edges
+        self.assertEqual({(e["from"], e["to"]) for e in g["edges"] if e["kind"] == "after"},
+                         {("item-1", "item-2"), ("item-2", "item-3")})
+
+    def test_human_node_awaiting_input_is_a_distinct_state(self):
+        items = self._plan(ROUTING_PLAN_MD)
+        ev = [{"event": "awaiting_human", "item": 4, "text": "Decide whether to roll back"}]
+        by_id = {n["id"]: n for n in lw.build_graph(items, ev, [])["nodes"]}
+        self.assertEqual(by_id["item-4"]["state"], "awaiting")
+        self.assertEqual(by_id["item-3"]["state"], "open", "only the named item waits")
+        # without the event it is an ordinary open item — the Canvas never guesses
+        plain = {n["id"]: n for n in lw.build_graph(items, [], [])["nodes"]}
+        self.assertEqual(plain["item-4"]["state"], "open")
+
+    def test_route_to_a_nonexistent_item_draws_no_edge(self):
+        items = self._plan("- [ ] one\n      @on fail -> 99\n- [ ] two\n")
+        g = lw.build_graph(items, [], [])
+        self.assertEqual([e for e in g["edges"] if e["kind"] == "route"], [])
+        self.assertTrue(all(e["from"] in node_ids(g) and e["to"] in node_ids(g)
+                            for e in g["edges"]))
+
+    def test_markers_parse_the_way_the_driver_parses_them(self):
+        mk = lw._item_markers
+        self.assertEqual(mk("@gate security Review auth"),
+                         {"deps": [], "kind": "gate", "kindLabel": "security",
+                          "label": "Review auth"})
+        # a capitalised word after a kind is TEXT, not a label
+        self.assertEqual(mk("@human Ask the team")["kindLabel"], "")
+        self.assertEqual(mk("@human Ask the team")["label"], "Ask the team")
+        # inline, with nothing after it, a bare lowercase word is TEXT, not a label —
+        # on a marker line of its own the same word IS the label
+        self.assertEqual(mk("@gate security"), {"deps": [], "kind": "gate",
+                                                "kindLabel": "", "label": "security"})
+        self.assertEqual(lw._match_kind("@node human ops", False), ("human", "ops", ""))
+        # the feedback node reads the RUN and may amend the plan; the Canvas draws it
+        self.assertEqual(mk("@feedback health Read the run")["kind"], "feedback")
+        self.assertEqual(mk("@feedback health Read the run")["kindLabel"], "health")
+        self.assertEqual(lw._match_kind("@node feedback", False), ("feedback", "", ""))
+        self.assertEqual(mk("@feedbacks from the beta users")["kind"], "work")
+        self.assertEqual(mk("@node human ops")["kind"], "human")
+        # `@node` without a known kind is prose, left alone
+        self.assertEqual(mk("@node the DAG")["kind"], "work")
+        self.assertEqual(mk("@node the DAG")["label"], "@node the DAG")
+        # markers in either order
+        self.assertEqual(mk("(after: 2) @verify Recheck")["deps"], [2])
+        self.assertEqual(mk("@verify (after: 2) Recheck")["deps"], [2])
+        # a second (after:) stays in the text, exactly as the driver leaves it
+        self.assertEqual(mk("(after: 1) (after: 2) x")["label"], "(after: 2) x")
+
+    def test_route_conditions_parse(self):
+        r = lw._parse_route
+        self.assertEqual(r("fail -> 7"), {"when": "fail", "target": 7})
+        self.assertEqual(r("migrated=false → 7"), {"when": "migrated=false", "target": 7})
+        self.assertEqual(r("fail => #7"), {"when": "fail", "target": 7})
+        self.assertEqual(r("fail"), {"when": "fail", "target": 0})  # recorded, not dropped
+        self.assertIsNone(r("   "))
+
+
+class ParserAgreesWithTheDriver(unittest.TestCase):
+    """The dashboard cannot import plan.ts, so it re-reads the grammar. This proves the
+    two readings AGREE on the repo's own plans — the only way two parsers stay honest."""
+
+    SCRIPT = (
+        "const {parsePlanFile}=await import(process.argv[1]);"
+        "const out=parsePlanFile(process.argv[2]).map(i=>({index:i.index,text:i.text,"
+        "done:i.done,deps:i.deps,kind:i.kind,kindLabel:i.kindLabel,"
+        "routes:i.routes.map(r=>({when:r.when,target:r.target})),"
+        "emits:i.emits.map(e=>e.key+'='+e.value),needs:i.needs}));"
+        "console.log(JSON.stringify(out));"
+    )
+
+    def _dist(self):
+        dist = os.path.join(HERE, "..", "packages", "driver", "dist", "plan.js")
+        if not os.path.isfile(dist):
+            self.skipTest("driver not built (packages/driver/dist) — run `make driver-check` first")
+        return os.path.abspath(dist)
+
+    def _compare(self, dist, directory, name):
+        """Parse one plan with both parsers and assert they read it the same way."""
+        old = lw.LEO
+        try:
+            lw.LEO = directory
+            self.assertTrue(lw._read(name).strip(), name)
+            items = lw.read_plan(name)["items"]
+        finally:
+            lw.LEO = old
+        proc = subprocess.run(["node", "--input-type=module", "-e", self.SCRIPT,
+                               dist, os.path.join(directory, name)],
+                              capture_output=True, text=True)
+        if proc.returncode != 0:
+            self.skipTest("node could not run the driver parser: %s" % proc.stderr[:200])
+        ts = json.loads(proc.stdout)
+        self.assertEqual(len(items), len(ts), "%s: item count" % name)
+        for i, (a, b) in enumerate(zip(items, ts), start=1):
+            where = "%s item %d" % (name, i)
+            self.assertEqual(a["done"], b["done"], where)
+            self.assertEqual(a["kind"], b["kind"], where)
+            self.assertEqual(a["kindLabel"], b["kindLabel"], where)
+            self.assertEqual(a["needs"], b["needs"], where)
+            self.assertEqual(a["emits"], b["emits"], where)
+            self.assertEqual(a["routes"],
+                             [{"when": r["when"], "target": r["target"]} for r in b["routes"]],
+                             where)
+            self.assertEqual(lw._strip_after(a["text"]), b["text"], where)
+            self.assertEqual([d for d in lw._parse_after(a["text"]) if d < i], b["deps"], where)
+        return len(items)
+
+    def test_fixture_plans_parse_identically(self):
+        """The repo's own archived run plans — the legacy half of the promise."""
+        dist = self._dist()
+        fixtures = os.path.join(HERE, "..", "packages", "driver", "test", "fixtures", "plans")
+        if not os.path.isdir(fixtures):
+            self.skipTest("plan fixtures missing")
+        plans = sorted(f for f in os.listdir(fixtures) if f.endswith(".md"))
+        self.assertTrue(plans, "no plan fixtures to compare against")
+        total = sum(self._compare(dist, fixtures, name) for name in plans)
+        self.assertGreaterEqual(total, 45, "expected the fixtures to cover real plans")
+
+    def test_a_routing_plan_parses_identically(self):
+        """And the new half: kinds, routes and the state channel read the same on both
+        sides, including the corners (arrow spellings, labels, marker lines)."""
+        dist = self._dist()
+        tmp = tempfile.mkdtemp()
+        plan = ROUTING_PLAN_MD + """- [ ] @tool make the build
+      @on fail => 4
+- [ ] @tool build: make release
+- [ ] (after: 5) @verify Recheck everything
+      @needs migrated, reviewed
+      @on ok → 1
+- [ ] @node human ops
+      @on fail -> 99
+"""
+        with open(os.path.join(tmp, "PLAN.md"), "w", encoding="utf-8") as f:
+            f.write(plan)
+        self.assertEqual(self._compare(dist, tmp, "PLAN.md"), 8)
 
 
 class CanvasCommandSecurity(unittest.TestCase):

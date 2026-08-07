@@ -22,7 +22,7 @@ flowchart TB
     end
     ENDTURN --> STOP{{"Stop hook<br/>stop-continuity.sh"}}
     STOP -- "work remains,<br/>no stop condition" --> CONT["block stop ·<br/>re-inject continue"]
-    STOP -- "plan done / kill / budget" --> HALT([allow stop])
+    STOP -- "plan done / kill / budget /<br/>@human node next" --> HALT([allow stop])
     CONT --> Turn
 ```
 
@@ -35,6 +35,12 @@ bare "continue"; it is a compact instruction that tells the agent to read the
 plan, take the next item, apply the decision protocol, log, and not ask. Each
 continuation increments an iteration counter, which feeds the budget stop
 condition.
+
+One plan construct changes that answer: if the next open item is a **`@human`**
+node, nobody but you can finish it, so the hook allows the stop with
+`awaiting_human` and names the item instead of re-injecting — the same thing the
+driver does when a run reaches a human node. See
+[Hooks → Node kinds](../reference/hooks.md#node-kinds).
 
 !!! info "Fail-open by design"
     A broken Stop hook must never trap a session in a loop, so any unexpected

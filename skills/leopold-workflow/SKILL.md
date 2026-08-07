@@ -84,6 +84,27 @@ files, treat them as dependent (put the later one in a later wave) so they don't
 If the markers form a cycle, stop and tell the user which items cycle — the plan is
 malformed.
 
+### If the plan authors a graph, do not compile it by hand
+
+A plan may carry graph grammar the waves above cannot express: a node kind
+(`@gate`, `@human`, `@tool`, `@verify`, `@feedback`), a conditional edge
+(`@on <cond> -> <target>`),
+or a signal (`@emit key=value`, `@needs key`). Waves have no way to represent a branch,
+so hand-compiling such a plan into `waves` alone would run every branch instead of the
+one the plan chose — the run would look fine and be wrong.
+
+**If any plan line carries `@gate`, `@human`, `@tool`, `@verify`, `@feedback`, `@on`, `@emit` or
+`@needs`, stop hand-compiling and run `leopold workflow` instead.** It is the same
+compilation as the steps below, done deterministically: it copies the canonical script
+to `.claude/workflows/leopold-run.js`, writes the full `args` — waves *and* the `graph`
+the router reads — to `.leopold/workflow-args.json`, and refuses a malformed graph (a
+cycle, a route to an item that does not exist, an unreachable item, a `@needs` nobody
+emits) by name, before a single agent runs. Then launch the workflow with the contents
+of that file as `args`.
+
+Steps 2 and 3 stay useful reading — they are the rules that compiler implements — but
+for a plan with graph grammar the compiler's output is the authority, not your own.
+
 ## Step 2 — Classify each item (effort + risk)
 
 For each item, derive `effort`, `critical`, and `sensitive` with the **same keyword
@@ -131,12 +152,18 @@ Workflow({
     charter:  <full text of .leopold/CHARTER.md>,
     waves:    [[{ id, text, effort, critical, sensitive }, …], …],   // Step 1 + 2
     maxReviewRounds: <from Step 3, default 2>,
+    // graph: { nodes: [ … ] }   // ONLY from `leopold workflow` — never hand-written
   },
 })
 ```
 
 Pass `args` as real JSON (arrays/objects), never as a stringified blob — the script
 calls array methods on `waves` directly.
+
+The optional `graph` key is what turns the script's wave loop into its routed loop, and
+only the compiler produces it (see "If the plan authors a graph" above). Its absence is
+not a degraded mode — it is the correct payload for a plain checklist, and the script
+then runs exactly as it always has.
 
 Saving the script to `.claude/workflows/leopold-run.js` also makes it a reusable
 `/leopold-run` **command** (native workflow command) that anyone who clones the repo

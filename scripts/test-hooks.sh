@@ -94,5 +94,52 @@ head -c 1200000 /dev/zero | tr '\0' a > "$T/transcript.jsonl"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "context budget stops the run" "context_budget" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
 
+# --- Node kinds: a @human node ends the turn and asks ---
+# The driver stops a run with `awaiting_human` when it reaches a human node; the
+# in-session engine does the same, so a plan means the same thing on both engines.
+# (packages/driver/test/hook-kinds.test.ts parses the same plans with both parsers and
+# fails on any drift; these are the behavior assertions.)
+human_run() { # $1 = plan text -> echoes "<decision>/<stopped_reason>"
+  printf '%s' "$1" > "$T/.leopold/PLAN.md"
+  echo '{"active":true,"iteration":1,"max_iterations":50}' > "$T/.leopold/state.json"
+  local o d
+  o="$(printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+  d="$(dec "$o")"; [ -n "$d" ] || d="allow"   # no stdout = the hook allowed the stop
+  printf '%s/%s' "$d" "$(jq -r '.stopped_reason // "-"' "$T/.leopold/state.json" 2>/dev/null)"
+}
+
+assert "a @human item ends the turn with awaiting_human" "allow/awaiting_human" \
+  "$(human_run '# Plan
+- [x] shipped
+- [ ] @human Ask the team about pricing
+- [ ] later work
+')"
+assert "... names the item in the run log" "2|Ask the team about pricing" \
+  "$(jq -r 'select(.event=="awaiting_human") | "\(.item)|\(.text)"' "$T/.leopold/events.jsonl" 2>/dev/null | tail -1)"
+assert "a @node human marker line stops too" "allow/awaiting_human" \
+  "$(human_run '# Plan
+- [ ] Migrate the database
+      @node human ops
+')"
+assert "a done @human item is not the node we are at" "block/-" \
+  "$(human_run '# Plan
+- [x] @human already answered
+- [ ] ordinary work
+')"
+assert "@gate keeps the run going" "block/-" \
+  "$(human_run '# Plan
+- [ ] @gate security Review the auth diff
+')"
+assert "@needs human is a need, not a node kind" "block/-" \
+  "$(human_run '# Plan
+- [ ] Ship the thing
+      @needs human
+')"
+assert "a plan with no kinds is unchanged" "block/-" \
+  "$(human_run '# Plan
+- [ ] plain item
+- [ ] (after: 1) another
+')"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "all hook behavior tests passed"; else echo "HOOK TESTS FAILED"; exit 1; fi

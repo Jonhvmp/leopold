@@ -1,7 +1,10 @@
 // Guardrails-driven config toggles and their precedence: explicit CLI/env > brief > default.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { boolFrom, loadConfig } from "../src/config.ts";
+import os from "node:os";
+import fs from "node:fs";
+import path from "node:path";
+import { boolFrom, loadConfig, briefDigest, readAmendmentsAdded } from "../src/config.ts";
 
 const GUARDRAILS = `# Guardrails
 ## Quality & orchestration
@@ -117,4 +120,57 @@ test("best_of_k clamps a bogus value back to the guardrails/default", () => {
     assert.equal(loadConfig([], "- best_of_k: 4\n").bestOfK, 4);
     assert.equal(loadConfig([], "").bestOfK, 1);
   });
+});
+
+// --- the brief receipt --------------------------------------------------------------
+// A read-only node's guard refuses shell writes under `.leopold/`; this digest is the
+// second net, because `.leopold/` is gitignored and no git-based signature can see a
+// write there. It must move on a real write and stay put on the driver's own writes.
+
+test("briefDigest catches a write to the brief, and ignores what the driver writes itself", () => {
+  const leo = fs.mkdtempSync(path.join(os.tmpdir(), "leo-digest-"));
+  const w = (name: string, body: string): void => fs.writeFileSync(path.join(leo, name), body);
+  w("PLAN.md", "# Plan\n\n- [ ] Build the thing\n- [x] Ship the docs\n");
+  w("GUARDRAILS.md", "# Guardrails\n- max_failures: 3\n");
+  w("MISSION.md", "# Mission\n");
+  w("CHARTER.md", "# Charter\n");
+  const base = briefDigest(leo);
+
+  // The driver's own writes during a node: events, state, the decision trail. Not a
+  // node's doing, so the receipt must not cry wolf on them.
+  fs.appendFileSync(path.join(leo, "events.jsonl"), '{"event":"item_start"}\n');
+  fs.writeFileSync(path.join(leo, "state.json"), '{"iteration":4}');
+  fs.appendFileSync(path.join(leo, "DECISIONS.md"), "\n## D1 — a fork\n");
+  assert.equal(briefDigest(leo), base, "the driver's own bookkeeping is not a node edit");
+
+  // A checkbox closed by another item of a --parallel run is legitimate too.
+  w("PLAN.md", "# Plan\n\n- [x] Build the thing\n- [x] Ship the docs\n");
+  assert.equal(briefDigest(leo), base, "a concurrently closed checkbox is not a node edit");
+
+  // Everything the bounds actually protect DOES move it.
+  w("PLAN.md", "# Plan\n\n- [x] Build the thing\n");
+  assert.notEqual(briefDigest(leo), base, "a deleted item");
+  w("PLAN.md", "# Plan\n\n- [x] Build something else\n- [x] Ship the docs\n");
+  assert.notEqual(briefDigest(leo), base, "a rewritten item");
+  w("PLAN.md", "# Plan\n\n- [x] Build the thing\n- [x] Ship the docs\n- [ ] Snuck in\n");
+  assert.notEqual(briefDigest(leo), base, "an injected item");
+  w("PLAN.md", "# Plan\n\n- [x] Build the thing\n- [x] Ship the docs\n");
+  assert.equal(briefDigest(leo), base, "…and back to where it started");
+
+  fs.appendFileSync(path.join(leo, "GUARDRAILS.md"), "- max_failures: 99\n");
+  assert.notEqual(briefDigest(leo), base, "GUARDRAILS.md, the boundary a run may never widen");
+  w("GUARDRAILS.md", "# Guardrails\n- max_failures: 3\n");
+  fs.writeFileSync(path.join(leo, "ALLOW_GIT"), "");
+  assert.notEqual(briefDigest(leo), base, "and a git-lock token that appeared out of nowhere");
+});
+
+test("readAmendmentsAdded reads the run's spent budget, and refuses to invent one", () => {
+  const leo = fs.mkdtempSync(path.join(os.tmpdir(), "leo-budget-"));
+  assert.equal(readAmendmentsAdded(leo), 0, "no state.json at all");
+  const w = (body: string): void => fs.writeFileSync(path.join(leo, "state.json"), body);
+  w("{}"); assert.equal(readAmendmentsAdded(leo), 0);
+  w("not json at all"); assert.equal(readAmendmentsAdded(leo), 0);
+  w('{"amendments_added":2}'); assert.equal(readAmendmentsAdded(leo), 2);
+  w('{"amendments_added":"3"}'); assert.equal(readAmendmentsAdded(leo), 3, "a string counter still counts");
+  w('{"amendments_added":-5}'); assert.equal(readAmendmentsAdded(leo), 0, "a negative counter is not a refund");
 });

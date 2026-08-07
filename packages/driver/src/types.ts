@@ -12,6 +12,12 @@ export interface WorkerStatus {
   decisionNeeded?: string;
   next?: string;
   evidence?: string;
+  /** Signals the node decided to put on the state channel, parsed from an optional
+   *  `SIGNALS: key=value, key2=value2` line. Absent when the worker reported none —
+   *  which is every turn of every plan written before the graph grammar existed, so
+   *  the status contract is unchanged for them. Never work product: the loop enforces
+   *  the channel's ceilings and only accepts keys the item declared with `@emit`. */
+  signals?: Record<string, string>;
   /** The raw assistant text the status was parsed from (for logging/escalation). */
   raw: string;
 }
@@ -66,6 +72,15 @@ export interface RunState {
   /** USD budget hard-stop: accumulated real spend and the cap (when set). */
   spent_usd?: number;
   budget_usd?: number;
+  /** How many plan items `@feedback` nodes have added THIS RUN. The amendment budget
+   *  is run-wide (amend.ts: at most 3), so it lives with the run, not with a node — and
+   *  a resumed run inherits what it already spent instead of starting over. Absent on
+   *  every run that has no feedback node, which is every run written before them. */
+  amendments_added?: number;
+  /** Set when the run stopped at a `@human` node (`stopped_reason: awaiting_human`):
+   *  which plan item is waiting on a person, and what it says. Absent otherwise. */
+  awaiting_item?: number;
+  awaiting_text?: string;
 }
 
 export interface DriverConfig {

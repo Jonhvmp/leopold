@@ -17,8 +17,44 @@ leopold run --budget-usd 5           # hard-stop at a USD cap
 leopold workflow                     # compile the brief into a dynamic workflow (emit)
 leopold workflow --print             # dump the compiled args JSON
 leopold workflow --run               # execute it headlessly (experimental runtime)
+leopold graph                        # print + validate the plan's graph (exit 1 if invalid)
+leopold graph --mermaid              # the same graph as a fenced mermaid diagram
 leopold insights                     # summarize the run's events.jsonl
 ```
+
+## Pré-voo do grafo (`leopold graph`)
+
+O comando que você roda antes de confiar em um plano. Ele lê o `.leopold/PLAN.md` e
+monta o mesmo grafo em que o scheduler roteia — tipos de nó (`@gate`, `@human`,
+`@tool`, `@verify`), arestas de dependência `(after:)`, rotas condicionais `@on`,
+sinais `@emit`/`@needs` —, imprime e valida. **Um grafo malformado falha aqui, antes
+do primeiro agente rodar**, com os itens culpados nomeados:
+
+```
+✗ Cycle: item 4 ("Run the migration") -> item 9 ("Roll back") -> item 4 (…). …
+✗ item 7 ("Ship it") routes to item 12, which does not exist (`@on fail`).
+✗ item 5 ("Deploy") needs signal "approved", which no item emits.
+✗ item 8 ("Clean up") is unreachable: no wave and no route can dispatch it.
+```
+
+| Flag | Propósito |
+| --- | --- |
+| *(nenhuma)* | árvore ASCII: uma linha por nó com tipo, checkbox, dependências e sinais; rotas aparecem sob a origem como `→ on <cond> → item N` |
+| `--mermaid` | um bloco `mermaid` — uma forma por tipo de nó, setas pontilhadas rotuladas para as rotas |
+| `--json` | a forma de máquina: `{ plan, nodes, edges, diagnostics }` |
+| `--quiet` | não imprime nada quando está tudo certo — para um pré-voo em script |
+| `--plan CAMINHO` | valida um plano fora do `.leopold/` |
+
+Códigos de saída: `0` grafo sadio, `1` malformado (diagnósticos no stderr), `2` não
+havia plano para ler. Então um gate é só:
+
+```bash
+leopold graph --quiet || exit 1
+```
+
+Um plano que não usa nada da gramática de grafo nunca falha nessa checagem: arestas
+`(after:)` só apontam para itens anteriores, então não podem ciclar, apontar para o
+vazio nem isolar nada.
 
 ## Autenticação
 
