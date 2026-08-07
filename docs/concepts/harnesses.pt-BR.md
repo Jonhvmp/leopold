@@ -200,10 +200,35 @@ leopold run --provider codex       # conduz no Codex
 LEOPOLD_PROVIDER=codex leopold run # o mesmo, pelo ambiente
 ```
 
-A precedência é `--provider` → `LEOPOLD_PROVIDER` → o que estiver instalado → Claude
-Code como desempate. Um nome que o Leopold não reconhece é erro, não fallback
-silencioso — conduzir um run no harness errado por causa de typo não é um modo de
-falha que valha a pena existir.
+A precedência é `--provider` → `LEOPOLD_PROVIDER` → o único harness instalado → **o
+harness de cuja sessão o Leopold foi lançado** → Claude Code como último recurso. Um
+nome que o Leopold não reconhece é erro, não fallback silencioso — conduzir um run no
+harness errado por causa de typo não é um modo de falha que valha a pena existir.
+
+Esse quarto passo existe porque o desempate era o terceiro: numa máquina com os dois, o
+`workflow --run` lançado de uma sessão Codex iniciava o Agent SDK do Claude. Cada CLI
+marca o ambiente do filho — o Codex exporta `CODEX_THREAD_ID` (e `CODEX_CI`), o Claude
+Code exporta `CLAUDECODE` / `CLAUDE_CODE_SESSION_ID` — então o run agora pertence à
+cadeira de onde você o lançou. Sem marcador nenhum, o fallback para Claude é o de sempre.
+
+### Um run, dois harnesses
+
+Um run não precisa escolher um. O `--provider hybrid` atribui um harness **por papel**:
+
+```bash
+leopold workflow --run --provider hybrid \
+  --executor-provider codex \
+  --review-provider claude
+```
+
+`executor` são os workers, `review` são as lentes de review, painéis de hipótese e
+juízes de torneio, `conductor` são as decisões de turno e o roteamento. Um papel sem
+flag herda o default resolvido. O provider de cada agente cai no `.leopold/events.jsonl`
+(`run_start`, `wf_phase`, `wf_agent_start`), porque um run dividido entre dois harnesses
+que não registra qual respondeu é um run que você não consegue depurar.
+
+Um run sem flag de híbrido não gera atribuição de papel nenhuma — que é exatamente por
+que um run single-provider continua byte-idêntico ao que sempre foi.
 
 ## Como o driver alcança cada harness
 

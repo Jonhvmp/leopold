@@ -58,9 +58,58 @@ vazio nem isolar nada.
 
 ## Autenticação
 
-Usa o seu login existente do Claude Code para o worker, o maestro e cada agente de
-painel. **Nenhuma API key é necessária.** `ANTHROPIC_API_KEY` só entra em um
-ambiente headless sem autenticação do Claude Code.
+Usa o seu login existente do harness — Claude Code ou Codex — para o worker, o maestro
+e cada agente de painel. **Nenhuma API key é necessária.** `ANTHROPIC_API_KEY` só entra
+em um ambiente headless sem autenticação do Claude Code.
+
+## Escolhendo o harness
+
+Todo comando que fala com um modelo aceita `--provider claude|codex` — o `run` **e** o
+`workflow --run`. Ordem de resolução:
+
+1. `--provider claude|codex`
+2. `LEOPOLD_PROVIDER`
+3. o único harness instalado, se só houver um
+4. **o harness de cuja sessão o Leopold foi lançado**
+5. Claude Code
+
+O passo 4 é o que importa numa máquina com os dois. Cada CLI marca o ambiente do filho
+— o Codex exporta `CODEX_THREAD_ID` (e `CODEX_CI`), o Claude Code exporta `CLAUDECODE` /
+`CLAUDE_CODE_SESSION_ID` — então um run lançado de uma sessão Codex pertence ao Codex em
+vez de cair no desempate. Sem marcador nenhum, o fallback para Claude é o de sempre.
+
+```bash
+leopold run --provider codex
+leopold workflow --run --provider codex
+LEOPOLD_PROVIDER=codex leopold run
+```
+
+### Híbrido: um harness por papel
+
+Um mesmo run pode executar num harness e revisar no outro:
+
+```bash
+leopold workflow --run --provider hybrid \
+  --executor-provider codex \
+  --review-provider claude
+```
+
+| Papel | Cobre |
+| --- | --- |
+| `executor` | os workers que fazem os itens do plano |
+| `review` | lentes de review, painéis de hipótese, juízes de torneio |
+| `conductor` | decisões de turno e smart routing |
+
+Um papel sem flag herda o default resolvido, então `--provider hybrid` sozinho é todo
+papel no mesmo harness, e não um run meio configurado. O provider de cada agente é
+registrado no `.leopold/events.jsonl` (`run_start`, `wf_phase`, `wf_agent_start`), então
+a trilha de auditoria diz quem rodou o quê em vez de deixar isso para inferência.
+
+Equivalentes em env: `LEOPOLD_EXECUTOR_PROVIDER`, `LEOPOLD_REVIEW_PROVIDER`,
+`LEOPOLD_CONDUCTOR_PROVIDER`. Uma flag ganha da env para o mesmo papel.
+
+Um run sem flag de híbrido não gera atribuição de papel nenhuma — é isso que mantém um
+run single-provider byte-idêntico.
 
 ## Flags
 

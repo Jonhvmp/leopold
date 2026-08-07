@@ -58,9 +58,59 @@ anything.
 
 ## Auth
 
-Uses your existing Claude Code login for the worker, the conductor, and every
-panel agent. **No API key required.** `ANTHROPIC_API_KEY` is only needed in a
-headless environment with no Claude Code auth.
+Uses your existing harness login — Claude Code or Codex — for the worker, the
+conductor, and every panel agent. **No API key required.** `ANTHROPIC_API_KEY` is only
+needed in a headless environment with no Claude Code auth.
+
+## Choosing a harness
+
+Every command that reaches a model takes `--provider claude|codex` — `run` **and**
+`workflow --run`. Resolution order:
+
+1. `--provider claude|codex`
+2. `LEOPOLD_PROVIDER`
+3. the only harness installed, if just one is
+4. **the harness whose session Leopold was launched from**
+5. Claude Code
+
+Step 4 is the one that matters on a machine with both. Each CLI marks its child
+environment — Codex exports `CODEX_THREAD_ID` (and `CODEX_CI`), Claude Code exports
+`CLAUDECODE` / `CLAUDE_CODE_SESSION_ID` — so a run launched from a Codex session
+belongs to Codex instead of falling through to the tie-break. With no marker at all,
+the Claude fallback is unchanged.
+
+```bash
+leopold run --provider codex
+leopold workflow --run --provider codex
+LEOPOLD_PROVIDER=codex leopold run
+```
+
+### Hybrid: a harness per role
+
+One run can execute on one harness and review on the other:
+
+```bash
+leopold workflow --run --provider hybrid \
+  --executor-provider codex \
+  --review-provider claude
+```
+
+| Role | Covers |
+| --- | --- |
+| `executor` | the workers that do the plan items |
+| `review` | review lenses, hypothesis panels, tournament judges |
+| `conductor` | turn decisions and smart routing |
+
+A role left unset inherits the resolved default, so `--provider hybrid` alone is every
+role on the same harness rather than a half-configured run. Every agent's provider is
+recorded in `.leopold/events.jsonl` (`run_start`, `wf_phase`, `wf_agent_start`), so the
+audit trail says who ran what instead of leaving it to be inferred.
+
+Env equivalents: `LEOPOLD_EXECUTOR_PROVIDER`, `LEOPOLD_REVIEW_PROVIDER`,
+`LEOPOLD_CONDUCTOR_PROVIDER`. A flag beats the env for the same role.
+
+A run with no hybrid flags gets no role assignment at all — that is what keeps a
+single-provider run byte-for-byte unchanged.
 
 ## Flags
 

@@ -200,10 +200,35 @@ leopold run --provider codex       # conduct on Codex
 LEOPOLD_PROVIDER=codex leopold run # same, from the environment
 ```
 
-Precedence is `--provider` → `LEOPOLD_PROVIDER` → whatever is installed → Claude Code
-as the tie-break. A name Leopold does not recognize is an error, not a silent
-fallback — conducting a run on the wrong harness because of a typo is not a failure
-mode worth having.
+Precedence is `--provider` → `LEOPOLD_PROVIDER` → the only harness installed → **the
+harness whose session Leopold was launched from** → Claude Code as the last resort. A
+name Leopold does not recognize is an error, not a silent fallback — conducting a run
+on the wrong harness because of a typo is not a failure mode worth having.
+
+That fourth step exists because the tie-break used to be the third: on a machine with
+both, `workflow --run` launched from a Codex session started the Claude Agent SDK. Each
+CLI marks its child environment — Codex exports `CODEX_THREAD_ID` (and `CODEX_CI`),
+Claude Code exports `CLAUDECODE` / `CLAUDE_CODE_SESSION_ID` — so the run now belongs to
+the seat you launched it from. With no marker at all, the Claude fallback is unchanged.
+
+### One run, two harnesses
+
+A run does not have to pick one. `--provider hybrid` assigns a harness **per role**:
+
+```bash
+leopold workflow --run --provider hybrid \
+  --executor-provider codex \
+  --review-provider claude
+```
+
+`executor` is the workers, `review` is the review lenses, hypothesis panels and
+tournament judges, `conductor` is the turn decisions and routing. A role left unset
+inherits the resolved default. Every agent's provider lands in `.leopold/events.jsonl`
+(`run_start`, `wf_phase`, `wf_agent_start`), because a run split across two harnesses
+that does not record which one answered is a run you cannot debug.
+
+A run with no hybrid flags gets no role assignment at all — which is exactly why a
+single-provider run is byte-for-byte what it always was.
 
 ## How the driver reaches each harness
 
