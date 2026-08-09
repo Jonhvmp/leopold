@@ -14,8 +14,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { query, currentProvider, providerForRole, roleProviders } from "./sdk.js";
-import { loadBrief } from "./config.js";
+import { loadBrief, loadConfig } from "./config.js";
 import { compileBrief } from "./compile.js";
+import { preflightOrRepair } from "./repair.js";
 import { executeWorkflow, type AgentOpts } from "./runtime.js";
 import { assetRoot } from "./harness.js";
 import { makeGuard } from "./guard.js";
@@ -88,10 +89,37 @@ export async function runWorkflowCommand(cwd: string, argv: string[]): Promise<n
   try { brief = loadBrief(cwd); }
   catch (e) { console.error(`leopold workflow: ${(e as Error).message}`); return 1; }
 
+  // BOTH ENGINES RESOLVE A BROKEN GRAPH THE SAME WAY. compileBrief raises the
+  // validator's diagnostics as a compile error, which is the workflow's version of the
+  // driver's pre-flight refusal — so the repair has to run in front of it too, through
+  // the same one writer. A valid plan never reaches it: no persona, no model call.
+  const cfg = loadConfig(argv, brief.guardrails);
+  const preflight = await preflightOrRepair(brief, cfg);
+  if (preflight.repair?.ok) {
+    for (const a of preflight.repair.accepted) console.log(`  graph repaired -> item ${a.index}: ${a.line.trim()}`);
+    for (const r of preflight.repair.refused) console.log(`  repair refused [${r.bound}]: ${r.reason}`);
+    console.log(`  the repair is in DECISIONS.md with its Reversal.\n`);
+  }
+  if (!preflight.ok) {
+    console.error(`leopold workflow: cannot compile the plan — its graph is invalid and the repair did not fix it.`);
+    console.error(preflight.report);
+    logEvent(brief.leoDir, {
+      event: "preflight_rejected", mode: "workflow", reason: "invalid_graph",
+      problems: preflight.diagnostics.length,
+      diagnostics: preflight.diagnostics.map((d) => ({ code: d.code, item: d.index, message: d.message })),
+    });
+    return 1;
+  }
+
   const planText = fs.readFileSync(brief.planPath, "utf8");
   let compiled;
   try {
-    compiled = compileBrief({ mission: brief.mission, charter: brief.charter, guardrails: brief.guardrails, planText });
+    // `cfg.autonomy` carries the flag/env override the guardrails file cannot see, so
+    // `--ask` restores the halting @human on this engine exactly as it does on the driver.
+    compiled = compileBrief({
+      mission: brief.mission, charter: brief.charter, guardrails: brief.guardrails, planText,
+      autonomy: cfg.autonomy,
+    });
   } catch (e) {
     console.error(`leopold workflow: cannot compile the plan — ${(e as Error).message}`);
     return 1;

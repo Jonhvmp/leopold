@@ -39,6 +39,17 @@ export interface ConductorVerdict {
   escalationReason?: string;
 }
 
+/** How much judgment the run exercises on its own.
+ *
+ *  `full` (the default): nothing halts for a decision. Work that used to wait for a
+ *  person — a `@human` node above all — is executed under a role Leopold synthesizes,
+ *  and what it decided is recorded. `ask`: the run stops there exactly as it did before
+ *  personas existed, for a plan written against that behavior.
+ *
+ *  It is a posture on DECISIONS, never on ACTIONS: git stays locked under both, and no
+ *  autonomy setting raises a budget, clears the kill switch or edits GUARDRAILS.md. */
+export type Autonomy = "full" | "ask";
+
 /** The brief loaded from .leopold/. */
 export interface Brief {
   mission: string;
@@ -77,6 +88,24 @@ export interface RunState {
    *  a resumed run inherits what it already spent instead of starting over. Absent on
    *  every run that has no feedback node, which is every run written before them. */
   amendments_added?: number;
+  /** True once this run has spent its ONE persona-led change of approach on repeated
+   *  failure (rescue.ts). It is a ceiling, not a budget: nothing raises `max_failures`,
+   *  and a resumed run inherits that the rescue was spent instead of getting a fresh
+   *  one. Absent on every run that never hit the failure ceiling. */
+  failure_rescue_used?: boolean;
+  /** True once this run has spent its ONE persona-led deadlock repair (repair.ts). Like
+   *  the failure rescue it is a ceiling, not a budget: a second deadlock stops the run,
+   *  and a resumed run inherits that the repair was spent. Absent on every run that never
+   *  stranded an item. */
+  deadlock_repair_used?: boolean;
+  /** Per plan item (keyed by its text), how many escalations this RUN has settled with a
+   *  persona. It lives here and not in `processItem` because `processItem` is re-entered
+   *  for EVERY attempt at an item — the serial retry, the parallel re-dispatch, each
+   *  best-of-k round — so a local counter reset itself each time and `MAX_ESCALATIONS_SETTLED`
+   *  silently meant "two per attempt". An item retried three times could have six forks
+   *  decided for it while the CHANGELOG promised a third would stop the run. Absent on
+   *  every run that never settles an escalation. */
+  escalations_settled?: Record<string, number>;
   /** Set when the run stopped at a `@human` node (`stopped_reason: awaiting_human`):
    *  which plan item is waiting on a person, and what it says. Absent otherwise. */
   awaiting_item?: number;
@@ -122,4 +151,8 @@ export interface DriverConfig {
   /** Feed smart_routing's researched file set to the worker as an explicit scope
    *  note instead of the whole repo. No effect unless smartRouting is also on. */
   sliceScope: boolean;
+  /** Judgment posture: `full` (default) executes a `@human` node under a synthesized
+   *  role; `ask` stops the run at it, as it did before personas. Decisions only — the
+   *  git lock, the budgets and the kill switch are identical under both. */
+  autonomy: Autonomy;
 }

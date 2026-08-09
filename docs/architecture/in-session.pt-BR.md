@@ -22,7 +22,7 @@ flowchart TB
     end
     ENDTURN --> STOP{{"Stop hook<br/>stop-continuity.sh"}}
     STOP -- "ainda tem trabalho,<br/>sem condição de parada" --> CONT["bloqueia a parada ·<br/>reinjeta continue"]
-    STOP -- "plano concluído / kill / budget /<br/>próximo é nó @human" --> HALT([permite parar])
+    STOP -- "plano concluído / kill / budget /<br/>próximo é nó @human sob autonomy: ask" --> HALT([permite parar])
     CONT --> Turn
 ```
 
@@ -36,10 +36,13 @@ agente ler o plano, pegar o próximo item, aplicar o protocolo de decisão, loga
 e não perguntar. Cada continuação incrementa um contador de iteração, que
 alimenta a condição de parada por budget.
 
-Um construto do plano muda essa resposta: se o próximo item aberto é um nó
-**`@human`**, ninguém além de você pode fechá-lo, então o hook permite a parada
-com `awaiting_human` e nomeia o item em vez de reinjetar — exatamente o que o
-driver faz ao chegar num nó humano. Veja
+Um construto do plano muda o que essa instrução diz: um nó **`@human`**. Sob a
+postura padrão (`autonomy: full`), ninguém vai vir decidir, então o hook continua
+bloqueando a parada — mas a instrução reinjetada manda o agente sintetizar o papel
+que aquela decisão exige, assumi-lo, fazer o item e registrar a decisão no
+`DECISIONS.md` com uma linha **Reversal**. Sob `autonomy: ask`, o hook permite a
+parada com `awaiting_human` e nomeia o item. Nos dois casos, é exatamente o que o
+driver faz no mesmo nó. Veja
 [Hooks → Tipos de nó](../reference/hooks.pt-BR.md#tipos-de-no).
 
 !!! info "Fail-open por design"

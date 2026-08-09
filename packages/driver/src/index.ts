@@ -50,17 +50,21 @@ Usage:
   leopold-driver update                     reinstall from this package
   leopold-driver run [--provider claude|codex] [--worktree] [--parallel N] [--budget-usd N]
                      [--no-review] [--no-hypotheses] [--smart-routing] [--learn-on-finish]
-                     [--dry-run]             conduct the .leopold run (the SDK driver)
+                     [--autonomy full|ask] [--dry-run]
+                                             conduct the .leopold run (the SDK driver)
   leopold-driver workflow [--print] [--run] [--provider claude|codex|hybrid]
                                             compile the brief into a dynamic workflow
                                             (emit by default; --run executes it, experimental)
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
 'graph' is the pre-flight: it prints the plan as a graph (node kinds, dependency edges,
-conditional @on routes) and validates it — a cycle, a route to an item that does not exist,
-an unreachable item or an unmet @needs exits 1 with the offending items named, before a
-single agent runs. --mermaid emits a fenced diagram, --json the machine form, --plan PATH
-checks a plan outside .leopold/.
+conditional @on routes) and validates it, before a single agent runs. A cycle, a route to an
+item that does not exist, an unreachable item or an unmet @needs is an ERROR: it exits 1 with
+the offending items named and nothing is dispatched. An @on route naming a signal no item
+@emits is a WARNING: the edge can never fire, so it is reported — every time, in both
+spellings — and the run still proceeds, because such a plan ran before this check existed.
+--mermaid emits a fenced diagram, --json the machine form, --plan PATH checks a plan
+outside .leopold/.
 
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
 Newer version: npm i -g leopold-driver@latest.
@@ -96,9 +100,15 @@ the item's real blast radius (always falls back to keywords; never lowers a crit
 amendments at .leopold/CHARTER-amendments.md — it never edits CHARTER.md. Each of these toggles
 can also be set in the brief's GUARDRAILS.md (review / hypotheses / smart_routing /
 learn_on_finish: on|off); a CLI flag or env var overrides the brief.
+--autonomy sets the JUDGMENT posture. The default, full, means nothing halts for a decision:
+a @human node is executed by a role Leopold synthesizes for it from the item + CHARTER.md,
+and the call it made is written to .leopold/DECISIONS.md with a Reversal line. --autonomy ask
+(or "autonomy: ask" in GUARDRAILS.md) restores the old behavior — the run stops at a @human
+node with awaiting_human. It is a posture on decisions only: git stays locked under both, and
+no posture raises a budget, clears .leopold/STOP or edits GUARDRAILS.md.
 Env: LEOPOLD_CONDUCTOR_MODEL, LEOPOLD_WORKER_MODEL, LEOPOLD_MAX_TURNS_PER_ITEM, LEOPOLD_WEBHOOK,
      LEOPOLD_WORKTREE, LEOPOLD_BUDGET_USD, LEOPOLD_REVIEW, LEOPOLD_MAX_REVIEW_ROUNDS,
-     LEOPOLD_HYPOTHESES, LEOPOLD_SMART_ROUTING, LEOPOLD_LEARN_ON_FINISH
+     LEOPOLD_HYPOTHESES, LEOPOLD_SMART_ROUTING, LEOPOLD_LEARN_ON_FINISH, LEOPOLD_AUTONOMY
 `);
 }
 

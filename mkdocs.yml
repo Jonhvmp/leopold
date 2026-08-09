@@ -106,6 +106,7 @@ plugins:
             Claude Code and Codex: Claude Code e Codex
             The Two Phases: As duas fases
             Dynamic Workflows: Workflows dinâmicos
+            Personas: Personas
             The Canvas: O Canvas
             Quality & Orchestration: Qualidade e orquestração
             Decision Protocol: Protocolo de decisão
@@ -147,6 +148,7 @@ nav:
       - Claude Code and Codex: concepts/harnesses.md
       - The Two Phases: concepts/two-phases.md
       - Dynamic Workflows: concepts/dynamic-workflows.md
+      - Personas: concepts/personas.md
       - The Canvas: canvas.md
       - Quality & Orchestration: quality-and-orchestration.md
       - Decision Protocol: decision-protocol.md

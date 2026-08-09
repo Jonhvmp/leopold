@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parsePlan, readyItems } from "../src/plan.ts";
-import { buildGraph, nextNodes, validateGraph } from "../src/graph.ts";
+import { buildGraph, nextNodes, validateGraph, routeDecision } from "../src/graph.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -131,6 +131,8 @@ test("`!=` fires only against a present, different value", () => {
 const FANOUT_PLAN = `# Plan
 
 - [ ] Assess the incident
+      @emit sev=1
+      @emit paged=true
       @on sev=1 -> 4
       @on paged=true -> 3
 - [ ] (after: 1) Write it up later
@@ -182,7 +184,7 @@ const CYCLE_PLAN = `# Plan
       @on fail -> 5
 - [ ] (after: 2) Update the docs
 - [ ] (after: 4) Roll the migration back
-      @on retry -> 3
+      @on fail -> 3
 `;
 
 test("a route cycle is one diagnostic naming every item in the loop", () => {
@@ -201,7 +203,7 @@ test("a route cycle is one diagnostic naming every item in the loop", () => {
 });
 
 test("a self-route is a cycle of one", () => {
-  const d = validate(`- [ ] Build\n- [ ] (after: 1) Retry forever\n      @on again -> 2\n`);
+  const d = validate(`- [ ] Build\n- [ ] (after: 1) Retry forever\n      @on fail -> 2\n`);
   assert.equal(d.length, 1);
   assert.equal(d[0].code, "cycle");
   assert.deepEqual(d[0].items, [2]);
@@ -247,6 +249,54 @@ test("a @needs no item emits is an unmet-need naming the item and the key", () =
   );
 });
 
+test("an @on naming a signal no item emits is an unroutable-signal, not silence", () => {
+  // The hole this closes: `@on migrated=false -> 7` with no `@emit migrated` anywhere.
+  // Only a key an item DECLARES with `@emit` ever reaches the channel (dispatch.ts
+  // refuses the rest), and routeMatches never fires on an absent key — so the edge is
+  // dead and the routing the author wrote quietly does not happen.
+  const d = validate(
+    `- [ ] Run the migration\n      @on migrated=false -> 3\n- [ ] (after: 1) Ship the release\n- [ ] Roll the migration back\n`,
+  );
+  const bad = d.filter((x) => x.code === "unroutable-signal");
+  assert.equal(bad.length, 1, JSON.stringify(d, null, 2));
+  assert.equal(bad[0].index, 1);
+  assert.equal(bad[0].key, "migrated");
+  assert.equal(bad[0].target, 3);
+  assert.equal(
+    bad[0].message,
+    'item 1 ("Run the migration") routes to item 3 on signal "migrated" (`@on migrated=false`),' +
+      " which no item emits — the route can never be taken.",
+  );
+  // The same key emitted upstream clears it — that is SIGNAL_PLAN, which validates clean.
+  assert.deepEqual(validate(SIGNAL_PLAN), []);
+  // `!=` is the same edge with the sense flipped, and just as dead without an emit.
+  assert.deepEqual(
+    validate(`- [ ] Check\n      @on env!=prod -> 3\n- [ ] (after: 1) Deploy\n- [ ] Halt\n`)
+      .map((x) => `${x.code}:${x.index}:${x.key}`),
+    ["unroutable-signal:1:env"],
+  );
+});
+
+test("a status route needs no signal, and a @tool's implicit exit counts as emitted", () => {
+  // `@on fail -> 3` tests the node's OWN outcome word, so there is nothing to emit.
+  assert.deepEqual(validate(`- [ ] Do the thing\n      @on fail -> 3\n- [ ] (after: 1) Next\n- [ ] Recover\n`), []);
+  // A @tool node always reports `exit`, declared or not — emittedKeys says so.
+  assert.deepEqual(
+    validate(`- [ ] @tool npm test\n      @on exit=0 -> 3\n- [ ] (after: 1) Investigate\n- [ ] Ship\n`),
+    [],
+  );
+  // And an emit anywhere in the plan clears it, exactly like unmet-need.
+  assert.deepEqual(
+    validate(`- [ ] Assess\n      @on sev=1 -> 3\n- [ ] (after: 1) Triage\n      @emit sev=2\n- [ ] Escalate\n`),
+    [],
+  );
+});
+
+test("an unroutable @on with a dangling target is reported once, as the dangling edge", () => {
+  const d = validate(`- [ ] Do the thing\n      @on nope=true -> 99\n- [ ] (after: 1) Next\n`);
+  assert.deepEqual(d.map((x) => x.code), ["dangling-edge"]);
+});
+
 test("an item nothing can dispatch is unreachable, and the cause is named separately", () => {
   const d = validate(
     `- [ ] Build the artifact\n- [ ] (after: 1) Deploy to production\n      @needs approved\n- [ ] (after: 2) Verify production\n`,
@@ -279,13 +329,16 @@ test("each defect class produces its own distinct diagnostic in one pass", () =>
       @needs approved
 - [ ] (after: 3) Close out
 - [ ] (after: 1) Watch the loop
-      @on again -> 6
+      @on fail -> 6
 - [ ] (after: 1) Loop back
-      @on again -> 5
+      @on fail -> 5
+- [ ] (after: 1) Wrap up
+      @on ready=true -> 8
+- [ ] (after: 7) Sign off
 `);
   assert.deepEqual(
     d.map((x) => `${x.code}:${x.items.join("+")}`),
-    ["cycle:5+6", "dangling-edge:2", "unmet-need:3", "unreachable:4"],
+    ["cycle:5+6", "dangling-edge:2", "unmet-need:3", "unroutable-signal:7", "unreachable:4"],
   );
   // Deterministic: same graph in, byte-identical diagnostics out.
   assert.deepEqual(validate(`# Plan
@@ -297,9 +350,12 @@ test("each defect class produces its own distinct diagnostic in one pass", () =>
       @needs approved
 - [ ] (after: 3) Close out
 - [ ] (after: 1) Watch the loop
-      @on again -> 6
+      @on fail -> 6
 - [ ] (after: 1) Loop back
-      @on again -> 5
+      @on fail -> 5
+- [ ] (after: 1) Wrap up
+      @on ready=true -> 8
+- [ ] (after: 7) Sign off
 `), d);
 });
 
@@ -320,4 +376,76 @@ test("every existing plan fixture validates clean — no old plan gains a new wa
     const d = validateGraph(buildGraph(parsePlan(fs.readFileSync(path.join(dir, f), "utf8"))));
     assert.deepEqual(d, [], `${f}: ${JSON.stringify(d, null, 2)}`);
   }
+});
+
+// --- both spellings of a dead route, and neither of them fatal -------------------------
+//
+// `@on migrated=false -> 7` was diagnosed and `@on migrated -> 7` was not, though neither
+// edge can ever fire: a bare word only matches an outcome the engine records, and the only
+// words it ever records are `ok` and `fail`. Half the rule is not the rule.
+test("a bare-word route naming a signal nobody emits is diagnosed, like the key=value form", () => {
+  const bare = validate("- [ ] Set up\n- [ ] Run the migration\n      @on migrated -> 3\n- [ ] Ship\n");
+  assert.equal(bare.length, 1, JSON.stringify(bare));
+  assert.equal(bare[0].code, "unroutable-signal");
+  assert.equal(bare[0].key, "migrated");
+  assert.equal(bare[0].target, 3);
+  assert.equal(bare[0].index, 2);
+
+  const pair = validate("- [ ] Set up\n- [ ] Run the migration\n      @on migrated=false -> 3\n- [ ] Ship\n");
+  assert.equal(pair.length, 1, "the key=value spelling was already caught");
+  assert.equal(pair[0].code, bare[0].code, "the same dead edge gets the same verdict either way");
+});
+
+test("an outcome word is never diagnosed, and an emitted key silences both spellings", () => {
+  for (const w of ["ok", "fail", "FAIL"]) {
+    assert.deepEqual(
+      validate(`- [ ] Set up\n- [ ] Migrate\n      @on ${w} -> 3\n- [ ] Ship\n`), [],
+      `@on ${w} tests the node's own outcome and needs no signal`,
+    );
+  }
+  const emitted = "- [ ] Set up\n      @emit migrated=true\n- [ ] Migrate\n      @on migrated -> 3\n- [ ] Ship\n";
+  assert.deepEqual(validate(emitted), [], "the key is emitted upstream, so the route can fire");
+});
+
+// The verdict is NEW, the plans it judges are OLD. A 0.15 brief with a dead route ran —
+// the edge simply never fired — so making this fatal would refuse to dispatch a single
+// item of a plan that worked yesterday, against the promise compile.ts and graph-cmd.ts
+// both state outright. It warns, loudly, and the run proceeds.
+test("an unroutable signal warns without refusing a plan that used to run", () => {
+  const d = validate("- [ ] Set up\n- [ ] Migrate\n      @on migrated -> 3\n- [ ] Ship\n");
+  assert.equal(d[0].severity, "warning");
+  // Every other class stays fatal: those describe a graph that genuinely cannot run.
+  const defects = validate(`# Plan
+
+- [ ] Kick off
+- [ ] (after: 1) Migrate
+      @on fail -> 99
+- [ ] (after: 2) Announce
+      @needs approved
+- [ ] (after: 3) Close out
+- [ ] (after: 1) Watch the loop
+      @on fail -> 6
+- [ ] (after: 1) Loop back
+      @on fail -> 5
+`);
+  const seen = new Set(defects.filter((x) => (x.severity ?? "error") === "error").map((x) => x.code));
+  for (const code of ["cycle", "dangling-edge", "unmet-need", "unreachable"]) {
+    assert.ok(seen.has(code), `${code} must still be reported as a fatal error`);
+  }
+});
+
+// The bare word and the emitted signal used to disagree with each other depending on WHEN
+// you asked: settleNode writes the node's status before the routes are read, so the signal
+// fallback the router documents was reachable only for a node carried over from an earlier
+// session. Same plan, same channel, same answer — with or without a recorded outcome.
+test("a bare-word route on an emitted signal fires whether or not the node recorded an outcome", () => {
+  const g = buildGraph(parsePlan("- [ ] Probe\n      @emit ready=true\n      @on ready -> 3\n- [ ] Middle\n- [ ] Target\n"));
+  const withStatus = routeDecision(g, [1], { signals: { ready: "true" }, status: { 1: "ok" } });
+  const without = routeDecision(g, [1], { signals: { ready: "true" } });
+  assert.deepEqual(withStatus.routed, [3]);
+  assert.deepEqual(withStatus.routed, without.routed, "the route must not depend on when it is evaluated");
+  // And an outcome word still beats the channel: `@on fail` is about the node, not a signal.
+  const failG = buildGraph(parsePlan("- [ ] Probe\n      @on fail -> 3\n- [ ] Middle\n- [ ] Target\n"));
+  assert.deepEqual(routeDecision(failG, [1], { status: { 1: "ok" } }).routed, [], "ok is not fail");
+  assert.deepEqual(routeDecision(failG, [1], { status: { 1: "fail" } }).routed, [3]);
 });

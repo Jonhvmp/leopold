@@ -10,6 +10,8 @@
 import { classifyItem, type Effort } from "./classify.js";
 import { diffIsSensitive } from "./review.js";
 import { buildGraph, validateGraph } from "./graph.js";
+import { autonomyFrom } from "./config.js";
+import type { Autonomy } from "./types.js";
 import { parsePlan, type PlanEmit, type PlanItem, type PlanNodeKind, type PlanRoute } from "./plan.js";
 
 export interface WorkflowItem {
@@ -41,6 +43,11 @@ export interface CompiledWorkflow {
   charter: string;
   maxReviewRounds: number;
   waves: WorkflowItem[][];
+  /** The judgment posture, present ONLY when the brief opted out of the default `full`.
+   *  A `@human` node then halts the workflow run exactly as it always did, instead of
+   *  resolving under a synthesized role. Absent for `full` on purpose: the key that is
+   *  never written is what keeps a plan compiled before this existed byte-identical. */
+  autonomy?: "ask";
   /** The authored graph — present ONLY when the plan declares graph grammar (a node
    *  kind, an `@on` route, an `@emit` or a `@needs`). Its absence is what keeps a plan
    *  written before this grammar existed compiling to a byte-identical payload, and it
@@ -92,15 +99,31 @@ function intFrom(text: string, key: string, fallback: number): number {
  *  (`(after:)` edges only ever point backward, so they cannot cycle, dangle or strand
  *  anything), so this gate is new safety for the new grammar, never a new way for an
  *  old plan to fail. */
-export function compileBrief(brief: { mission: string; charter: string; guardrails?: string; planText: string }): CompiledWorkflow {
+export function compileBrief(brief: {
+  mission: string;
+  charter: string;
+  guardrails?: string;
+  planText: string;
+  /** The posture the CLI resolved (flag > env > GUARDRAILS). Omitted, it is read from
+   *  GUARDRAILS.md here, so `--print` and a live run agree. */
+  autonomy?: Autonomy;
+}): CompiledWorkflow {
   const items = parsePlan(brief.planText);
   if (items.length === 0) throw new Error("PLAN.md has no checkbox items to compile.");
 
   const diagnostics = validateGraph(buildGraph(items));
-  if (diagnostics.length > 0) {
+  // Only an error refuses the compile. A warning (a route naming a signal nobody emits)
+  // describes a graph that runs — just not the way its author wrote it — so it is said
+  // plainly and the plan still compiles, rather than a plan that worked under 0.15
+  // suddenly dispatching nothing at all.
+  const blocking = diagnostics.filter((d) => (d.severity ?? "error") === "error");
+  if (blocking.length > 0) {
     throw new Error(
-      `PLAN.md declares an invalid graph, so nothing was dispatched:\n${diagnostics.map((d) => `  - ${d.message}`).join("\n")}`,
+      `PLAN.md declares an invalid graph, so nothing was dispatched:\n${blocking.map((d) => `  - ${d.message}`).join("\n")}`,
     );
+  }
+  for (const d of diagnostics) {
+    if ((d.severity ?? "error") === "warning") console.warn(`  ⚠ ${d.message}`);
   }
 
   const classify = (pi: PlanItem): WorkflowItem => {
@@ -121,6 +144,12 @@ export function compileBrief(brief: { mission: string; charter: string; guardrai
     maxReviewRounds: intFrom(brief.guardrails ?? "", "max_review_rounds", 2),
     waves,
   };
+
+  // `ask` travels to the workflow engine; `full` is the default on both sides and is
+  // never written, so a brief that says nothing about autonomy compiles to the payload
+  // it always compiled to.
+  const autonomy = brief.autonomy ?? autonomyFrom(brief.guardrails ?? "") ?? "full";
+  if (autonomy === "ask") compiled.autonomy = "ask";
 
   // The graph rides ALONGSIDE the waves rather than replacing them: a routed plan still
   // compiles to a valid wave payload, so an older copy of the script keeps running it.

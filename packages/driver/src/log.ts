@@ -3,6 +3,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { personaDecisionFields, DEFAULT_REVERSAL, DEFAULT_WHY } from "./persona.js";
+import type { DecisionContext, Persona, PersonaDecision } from "./persona.js";
 import type { WorkerStatus, ConductorVerdict } from "./types.js";
 
 export function logEvent(leoDir: string, event: Record<string, unknown>): void {
@@ -46,6 +48,53 @@ export function logDecision(
       ["Decision", v.reply ?? "(finish item)"],
       ["Why", v.logWhy ?? ""],
       ["Reversal", v.reversal ?? ""],
+    ],
+  );
+}
+
+/** What bound the role that decided, for the trail's `Charter:` line — the count is what
+ *  an auditor checks first ("was it bound at all?"), the first rule is what they read. */
+function charterBasisOf(persona?: Persona): string {
+  if (!persona) return "no persona was synthesized; the default worker rules applied";
+  const n = persona.constraints.length;
+  if (n === 0) return `no binding rule found in CHARTER.md — ${persona.role} decided on the mission alone`;
+  return `${n} charter rule(s) bind ${persona.role}; first: ${persona.constraints[0]}`;
+}
+
+/** Write a PERSONA's decision to the trail, through the same one writer the conductor's
+ *  calls go through — same six fields, same numbering, so an auditor reading DECISIONS.md
+ *  cannot tell which engine wrote an entry, only who decided and why.
+ *
+ *  THIS IS THE ONLY WAY A PERSONA PATH LEAVES A TRAIL, and every one of the four goes
+ *  through it: `@human` (loop.ts), escalation (loop.ts), graph and deadlock repair
+ *  (repair.ts), repeated failure (rescue.ts). A second writer is how two shapes of entry
+ *  end up in one file, so there is not one.
+ *
+ *  SIX FIELDS, ALWAYS, AND NONE OF THEM BLANK. `ctx` carries the fork and the work so an
+ *  entry stays whole even when synthesis produced no role (it is best-effort by design):
+ *  Persona falls back to `NO_PERSONA`, Why to `DEFAULT_WHY`, Reversal to
+ *  `DEFAULT_REVERSAL`. An autonomous call with no way back — or with no record of what it
+ *  was even deciding — is the failure mode this whole capability sits one step away
+ *  from. */
+export function logPersonaDecision(
+  leoDir: string,
+  iteration: number,
+  persona: Persona | undefined,
+  d: PersonaDecision,
+  ctx?: DecisionContext,
+): void {
+  decisionCounter += 1;
+  const title = persona ? `${persona.name} decided: ${persona.role}` : "Leopold decided (no persona synthesized)";
+  appendDecisionBlock(
+    leoDir,
+    `D${decisionCounter} — ${title}   (turn ${iteration}, ${new Date().toISOString()})`,
+    [
+      ...personaDecisionFields(persona, ctx),
+      ["Class", "n/a"],
+      ["Charter", charterBasisOf(persona)],
+      ["Decision", d.decision],
+      ["Why", d.why || DEFAULT_WHY],
+      ["Reversal", d.reversal || DEFAULT_REVERSAL],
     ],
   );
 }

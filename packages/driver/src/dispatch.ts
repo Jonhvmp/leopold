@@ -75,6 +75,15 @@ export interface Dispatch {
   bypassed: number[];
 }
 
+/** Optional overrides for ONE dispatch question. */
+export interface DispatchOptions {
+  /** Signals to answer WITH, on top of the channel as it stands — never written. The
+   *  deadlock repair asks "would the run be unstuck if this were decided?" before it
+   *  decides anything, and this is how it asks without touching the channel. Absent on
+   *  every ordinary dispatch, which then reads exactly the channel it always read. */
+  signals?: Record<string, string>;
+}
+
 /** What runs next. Reads the channel (a file) and the plan; decides nothing itself —
  *  `routeDecision` is the pure function, this only feeds it. */
 export function dispatchPlan(
@@ -82,9 +91,13 @@ export function dispatchPlan(
   items: PlanItem[],
   routing: RunRouting,
   inFlight: Set<number> = new Set(),
+  opts: DispatchOptions = {},
 ): Dispatch {
   const graph = buildGraph(items);
-  const state: GraphState = { signals: readSignals(leoDir), status: routing.status };
+  const state: GraphState = {
+    signals: { ...readSignals(leoDir), ...(opts.signals ?? {}) },
+    status: routing.status,
+  };
   const d = routeDecision(graph, routing.settled, state, latchOf(routing));
   const byIndex = new Map(items.map((i) => [i.index, i]));
   const routed = new Set(d.routed);

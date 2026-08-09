@@ -112,6 +112,7 @@ Toda decisão não mecânica é anexada ao `DECISIONS.md`:
 
 ```
 ## D<N> — <one-line title>          (turn <iteration>, <timestamp>)
+Persona:     <o papel que o Leopold assumiu pra decidir — só quando ele sintetizou um>
 Fork:        <the choice that came up>
 Class:       reversible | irreversible
 Charter:     <what the charter said, or "silent">
@@ -123,6 +124,48 @@ Reversal:    <how to undo this if the human disagrees>
 A linha `Reversal` é a que mais importa: ela é a saída de emergência do humano. Se você
 não consegue escrever uma linha de reversão crível, a decisão provavelmente é irreversível
 e você deveria reconferir o teste central.
+
+`Persona:` aparece quando a run chegou num trabalho que antes esperava por uma pessoa —
+um nó `@human`, uma escalação, um reparo de plano, a terceira falha do mesmo tipo — e o
+Leopold sintetizou o papel que aquele trabalho exigia em vez de parar. A entrada então
+diz quem decidiu, de qual ponto de parada ela veio e quais regras do charter prendiam
+esse papel. Quando nenhum papel pôde ser sintetizado, a linha continua lá dizendo isso:
+uma decisão autônoma sem registro de quem a tomou não é auditável. Todos esses caminhos
+escrevem pelo mesmo escritor único, então uma decisão de persona, uma decisão do conductor
+e um steer do canvas têm todos a mesma forma no arquivo.
+
+---
+
+## "O que eu decidi por você"
+
+Uma trilha que ninguém abre não é uma trilha, então a run não espera você abrir. Toda
+run termina com as decisões que ela tomou no seu lugar, da mais arriscada primeiro:
+
+```
+What I decided for you (3 calls, riskiest first):
+  1. [escalation] Nadia Ferro — Data Engineer (D7): run the production migration in two reversible halves
+     Reversal: run migrations/002_down.sql
+  2. [human] Rui Salgado — Release Engineer (D4): approve the cutover behind a flag, staged only
+     Reversal: flip cutover_enabled back to false in config/flags.yml
+  3. [repeated-failure] Ana Reis — Build Engineer (D9): split the suite and run the slow half serially
+     Reversal: revert the Makefile change
+The full trail — charter basis and why — is in .leopold/DECISIONS.md.
+```
+
+Isso aparece no relatório final e na notificação (terminal, e no corpo do webhook se
+você configurou um), nos dois motores: `/leopold-run` e `/leopold-workflow` leem as
+mesmas entradas e as ordenam do mesmo jeito.
+
+**Risco é ordenação, não veredito.** A ordem vem do ponto de parada em que a decisão
+surgiu — uma escalação vem antes de um nó `@human`, que vem antes de um reparo de plano,
+que vem antes de um resgate por falha repetida — e sobe quando nenhum papel pôde ser
+sintetizado, quando o assunto é pesado (produção, dados, qualquer coisa que sai pra
+fora) ou quando o papel não declarou uma reversão própria e ficou com a padrão. Nada é
+escondido: passando de cinco decisões, o resto é contado, e o `DECISIONS.md` está a uma
+linha de distância.
+
+Uma run que não decidiu nada no seu lugar não imprime nada aqui — o relatório é o mesmo
+de sempre.
 
 ---
 

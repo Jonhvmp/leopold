@@ -21,13 +21,15 @@
 > The plan is a GRAPH, and everything past this point is optional — a plan that uses
 > none of it runs exactly as it always has. An item may declare a node kind
 > (`@gate` / `@verify` review the diff without editing it, `@tool` IS a shell command
-> the driver runs with no model turn, `@human` stops the run for a person,
+> the driver runs with no model turn, `@human` is decided by a role the run synthesizes
+> for it — set `autonomy: ask` in GUARDRAILS.md to have it stop for a person instead —,
 > `@feedback` lets the run propose at most 3 appended follow-ups), emit and require
 > routing signals (`@emit key=value`, `@needs key`), and route on what happened
 > (`@on fail -> 5`, `@on exit!=0 -> 5`). The repo is the truth of what was BUILT; the
 > signal channel is the truth of what was DECIDED — never put work product in it.
 > Run `leopold graph` to print and validate the graph before trusting it; it names a
-> dangling route, a cycle or an unreachable item before a single agent runs. Full
+> dangling route, a cycle, an unreachable item or an `@on` routing on a signal no item
+> emits, before a single agent runs. Full
 > grammar: docs/reference/plan-grammar.md.
 
 - [ ] Add a `--json` flag to the CLI — done when: `mycli --json` emits valid JSON

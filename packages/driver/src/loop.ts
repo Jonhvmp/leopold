@@ -10,8 +10,8 @@ import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { loadBrief, initState, writeState, killSwitch, loadConfig, clearRunTokens, readAmendmentsAdded, briefDigest } from "./config.js";
 import { runItem } from "./worker.js";
-import { decide } from "./conductor.js";
-import { logEvent, logDecision, openItems, nextOpenItem } from "./log.js";
+import { decide, resolveEscalation, type EscalationResolution } from "./conductor.js";
+import { logEvent, logDecision, logPersonaDecision, openItems, nextOpenItem } from "./log.js";
 import { notify } from "./notify.js";
 import { createWorktree, cleanupWorktree, type Worktree } from "./worktree.js";
 import { reapOrphan } from "./reaper.js";
@@ -26,16 +26,25 @@ import {
   forgedCheckboxes, restoreCheckboxes, type PlanEmit, type PlanItem, type PlanNodeKind,
 } from "./plan.js";
 import { dispatchPlan, newRouting, settleNode, type RunRouting } from "./dispatch.js";
-import { preflightPlan } from "./graph-cmd.js";
+import {
+  preflightOrRepair, repairDeadlock, strandsOf, renderDeadlockAttempt,
+  type DeadlockRepair, type Strand,
+} from "./repair.js";
+import { readSignals } from "./bus.js";
 import type { GraphDiagnostic } from "./graph.js";
 import { drainCommands } from "./commands.js";
 import { headSha, diffAgainst, applyStaged, snapshotTree, restoreTree, stageAll, treeStateSignature } from "./git.js";
 import { bashDenial } from "./guard.js";
 import {
-  isReviewOnly, isTool, isFeedback, isReadOnlyNode, haltsRun, toolCommand,
+  isReviewOnly, isTool, isFeedback, isReadOnlyNode, isHuman, haltsRun, toolCommand,
   reviewNodeAppend, buildReviewNodePrompt, feedbackNodeAppend, buildFeedbackPrompt,
+  buildHumanNodePrompt,
   TOOL_EXIT_SIGNAL, TOOL_TIMEOUT_EXIT, TOOL_TIMEOUT_MS,
 } from "./kinds.js";
+import {
+  synthesizePersona, personaAppend, parseDecisionBlock, DEFAULT_REVERSAL, type Persona,
+} from "./persona.js";
+import { rescueRepeatedFailure } from "./rescue.js";
 import { parseAmendments, applyAmendments, MAX_ADDED_ITEMS, type AmendProposal } from "./amend.js";
 import { runTournament, type RunAttempt } from "./tournament.js";
 import { currentProvider } from "./sdk.js";
@@ -119,6 +128,36 @@ async function leadForRetry(
   console.log(lead
     ? `  panel -> survivor (${panel.survivor?.angle}, ${panel.survivor?.confidence}/10): ${panel.survivor?.theory}`
     : `  panel -> no hypothesis survived refutation (${panel.considered} considered)`);
+  return lead;
+}
+
+/** The item a scheduler last failed on, and what that attempt reported. Both schedulers
+ *  keep one so the failure ceiling has something concrete to change the approach ON. */
+interface LastFailed { index: number; text: string; detail: string; }
+
+/** The run is at its failure ceiling. Instead of giving up, spend the run's ONE
+ *  persona-led change of approach (rescue.ts): run the root-cause panel over the failure
+ *  evidence, hand its surviving hypothesis to a role synthesized from that failure, and
+ *  return the lead the last attempt runs under.
+ *
+ *  `null` = stop with `repeated_failure`, exactly as before: the rescue was already spent,
+ *  nothing has failed yet to change the approach on, or no different approach could be
+ *  decided. Nothing here raises `max_failures` or any other budget — the attempt it buys
+ *  is one, and it is charged as an iteration like every other.
+ *
+ *  ONE HELPER FOR BOTH SCHEDULERS, so the serial loop and the parallel wave cannot end up
+ *  granting different numbers of last chances. */
+async function rescueLead(
+  brief: Brief, cfg: DriverConfig, state: RunState, failed: LastFailed | null, cwd: string,
+): Promise<string | null> {
+  if (!failed || state.failure_rescue_used) return null;
+  console.log(`\n--- ${failed.text}  [last attempt] ---\n` +
+    `  ${state.consecutive_failures} consecutive failures — the ceiling is ${state.max_failures}. Deciding a different approach instead of stopping.`);
+  const panelLead = await leadForRetry(brief, cfg, failed.text, cwd, failed.detail);
+  const lead = await rescueRepeatedFailure(brief, cfg, state, {
+    item: failed.text, failureContext: failed.detail, failures: state.consecutive_failures, panelLead,
+  });
+  writeState(brief.leoDir, state); // the rescue is spent on disk before the attempt runs
   return lead;
 }
 
@@ -254,6 +293,63 @@ function applyProposals(
   for (const x of r.refused) console.log(`  amendment refused [${x.bound}]: ${x.reason}`);
 }
 
+/** How many escalations one item may have SETTLED by a role before the run gives up on
+ *  it. Two, not unlimited: a fork settled and then escalated again twice over is an item
+ *  the run genuinely cannot make progress on, and burning the budget re-deciding it is
+ *  the runaway loop this product exists to not be. It is a ceiling on repetition, never
+ *  a judgment call — the first escalation of an item always gets settled. */
+export const MAX_ESCALATIONS_SETTLED = 2;
+
+/** Settle a fork the worker escalated, instead of ending the run over it.
+ *
+ *  Synthesize the ROLE this fork needs (persona.ts), let that role decide it against the
+ *  charter (conductor.ts), RECORD the call with its persona, fork, charter basis and
+ *  Reversal, and hand the worker the instruction that unblocks it. The decision entry is
+ *  not bookkeeping around the feature — it IS the feature: an autonomous call that leaves
+ *  no trail is the one failure mode this path sits a step away from.
+ *
+ *  `undefined` means the fork could not be settled (synthesis and resolution are both
+ *  best-effort), and the caller then escalates exactly as it did before personas. */
+async function settleEscalation(
+  brief: Brief, cfg: DriverConfig, state: RunState, recent: string[],
+  item: string, status: WorkerStatus, why: string,
+): Promise<EscalationResolution | undefined> {
+  const fork = status.decisionNeeded ?? status.summary;
+  const persona = await synthesizePersona(cfg, brief, {
+    fork: "escalation", item,
+    detail: `${fork}${why ? `\nThe conductor escalated it because: ${why}` : ""}`,
+  });
+  logEvent(brief.leoDir, {
+    event: "persona", fork: "escalation", item, synthesized: persona !== undefined,
+    name: persona?.name ?? null, role: persona?.role ?? null, role_key: persona?.roleKey ?? null,
+    constraints: persona?.constraints.length ?? 0,
+  });
+  console.log(persona
+    ? `  escalation -> ${persona.name}, ${persona.role} takes it — bound by ${persona.constraints.length} charter rule(s).`
+    : `  escalation -> no role synthesized; Leopold settles it on the charter alone.`);
+
+  const settled = await resolveEscalation(cfg, brief, status, why, persona);
+  if (!settled) {
+    // Never silent: the run is about to stop, and the log says it stopped because the
+    // fork would not settle, not because nobody tried.
+    logEvent(brief.leoDir, { event: "escalation_unsettled", item, fork, persona: persona?.name ?? null });
+    console.log(`  escalation -> could not be settled; handing it to you.`);
+    return undefined;
+  }
+
+  logPersonaDecision(brief.leoDir, state.iteration, persona, settled, { fork: "escalation", item });
+  logEvent(brief.leoDir, {
+    event: "persona_decision", fork: "escalation", item,
+    persona: persona?.name ?? null, role: persona?.role ?? null,
+    decision: settled.decision, reversal: settled.reversal,
+  });
+  // The conductor sees this in `recent` on the worker's next turn, so it cannot settle
+  // the same fork the other way two turns later.
+  recent.push(`${persona ? `${persona.name} (${persona.role})` : "Leopold"} settled an escalation: ${settled.decision}`);
+  console.log(`  decided: ${settled.decision}\n  reversal: ${settled.reversal}`);
+  return settled;
+}
+
 /** Run one plan item to completion in `cwd`: classify → conduct → review gate.
  *  Shared by the serial loop and the parallel scheduler. Exported for the loop
  *  integration test (driven with an injected fake SDK, zero model calls).
@@ -263,23 +359,29 @@ function applyProposals(
  *  edit (and skips the review gate — reviewing a review is theatre); a `feedback` node
  *  runs the same read-only session over the RUN and returns the amendments it proposes,
  *  for the scheduler to judge; a `work` node is everything this function did before.
- *  `human` never reaches here: both schedulers stop the run before dispatching one. */
+ *
+ *  A `human` node is the fifth: the plan asked a person, nobody is coming, so the role
+ *  that decision needs is SYNTHESIZED (persona.ts) and the item runs under it, with the
+ *  call it made written to DECISIONS.md. It only reaches here under the default
+ *  `autonomy: full`; under `ask` both schedulers stop the run before dispatching one. */
 export async function processItem(
   brief: Brief, cfg: DriverConfig, state: RunState, recent: string[],
   item: string, scenarios: string[], cwd: string, lead?: string, steer?: string,
   emits: PlanEmit[] = [], node: NodeSpec = { kind: "work" },
 ): Promise<ItemOutcome> {
   const kind = node.kind;
-  if (haltsRun(kind)) {
-    // Defensive: the schedulers stop before dispatching a @human node, so reaching
-    // here means a caller bypassed them. Do nothing rather than spend a turn on an
-    // item only a person may close.
+  if (haltsRun(kind, cfg.autonomy)) {
+    // Defensive, and only reachable under `autonomy: ask`: the schedulers stop before
+    // dispatching a @human node in that posture, so reaching here means a caller
+    // bypassed them. Do nothing rather than spend a turn on an item the run was
+    // explicitly told a person closes.
     logEvent(brief.leoDir, { event: "awaiting_human", item, dispatched: false });
     return { done: false, escalated: false, detail: "a @human node: a person decides this item" };
   }
   if (isTool(kind)) return runToolNode(brief, state, item, cwd);
   const readOnly = isReadOnlyNode(kind);
   const feedback = isFeedback(kind);
+  const human = isHuman(kind);
 
   const klass = cfg.smartRouting
     ? await smartRoute(cfg, brief, item, cwd)
@@ -289,7 +391,28 @@ export async function processItem(
     critical: klass.critical, routed: cfg.smartRouting, reason: klass.reason,
     scenarios: scenarios.length, ...(readOnly ? { kind } : {}),
   });
-  console.log(`\n--- ${item}  [${readOnly ? `${kind}, ` : ""}effort=${klass.effort}${klass.critical ? ", critical" : ""}${cfg.smartRouting ? ", smart-routed" : ""}${scenarios.length ? `, ${scenarios.length} scenario(s)` : ""}] ---`);
+  console.log(`\n--- ${item}  [${readOnly || human ? `${kind}, ` : ""}effort=${klass.effort}${klass.critical ? ", critical" : ""}${cfg.smartRouting ? ", smart-routed" : ""}${scenarios.length ? `, ${scenarios.length} scenario(s)` : ""}] ---`);
+
+  // A @human node: the plan asked a person, and nobody is coming. Synthesize the ROLE
+  // this decision needs and run the item under it. Best-effort by construction —
+  // synthesis returns undefined on any failure and the item then runs under the default
+  // worker prompt, because a run must never die over who it could not decide it was.
+  const persona: Persona | undefined = human
+    ? await synthesizePersona(cfg, brief, {
+        fork: "human", item,
+        detail: node.label ? `The plan labelled this decision "${node.label}".` : undefined,
+      })
+    : undefined;
+  if (human) {
+    logEvent(brief.leoDir, {
+      event: "persona", fork: "human", item, synthesized: persona !== undefined,
+      name: persona?.name ?? null, role: persona?.role ?? null, role_key: persona?.roleKey ?? null,
+      constraints: persona?.constraints.length ?? 0,
+    });
+    console.log(persona
+      ? `  persona -> ${persona.name}, ${persona.role} — bound by ${persona.constraints.length} charter rule(s).`
+      : `  persona -> not synthesized; the item runs under the default worker prompt.`);
+  }
 
   // Slice-scoped context (opt-in): when routing researched the item's files, point
   // the worker at that slice instead of the whole repo. Off / no file set = unchanged.
@@ -298,7 +421,9 @@ export async function processItem(
     ? buildFeedbackPrompt(item, scenarios, steer, signalsBlock(emits))
     : readOnly
       ? buildReviewNodePrompt(kind, item, scenarios, steer, signalsBlock(emits))
-      : buildWorkerPrompt(item, scenarios, lead, steer, scope, emits);
+      : human
+        ? buildHumanNodePrompt(item, scenarios, steer, signalsBlock(emits))
+        : buildWorkerPrompt(item, scenarios, lead, steer, scope, emits);
   // A review-only node must leave the tree exactly as it found it. The editing tools
   // are denied twice over (session + guard), and this is the receipt: if the tree moved
   // anyway — a Bash redirect, say — the run SAYS SO instead of passing a silent edit off
@@ -328,7 +453,8 @@ export async function processItem(
   // settleNode decides what the plan actually lets this node put on the channel.
   const reported: Record<string, string> = {};
   // A feedback node's raw turns, kept whole: its `leopold-amend` block lives OUTSIDE
-  // the status block, so the parsed status is not enough to read its proposals.
+  // the status block, so the parsed status is not enough to read its proposals. A
+  // @human node's `leopold-decision` block is outside it for the same reason.
   let amendText = "";
 
   await runItem({
@@ -339,6 +465,9 @@ export async function processItem(
           systemAppend: feedback ? feedbackNodeAppend(node.label ?? "") : reviewNodeAppend(kind, node.label ?? ""),
         }
       : {}),
+    // The synthesized role, appended to the session's system prompt. Absent for every
+    // node that reached no persona path, which leaves that prompt byte-identical.
+    ...(persona ? { personaAppend: personaAppend(persona) } : {}),
     onBlock: (tool, reason) => logEvent(brief.leoDir, { event: "guard_block", tool, reason }),
     onCost: (usd) => {
       state.spent_usd = (state.spent_usd ?? 0) + usd;
@@ -347,7 +476,7 @@ export async function processItem(
     onTurn: async (status: WorkerStatus, text: string): Promise<string | null> => {
       lastSummary = `${status.kind}: ${status.summary}${status.evidence ? `\nEVIDENCE: ${status.evidence}` : ""}`.slice(0, 800);
       if (status.signals) Object.assign(reported, status.signals);
-      if (feedback) amendText += text;
+      if (feedback || human) amendText += text;
       logEvent(brief.leoDir, { event: "worker_turn", kind: status.kind, item: status.item || item });
 
       // A review-only node's verdict IS the answer — there is nothing for the conductor
@@ -393,8 +522,25 @@ export async function processItem(
         return null;
       }
       if (verdict.action === "escalate") {
+        // NOTHING HALTS. The conductor could not settle this fork from the charter — so
+        // the run works out WHO could, that role settles it, the decision is recorded
+        // with its Reversal, and the worker is told what to do. `autonomy: ask` keeps the
+        // old behavior exactly: the run escalates and stops, for a plan written against
+        // it. The trust boundary is untouched either way — a role decides, and the guard
+        // still denies the commit and the push that would execute the decision.
+        const why = verdict.escalationReason ?? "";
+        // Counted on the RUN, per item — never in a local. `processItem` is re-entered for
+        // every attempt (serial retry, parallel re-dispatch, each best-of-k round), so a
+        // local counter started over each time and the "two settled escalations, then the
+        // run stops" ceiling quietly became two PER ATTEMPT.
+        const settledSoFar = state.escalations_settled?.[item] ?? 0;
+        if (cfg.autonomy !== "ask" && settledSoFar < MAX_ESCALATIONS_SETTLED) {
+          state.escalations_settled = { ...(state.escalations_settled ?? {}), [item]: settledSoFar + 1 };
+          const settled = await settleEscalation(brief, cfg, state, recent, item, status, why);
+          if (settled) return settled.reply;
+        }
         escalated = true;
-        escalation = { item, question: status.decisionNeeded ?? status.summary, why: verdict.escalationReason ?? "" };
+        escalation = { item, question: status.decisionNeeded ?? status.summary, why };
         return null;
       }
       console.log(`  conductor -> ${verdict.reply}`);
@@ -426,6 +572,23 @@ export async function processItem(
         console.warn(`  ⚠ it moved the checkbox of item ${restored.join(", ")}, which it never ran — restored from the driver's own record.`);
       }
     }
+  }
+
+  // A @human node decided something a person was asked to decide. RECORD IT — persona,
+  // fork, charter basis, the call and how to undo it — through the one DECISIONS.md
+  // writer. This is not optional bookkeeping: an autonomous call that leaves no trail is
+  // the failure mode this whole path sits one step away from, so the entry is written
+  // whether the node closed the item or not, and its Reversal is never empty.
+  if (human) {
+    const d = parseDecisionBlock(amendText, lastSummary || item)
+      ?? { decision: item, why: "", reversal: DEFAULT_REVERSAL };
+    logPersonaDecision(brief.leoDir, state.iteration, persona, d, { fork: "human", item });
+    logEvent(brief.leoDir, {
+      event: "persona_decision", fork: "human", item, done: itemDone,
+      persona: persona?.name ?? null, role: persona?.role ?? null,
+      decision: d.decision, reversal: d.reversal,
+    });
+    console.log(`  decided: ${d.decision}\n  reversal: ${d.reversal}`);
   }
 
   // What the feedback node PROPOSED. Parsed here (this is where its turns are), judged
@@ -482,13 +645,14 @@ async function runItemOrTournament(
   return { done: true, escalated: false };
 }
 
-/** A `@human` node is where the run hands the seat back. It stops BEFORE dispatching
- *  anything for that item — no agent, no tokens — names the item, and stages everything
- *  so whoever picks it up finds a reviewable index. Staging is all it touches: the
- *  human still commits. Returns the message to notify with.
+/** UNDER `autonomy: ask` ONLY. A `@human` node is where the run hands the seat back:
+ *  it stops BEFORE dispatching anything for that item — no agent, no tokens — names the
+ *  item, and stages everything so whoever picks it up finds a reviewable index. Staging
+ *  is all it touches: the human still commits. Returns the message to notify with.
  *
- *  This mirrors hooks/stop-continuity.sh exactly (same `awaiting_human` stop reason,
- *  same event), so a plan means the same thing on the in-session engine and here. */
+ *  This mirrors hooks/stop-continuity.sh (same `awaiting_human` stop reason, same event),
+ *  so a plan means the same thing on the in-session engine and here — under BOTH
+ *  postures, which is why the hook learns `autonomy` alongside this. */
 function haltForHuman(brief: Brief, state: RunState, node: PlanItem, cwd: string): string {
   const staged = stageAll(cwd).ok;
   if (cwd !== brief.root) stageAll(brief.root);
@@ -536,13 +700,26 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   // one writer, so the pre-flight a human runs and the one the driver runs cannot
   // disagree. A plan with no graph grammar cannot produce a diagnostic, so this is
   // silent on every plan written before the grammar existed.
-  const preflight = preflightPlan(brief.planPath);
+  //
+  // …unless the run is autonomous, in which case a malformed graph is a DECISION before
+  // it is a dead end: a plan engineer is synthesized, proposes the narrowest repair
+  // (retarget a declared route, append an item) through the bounds amend.ts already
+  // enforces, and the run starts on the repaired plan. A repair that does not produce a
+  // valid graph writes nothing and the run refuses exactly as it did, printing the
+  // diagnostics AND what the repair attempted.
+  const preflight = await preflightOrRepair(brief, cfg);
+  if (preflight.repair?.ok) {
+    for (const a of preflight.repair.accepted) console.log(`  graph repaired -> item ${a.index}: ${a.line.trim()}`);
+    for (const r of preflight.repair.refused) console.log(`  repair refused [${r.bound}]: ${r.reason}`);
+    console.log(`  the repair is in DECISIONS.md with its Reversal; \`leopold graph\` now validates.\n`);
+  }
   if (!preflight.ok) {
     console.error(preflight.report);
     logEvent(brief.leoDir, {
       event: "preflight_rejected",
       reason: "invalid_graph",
       problems: preflight.diagnostics.length,
+      repaired: preflight.repair ? false : null,
       diagnostics: preflight.diagnostics.map((d) => ({ code: d.code, item: d.index, items: d.items, message: d.message })),
     });
     throw new InvalidPlanGraphError(preflight.diagnostics);
@@ -572,6 +749,12 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   }
 
   const state = initState(brief);
+  // Charge the pre-flight graph repair to the run-wide amendment purse. It runs BEFORE
+  // state exists, so it reads its budget off disk and the spend is folded in here — one
+  // writer for state.json, and no path that changes the plan without paying for it.
+  if (preflight.repair?.ok && preflight.repair.accepted.length) {
+    state.amendments_added = (state.amendments_added ?? 0) + preflight.repair.accepted.length;
+  }
   state.budget_usd = cfg.budgetUsd;
   state.spent_usd = 0;
   if (worktree) {
@@ -612,7 +795,11 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   // --- Serial loop -----------------------------------------------------------
   // When an item is retried after a failure, the root-cause panel investigates
   // first and hands the next attempt a concrete lead instead of "try again".
-  let lastFailed: { index: number; detail: string } | null = null;
+  let lastFailed: LastFailed | null = null;
+  // The lead the run's ONE persona-led last attempt runs under, decided at the failure
+  // ceiling and consumed by the very next dispatch. Null on every run that never reaches
+  // the ceiling, which is every run that finishes.
+  let pendingRescue: string | null = null;
   // Pre-first-attempt tree snapshot for the literal fresh restart (R2). Captured
   // before an item's first attempt in an isolated run; restored on a retry.
   let snapshot: { index: number; patch: string } | null = null;
@@ -634,9 +821,15 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
       return;
     }
     if (state.consecutive_failures >= state.max_failures) {
-      stop("repeated_failure");
-      await notify(brief.leoDir, cfg.webhookUrl, "Leopold needs you", "Too many consecutive failures; stopping.");
-      return;
+      // The ceiling is not a budget — it is the run running out of ideas, and that is a
+      // decision a role can make. Spend the run's single change of approach; only when
+      // there is none to be had does the run stop as it always did.
+      pendingRescue = await rescueLead(brief, cfg, state, lastFailed, brief.worktreeRoot ?? brief.root);
+      if (pendingRescue === null) {
+        stop("repeated_failure");
+        await notify(brief.leoDir, cfg.webhookUrl, "Leopold needs you", "Too many consecutive failures; stopping.");
+        return;
+      }
     }
 
     // Steer channel: apply any canvas commands (redirect/inject/kill/rerun) at this
@@ -667,19 +860,34 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
           `Plan complete for ${brief.root}. Everything is staged for your review; nothing was committed.${routedNote}${learnNote}`);
         return;
       }
-      // Open items, no route taken, nothing dispatchable: an unmet `@needs` is holding
-      // the run. Never silent — name the items instead of spinning or claiming success.
-      logEvent(brief.leoDir, { event: "deadlock", items: open.map((i) => i.index) });
+      // Open items, no route taken, nothing dispatchable: the run is waiting on a
+      // decision nobody made. A role decides it ONCE — through the same bounded path a
+      // graph repair uses — and the run moves. When it cannot, the run stops exactly as
+      // it did before, naming what is stranded and what the repair tried.
+      const dl = await repairDeadlock(brief, cfg, state, routing, items, state.iteration);
+      writeState(brief.leoDir, state);
+      if (dl?.ok) {
+        console.log(`  deadlock -> ${dl.persona ? `${dl.persona.name}, ${dl.persona.role}` : "Leopold"} decided: ${dl.accepted.map((a) => a.line.trim()).join(" · ")}`);
+        console.log(`  the run continues; this repair is spent for the run and the decision is in DECISIONS.md with its Reversal.`);
+        continue;
+      }
+      const note = renderDeadlockAttempt(dl, strandsOf(items, routing, readSignals(brief.leoDir)));
+      logEvent(brief.leoDir, {
+        event: "deadlock", items: open.map((i) => i.index),
+        repair_attempted: dl !== null, repair_ok: false,
+      });
+      console.warn(note);
       stop("deadlock");
-      await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped",
-        `Nothing can run: item(s) ${open.map((i) => i.index).join(", ")} are waiting on a signal no item emitted. Work so far is staged.`);
+      await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped", note);
       return;
     }
     const item = next.text;
     const cwdForItem = brief.worktreeRoot ?? brief.root;
 
-    // A @human node stops the run before a single token is spent on it.
-    if (haltsRun(next.kind)) {
+    // Under `autonomy: ask` a @human node still stops the run before a single token is
+    // spent on it. Under the default `full` it is dispatched like any other node and
+    // executed by the role processItem synthesizes for it.
+    if (haltsRun(next.kind, cfg.autonomy)) {
       const msg = haltForHuman(brief, state, next, cwdForItem);
       stop("awaiting_human");
       await notify(brief.leoDir, cfg.webhookUrl, "Leopold needs you", msg);
@@ -709,9 +917,21 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
 
     // On a retry, frame the failed approach as a dead end (retryLead) with the
     // root-cause panel's lead — still right after a literal reset (take a NEW path).
-    const lead = isRetry
-      ? retryLead(await leadForRetry(brief, cfg, item, cwd, lastFailed!.detail))
-      : undefined;
+    // A rescued attempt already carries the panel's evidence (the rescue decided ON it),
+    // so it never runs the panel twice; it is still framed as a fresh restart, because
+    // the approach it was handed is precisely NOT the one in the tree.
+    const rescued = pendingRescue !== null && lastFailed?.index === next.index;
+    const lead = rescued
+      ? retryLead(pendingRescue!)
+      : isRetry
+        ? retryLead(await leadForRetry(brief, cfg, item, cwd, lastFailed!.detail))
+        : undefined;
+    // Only clear it when it was actually CONSUMED. The graph does not have to dispatch the
+    // item that failed — a `rerun`/`inject` steer rewrites PLAN.md at this turn boundary,
+    // and a route can send the run somewhere else entirely. Clearing unconditionally threw
+    // the lead away in exactly those cases while `failure_rescue_used` stayed spent, so the
+    // run lost its last attempt without ever making it.
+    if (rescued) pendingRescue = null;
     // Carry the dispatched item's @scenario acceptance lines into the worker prompt +
     // review gate, and its @emit declarations into the signals it may report (both
     // empty for an item that declares neither).
@@ -760,7 +980,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
       console.log(`  not done — routed on. The item stays open in PLAN.md.`);
     } else {
       state.consecutive_failures += 1;
-      lastFailed = { index: next.index, detail: outcome.detail ?? "" };
+      lastFailed = { index: next.index, text: item, detail: outcome.detail ?? "" };
       writeState(brief.leoDir, state);
       logEvent(brief.leoDir, { event: "item_incomplete", item, fails: state.consecutive_failures });
     }
@@ -782,12 +1002,23 @@ async function runParallel(
   // Items that already failed once, with what the failed attempt reported —
   // a re-dispatch runs the root-cause panel first (same lead mechanic as serial).
   const failedDetail = new Map<number, string>();
+  // The last item this wave failed on, and the lead its ONE persona-led last attempt runs
+  // under once the run hits the failure ceiling. Both empty on every run that never does.
+  let lastFailed: LastFailed | null = null;
+  const rescueLeads = new Map<number, string>();
+  // The item whose one rescued attempt is queued or running, so the ceiling check below
+  // does not condemn an attempt that has not been judged yet.
+  let rescuedIndex: number | null = null;
   let stopReason: string | null = null;
   let escalation: Escalation | undefined;
   let conflicts = 0;
   // The @human node the wave stopped at, if any (staged + reported after in-flight
   // items settle, so the human inherits everything the run produced).
   let humanNode: PlanItem | null = null;
+  // What was stranded when the wave deadlocked, and the repair that could not unstick
+  // it — reported after in-flight items settle, exactly as the @human note is.
+  let deadlockStrands: Strand[] = [];
+  let deadlockRepair: DeadlockRepair | null = null;
 
   // Patch application onto the shared main tree must be serialized.
   let applyChain: Promise<void> = Promise.resolve();
@@ -802,6 +1033,13 @@ async function runParallel(
     // A gate/verify node writes nothing, and a fresh worktree forks off HEAD — which
     // would hand the node an empty diff and a green verdict on work it never saw. Those
     // kinds run against the accumulated main tree instead, where the run's work is.
+    //
+    // A @human node is a JUDGEMENT node and has exactly that property, so it does not get
+    // one either. "Approve the maintenance window" is a call about work the run already
+    // did, git is locked so none of that work is committed, and a fork off HEAD therefore
+    // shows the persona a tree with none of it in — it would approve a migration it never
+    // saw. It may still write (a persona completes the item like any other), so it takes
+    // the main tree, the same way a feedback node does.
     const wt = pi.kind === "work"
       ? createWorktree(baseRoot, brief.leoDir, `${runShort}-i${pi.index}`)
       : null;
@@ -809,9 +1047,13 @@ async function runParallel(
     const base = headSha(cwd) || "HEAD";
     try {
       const prior = failedDetail.get(pi.index);
-      const lead = prior !== undefined
+      // A rescued item carries the approach a role decided for its last attempt, with the
+      // panel evidence already in it — so it never runs the panel a second time.
+      const rescue = rescueLeads.get(pi.index);
+      if (rescue !== undefined) rescueLeads.delete(pi.index);
+      const lead = rescue ?? (prior !== undefined
         ? await leadForRetry(brief, cfg, pi.text, cwd, prior)
-        : undefined;
+        : undefined);
       const outcome = await processItem(
         brief, cfg, state, recent, pi.text, pi.scenarios, cwd, lead, steer, pi.emits,
         { kind: pi.kind, label: pi.kindLabel },
@@ -845,6 +1087,7 @@ async function runParallel(
         }
         state.consecutive_failures += 1;
         failedDetail.set(pi.index, outcome.detail ?? "");
+        lastFailed = { index: pi.index, text: pi.text, detail: outcome.detail ?? "" };
         logEvent(brief.leoDir, { event: "item_incomplete", item: pi.text, fails: state.consecutive_failures });
         return;
       }
@@ -882,7 +1125,27 @@ async function runParallel(
     if (killSwitch(brief.leoDir)) { stopReason = "kill_switch"; break; }
     if (overBudget(state.spent_usd ?? 0, cfg.budgetUsd)) { stopReason = "budget_exceeded"; break; }
     if (state.iteration >= state.max_iterations) { stopReason = "iteration_budget"; break; }
-    if (state.consecutive_failures >= state.max_failures) { stopReason = "repeated_failure"; break; }
+    if (state.consecutive_failures >= state.max_failures) {
+      // A rescued attempt that is QUEUED OR RUNNING has not been judged yet, and this
+      // check must not judge it. `consecutive_failures` only drops when the item settles
+      // (dispatch() zeroes it on success), so without this the very next pass re-enters
+      // here while the attempt is still in flight, `rescueLead` returns null because the
+      // rescue is already spent, and the run breaks with `repeated_failure` — throwing
+      // away the last attempt it just paid a persona synthesis and a root-cause panel for.
+      // Derived from the two live sets rather than a flag, so it cannot leak: an item that
+      // was never dispatched is in neither, and the ceiling is judged again as it should be.
+      const rescuePending = rescuedIndex !== null
+        && (inFlight.has(rescuedIndex) || rescueLeads.has(rescuedIndex));
+      if (!rescuePending) {
+        // Same single change of approach the serial loop gets, through the same helper —
+        // a last chance that existed on one scheduler and not the other would teach the
+        // user a lie about what their plan does.
+        const lead = await rescueLead(brief, cfg, state, lastFailed, baseRoot);
+        if (lead === null) { stopReason = "repeated_failure"; break; }
+        rescueLeads.set(lastFailed!.index, lead);
+        rescuedIndex = lastFailed!.index;
+      }
+    }
 
     // Steer channel at the boundary: kill/rerun mutate PLAN.md before we read it;
     // redirect/inject guidance rides along with items dispatched this round.
@@ -895,9 +1158,11 @@ async function runParallel(
     // declares no `@on`, and the routed targets first when it does.
     const ready = dispatchPlan(brief.leoDir, items, routing, inFlight).order;
 
-    // A @human node in the wave ends the run: a person decides that item, so nothing
-    // is dispatched for it. In-flight items still settle below before we stop.
-    const waiting = ready.find((pi) => haltsRun(pi.kind));
+    // Under `autonomy: ask`, a @human node in the wave ends the run: a person decides
+    // that item, so nothing is dispatched for it. In-flight items still settle below
+    // before we stop. Under the default `full` this finds nothing and the node is
+    // dispatched with the rest of the wave.
+    const waiting = ready.find((pi) => haltsRun(pi.kind, cfg.autonomy));
     if (waiting) { humanNode = waiting; stopReason = "awaiting_human"; break; }
 
     while (running.size < cfg.parallel && ready.length && state.iteration < state.max_iterations && !stopReason) {
@@ -912,12 +1177,25 @@ async function runParallel(
       // Nothing dispatchable and nothing running: done, routed around what is left,
       // or a genuine deadlock (a dependency or an `@needs` nothing satisfies).
       const fresh = parsePlanFile(brief.planPath);
-      if (allDone(fresh)) stopReason = "plan_complete";
-      else if (routing.steered) stopReason = "routed_complete";
-      else {
-        stopReason = "deadlock";
-        logEvent(brief.leoDir, { event: "deadlock", items: fresh.filter((i) => !i.done).map((i) => i.index) });
+      if (allDone(fresh)) { stopReason = "plan_complete"; break; }
+      if (routing.steered) { stopReason = "routed_complete"; break; }
+      // The same single, bounded, persona-led repair the serial loop gets, through the
+      // same writer — a deadlock that recovers on one scheduler and stops on the other
+      // would teach the user a lie about what their plan does.
+      const dl = await repairDeadlock(brief, cfg, state, routing, fresh, state.iteration);
+      writeState(brief.leoDir, state);
+      if (dl?.ok) {
+        console.log(`  deadlock -> ${dl.persona ? `${dl.persona.name}, ${dl.persona.role}` : "Leopold"} decided: ${dl.accepted.map((a) => a.line.trim()).join(" · ")}`);
+        continue;
       }
+      deadlockStrands = strandsOf(fresh, routing, readSignals(brief.leoDir));
+      deadlockRepair = dl;
+      console.warn(renderDeadlockAttempt(dl, deadlockStrands));
+      stopReason = "deadlock";
+      logEvent(brief.leoDir, {
+        event: "deadlock", items: fresh.filter((i) => !i.done).map((i) => i.index),
+        repair_attempted: dl !== null, repair_ok: false,
+      });
       break;
     }
     await Promise.race(running.values());
@@ -949,6 +1227,9 @@ async function runParallel(
   } else if (stopReason === "budget_exceeded") {
     await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped",
       `Budget reached: $${(state.spent_usd ?? 0).toFixed(2)} of $${cfg.budgetUsd?.toFixed(2)}. Work so far is staged.${tail}`);
+  } else if (stopReason === "deadlock") {
+    await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped",
+      `${renderDeadlockAttempt(deadlockRepair, deadlockStrands)}${tail}`);
   } else {
     await notify(brief.leoDir, cfg.webhookUrl, "Leopold stopped", `Run stopped: ${stopReason}.${tail}`);
   }

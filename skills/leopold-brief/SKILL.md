@@ -136,8 +136,11 @@ listen for these four cues and offer the matching construct:
   on a signal. Put both branches statically after the deciding item (`(after: N)` on
   each) and give it one `@on` per branch: the branch that is not steered to is
   bypassed, so exactly one runs.
-- *"a person has to sign this off"* → `@human`. The run stops, names the item, stages
-  everything, and hands the seat back.
+- *"a person has to sign this off"* → `@human`. Under the default posture nobody is
+  coming: Leopold synthesizes the role that decision needs, takes it, does the item and
+  records the call with its Reversal — git stays locked, so it decides and you ship. Put
+  `autonomy: ask` in GUARDRAILS.md to have the run stop at those items instead, name the
+  one it is on, stage everything and hand the seat back.
 - *"that step is just running the suite / the migration"* → `@tool`, whose text IS the
   command. No model turn is spent, and the exit status lands on the channel as `exit`,
   so `@on exit!=0 -> 7` needs no `@emit` line. Git stays locked: `@tool git push` is
@@ -161,8 +164,9 @@ what was decided** — never a diff, a payload or a log, only a decision.
     - [ ] (after: 2) Roll the migration back — done when: the schema is at the previous revision
 
 If you author any routing, run `leopold graph` in the project before handing over: it
-prints the graph and exits non-zero on a dangling route, a cycle, an unreachable item
-or a `@needs` nobody emits — naming the offending item, before a single agent runs.
+prints the graph and exits non-zero on a dangling route, a cycle, an unreachable item,
+a `@needs` nobody emits or an `@on` naming a signal nobody emits — naming the offending
+item, before a single agent runs.
 The full grammar is `docs/reference/plan-grammar.md` in the Leopold install.
 
 ## Step 4a — Draft the plan by tournament (optional, workflow)

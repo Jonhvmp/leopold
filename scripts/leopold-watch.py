@@ -1527,7 +1527,7 @@ function fmtTok(n){return n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1
 function fmtDur(s){if(!s)return"0m";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?(h+"h"+m+"m"):(m+"m"+(m?"":(s%60+"s")));}
 const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med",
   review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high",
-  awaiting_human:"sev-high"};
+  awaiting_human:"sev-high",persona:"sev-high",failure_rescue:"sev-high",failure_rescue_declined:"sev-crit"};
 function renderCost(c){
   const box=$("#cost");box.innerHTML="";
   if(!c||!c.available){box.append(el("div","meta",c&&c.reason?c.reason:"waiting for session data… (cost shows once the run has a turn)"));return;}
@@ -1584,6 +1584,9 @@ function render(s){
     else if(e.event==="item_start")d=(e.item||"").slice(0,80)+" · effort "+(e.effort||"?")+(e.critical?" · CRITICAL":"");
     else if(e.event==="item_done")d=(e.item||"").slice(0,80)+" · "+(e.open_left==null?"":(e.open_left+" left"));
     else if(e.event==="item_incomplete")d=(e.item||"").slice(0,80)+" · fails "+(e.fails||"?");
+    else if(e.event==="persona")d=(e.fork||"?")+" · "+(e.name?(e.name+(e.role?(", "+e.role):"")):(e.engine==="hook"?"role synthesized in-session":"not synthesized · default worker prompt"))+" · "+String(e.text||e.item||"").slice(0,60);
+    else if(e.event==="failure_rescue")d="last attempt · "+(e.persona||"Leopold")+(e.role?(", "+e.role):"")+" · "+(e.approach||"").slice(0,80)+" · ceiling "+(e.max_failures==null?"?":e.max_failures)+" unchanged";
+    else if(e.event==="failure_rescue_declined")d="no different approach decided · run stops · "+(e.item||"").slice(0,60);
     else if(e.event==="merge_conflict")d=(e.item||"").slice(0,60)+" · worktree kept";
     else if(e.event==="cost")d=(e.usd!=null?("+$"+Number(e.usd).toFixed(3)):"")+(e.spent_usd!=null?(" · total $"+Number(e.spent_usd).toFixed(2)):"");
     else if(e.event==="learn")d=(e.proposed>0?(e.proposed+" charter amendment"+(e.proposed==1?"":"s")+" proposed"):"no amendments")+(e.out?(" · "+e.out.split("/").pop()):"");

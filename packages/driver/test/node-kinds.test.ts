@@ -26,7 +26,7 @@ import { signalsFor } from "../src/dispatch.ts";
 import { buildGraph, validateGraph } from "../src/graph.ts";
 import { makeGuard, bashDenial } from "../src/guard.ts";
 import { readSignals } from "../src/bus.ts";
-import { toolCommand, isReviewOnly, haltsRun, isTool, EDIT_TOOLS } from "../src/kinds.ts";
+import { toolCommand, isReviewOnly, haltsRun, isHuman, isTool, EDIT_TOOLS } from "../src/kinds.ts";
 import { treeStateSignature } from "../src/git.ts";
 
 function sh(cwd: string, args: string[]): string {
@@ -80,6 +80,9 @@ interface Fake {
   fail?: string[];
   /** Every worker/gate session the driver opened, in order. */
   sessions: Session[];
+  /** What persona synthesis answers. `null` = an unusable answer, which is the
+   *  best-effort path: the item must still run, under the default worker prompt. */
+  personaJson?: string | null;
 }
 
 /** Install a fake harness that plays every role deterministically and RECORDS every
@@ -100,9 +103,17 @@ function installFake(fail: string[] = [], sideEffect?: (s: Session) => void): Fa
         sideEffect?.(session);
         const item =
           (text.match(/Work on this plan item now:\n\n([\s\S]*?)\n\n/) ??
-            text.match(/you may NOT edit anything:\n\n([\s\S]*?)\n\n/) ?? [])[1]?.trim() ?? "";
+            text.match(/you may NOT edit anything:\n\n([\s\S]*?)\n\n/) ??
+            text.match(/completely and verified\.\n\n([\s\S]*?)\n\n/) ?? [])[1]?.trim() ?? "";
         const failing = (f.fail ?? []).some((s) => item.includes(s));
-        const block =
+        // A @human node is asked for its decision block; a persona that got the seat
+        // states the call it made and how to undo it, outside the status block.
+        const decision = /leopold-decision/.test(text)
+          ? "```leopold-decision\nDECISION: approve the window for Sunday 02:00 UTC\n" +
+            "WHY: the charter puts trust before reach and the window is the lowest-traffic hour\n" +
+            "REVERSAL: revert window.txt and re-open the item in PLAN.md\n```\n"
+          : "";
+        const block = decision +
           "```leopold-status\nSTATUS: " + (failing ? "blocked" : "done") +
           "\nITEM: " + item + "\nSUMMARY: " + (failing ? "the diff is not acceptable" : "implemented and verified") +
           "\nNEXT: none\nEVIDENCE: build+test ok\n```";
@@ -111,6 +122,12 @@ function installFake(fail: string[] = [], sideEffect?: (s: Session) => void): Fa
       })();
     }
     const sys = typeof sp === "string" ? sp : "";
+    // Persona synthesis: one turn, no tools, answering with the role JSON.
+    if (sys.includes("synthesize the ROLE")) {
+      return stream(f.personaJson === null
+        ? "I am afraid I cannot do that."
+        : f.personaJson ?? '{"name":"Dana Okafor","role":"Release Engineer","expertise":["database migrations","maintenance windows"],"optimizesFor":["reversibility","the lowest-traffic hour"],"rationale":"the item is a cutover window call"}');
+    }
     if (sys.includes("the conductor")) {
       return /STATUS:\s*blocked/i.test(prompt)
         ? stream('{"action":"answer","reply":"try another angle","classification":"reversible","charterBasis":"retry"}')
@@ -134,11 +151,20 @@ const BASE = ["--no-review", "--no-hypotheses", "--no-literal-reset"];
 // --- the pure rules ------------------------------------------------------------
 
 test("the kind predicates say which path an item takes", () => {
-  assert.equal(haltsRun("human"), true);
+  // NOTHING halts under the default posture — a @human node is executed by a role
+  // Leopold synthesizes. `ask` is the opt-out, and it is the ONLY thing that halts.
+  assert.equal(haltsRun("human"), false);
+  assert.equal(haltsRun("human", "full"), false);
+  assert.equal(haltsRun("human", "ask"), true);
+  assert.equal(isHuman("human"), true);
   assert.equal(isTool("tool"), true);
   assert.deepEqual([isReviewOnly("gate"), isReviewOnly("verify")], [true, true]);
   for (const k of ["work", "human", "tool"] as const) assert.equal(isReviewOnly(k), false);
-  for (const k of ["work", "gate", "verify", "tool"] as const) assert.equal(haltsRun(k), false);
+  for (const k of ["work", "gate", "verify", "tool", "feedback"] as const) {
+    assert.equal(haltsRun(k), false);
+    assert.equal(haltsRun(k, "ask"), false, `${k} never halts, whatever the posture`);
+    assert.equal(isHuman(k), false);
+  }
 });
 
 test("a @tool node's command is its text, or the backticked span inside it", () => {
@@ -191,7 +217,12 @@ test("the guard denies every editing tool in a review-only session, and only the
   }
 });
 
-// --- @human: the run stops, names the item, stages everything --------------------
+// --- @human: the role is synthesized, the item is EXECUTED, the call is recorded ---
+//
+// The default posture (`autonomy: full`) is the whole point of the kind now: nobody is
+// coming, so Leopold synthesizes the role the decision needs, runs the item under it,
+// and writes what it decided — with a Reversal — to DECISIONS.md. `autonomy: ask` is the
+// opt-out that restores the old halt, and it is tested right after, unchanged.
 
 const HUMAN_PLAN = `# Plan
 
@@ -200,12 +231,67 @@ const HUMAN_PLAN = `# Plan
 - [ ] (after: 2) Run the migration
 `;
 
-test("a @human node stops the run with awaiting_human, names the item, and stages everything", async () => {
+/** A charter with a rule that BINDS, so the persona's constraints are provably the
+ *  charter's and not the model's paraphrase. */
+const BINDING_CHARTER = "# Charter\n\n## Never\n- Add a new runtime dependency.\n";
+
+test("a @human node is EXECUTED under a synthesized persona, and the run continues", async () => {
+  const { root, leo } = briefRepo(HUMAN_PLAN);
+  fs.writeFileSync(path.join(leo, "CHARTER.md"), BINDING_CHARTER);
+  const fake = installFake();
+  await drive(root, BASE);
+
+  // Every item ran, in order, and the plan finished. `awaiting_human` never happened.
+  assert.deepEqual(started(leo), ["Draft the migration", "Approve the maintenance window", "Run the migration"]);
+  assert.equal(stopReason(leo), "plan_complete");
+  assert.equal(events(leo).some((e) => e.event === "awaiting_human"), false,
+    "awaiting_human is unreachable in a default run");
+  assert.doesNotMatch(fs.readFileSync(path.join(leo, "PLAN.md"), "utf8"), /- \[ \]/, "the human node is marked done");
+  assert.equal(stateOf(leo).awaiting_item, undefined);
+
+  // The role was synthesized and ASSUMED: the session's system prompt carries it, with
+  // the charter's rule attached verbatim.
+  const ev = events(leo).find((e) => e.event === "persona")!;
+  assert.equal(ev.synthesized, true);
+  assert.equal(ev.name, "Dana Okafor");
+  assert.equal(ev.role, "Release Engineer");
+  const session = fake.sessions.find((s) => s.prompt.includes("Approve the maintenance window"))!;
+  const append = String((session.options.systemPrompt as { append?: unknown }).append ?? "");
+  assert.match(append, /YOU ARE DANA OKAFOR — Release Engineer/);
+  assert.match(append, /Never: Add a new runtime dependency\./, "the charter's rule binds the role, verbatim");
+  assert.match(append, /You DECIDE; you do not ship/, "the git lock is stated to the persona, not moved");
+
+  // The decision is on the trail: persona, fork, charter basis, decision, why, Reversal.
+  const decisions = fs.readFileSync(path.join(leo, "DECISIONS.md"), "utf8");
+  assert.match(decisions, /Persona:\s+Dana Okafor — Release Engineer/);
+  assert.match(decisions, /Fork:\s+a @human node/);
+  assert.match(decisions, /Decision:\s+approve the window for Sunday 02:00 UTC/);
+  assert.match(decisions, /Reversal:\s+revert window\.txt and re-open the item in PLAN\.md/);
+
+  // The lock did not move: a persona decided, and nothing was committed.
+  assert.equal(sh(root, ["log", "--oneline"]).trim().split("\n").length, 1, "no commit was made");
+});
+
+test("a @human node whose persona cannot be synthesized still runs, under the default worker prompt", async () => {
+  const { root, leo } = briefRepo(HUMAN_PLAN);
+  const fake = installFake();
+  fake.personaJson = null; // synthesis answers something unusable
+  await drive(root, BASE);
+
+  assert.equal(events(leo).find((e) => e.event === "persona")!.synthesized, false);
+  assert.equal(stopReason(leo), "plan_complete", "the run does not die over a persona it could not build");
+  assert.ok(fake.sessions.some((s) => s.prompt.includes("Approve the maintenance window")),
+    "the item still ran");
+  const decisions = fs.readFileSync(path.join(leo, "DECISIONS.md"), "utf8");
+  assert.match(decisions, /Reversal:\s+\S/, "a decision without a Reversal line is never written");
+});
+
+test("`autonomy: ask` stops the run with awaiting_human, names the item, and stages everything", async () => {
   const { root, leo } = briefRepo(HUMAN_PLAN);
   // Uncommitted work sitting in the tree — the human must inherit it staged.
   fs.writeFileSync(path.join(root, "migration.sql"), "ALTER TABLE t ADD COLUMN c int;\n");
   const fake = installFake();
-  await drive(root, BASE);
+  await drive(root, [...BASE, "--autonomy", "ask"]);
 
   assert.deepEqual(started(leo), ["Draft the migration"], "nothing was dispatched for the human node");
   assert.equal(stopReason(leo), "awaiting_human");
@@ -230,13 +316,28 @@ test("a @human node stops the run with awaiting_human, names the item, and stage
     "not one model turn was spent on the @human node");
 });
 
-test("the --parallel scheduler stops at a @human node the same way", async () => {
+test("`autonomy: ask` in GUARDRAILS.md is honored with no flag at all", async () => {
   const { root, leo } = briefRepo(HUMAN_PLAN);
+  fs.appendFileSync(path.join(leo, "GUARDRAILS.md"), "- autonomy: ask\n");
   installFake();
-  await drive(root, [...BASE, "--parallel", "2"]);
-  assert.equal(stopReason(leo), "awaiting_human");
-  assert.equal(events(leo).find((e) => e.event === "awaiting_human")!.item, 2);
-  assert.ok(!started(leo).includes("Run the migration"), "the item behind the human node never ran");
+  await drive(root, BASE);
+  assert.equal(stopReason(leo), "awaiting_human", "the brief sets the posture; no flag required");
+});
+
+test("the --parallel scheduler executes a @human node too, and stops at one under `ask`", async () => {
+  const executed = briefRepo(HUMAN_PLAN);
+  installFake();
+  await drive(executed.root, [...BASE, "--parallel", "2"]);
+  assert.equal(stopReason(executed.leo), "plan_complete");
+  assert.ok(started(executed.leo).includes("Approve the maintenance window"), "the human node ran");
+  assert.ok(started(executed.leo).includes("Run the migration"), "the item behind it ran too");
+
+  const asked = briefRepo(HUMAN_PLAN);
+  installFake();
+  await drive(asked.root, [...BASE, "--parallel", "2", "--autonomy", "ask"]);
+  assert.equal(stopReason(asked.leo), "awaiting_human");
+  assert.equal(events(asked.leo).find((e) => e.event === "awaiting_human")!.item, 2);
+  assert.ok(!started(asked.leo).includes("Run the migration"), "the item behind the human node never ran");
 });
 
 // --- @tool: a command, no model turn --------------------------------------------

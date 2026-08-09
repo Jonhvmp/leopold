@@ -21,9 +21,12 @@ mão (sem framework, sem bundler, sem web fonts — funciona 100% offline):
   aresta arqueada e tracejada, em cor própria, carregando a condição **como foi escrita**
   (`migrated=false`) — assim um desvio nunca se confunde com uma dependência. O inspector
   lista as rotas do item, os sinais que ele emite (`@emit`) e os que exige (`@needs`).
-- **Um nó `@human` esperando por você.** Quando qualquer um dos engines chega nele,
-  registra `awaiting_human` e o nó entra num estado `awaiting` distinto — âmbar, pulsando,
-  escrito *needs you*. Nada é inferido: o nó só espera quando a run diz que espera.
+- **Um nó `@human` esperando por você — quando ele realmente está.** Sob a postura padrão
+  (`autonomy: full`), nenhum dos engines espera num nó `@human`: ele registra um evento
+  `persona`, que a timeline mostra com o papel que a run sintetizou para decidir. Sob
+  [`autonomy: ask`](reference/plan-grammar.pt-BR.md#autonomy), o engine registra
+  `awaiting_human` e o nó entra num estado `awaiting` distinto — âmbar, pulsando, escrito
+  *needs you*. Nada é inferido: o nó só espera quando a run diz que espera.
 - Fases e agents de **dynamic workflow**: fase→fase (`seq`), fase→agent (`contains`), e
   cada agent de verificação adversarial ligado ao nó exato que ele revisa (`verifies`).
   A aresta é precisa onde os próprios scripts do Leopold rotulam os agents como

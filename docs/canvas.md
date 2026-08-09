@@ -21,9 +21,12 @@ runtime writes, and lays them out as a directed graph with a hand-rolled layered
   edge in its own colour, carrying the condition **as written** (`migrated=false`), so a
   branch never reads like a dependency. The inspector lists an item's routes, the signals
   it `@emit`s and the ones it `@needs`.
-- **A `@human` node waiting on you.** When either engine reaches one it logs
-  `awaiting_human`, and the node switches to a distinct `awaiting` state — amber, pulsing,
-  labelled *needs you*. Nothing is inferred: the node waits only when the run says it does.
+- **A `@human` node waiting on you — when one actually is.** Under the default posture
+  (`autonomy: full`) neither engine waits at a `@human` node: it logs a `persona` event
+  instead, which the timeline shows with the role the run synthesized to decide it. Under
+  [`autonomy: ask`](reference/plan-grammar.md#autonomy) the engine logs `awaiting_human`
+  and the node switches to a distinct `awaiting` state — amber, pulsing, labelled *needs
+  you*. Nothing is inferred: the node waits only when the run says it does.
 - **Dynamic-workflow** phases and agents: phase→phase (`seq`), phase→agent (`contains`),
   and each adversarial-verify agent linked to the exact node it reviews (`verifies`).
   The edge is precise wherever Leopold's own scripts label agents `impl:<id>` /

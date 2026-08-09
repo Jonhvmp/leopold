@@ -102,14 +102,26 @@ true:
 
 1. **Plan complete** — no unchecked items remain in `PLAN.md`.
 2. **Kill switch** — `.leopold/STOP` exists (`/leopold-stop` or `touch`).
-3. **Repeated failure** — the same kind of failure N consecutive turns (default 3).
+3. **Repeated failure** — the same kind of failure N consecutive turns (default 3),
+   *after* the one persona-led change of approach the run gets when it first hits the
+   ceiling. The ceiling itself never moves.
 4. **Iteration budget** — the iteration counter reached `max_iterations` (default 50).
 5. **USD budget** — accumulated spend crossed `--budget`, if set.
-6. **Escalation** — the decision protocol routed a genuinely irreversible + unsettleable
-   fork to the human (rare; the conductor is biased hard toward deciding itself).
+6. **Escalation** — a fork a synthesized role could not settle either (an unusable
+   answer, a harness error). A fork it *can* settle is decided and logged, not escalated.
 
 Every stop writes a final summary to the run output and a `stop` event to
-`events.jsonl`, naming which condition fired.
+`events.jsonl`, naming which condition fired. The complete list — including
+`context_budget`, `no_progress` and `routed_complete`, and whether a synthesized role can
+affect each one — is
+[What still stops the run](concepts/personas.md#what-still-stops-the-run).
+
+**`awaiting_human` is not on that list under the default posture.** A `@human` node is
+decided by a role Leopold synthesizes for it, on both engines; set
+[`autonomy: ask`](reference/plan-grammar.md#autonomy) in `GUARDRAILS.md` (or
+`LEOPOLD_AUTONOMY=ask`, or the driver's `--ask`) to have it stop and wait for you
+instead. A persona decides; it never ships — git stays locked either way, and no persona
+may raise a budget, clear the kill switch or edit `GUARDRAILS.md`.
 
 ---
 
@@ -147,6 +159,7 @@ commit and push.
 | Commit                | locked  | `touch .leopold/ALLOW_GIT` |
 | Push                  | locked  | `touch .leopold/ALLOW_PUSH` |
 | Force-push            | never   | not configurable           |
+| Autonomy              | `full`  | `GUARDRAILS.md` (`autonomy: ask`) |
 | Max consecutive fails | 3       | `GUARDRAILS.md`            |
 | Max iterations        | 50      | `GUARDRAILS.md`            |
 | USD budget            | none    | `--budget` on the driver   |

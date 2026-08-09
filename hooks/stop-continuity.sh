@@ -81,9 +81,32 @@ max_iter="$(jq -r '.max_iterations // 50' "$STATE" 2>/dev/null || echo 50)"
 fails="$(jq -r '.consecutive_failures // 0' "$STATE" 2>/dev/null || echo 0)"
 max_fails="$(jq -r '.max_failures // 3' "$STATE" 2>/dev/null || echo 3)"
 
-# Budgets and repeated failure.
+# Budgets. An iteration budget is a COST CEILING the user set: it stops, always.
 if [ "$iter" -ge "$max_iter" ] 2>/dev/null; then allow_stop "iteration_budget"; fi
-if [ "$fails" -ge "$max_fails" ] 2>/dev/null; then allow_stop "repeated_failure"; fi
+
+# Repeated failure is NOT a budget. Failing the same way three times is the run running
+# out of ideas, and "a person should look at this" is a decision an agent can make: it
+# gets ONE more attempt, and that attempt must take a genuinely different approach,
+# decided under the role the failure calls for and written to DECISIONS.md with a
+# Reversal. This mirrors packages/driver/src/rescue.ts so the in-session engine and the
+# driver give a stuck item the same number of last chances -- one.
+#
+# THE CEILING DOES NOT MOVE: max_failures is never written, the extra attempt is charged
+# as a turn like any other, and `failure_rescue_used` marks it spent for the whole run
+# (persisted, so a resumed run inherits it). The second time the ceiling is reached the
+# run stops with `repeated_failure`, exactly as it always did.
+RESCUE_NOTE=""
+RESCUE_GRANT=0
+if [ "$fails" -ge "$max_fails" ] 2>/dev/null; then
+  rescued="$(jq -r '.failure_rescue_used // false' "$STATE" 2>/dev/null || echo false)"
+  if [ "$rescued" = "true" ]; then allow_stop "repeated_failure"; fi
+  # Decided here, SPENT at the bottom. Four more `allow_stop` checks come after this
+  # point (context_budget, plan_complete, awaiting_human, no_progress); marking the
+  # rescue used up here burned it on a turn that never happened and wrote a
+  # `failure_rescue` event claiming an attempt nobody ever made.
+  RESCUE_GRANT=1
+  RESCUE_NOTE="LAST ATTEMPT ON THIS ITEM. It has failed $fails times in a row -- the ceiling this run allows ($max_fails) -- and the run gets exactly ONE more attempt before it stops. Do NOT refine the approach that failed: work out what the previous framing got wrong, then SYNTHESIZE the role this failure actually needs (name, the expertise it demands, what it optimizes for, bound by .leopold/CHARTER.md's hard rules), take that role, and attack the item a genuinely different way -- a different entry point, mechanism, decomposition or dropped assumption. Append the call to .leopold/DECISIONS.md naming the role, the approach, why it differs from what failed, and a Reversal line. You may NOT raise max_failures or any budget, clear the kill switch, or edit .leopold/GUARDRAILS.md; git stays locked. If this attempt fails too, say so plainly and the run stops. "
+fi
 
 # Context budget — the real money pit. A long run accumulates context every turn; on a
 # big-context model it never auto-compacts, so each turn re-bills the whole (growing)
@@ -109,7 +132,8 @@ fi
 # is `work`, so a plan written before this grammar existed parses to exactly what it
 # parsed to before and takes an identical path through this hook.
 #
-# The in-session engine acts on ONE kind: `human`. The others -- including `feedback`,
+# The in-session engine acts on ONE kind: `human`, and what it does with one depends on
+# the judgment posture (`autonomy`, resolved below). The others -- including `feedback`,
 # whose plan amendments are bounded and applied by the driver (packages/driver/src/
 # amend.ts) -- are the driver's business, and re-inject exactly as they always have.
 #
@@ -216,20 +240,83 @@ open_items="$(grep -cE '^[[:space:]]*- \[ \]' "$PLAN" 2>/dev/null || true)"
 open_items="${open_items:-0}"
 if [ "$open_items" -eq 0 ] 2>/dev/null; then allow_stop "plan_complete"; fi
 
-# A `@human` node means a PERSON decides this item. The driver stops the run with
-# `awaiting_human` when it reaches one; the in-session engine does the same thing here,
-# so a plan means the same on both engines: end the turn, name the item, ask -- instead
-# of re-injecting "keep going" at an item no agent is allowed to finish.
+# ---- The judgment posture: autonomy full | ask ------------------------------------
+# ONE posture, read from the same two places by both engines. This mirrors
+# resolveAutonomy()/autonomyFrom() in packages/driver/src/config.ts: explicit
+# `LEOPOLD_AUTONOMY` > GUARDRAILS.md > `full`, and the same three spellings of "ask"
+# (ask|halt|human). The driver's extra source is its CLI flag, which an in-session run has
+# no equivalent of; there is deliberately no third channel here, because a posture the
+# hook read and the driver did not is exactly the drift this file exists to prevent.
+#
+# A value neither engine recognizes is treated as ABSENT rather than as the strict posture
+# -- an unreadable line must not silently halt a run -- and the default is `full`, so a
+# brief that never mentions autonomy is autonomous.
+autonomy_word() { # $1 = raw value -> full | ask | "" (unrecognized)
+  case "$(_lower "$(_trim "${1:-}")")" in
+    full) printf 'full' ;;
+    ask|halt|human) printf 'ask' ;;
+    *) printf '' ;;
+  esac
+}
+AUTONOMY="$(autonomy_word "${LEOPOLD_AUTONOMY:-}")"
+if [ -z "$AUTONOMY" ]; then
+  g_line="$(grep -m1 -iE '^[[:space:]]*-?[[:space:]]*(\*\*)?autonomy(\*\*)?[[:space:]]*:' "$LEO/GUARDRAILS.md" 2>/dev/null || true)"
+  g_val="$(_trim "${g_line#*:}")"
+  AUTONOMY="$(autonomy_word "${g_val%%[![:alnum:]]*}")"   # first word: drops a trailing `# comment`
+fi
+[ -n "$AUTONOMY" ] || AUTONOMY="full"
+
+# A `@human` node is where the plan asked a PERSON to decide, and under the default
+# posture no person is coming: the run SYNTHESIZES the role that decision needs, assumes
+# it, does the work and records the call with its Reversal. That is the driver's behavior
+# (packages/driver/src/loop.ts -> processItem, persona.ts), so the in-session engine does
+# the same thing here and a plan means the same on both engines. Under `autonomy: ask`
+# both engines end the turn at the node instead, with the same `awaiting_human` reason and
+# the same event -- the posture, not the engine, decides.
+#
+# The seam this rests on is untouched: a persona DECIDES, it never executes. What ENFORCES
+# that is narrower than it is tempting to write, and the note below is careful about the
+# difference: hooks/guard-irreversible.sh denies `git commit` and `git push` and says so
+# itself ("that is the ENTIRE scope"); scripts/test-guard.sh deliberately asserts that
+# `gh pr create`, `gh release create`, `npm publish` and `cargo publish` are ALLOWED and
+# that edits -- GUARDRAILS.md included -- are never guarded, and no hook protects the
+# budgets in state.json either. Telling a synthesized role that a hook will catch
+# `npm publish` is exactly how it stops holding back on the one node kind where
+# irreversible calls live, so the note names the two real denials as enforced and the rest
+# as rules the role has to keep on its own. Same sentence, same split, as
+# packages/driver/src/persona.ts (NO_EXECUTION_CLAUSE) -- the two engines must not drift on
+# where the trust boundary actually sits.
 plan_scan_first_open "$PLAN"
+HUMAN_NOTE=""
 if [ "$FIRST_OPEN_KIND" = "human" ]; then
-  log_event "$(jq -cn --arg ts "$now" --argjson i "$FIRST_OPEN_INDEX" --arg t "$FIRST_OPEN_TEXT" \
-    '{ts:$ts,event:"awaiting_human",item:$i,text:$t}' 2>/dev/null || echo '{}')"
+  if [ "$AUTONOMY" = "ask" ]; then
+    log_event "$(jq -cn --arg ts "$now" --argjson i "$FIRST_OPEN_INDEX" --arg t "$FIRST_OPEN_TEXT" \
+      '{ts:$ts,event:"awaiting_human",item:$i,text:$t}' 2>/dev/null || echo '{}')"
+    {
+      echo "Leopold: plan item $FIRST_OPEN_INDEX is a @human node -- a person decides it (autonomy: ask)."
+      [ -n "$FIRST_OPEN_TEXT" ] && echo "  $FIRST_OPEN_TEXT"
+      echo "The run is paused (awaiting_human). Answer it, mark the item [x] in .leopold/PLAN.md, then /leopold-run to resume."
+    } >&2
+    allow_stop "awaiting_human"
+  fi
+  # ONCE per node, not once per turn. This branch is re-entered every turn the @human item
+  # stays open, so a node that takes five turns wrote five identical `persona` records --
+  # and leopold-watch.py renders `persona` as sev-high, so the Canvas showed five
+  # high-severity entries for one decision. The driver logs it once per node, inside
+  # processItem; the marker keeps the two engines saying the same thing.
+  persona_logged="$(jq -r '.persona_logged_item // empty' "$STATE" 2>/dev/null || true)"
+  if [ "$persona_logged" != "$FIRST_OPEN_INDEX" ]; then
+    log_event "$(jq -cn --arg ts "$now" --argjson i "$FIRST_OPEN_INDEX" --arg t "$FIRST_OPEN_TEXT" \
+      '{ts:$ts,event:"persona",fork:"human",engine:"hook",item:$i,text:$t}' 2>/dev/null || echo '{}')"
+    tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
+    jq --argjson i "$FIRST_OPEN_INDEX" '.persona_logged_item=$i' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+  fi
   {
-    echo "Leopold: plan item $FIRST_OPEN_INDEX is a @human node -- a person decides it."
+    echo "Leopold: plan item $FIRST_OPEN_INDEX is a @human node -- no person is coming (autonomy: full)."
     [ -n "$FIRST_OPEN_TEXT" ] && echo "  $FIRST_OPEN_TEXT"
-    echo "The run is paused (awaiting_human). Answer it, mark the item [x] in .leopold/PLAN.md, then /leopold-run to resume."
+    echo "The run synthesizes the role this decision needs and decides it; the call lands in .leopold/DECISIONS.md with a Reversal. git stays locked."
   } >&2
-  allow_stop "awaiting_human"
+  HUMAN_NOTE="THIS ITEM IS A @human NODE (plan item $FIRST_OPEN_INDEX${FIRST_OPEN_TEXT:+: $FIRST_OPEN_TEXT}). The plan asked a person to decide it and no person is coming -- you decide it, and you do the work. Before anything else, SYNTHESIZE the role this decision actually needs: a name, a specific role title, the expertise the item genuinely demands, what that role optimizes for, and the hard rules from .leopold/CHARTER.md that bind it (lift them verbatim -- 'an agent' is not a persona, it is the same generic answer with a hat on). Then TAKE that role and complete the item under it. Append the call to .leopold/DECISIONS.md naming the persona (name and role), the fork (the @human node and what it asked), the charter basis for the call, and a Reversal line saying concretely how a human undoes it -- a decision with no Reversal is not done. You DECIDE; you do not ship. Two things are enforced for you: the Leopold guard denies \`git commit\` and \`git push\` (force-push always), and that is its entire scope -- stage the work and say what you decided. EVERYTHING ELSE IS ON YOU, because nothing blocks it: do not run git tag, do not publish a package, do not cut a release, do not open an external PR, and never raise a budget or iteration limit, clear the kill switch, or edit .leopold/GUARDRAILS.md. Treat those as hard denials even though no hook will stop you. Mark the item [x] in .leopold/PLAN.md when the work is done. "
 fi
 
 # Loop detection: if the SET of open plan items is byte-identical for N consecutive
@@ -244,7 +331,16 @@ case "$np" in (*[!0-9]*|"") np=0 ;; esac
 if [ "$sig" = "$last_sig" ] && [ -n "$last_sig" ]; then np=$((np + 1)); else np=0; fi
 if [ "$np" -ge "$max_np" ] 2>/dev/null; then allow_stop "no_progress"; fi
 
-# Otherwise: continue. Increment the iteration counter; persist the progress signature.
+# Otherwise: continue. The turn is now certain, so a rescue decided above is spent HERE —
+# and only here, so it is charged against an attempt that actually runs.
+if [ "$RESCUE_GRANT" = "1" ]; then
+  tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
+  jq '.failure_rescue_used=true' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+  log_event "$(jq -cn --arg ts "$now" --argjson f "$fails" --argjson m "$max_fails" \
+    '{ts:$ts,event:"failure_rescue",engine:"hook",failures:$f,max_failures:$m,extra_attempts:1}' 2>/dev/null || echo '{}')"
+fi
+
+# Increment the iteration counter; persist the progress signature.
 next=$((iter + 1))
 tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
 jq --argjson n "$next" --arg t "$now" --argjson np "$np" --arg sig "$sig" --argjson cm "${ctx_mb:-0}" --arg tp "${tpath:-}" \
@@ -252,7 +348,7 @@ jq --argjson n "$next" --arg t "$now" --argjson np "$np" --arg sig "$sig" --argj
     | (if $tp != "" then .transcript_path=$tp else . end)' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
 log_event "{\"ts\":\"$now\",\"event\":\"turn_start\",\"iteration\":$next,\"open_items\":$open_items,\"no_progress\":$np}"
 
-reason="Leopold autonomous mode is ACTIVE (turn $next/$max_iter, $open_items open plan items). Do not stop. Steps: (1) Read .leopold/PLAN.md and pick the next unchecked item. (2) Complete it; reach for the gstack playbook skill that fits the situation. (3) On any fork, apply .leopold/CHARTER.md and the decision protocol: if the call is reversible OR the charter is clear, decide it yourself, append the decision to .leopold/DECISIONS.md, and keep going; stop only for an irreversible AND ambiguous fork, a charter contradiction, or a mission-premise change. (4) Mark the finished item as done ([x]) in PLAN.md. Hard rules: git commit/push/publish stay locked; never edit files outside this project; never touch .leopold/GUARDRAILS.md or the hooks. When the plan is complete or a stop condition is met, write a short final summary and then stop."
+reason="${RESCUE_NOTE}${HUMAN_NOTE}Leopold autonomous mode is ACTIVE (turn $next/$max_iter, $open_items open plan items). Do not stop. Steps: (1) Read .leopold/PLAN.md and pick the next unchecked item. (2) Complete it; reach for the gstack playbook skill that fits the situation. (3) On any fork, apply .leopold/CHARTER.md and the decision protocol: if the call is reversible OR the charter is clear, decide it yourself, append the decision to .leopold/DECISIONS.md, and keep going; stop only for an irreversible AND ambiguous fork, a charter contradiction, or a mission-premise change. (4) Mark the finished item as done ([x]) in PLAN.md. Hard rules: the guard denies git commit and git push. Nothing else is enforced for you, so the rest is yours to keep: no tagging, no publishing, no external PR, no raising a budget. Never edit files outside this project, and never touch .leopold/GUARDRAILS.md or the hooks. When the plan is complete or a stop condition is met, write a short final summary and then stop. End that summary with a section titled \"What I decided for you\": every call you made on the human's behalf, read back from .leopold/DECISIONS.md, riskiest first, one line each naming the persona and the Reversal -- and nothing at all if you made none."
 
 jq -cn --arg r "$reason" '{decision:"block", reason:$r}'
 exit 0

@@ -4,6 +4,153 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.16.0] - 2026-08-09
+
+**Read this before upgrading: `@human` no longer halts a run.** Until 0.15.0 a `@human`
+node stopped everything with `awaiting_human` and waited for a person; from 0.16.0 Leopold
+synthesizes the role that decision needs, takes it, does the work, and records the call —
+persona, fork, charter basis and a **Reversal** line — in `.leopold/DECISIONS.md`. The same
+now goes for an escalation, a malformed or deadlocked graph, and a third repeated failure:
+nothing halts for want of permission. The trust boundary does not move — a persona decides,
+the guard still denies `git commit` and `git push`, and a human still ships. **Want the old
+halting behavior? One line: `autonomy: ask` in `.leopold/GUARDRAILS.md`** (or
+`LEOPOLD_AUTONOMY=ask`, or the driver's `--ask` / `--autonomy ask`), and every stop path
+above waits for you exactly as it did in 0.15.0. A plan with no `@human` node and no
+escalation runs byte for byte as before.
+
+### Changed
+- **BREAKING (behavior): a `@human` node no longer halts the run — it is decided by a role
+  Leopold synthesizes for it.** This is the largest change in this release and it is
+  deliberate, so read it before you upgrade. Since 0.15.0 a `@human` node stopped the run
+  with `awaiting_human` and waited for a person. Under the new default posture
+  (`autonomy: full`) **neither engine waits**: the run works out WHO should take that
+  decision — a name, a role title, the expertise the item actually demands, what it
+  optimizes for, and the hard rules lifted verbatim from `CHARTER.md` — takes that role,
+  does the item, and appends the call to `.leopold/DECISIONS.md` naming the persona, the
+  fork, the charter basis and a **Reversal** line. The driver, the dynamic workflow and
+  the in-session Stop hook all resolve the node the same way, on Claude Code and on Codex:
+  a plan means one thing everywhere. `hooks/stop-continuity.sh` logs a `persona` event
+  (`fork: "human"`, `engine: "hook"`) where it used to log `awaiting_human`, and the
+  Canvas's amber *needs you* state now appears only when a run genuinely is waiting.
+  **The trust boundary does not move, and Leopold is now precise about where it is.** A
+  persona decides; it never ships. `hooks/guard-irreversible.sh` still denies `git commit`
+  and `git push` (force-push unconditionally) — that is its entire scope, unchanged by this
+  release. Tagging, publishing, opening an external PR, raising a budget and editing
+  `GUARDRAILS.md` are forbidden to a persona too, but **no hook enforces them**, so every
+  prompt that assumes a role now says exactly that instead of promising a guard that is not
+  there: a role told `npm publish` would be blocked has no reason to hold back. See
+  [what the guard enforces](docs/reference/hooks.md#what-the-guard-enforces). **Want the old behavior?** It is one line: `autonomy: ask` in
+  `.leopold/GUARDRAILS.md` (now a documented key in `templates/GUARDRAILS.md`),
+  `LEOPOLD_AUTONOMY=ask`, or the driver's `--ask` / `--autonomy ask`. `ask`, `halt` and
+  `human` all spell it, and a value neither engine recognizes is treated as absent rather
+  than as `ask`, because an unreadable line must never silently halt a run. A plan with no
+  `@human` node is completely unaffected.
+- **An escalation no longer ends the run — a synthesized role settles it.** When a worker
+  reported `needs-decision` and the conductor could not settle the fork from the charter,
+  the run stopped with `escalation` and the item sat there with a question attached until
+  a person came back. Now Leopold works out WHO should take that fork, synthesizes the
+  role from the item plus MISSION and CHARTER, lets it decide, pushes the decision back to
+  the worker as a concrete instruction, and the item finishes. Every settled fork lands in
+  `.leopold/DECISIONS.md` naming the persona, the fork, the charter basis and a Reversal
+  line. The role is bound by the charter's hard rules lifted verbatim in code, not by a
+  prompt that asks nicely. **The trust boundary does not move:** a role may conclude "ship
+  it" and record that — the guard still denies the commit and the push that would carry it
+  out — and no role may raise a budget, clear the kill switch or edit `GUARDRAILS.md`
+  (rules it is told to keep, since no hook enforces those). An item may have
+  two escalations settled this way; a third is a fork the run genuinely cannot make
+  progress on, and it still stops. A fork that cannot be settled (an unusable answer, a
+  harness error) escalates exactly as before, and says so in the event log. Set
+  `autonomy: ask` in GUARDRAILS.md (or `--ask`) to keep the old behavior.
+
+### Added
+- **Every run now ends with "what I decided for you".** Autonomy that only writes to a
+  file you have to remember to open is autonomy you find out about later. The completion
+  report and the notification (terminal, and the webhook body if you set one) now end
+  with the calls Leopold made on your behalf, **riskiest first**, each on two lines: the
+  fork it came up at, the persona that decided it, the `D<n>` to look up — and the
+  one-line **Reversal**. The rank is the fork (an escalation reads before a `@human`
+  node, then a plan repair, then a repeated-failure rescue), nudged up when no role could
+  be synthesized for the call, when the subject is heavy (production, data, anything
+  outbound), or when the role stated no reversal of its own. Nothing is suppressed: past
+  five calls the rest are counted, and `DECISIONS.md` is one line away. Both engines rank
+  it identically — the workflow ranks what it holds, the driver ranks the same entries
+  read back off the trail, and a test runs the two side by side over one run's real
+  bytes. **A run that decided nothing on your behalf prints nothing**, so a report that
+  had no persona decision is byte-for-byte the report it always was.
+
+### Fixed
+- **A route on a signal nobody emits is now a pre-flight diagnostic, not silence.**
+  Only a key an item declares with `@emit` ever reaches the state channel — every other
+  key a worker reports is refused — and a route never matches an absent key in either
+  direction. So `@on migrated=false -> 7` with no `@emit migrated` anywhere was an edge
+  that could never fire: the routing you wrote simply did not happen, and nothing said
+  so. `validateGraph` gains a fifth defect class, `unroutable-signal`, naming the item,
+  the key and the target, alongside `cycle`, `dangling-edge`, `unmet-need` and
+  `unreachable`. Status routes (`@on fail`) test the node's own outcome and need no
+  signal, so they are never diagnosed, and a `@tool` node's implicit `exit` still counts
+  as emitted. Both engines pre-flight through the same `leopold graph` gate, so a plan
+  is diagnosed identically by `/leopold-run` and `/leopold-workflow`. It catches **both
+  spellings** — `@on migrated=false` and the bare `@on migrated` — because a bare word only
+  ever matches an outcome the engine records, and the only words it records are `ok` and
+  `fail`. And it **warns rather than refuses**: the verdict is new, the plans it judges are
+  not, and a 0.15 brief whose dead route simply never fired must not suddenly dispatch
+  nothing at all. The four classes that describe a graph which genuinely cannot run stay
+  fatal.
+- **A bare-word route on an emitted signal now fires whichever way you got there.**
+  `settleNode` records a node's `ok`/`fail` before its routes are read, so the signal
+  fallback the router documents (`@emit ready=true` then `@on ready -> 3`) was reachable
+  only for a node carried over from an earlier session. Same plan, same channel, same
+  answer, every time.
+- **A last-chance attempt is no longer thrown away by the scheduler that bought it.** On
+  `--parallel`, granting the rescue left `consecutive_failures` at the ceiling, so the next
+  pass of the loop re-judged it while the rescued attempt was still in flight, found the
+  rescue already spent, and stopped the run with `repeated_failure` — discarding the attempt
+  it had just paid a persona synthesis and a root-cause panel for. Serially, the rescue lead
+  was dropped whenever routing or a `rerun`/`inject` steer dispatched an item other than the
+  one that failed, while the rescue stayed spent. In-session, nothing ever reset
+  `consecutive_failures`, so a rescued attempt that SUCCEEDED still ended the run on the
+  next turn; `/leopold-run` now resets it when an item closes, the way the driver always
+  did. And the rescue is spent only once the turn actually happens — a run that hits its
+  context budget on the same turn keeps its last chance instead of burning it on an attempt
+  that never ran.
+- **One-shot repairs are charged honestly.** A graph repair judged its amendments against a
+  full `MAX_ADDED_ITEMS` purse and never recorded what it spent, so a deadlock repair then
+  got three more and one run could make six plan changes under a contract that says three.
+  `deadlock_repair_used` was marked spent before the guard that returns when nothing is
+  stranded — burning the run's only repair without a single model call — and was never
+  persisted before the call it was supposed to survive. A resumed `/leopold-run` no longer
+  hands itself a fresh rescue either: the spent marks now survive the resume.
+- **`--autonomy` cannot fail toward the permissive posture.** `--autonomy=ask` was ignored
+  rather than read (only the space-separated form was), and an unrecognized value fell
+  straight through to the default — which is `full`. An operator switching autonomy off got
+  it on, silently. Unknown values now say so and take the strict side, and `--flag=value`
+  works for every flag.
+- **A wrapped `REVERSAL` is recorded whole.** The decision-block parser ended its lookahead
+  on `$` under the multiline flag, where `$` matches every end-of-LINE, so any field a model
+  wrapped was cut at the first newline. Half a Reversal reads complete and tells you
+  nothing, and it is the one field the whole trail exists to carry.
+- **A `@human` node sees the run's work.** It was given a fresh worktree forked off HEAD,
+  and since git is locked every prior item's work is uncommitted and therefore invisible in
+  it — a persona asked to approve a migration opened a tree with no migration in it. It now
+  runs against the main tree, like every other judgement node.
+- **Two escalations per item means per ITEM.** The counter lived in `processItem`, which is
+  re-entered for every attempt, so an item retried three times could have six forks decided
+  for it.
+- **A persona is a role, not a costume.** The generic-role guard rejected `an agent` but
+  accepted `an assistant`, `An Engineer` and `the assistant` — the exact strings its own
+  prompt calls not-a-persona. Charter prose in the past tense ("the first attempt did not
+  use a worktree") is no longer lifted into the binding rules, and a charter that states no
+  hard rule now says so instead of printing "YOU ARE BOUND BY THESE RULES:" over nothing.
+- **The docs no longer promise enforcement that does not exist.** `plan-grammar.md` said
+  `git tag`, `publish` and opening an external PR "stay denied by
+  `hooks/guard-irreversible.sh`". They do not: the guard's entire scope is `git commit` and
+  `git push`. That sentence sat on the page defining `@human` semantics under the new
+  default posture — exactly where irreversible calls live, told to a role that had no reason
+  to hold back. Both language twins are corrected, and the trust-boundary suite now sweeps
+  doc **prose**, not just the guard table, so the claim cannot drift back.
+
 ## [0.15.0] - 2026-08-06
 
 ### Fixed

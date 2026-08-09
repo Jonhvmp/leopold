@@ -99,7 +99,7 @@ compilation as the steps below, done deterministically: it copies the canonical 
 to `.claude/workflows/leopold-run.js`, writes the full `args` — waves *and* the `graph`
 the router reads — to `.leopold/workflow-args.json`, and refuses a malformed graph (a
 cycle, a route to an item that does not exist, an unreachable item, a `@needs` nobody
-emits) by name, before a single agent runs. Then launch the workflow with the contents
+emits, an `@on` naming a signal nobody emits) by name, before a single agent runs. Then launch the workflow with the contents
 of that file as `args`.
 
 Steps 2 and 3 stay useful reading — they are the rules that compiler implements — but
@@ -129,6 +129,11 @@ Give each item a short stable `id` (e.g. `i1`, `i2`, … by original plan positi
 ## Step 3 — Read the guardrails for the review budget
 
 From `.leopold/GUARDRAILS.md`, read `max_review_rounds` if present (else default `2`).
+Read `autonomy` too: the default is `full`, and a `@human` node then runs under a role
+Leopold synthesizes for it, recording the call it made in `.leopold/DECISIONS.md` with a
+Reversal line. Only when the guardrails say `autonomy: ask` do you put `autonomy: 'ask'`
+in `args` — that is what restores the old behavior of stopping at a `@human` node and
+handing the seat back. Leave the key out for `full`; it is the default on both engines.
 Note the git posture — it should be locked (stage-and-report). If the guardrails
 explicitly unlock git, tell the user a workflow still won't commit (that's inherent);
 they commit after.

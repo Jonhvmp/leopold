@@ -112,6 +112,7 @@ Every non-mechanical decision appends to `DECISIONS.md`:
 
 ```
 ## D<N> — <one-line title>          (turn <iteration>, <timestamp>)
+Persona:     <the role Leopold assumed to decide this — only when it synthesized one>
 Fork:        <the choice that came up>
 Class:       reversible | irreversible
 Charter:     <what the charter said, or "silent">
@@ -123,6 +124,48 @@ Reversal:    <how to undo this if the human disagrees>
 The `Reversal` line matters most: it is the human's escape hatch. If you cannot
 write a credible reversal line, the decision is probably irreversible and you
 should re-check the core test.
+
+`Persona:` appears when the run reached work that used to wait for a person — a
+`@human` node, an escalation, a plan repair, a third failure of the same kind —
+and Leopold synthesized the role that work needed instead of halting. The entry
+then names who decided, which stop path it came from, and what charter rules
+bound them. When no role could be synthesized the line still appears, saying so:
+an autonomous call with no record of who made it is not auditable. Every one of
+those paths writes through the same single writer, so a persona decision, a
+conductor decision and a canvas steer are all one shape in the file.
+
+---
+
+## "What I decided for you"
+
+A trail nobody opens is not a trail, so the run does not wait for you to open it.
+Every run ends with the calls it made on your behalf, riskiest first:
+
+```
+What I decided for you (3 calls, riskiest first):
+  1. [escalation] Nadia Ferro — Data Engineer (D7): run the production migration in two reversible halves
+     Reversal: run migrations/002_down.sql
+  2. [human] Rui Salgado — Release Engineer (D4): approve the cutover behind a flag, staged only
+     Reversal: flip cutover_enabled back to false in config/flags.yml
+  3. [repeated-failure] Ana Reis — Build Engineer (D9): split the suite and run the slow half serially
+     Reversal: revert the Makefile change
+The full trail — charter basis and why — is in .leopold/DECISIONS.md.
+```
+
+It is in the completion report and in the notification (terminal, and the webhook
+body if you set one), on both engines: `/leopold-run` and `/leopold-workflow` read
+the same entries and rank them the same way.
+
+**Risk is ordering, not a verdict.** The rank is the fork the call came up at — an
+escalation reads before a `@human` node, which reads before a plan repair, which
+reads before a repeated-failure rescue — nudged up when nobody could be
+synthesized for it, when the subject is heavy (production, data, anything
+outbound), or when the role stated no reversal of its own and took the default.
+Nothing is ever hidden: past five calls the rest are counted, and `DECISIONS.md`
+is one line away.
+
+A run that decided nothing on your behalf prints nothing here — the report is what
+it always was.
 
 ---
 

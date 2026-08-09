@@ -61,8 +61,10 @@ the waves:
 dispatches from the same deterministic routing function `/leopold-run`'s scheduler uses,
 so the same plan takes the same path on both engines. A node emits a signal, the state
 channel carries it, the graph decides where it leads — no model call ever picks an edge.
-A `@human` node stops the run and asks; a `@tool` node routes on its command's exit
-status; a `@gate` or `@verify` node judges the diff and may not edit it.
+A `@human` node is decided by a role the run synthesizes for it (or halts with
+`awaiting_human` under [`autonomy: ask`](../reference/plan-grammar.md#autonomy)); a
+`@tool` node routes on its command's exit status; a `@gate` or `@verify` node judges the
+diff and may not edit it.
 
 Two guarantees hold around that switch:
 
@@ -70,8 +72,9 @@ Two guarantees hold around that switch:
   before this grammar existed compiles to a byte-identical payload and runs the wave
   loop untouched — same prompts, same report shape.
 - **A malformed graph is refused before the first agent runs.** A cycle, a route to an
-  item that does not exist, an unreachable item, or a `@needs` nobody emits fails the
-  compile, naming the offending item by index and text.
+  item that does not exist, an unreachable item, a `@needs` nobody emits, or an `@on`
+  routing on a signal nobody emits fails the compile, naming the offending item by
+  index and text.
 
 Because waves cannot express a branch, a plan with graph grammar must be compiled by
 `leopold workflow` rather than by hand — `/leopold-workflow` says so and defers to it.
