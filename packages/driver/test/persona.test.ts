@@ -259,9 +259,14 @@ test("the cap drops heuristic prose before it drops a declared rule", () => {
 
 test("this project's OWN charter binds a persona with its actual hard prohibitions", () => {
   // The done condition is that a persona "provably carries the charter's hard rules". The
-  // proof has to be against a real charter — wrapped bullets, prohibitions last — not a
-  // fixture shaped to suit the scanner.
-  const charter = readFileSync(new URL("../../../.leopold/CHARTER.md", import.meta.url), "utf8");
+  // proof has to be against a REAL charter — wrapped bullets, prohibitions last — not a
+  // fixture shaped to suit the scanner. So this is a verbatim copy of this project's own
+  // charter, committed as a fixture: reading `.leopold/CHARTER.md` directly passed on a
+  // maintainer's machine and ENOENT'd in CI, because `.leopold/` is gitignored — the test
+  // proved nothing anywhere it actually ran. A committed copy keeps the "real charter"
+  // property AND runs everywhere, and it cannot change meaning because someone edited an
+  // untracked local file.
+  const charter = readFileSync(new URL("fixtures/charter-real.md", import.meta.url), "utf8");
   const rules = charterHardRules(charter);
   for (const must of [
     "Run `git push`, `git tag`, `npm publish`, or open an external PR.",
