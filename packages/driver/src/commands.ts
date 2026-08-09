@@ -11,7 +11,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { logEvent } from "./log.js";
+import { logEvent, appendDecisionBlock } from "./log.js";
 import { parsePlanFile, setItemDone, setItemOpen } from "./plan.js";
 import type { Brief } from "./types.js";
 
@@ -68,14 +68,20 @@ export function clearCommands(leoDir: string): void {
 }
 
 /** Append a manual steer decision to DECISIONS.md (audit trail, same file the
- *  conductor's own decisions land in). */
+ *  conductor's and the personas' own decisions land in) — through `appendDecisionBlock`,
+ *  the ONE writer for that file, so a human steer and an autonomous call are the same
+ *  shape on the page and no second format can drift in here. */
 function logSteer(leoDir: string, title: string, detail: string): void {
-  const block =
-    `\n## Canvas steer — ${title}   (${new Date().toISOString()})\n` +
-    `Fork:        steered from the canvas (command channel)\n` +
-    `Class:       reversible\n` +
-    `Decision:    ${detail}\n`;
-  try { fs.appendFileSync(path.join(leoDir, "DECISIONS.md"), block); } catch { /* ignore */ }
+  try {
+    appendDecisionBlock(leoDir, `Canvas steer — ${title}   (${new Date().toISOString()})`, [
+      ["Fork", "steered from the canvas (command channel)"],
+      ["Class", "reversible"],
+      ["Decision", detail],
+      // A steer is the human taking the wheel, so the reversal is theirs to make — but
+      // the line is never blank, because an entry without one is not an entry.
+      ["Reversal", "you issued this steer; re-issue the opposite command from the canvas to undo it"],
+    ]);
+  } catch { /* ignore */ }
 }
 
 /** Resolve a command's target to a 1-based plan index, or null. Prefers `index`;

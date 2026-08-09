@@ -12,8 +12,10 @@
 //           the build/lint/tests read-only and says whether the work actually holds.
 //   tool    a COMMAND. No model turn is spent: the driver runs it, and its exit status
 //           becomes the `exit` signal on the state channel.
-//   human   a PERSON decides. The run stops (`awaiting_human`), names the item, and
-//           stages everything for whoever picks it up.
+//   human   the plan asked a PERSON to decide. Nobody is coming, so under the default
+//           posture Leopold synthesizes the role that decision needs, assumes it, does
+//           the work and records the call with its Reversal. `autonomy: ask` restores
+//           the old halt (`awaiting_human`) for a plan written against it.
 //   feedback the run READS ITSELF: a review-only session over `.leopold/events.jsonl`
 //           and the run metrics that may propose plan amendments. It cannot apply one —
 //           it returns proposals, amend.ts enforces the bounds, and the driver writes
@@ -23,7 +25,9 @@
 // scheduler's behavior is unit-testable without a model, a repo or a clock.
 
 import { MAX_ADDED_ITEMS, MAX_ITEM_TEXT } from "./amend.js";
+import { DECISION_BLOCK_INSTRUCTION } from "./persona.js";
 import type { PlanNodeKind } from "./plan.js";
+import type { Autonomy } from "./types.js";
 
 /** The tools a review-only node may never call. Denied twice — as `disallowedTools`
  *  on the session and in the driver's own guard — because "no edits" is a promise the
@@ -48,9 +52,23 @@ export function isReviewOnly(kind: PlanNodeKind): boolean {
   return kind === "gate" || kind === "verify";
 }
 
-/** human — the run stops here and asks. */
-export function haltsRun(kind: PlanNodeKind): boolean {
+/** human — the plan wrote this item for a person. */
+export function isHuman(kind: PlanNodeKind): boolean {
   return kind === "human";
+}
+
+/** Whether a node ENDS THE RUN instead of being dispatched.
+ *
+ *  Under the default posture (`autonomy: full`) NOTHING does — a `@human` node is
+ *  executed by a role Leopold synthesizes for it, and the run continues. `autonomy: ask`
+ *  restores the old behavior for a plan written against it: the run stops with
+ *  `awaiting_human`, names the item and stages everything.
+ *
+ *  The default argument is what makes the change loud in one place: every caller that
+ *  does not pass a posture now gets `false` for `human`, so a path that still halts is
+ *  a path that asked to. */
+export function haltsRun(kind: PlanNodeKind, autonomy: Autonomy = "full"): boolean {
+  return kind === "human" && autonomy === "ask";
 }
 
 /** tool — a command, run by the driver, with no model turn. */
@@ -160,6 +178,34 @@ export function buildFeedbackPrompt(
       : "") +
     signals +
     `If — and only if — the evidence shows the plan is missing work, propose it in a \`leopold-amend\` block (ADD lines, most important first). Then report in the leopold-status block.`
+  );
+}
+
+/** The instruction a `@human` node opens with when the run executes it instead of
+ *  halting. Deliberately not the worker's prompt: this item was WRITTEN FOR A PERSON, so
+ *  it says the call is now the reader's to make, and it demands the record — the decision,
+ *  the charter basis and how to undo it — because an autonomous call with no trail is the
+ *  one failure mode this whole path is a step away from.
+ *
+ *  Pure; the ROLE making the call is attached separately (persona.ts), which is why this
+ *  reads the same however the persona came out — or did not. */
+export function buildHumanNodePrompt(
+  item: string,
+  scenarios: string[] = [],
+  steer?: string,
+  signals = "",
+): string {
+  return (
+    (steer ? `${steer}\n\n` : "") +
+    `This plan item was written for a PERSON to decide. No person is coming: you have the seat, and you make the call yourself — then do the work it implies, completely and verified.\n\n${item}\n\n` +
+    (scenarios.length
+      ? `The item promised this. It is DONE only when EVERY one holds (given→when→then, observable from the caller/user's side):\n` +
+        scenarios.map((s, i) => `  ${i + 1}. ${s}`).join("\n") + `\n\n`
+      : "") +
+    signals +
+    `Decide from the mission and the charter, never from what would be easiest. If the decision implies an action this run must not take — git commit, git push, tag, publish, opening a PR — MAKE THE CALL ANYWAY, stage the work, and say plainly that shipping it is the human's step. A decision you do not execute is still a decision worth recording. Only the first two are enforced (the guard denies git commit and git push); the rest nothing blocks, so not doing them is on you.\n\n` +
+    DECISION_BLOCK_INSTRUCTION +
+    `\n\nThen close your turn with the leopold-status block as usual.`
   );
 }
 

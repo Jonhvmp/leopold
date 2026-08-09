@@ -90,7 +90,7 @@ a qualquer momento com `leopold-driver workflow`. Veja
 
 | Arquivo | Contém |
 | --- | --- |
-| `state.json` | `active`, `iteration`, `max_iterations`, `consecutive_failures`, `max_failures`, timestamps |
-| `events.jsonl` | fluxo estruturado de eventos (incl. eventos de `review`, `hypothesis`, `learn`, `cost`) |
+| `state.json` | `active`, `iteration`, `max_iterations`, `consecutive_failures`, `max_failures`, `failure_rescue_used` (a única mudança de abordagem conduzida por persona do run, gasta uma vez), timestamps |
+| `events.jsonl` | fluxo estruturado de eventos (incl. eventos de `review`, `hypothesis`, `failure_rescue`, `learn`, `cost`) |
 | `STOP` | kill switch (a presença interrompe o loop) |
 | `ALLOW_GIT` / `ALLOW_PUSH` | tokens de opt-in de git por run, ausentes por padrão |

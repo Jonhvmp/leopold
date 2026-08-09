@@ -117,9 +117,14 @@ Write `.leopold/state.json` (read `max_iterations` / `max_failures` from
 mkdir -p .leopold
 [ -f .leopold/DECISIONS.md ] || printf '# Decisions\n\nAutonomous decisions, newest last.\n\n' > .leopold/DECISIONS.md
 : >> .leopold/events.jsonl
+# A one-shot that is already SPENT must survive a resume. This block runs on every
+# /leopold-run, resume included, so writing the template blind hands the next run a fresh
+# last-chance attempt and the ceiling stops being a ceiling. Carry the spent marks over.
+SPENT="$(jq -c '{failure_rescue_used:(.failure_rescue_used // false),deadlock_repair_used:(.deadlock_repair_used // false)}' .leopold/state.json 2>/dev/null || echo '{}')"
 cat > .leopold/state.json <<JSON
 {"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"max_forks":0,"forks_spawned":0,"max_context_mb":5,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-}}"}
 JSON
+tmp="$(mktemp)" && jq --argjson s "${SPENT:-\{\}}" '. + $s' .leopold/state.json > "$tmp" && mv "$tmp" .leopold/state.json
 ```
 
 Once `state.json` has `active:true`, the guardrail hook is live: `git commit` and
@@ -192,9 +197,20 @@ explicit-over-clever, bias-toward-action.
 Each turn:
 
 1. Read `.leopold/PLAN.md`; pick the next unchecked item. If that item declares
-   `@human` (a node kind: `@node human`, or the `@human` shorthand), it is not
-   yours to close — say what you need decided, leave it unchecked, and finish
-   the turn. The Stop hook ends the run there with `awaiting_human`.
+   `@human` (a node kind: `@node human`, or the `@human` shorthand), the plan asked
+   a person to decide it and **no person is coming: you decide it.** Synthesize the
+   role that decision needs — a name, a specific role title, the expertise the item
+   actually demands, what that role optimizes for, and the hard rules from
+   `.leopold/CHARTER.md` that bind it, lifted verbatim ("an agent" is not a persona) —
+   take that role, and do the item under it. Record the call in `.leopold/DECISIONS.md`
+   naming the persona, the fork, the charter basis and a **Reversal** line; a decision
+   with no Reversal is not done. You decide, you do not ship: the guard denies `git commit`
+   and `git push` and that is all it denies — tagging, publishing, opening an external PR,
+   raising a budget and editing `GUARDRAILS.md` are equally forbidden but nothing blocks
+   them, so keeping to them is on you. Under `autonomy: ask` in
+   `GUARDRAILS.md` (or `LEOPOLD_AUTONOMY=ask`) the old behavior stands instead — leave
+   the item unchecked, say what you need decided, and the Stop hook ends the run there
+   with `awaiting_human`.
 2. Complete it. Reach for the gstack playbook skill that fits the situation
    (`spec` before non-trivial builds, `code-review` after changes, `verify`
    to confirm behavior, `investigate` when something breaks, `find-docs`
@@ -216,8 +232,12 @@ with `/code-review` *before* you report done, so the panel passes first try. And
 item of yours failed before, the driver may hand you a root-cause lead from its
 hypothesis panel: verify the theory quickly, and say so in your status if it's wrong.
 
-If the same thing fails repeatedly, increment `consecutive_failures` in
-`state.json`; the stop condition will catch a stuck run.
+Keep `consecutive_failures` in `state.json` honest in BOTH directions: increment it when
+the same thing fails again, and **set it back to `0` the moment an item closes**. It counts
+failures *in a row*, so a run that never resets it is stuck at the ceiling forever — the
+last-chance attempt the Stop hook buys you would succeed, and the very next turn would
+still end the run with `repeated_failure`. The driver does this reset itself
+(`packages/driver/src/loop.ts`); in-session it is yours to do.
 
 ## Hard rules (never break, even if a turn seems to want it)
 

@@ -1,3 +1,18 @@
+// FROZEN FIXTURE — do not edit, do not regenerate.
+//
+// This is skills/leopold-workflow/reference/leopold-run.workflow.js exactly as it stood
+// at commit 800948a, the last commit before the persona capability existed. It is the
+// baseline for the backward-compatibility guarantee asserted in test/workflow-decisions.test.ts:
+// a plan that authors no graph and reaches no persona path must run through the current
+// script with byte-identical agent prompts, options and result.
+//
+// It is checked in rather than read out of git history on purpose. `git show HEAD:<script>`
+// stops testing anything the moment the change lands (HEAD then holds the new script and the
+// test compares the file to itself), and a pinned SHA cannot be resolved in the shallow clone
+// CI checks out. A frozen copy keeps the guarantee enforced forever with no regeneration:
+// both sides are fed the same compiled brief, so unrelated changes move them together and
+// only a real behavior change for non-persona plans can make this diverge.
+
 // Leopold — brief compiled into a dynamic workflow.
 //
 // This is the CANONICAL shape /leopold-workflow generates. The compiler reads the
@@ -24,8 +39,6 @@
 //                       sensitive: boolean,            // security-sensitive diff → security lens
 //                     }>>,
 //     maxReviewRounds: number,  // default 2
-//     autonomy:       'ask',    // OPTIONAL — present ONLY when the brief opted out of
-//                               // full autonomy, so a plan that did not is byte-identical
 //     graph:          {                                // OPTIONAL — see below
 //                       nodes: Array<{
 //                         index: number, id: string, text: string, done: boolean,
@@ -83,13 +96,6 @@ const waves = Array.isArray(brief.waves) ? brief.waves : []
 const MAX_REVIEW = Number.isFinite(brief.maxReviewRounds) ? brief.maxReviewRounds : 2
 const items = waves.flat()
 
-// NOTHING HALTS, unless the brief asked for it. Under the default `full`, a `@human`
-// node runs under a role Leopold synthesizes for it; under `ask` it stops the run and
-// hands the seat back, exactly as this script has always done. Same toggle, same
-// default and same word as the driver's `autonomy: full | ask` — a plan must mean the
-// same thing on both engines.
-const AUTONOMY = String(brief.autonomy || 'full').trim().toLowerCase() === 'ask' ? 'ask' : 'full'
-
 // The authored graph, or null for a plain checklist. Null is the backward-compatible
 // path and everything below guards on it.
 const nodes = brief.graph && Array.isArray(brief.graph.nodes) && brief.graph.nodes.length
@@ -119,16 +125,13 @@ Report the value that is actually TRUE of what you did, not the one you hoped fo
 `
 }
 
-// `decide` is set ONLY on a node that reached a persona path (today: `@human` under
-// `autonomy: full`). Without it `personaAppend` and `decisionAsk` are both the empty
-// string, so the prompt is byte-identical to the one this script has always built.
-function implPrompt(item, feedback, decide) {
-  return `${CHARTER_BLOCK}${personaAppend(decide && decide.persona)}
+function implPrompt(item, feedback) {
+  return `${CHARTER_BLOCK}
 
 Work on this plan item now, completely and verified (build, lint, tests as the item needs):
 
   ${item.text}
-${feedback ? `\nA prior review found blocking issues — fix every one first:\n${feedback}\n` : ''}${signalsBlock(item)}${decisionAsk(decide)}
+${feedback ? `\nA prior review found blocking issues — fix every one first:\n${feedback}\n` : ''}${signalsBlock(item)}
 Make the edits in the repo. Do NOT commit. When it is genuinely done and verified, return a one-paragraph summary of what changed and how you verified it.`
 }
 
@@ -138,19 +141,6 @@ const IMPL_SCHEMA = {
   type: 'object',
   required: ['summary'],
   properties: { summary: { type: 'string' }, signals: { type: 'object' } },
-}
-
-// A node deciding on a human's behalf reports the CALL alongside the work — the three
-// fields DECISIONS.md needs, and the reason this engine can write the same entry the
-// driver writes. `reversal` is required by the schema because an autonomous decision
-// with no way back is the one shape this project does not ship.
-const DECISION_SCHEMA = {
-  type: 'object',
-  required: ['summary', 'decision', 'reversal'],
-  properties: {
-    summary: { type: 'string' }, signals: { type: 'object' },
-    decision: { type: 'string' }, why: { type: 'string' }, reversal: { type: 'string' },
-  },
 }
 
 // Adversarial reviewer. Each lens is a distinct skeptic with its own clean context —
@@ -195,16 +185,14 @@ const REVIEW_SCHEMA = {
 // The `role:key` label scheme (`impl:<id>` / `verify:<id>:<lens>`) is also the edge-hint
 // channel the Leopold Canvas reads: leopold-watch's /api/graph links each verify node
 // to the exact impl node sharing its <id>, so the DAG is precise, not phase-approximate.
-async function runItem(item, decide) {
+async function runItem(item) {
   let feedback = ''
   let round = 0
-  let decided
   const emits = item.emits || []
   for (;;) {
     const implOpts = { label: `impl:${item.id}`, phase: 'Execute', effort: item.effort }
-    if (decide) implOpts.schema = DECISION_SCHEMA
-    else if (emits.length) implOpts.schema = IMPL_SCHEMA
-    const built = await agent(implPrompt(item, feedback, decide), implOpts)
+    if (emits.length) implOpts.schema = IMPL_SCHEMA
+    const built = await agent(implPrompt(item, feedback), implOpts)
 
     // A dead implementer (skipped by the user, or a terminal API error after retries)
     // returns null. Reviewing that is worse than useless: it leaves an empty diff, the
@@ -259,17 +247,11 @@ async function runItem(item, decide) {
       ? built.signals
       : undefined
 
-    // The call this node made on the human's behalf, kept across review rounds: a fix
-    // round re-states it, and if a later round states none the earlier one still stands.
-    // A persona path that decided and left no entry is the failure mode this closes, so
-    // the record survives everything except never having decided at all.
-    if (decide) decided = readDecision(built, decide) || decided
-
-    if (blocking.length === 0) return { id: item.id, text: item.text, done: true, rounds: round, signals: reported, decision: decided }
+    if (blocking.length === 0) return { id: item.id, text: item.text, done: true, rounds: round, signals: reported }
     round += 1
     if (round > MAX_REVIEW) {
       log(`item ${item.id}: still ${blocking.length} blocking after ${MAX_REVIEW} rounds — leaving for the human.`)
-      return { id: item.id, text: item.text, done: false, rounds: round, blocking, signals: reported, decision: decided }
+      return { id: item.id, text: item.text, done: false, rounds: round, blocking, signals: reported }
     }
     feedback = blocking.map((b, i) => `${i + 1}. [${b.file || '?'}] ${b.issue}`).join('\n')
     log(`item ${item.id}: ${blocking.length} blocking (round ${round}/${MAX_REVIEW}) → fixing`)
@@ -484,21 +466,21 @@ function judgeAmendments(proposals, remaining, itemCount, doneSet) {
   return { accepted, refused }
 }
 
-/** The DECISIONS.md block one accepted amendment leaves behind — through the SAME
- *  writer every other entry on this engine goes through, so an amendment and a persona
- *  decision cannot end up in two shapes in one file. */
+/** The DECISIONS.md block one accepted amendment leaves behind — the same
+ *  Fork/Class/Charter/Decision/Why/Reversal shape the driver writes. */
 function amendmentDecisionBlock(a, node) {
-  return decisionBlock(
-    `Plan amended — item ${a.index} added by the @feedback node at item ${node.index}   (${new Date().toISOString()})`,
-    [
-      ['Fork', `add "${a.text}" to the plan vs leave the plan as the human wrote it`],
-      ['Class', 'reversible'],
-      ['Charter', `${BOUND_RULE['add-budget']}, never delete, never touch a done item, never edit GUARDRAILS`],
-      ['Decision', `appended item ${a.index}: ${a.line}`],
-      ['Why', `the @feedback node at item ${node.index} ("${String(node.text).slice(0, 80)}") proposed it from the run's own evidence, and it clears every bound`],
-      ['Reversal', `delete the line "${a.line}" at the end of .leopold/PLAN.md — items are appended, so no existing item's index moved`],
-    ],
-  )
+  const pad = (k) => `${k}:`.padEnd(13)
+  return [
+    '',
+    `## Plan amended — item ${a.index} added by the @feedback node at item ${node.index}   (${new Date().toISOString()})`,
+    `${pad('Fork')}add "${a.text}" to the plan vs leave the plan as the human wrote it`,
+    `${pad('Class')}reversible`,
+    `${pad('Charter')}${BOUND_RULE['add-budget']}, never delete, never touch a done item, never edit GUARDRAILS`,
+    `${pad('Decision')}appended item ${a.index}: ${a.line}`,
+    `${pad('Why')}the @feedback node at item ${node.index} ("${String(node.text).slice(0, 80)}") proposed it from the run's own evidence, and it clears every bound`,
+    `${pad('Reversal')}delete the line "${a.line}" at the end of .leopold/PLAN.md — items are appended, so no existing item's index moved`,
+    '',
+  ].join('\n')
 }
 
 /** Persist what the bounds accepted. A workflow script has no filesystem of its own, so
@@ -550,386 +532,6 @@ async function runFeedbackNode(node, doneSet) {
   await writeAmendments(node, j.accepted)
   log(`  ${amendmentsAdded}/${MAX_ADDED_ITEMS} plan amendments used this run; each is logged in DECISIONS.md with a Reversal line.`)
   return result
-}
-
-// ---- the decision trail: ONE writer, and the shape the driver already writes -------
-// /leopold-workflow used to write NO decisions at all: the trail lived in the driver's
-// loop (`logDecision`), so the same brief run as a workflow left DECISIONS.md empty —
-// 48 agents, zero entries. Everything this engine decides now lands here, in the exact
-// block shape packages/driver/src/log.ts writes: `## D<n> — <title>` and six padded
-// fields, with Reversal never blank. An auditor reading DECISIONS.md cannot tell which
-// engine wrote an entry, only who decided and why — which is the whole point.
-//
-// ONE WRITER FOR THAT FILE ON THIS ENGINE TOO: a `@feedback` node's plan amendments and
-// a persona's decision both build their block with `decisionBlock` and both persist
-// through an agent that appends the exact bytes this script computed.
-
-const FIELD_WIDTH = 13
-let decisionCounter = 0
-/** Every decision this run recorded, in the order it made them. */
-const decisionsMade = []
-
-/** One DECISIONS.md block: the heading and its padded fields. */
-function decisionBlock(heading, fields) {
-  return ['', `## ${heading}`, ...fields.map(([k, v]) => `${`${k}:`.padEnd(FIELD_WIDTH)}${v}`), ''].join('\n')
-}
-
-/** Persist decision blocks. A workflow script has no filesystem of its own, so the write
- *  goes to an agent — the same delegation the amendment writer uses — and that agent gets
- *  NO judgement to make: it appends the exact bytes this script computed. */
-async function writeDecisionEntries(blocks, label) {
-  if (!blocks.length) return
-  await agent(`${CHARTER_BLOCK}
-
-You are RECORDING a decision Leopold has already made. Append to the END of \`.leopold/DECISIONS.md\` (create it if it does not exist), verbatim, and make no other change — no rewording, no reordering, no other edit, no commit:
-${blocks.join('')}
-Do not modify any existing line of that file, do not touch \`.leopold/PLAN.md\` or \`.leopold/GUARDRAILS.md\`, and do not add anything of your own.`, { label, phase: 'Execute', effort: 'low' })
-}
-
-// ---- personas: the role Leopold assumes where the plan asked for a person ----------
-// Mirrored from packages/driver/src/persona.ts, in CODE and not in a prompt, for the
-// same reason the amendment bounds above are mirrored: BOTH ENGINES OR NEITHER. A
-// `@human` node that resolves under a synthesized role in the driver and halts here
-// would teach the user a lie about their own plan.
-//
-// TWO HALVES, AND ONLY ONE IS A MODEL CALL: the FIT (a name, the expertise the item
-// needs, what it optimizes for) is synthesized; the CONSTRAINTS are lifted from
-// CHARTER.md verbatim by `charterHardRules` below, so a model cannot soften or forget
-// them. Synthesis is best-effort — any failure returns undefined and the item runs under
-// the default prompt, because a run must never die over who it could not decide it was.
-
-const FORK_SITUATION = {
-  human: 'a @human node — the plan asked a person to decide this, and no person is coming',
-  escalation: 'an escalation — the worker hit a fork it could not settle from the charter',
-  repair: 'a broken plan graph — a route points nowhere, or the graph will not validate',
-  deadlock: 'a deadlock — items are open, nothing is dispatchable, and the run is waiting on a decision nobody made',
-  'repeated-failure': 'repeated failure — the same kind of failure has now happened three times',
-}
-
-const MAX_LIST = 6
-const MAX_FIELD = 240
-const MAX_RULE = 320
-const MAX_CHARTER_RULES = 32
-
-const GENERIC_ROLES = new Set([
-  'assistant', 'ai assistant', 'ai', 'agent', 'ai agent', 'an agent', 'helper', 'bot',
-  'model', 'llm', 'worker', 'generalist', 'expert', 'specialist', 'professional',
-  'engineer', 'developer', 'software engineer', 'leopold', 'claude', 'persona',
-])
-
-const RULE_HEADING = /^#{1,6}\s*(never|always|hard rules?|rules?|constraints?|non-?goals?|must|do not|don'?t|guardrails?|boundaries)\b/i
-const OTHER_HEADING = /^#{1,6}\s+/
-const RULE_WORDS = /\b(never|always|must not|must never|may never|cannot|can not|do(?:es)? not|did not|will not|shall not|don'?t|no new|not negotiable|non-negotiable|forbidden|is locked|stays locked|only ever|at most|refuse)\b/i
-const LIST_MARKER = /^(?:[-*+]|\d+[.)])[ \t]+/
-const HEADING_POLARITY = [
-  [/^#{1,6}\s*(never|must not|must never|do not|don'?t)\b/i, 'Never: '],
-  [/^#{1,6}\s*(always|must)\b/i, 'Always: '],
-  [/^#{1,6}\s*non-?goals?\b/i, 'Non-goal: '],
-]
-
-function clip(s, max = MAX_FIELD) {
-  const t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim()
-  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t
-}
-
-function listOf(v) {
-  const raw = Array.isArray(v) ? v : typeof v === 'string' && v.trim() ? v.split(/\s*[;\n]\s*/) : []
-  const out = []
-  for (const x of raw) {
-    const t = clip(typeof x === 'string' ? x : JSON.stringify(x))
-    if (t && !out.includes(t)) out.push(t)
-    if (out.length >= MAX_LIST) break
-  }
-  return out
-}
-
-function headingPrefix(heading) {
-  for (const [re, prefix] of HEADING_POLARITY) if (re.test(heading)) return prefix
-  return ''
-}
-
-/** The charter's binding rules, VERBATIM and in the charter's own order — pure,
- *  deterministic, model-free. A wrapped bullet is ONE rule; a rule under `## Never`
- *  carries that heading's polarity, because "Run `git push`" lifted bare under "you are
- *  bound by these" reads as an instruction to run it; and when the cap bites it drops
- *  heuristic prose before it drops a declared prohibition. Same rules, same order and
- *  same output as the driver's charterHardRules. */
-function charterHardRules(charter) {
-  const candidates = []
-  let declaredSection = false
-  let sectionPrefix = ''
-  let fenced = false
-  let block = ''
-  let blockDeclared = false
-  let blockPrefix = ''
-
-  const flush = () => {
-    const text = clip(block.replace(LIST_MARKER, '').trim(), MAX_RULE)
-    block = ''
-    if (text.length < 4) return
-    if (!blockDeclared && !RULE_WORDS.test(text)) return
-    candidates.push({ text: blockDeclared ? blockPrefix + text : text, declared: blockDeclared })
-  }
-  const open = (line) => {
-    block = line
-    blockDeclared = declaredSection
-    blockPrefix = sectionPrefix
-  }
-
-  for (const raw of String(charter == null ? '' : charter).split('\n')) {
-    const line = raw.trim()
-    if (/^```/.test(line)) { flush(); fenced = !fenced; continue }
-    if (fenced) continue
-    if (!line || /^[-=]{3,}$/.test(line)) { flush(); continue }
-    if (OTHER_HEADING.test(line)) {
-      flush()
-      declaredSection = RULE_HEADING.test(line)
-      sectionPrefix = declaredSection ? headingPrefix(line) : ''
-      continue
-    }
-    if (LIST_MARKER.test(line)) { flush(); open(line); continue }
-    if (block) block += ' ' + line
-    else open(line)
-  }
-  flush()
-
-  const seen = new Set()
-  const unique = candidates.filter((c) => !seen.has(c.text) && (seen.add(c.text), true))
-  if (unique.length <= MAX_CHARTER_RULES) return unique.map((c) => c.text)
-
-  const keep = new Set()
-  for (const pass of [true, false]) {
-    unique.forEach((c, i) => { if (c.declared === pass && keep.size < MAX_CHARTER_RULES) keep.add(i) })
-  }
-  return unique.filter((_, i) => keep.has(i)).map((c) => c.text)
-}
-
-const NO_EXECUTION_CLAUSE =
-  'You DECIDE; you do not ship. Two things are enforced for you: the Leopold guard denies `git commit` and `git push` (force-push always), and that is its entire scope — stage the work and say what you decided. EVERYTHING ELSE IS ON YOU, because nothing blocks it: do not run git tag, do not publish a package, do not cut a release, do not open an external PR, and never raise a budget or iteration limit, clear a kill switch, or edit GUARDRAILS.md. Treat those as hard denials even though no hook will stop you.'
-
-const DEFAULT_REVERSAL =
-  'Nothing was committed: discard this item\'s staged work (`git restore --staged --worktree .`) and the decision is undone.'
-const DEFAULT_WHY =
-  'no separate reasoning was stated; the charter rules binding this role are the basis.'
-const NO_PERSONA = 'Leopold — no role was synthesized; the default worker rules applied'
-
-const PERSONA_SCHEMA = {
-  type: 'object',
-  required: ['name', 'role', 'expertise'],
-  properties: {
-    name: { type: 'string' }, role: { type: 'string' },
-    expertise: { type: 'array', items: { type: 'string' } },
-    optimizesFor: { type: 'array', items: { type: 'string' } },
-    rationale: { type: 'string' },
-  },
-}
-
-function personaPrompt(input) {
-  return `You are Leopold, an autonomous orchestrator. A plan item has reached a point that used to wait for a human being. No human is coming: you decide who should do this work, and that role then does it.
-
-Your job right now is ONE thing: synthesize the ROLE this specific item needs. Not the answer — the person.
-
-What makes a real persona:
-- A NAME and a specific role title. "An assistant", "an agent", "an engineer" is not a persona, it is the same generic answer with a hat on. If the item is about visual hierarchy, the role is a designer. If it is about a database cutover, the role is a release/data engineer. Fit the role to THIS item's actual subject matter.
-- The EXPERTISE this item genuinely needs, concretely (2-4 items). Name real skills, not adjectives.
-- What this role OPTIMIZES FOR when it decides (2-4 items), consistent with the mission and the charter below.
-- WHY this role fits this item, in one or two lines.
-
-What this role may NOT do, ever, whatever it concludes: git commit, git push, git tag, publish, open an external PR, raise or route around any budget or iteration limit, clear a kill switch, or edit GUARDRAILS.md. It DECIDES; the human ships. A decision it cannot execute is still a decision worth recording.
-
-Do not restate the charter's rules: they are attached to the role in code, verbatim, whatever you write.
-
-${CHARTER_BLOCK}
-
-The run reached this and would previously have stopped for a human.
-
-SITUATION: ${FORK_SITUATION[input.fork] || input.fork}
-ITEM: ${clip(input.item, 600)}
-WHAT IS ACTUALLY BEING DECIDED: ${clip(input.detail || '', 900) || '(the item as written)'}
-
-Synthesize the role that should take this. Return the JSON object now.`
-}
-
-/** One model call, no tools. Returns undefined on anything unusable — an unparseable
- *  answer, a generic role, a dead agent — and the caller then runs the item under the
- *  default prompt rather than the run dying. */
-async function synthesizePersona(input, label) {
-  let v
-  try {
-    v = await agent(personaPrompt(input), { label, phase: 'Plan', schema: PERSONA_SCHEMA, effort: 'low' })
-  } catch { return undefined }
-  if (!v || typeof v !== 'object') return undefined
-  const role = clip(typeof v.role === 'string' ? v.role : '', 80)
-  const name = clip(typeof v.name === 'string' ? v.name : '', 80)
-  const expertise = listOf(v.expertise)
-  if (!role || !name || !expertise.length) return undefined
-  if (GENERIC_ROLES.has(role.toLowerCase().replace(/[.\s]+$/, ''))) return undefined
-  // The binding rules are the CHARTER'S, lifted in code — nothing the model wrote is
-  // consulted here. That is what makes "the persona carries the charter's hard rules" a
-  // property of this script rather than a hope about a prompt.
-  return {
-    name, role, expertise,
-    optimizesFor: listOf(v.optimizesFor),
-    constraints: charterHardRules(charter),
-    rationale: clip(typeof v.rationale === 'string' ? v.rationale : '', 400),
-    fork: input.fork,
-    item: clip(input.item, 300),
-  }
-}
-
-/** The prompt fragment that ASSUMES the role. Empty for an unsynthesized persona, so the
- *  prompt is byte-identical to the default one when synthesis found nobody. */
-function personaAppend(persona) {
-  if (!persona) return ''
-  const bullets = (xs) => xs.map((x) => `  - ${x}`).join('\n')
-  return `
-
-YOU ARE ${persona.name.toUpperCase()} — ${persona.role}.
-This item reached ${FORK_SITUATION[persona.fork] || persona.fork}. No human is coming; you have the seat, and you make this call yourself.
-
-- Your expertise:
-${bullets(persona.expertise)}
-${persona.optimizesFor.length ? `- You optimize for:\n${bullets(persona.optimizesFor)}\n` : ''}- ${persona.rationale || 'This role is what the item needs.'}
-- YOU ARE BOUND BY THESE RULES. They come from the project's charter, they are not advice, and a decision that breaks one is wrong however well argued:
-${bullets(persona.constraints)}
-
-${NO_EXECUTION_CLAUSE}
-
-Do the work this item asks for, completely, and state the call you made, why the charter supports it, and how to undo it.`
-}
-
-/** What a node on a persona path is asked to state. Empty for every other node. */
-function decisionAsk(decide) {
-  if (!decide) return ''
-  return `
-This plan item was written for a PERSON to decide. No person is coming: you have the seat, and you make the call yourself — then do the work it implies, completely and verified.
-Decide from the mission and the charter, never from what would be easiest. If the decision implies an action this run must not take — git commit, git push, tag, publish, opening a PR — MAKE THE CALL ANYWAY, stage the work, and say plainly that shipping it is the human's step. A decision you do not execute is still a decision worth recording.
-Along with your \`summary\`, return \`decision\` (the call you made, one line), \`why\` (the charter/mission basis for it) and \`reversal\` (how a human undoes this, concretely — the file to revert, the flag to flip).
-`
-}
-
-/** The decision the node stated, normalized. Never returns an entry with an empty
- *  Reversal: a decision with no way back is not done, so there is no path producing one. */
-function readDecision(built, decide) {
-  if (!built || typeof built !== 'object') return undefined
-  const decision = clip(built.decision || '') || clip(built.summary || '')
-  if (!decision) return undefined
-  return {
-    decision,
-    why: clip(built.why || '') || DEFAULT_WHY,
-    reversal: clip(built.reversal || '') || DEFAULT_REVERSAL,
-    persona: decide && decide.persona,
-    fork: decide ? decide.fork : 'human',
-    item: clip(decide && decide.item ? decide.item : '', 300),
-  }
-}
-
-/** What bound the role that decided, for the trail's `Charter:` line. */
-function charterBasisOf(persona) {
-  if (!persona) return 'no persona was synthesized; the default worker rules applied'
-  const n = persona.constraints.length
-  if (n === 0) return `no binding rule found in CHARTER.md — ${persona.role} decided on the mission alone`
-  return `${n} charter rule(s) bind ${persona.role}; first: ${persona.constraints[0]}`
-}
-
-/** A persona decision as a DECISIONS.md block — the driver's six fields, in its order,
- *  with none of them blank. `turn` is this run's dispatch ordinal, the workflow's
- *  equivalent of the driver's iteration number. */
-function personaDecisionEntry(d, turn) {
-  const persona = d.persona
-  decisionCounter += 1
-  const title = persona ? `${persona.name} decided: ${persona.role}` : 'Leopold decided (no persona synthesized)'
-  const fork = (persona && persona.fork) || d.fork
-  const item = (persona && persona.item) || d.item
-  return decisionBlock(`D${decisionCounter} — ${title}   (turn ${turn}, ${new Date().toISOString()})`, [
-    ['Persona', persona ? `${persona.name} — ${persona.role} (${persona.expertise.join('; ')})` : NO_PERSONA],
-    ['Fork', `${FORK_SITUATION[fork] || fork || 'an autonomous fork'}${item ? `: ${item}` : ''}`],
-    ['Class', 'n/a'],
-    ['Charter', charterBasisOf(persona)],
-    ['Decision', d.decision],
-    ['Why', d.why || DEFAULT_WHY],
-    ['Reversal', d.reversal || DEFAULT_REVERSAL],
-  ])
-}
-
-/** A @human node under `autonomy: full`. The plan asked a person; nobody is coming, so
- *  the role that decision needs is synthesized and the item runs under it — through the
- *  same implement → adversarially verify → fix loop every other work node runs, because
- *  a decision made on someone's behalf deserves MORE scrutiny, not less. The call it
- *  made is then written to DECISIONS.md before the run moves on. */
-async function runHumanNode(node) {
-  const persona = await synthesizePersona(
-    { fork: 'human', item: node.text, detail: node.label ? `The plan labelled this decision "${node.label}".` : '' },
-    `node:persona:${node.id}`,
-  )
-  log(persona
-    ? `  persona -> ${persona.name}, ${persona.role} — bound by ${persona.constraints.length} charter rule(s).`
-    : '  persona -> not synthesized; the item runs under the default worker prompt.')
-
-  const turn = results.length + 1
-  const r = await runItem(node, { fork: 'human', persona, item: node.text })
-  const d = r.decision || {
-    // The node returned nothing usable. It still decided — it ran with the seat — and an
-    // autonomous call with no entry is exactly the failure this closes, so the entry is
-    // written from what is known instead of being skipped.
-    decision: `ran the @human item "${clip(node.text, 120)}" under ${persona ? `${persona.name}, ${persona.role}` : 'the default worker prompt'} and stated no separate call`,
-    why: DEFAULT_WHY, reversal: DEFAULT_REVERSAL, persona, fork: 'human', item: clip(node.text, 300),
-  }
-  // The block is built first so the entry can carry its `D<n>` — the report points at
-  // the exact heading in DECISIONS.md instead of asking the reader to find it.
-  const block = personaDecisionEntry(d, turn)
-  decisionsMade.push({
-    n: decisionCounter, item: node.text,
-    persona: persona ? `${persona.name} — ${persona.role}` : NO_PERSONA,
-    fork: d.fork || 'human', decision: d.decision, reversal: d.reversal,
-  })
-  log(`  decided: ${d.decision}`)
-  log(`  reversal: ${d.reversal}`)
-  await writeDecisionEntries([block], `node:decision:${node.id}`)
-  return r
-}
-
-// ---- "what I decided for you": the calls, riskiest first ---------------------------
-// The trail is complete and nobody reads it at the end of a run that went well, so the
-// run says its calls out loud: a few lines at the bottom of the report, riskiest first,
-// each naming WHO decided and HOW TO UNDO IT.
-//
-// Mirrored from packages/driver/src/summary.ts in CODE, for the same reason the persona
-// and amendment logic above is mirrored: BOTH ENGINES OR NEITHER. The driver reads the
-// order back off DECISIONS.md; this engine has the entries in hand, and the SCORE is the
-// same function of the same four inputs — test/decided-for-you.test.ts runs the two side
-// by side over one set of decisions and fails if they ever order it differently.
-//
-// RISK IS ORDERING, NOT A VERDICT: it never hides an entry, and the full trail is one
-// line away. With no persona decision the summary is the empty string, so a plain
-// checklist's report is byte-for-byte the string it has always been.
-
-const MAX_SUMMARIZED = 5
-const FORK_RISK = { escalation: 50, human: 42, deadlock: 34, repair: 30, 'repeated-failure': 22, unknown: 26 }
-const HEAVY_SUBJECT = /\b(prod|production|cutover|deploy|deployed|release|releasing|publish|publishing|ship|shipping|migrat\w*|schema|drop\w*|delete\w*|truncat\w*|credential\w*|secret\w*|token|security|breaking|irreversible|data loss|rollback|customer|billing|payment)\b/i
-
-function riskOf(e) {
-  let risk = FORK_RISK[e.fork] || FORK_RISK.unknown
-  if (e.persona === NO_PERSONA) risk += 14
-  if (HEAVY_SUBJECT.test(e.decision)) risk += 12
-  if (e.reversal === DEFAULT_REVERSAL) risk += 6
-  return risk
-}
-
-/** The decisions in reading order, riskiest first; ties keep the order they were made. */
-function byRisk(entries) {
-  return entries.map((e, i) => ({ e, i })).sort((a, b) => riskOf(b.e) - riskOf(a.e) || a.i - b.i).map((x) => x.e)
-}
-
-/** The block that ends the report. Empty for a run that decided nothing on your behalf. */
-function decidedForYou(entries) {
-  if (!entries.length) return ''
-  const shown = entries.slice(0, MAX_SUMMARIZED)
-  const lines = shown.map((e, i) => `  ${i + 1}. [${e.fork}] ${e.persona.split(' (')[0]} (D${e.n}): ${e.decision}\n     Reversal: ${e.reversal}`)
-  const more = entries.length - shown.length
-  return `\n\nWhat I decided for you (${entries.length} call${entries.length === 1 ? '' : 's'}, riskiest first):\n${lines.join('\n')}` +
-    (more > 0 ? `\n  (+${more} more)` : '') +
-    `\nThe full trail — charter basis and why — is in .leopold/DECISIONS.md.`
 }
 
 // ---- routing: pure, deterministic, and a mirror of the driver's graph.ts ----------
@@ -1081,8 +683,6 @@ log(`Leopold: ${items.length} plan item(s) across ${waves.length} dependency wav
 // impl agent (see the skill's "Advanced: worktree-parallel" note).
 const results = []
 const routesTaken = []
-const stranded = []
-const routedAround = []
 let awaitingHuman = null
 
 if (!nodes) {
@@ -1106,23 +706,17 @@ if (!nodes) {
   const closed = new Set(nodes.filter((n) => n.done).map((n) => n.index))
   log(`Routing is on: ${nodes.length} node(s), ${nodes.reduce((a, n) => a + n.routes.length, 0)} conditional edge(s).`)
 
-  // One writer for the latch the router replays: the loop and the post-loop report ask
-  // the same question of the same channel, so what the report calls "routed around" is
-  // exactly what the last dispatch bypassed.
-  const latch = () => ({ frozen: new Set(Object.keys(state.status).map(Number)), taken: routesTaken })
-
   for (;;) {
-    const d = routeDecision(closed, state, latch())
+    const d = routeDecision(closed, state, { frozen: new Set(Object.keys(state.status).map(Number)), taken: routesTaken })
     if (d.order.length === 0) break
     const node = byIndex.get(d.order[0])
     if (d.bypassed.length) log(`  bypassed this dispatch (control routed away): ${d.bypassed.join(', ')}`)
 
-    // A HUMAN node under `autonomy: ask` stops the run and asks. Nothing after it is
-    // dispatched — that posture exists so a person closes this item, and deciding it on
-    // their behalf is the one thing they opted out of.
-    if (node.kind === 'human' && AUTONOMY === 'ask') {
+    // A HUMAN node stops the run and asks. Nothing after it is dispatched — deciding
+    // it on the human's behalf is the one thing this kind exists to prevent.
+    if (node.kind === 'human') {
       awaitingHuman = { id: node.id, item: node.text }
-      log(`  ⏸ ${node.id} is a @human node and autonomy is "ask" — stopping and asking. Everything so far is staged.`)
+      log(`  ⏸ ${node.id} is a @human node — stopping and asking. Everything so far is staged.`)
       break
     }
 
@@ -1133,12 +727,7 @@ if (!nodes) {
         ? await runFeedbackNode(node, closed)
         : (node.kind === 'gate' || node.kind === 'verify')
           ? await runGateNode(node)
-          : node.kind === 'human'
-            // Nothing halts: the role this decision needs is synthesized, the item runs
-            // under it, and the call it made is recorded — the driver's path, on this
-            // engine, so a plan means the same thing wherever it runs.
-            ? await runHumanNode(node)
-            : await runItem(node)
+          : await runItem(node)
     results.push(r)
     closed.add(node.index)
 
@@ -1164,58 +753,11 @@ if (!nodes) {
     }
     log(`  ${r.done ? '✓' : '✗'} ${node.id}: ${node.text}`)
   }
-
-  // The loop ended, and a node still open is one of two different things. A branch the
-  // graph deliberately routed PAST is open ON PURPOSE — that is what a conditional edge
-  // is for, and calling it stranded is a false alarm on the happy path of every
-  // branching plan. The driver says exactly this: any steer ends the run
-  // `routed_complete` with "the graph routed around item(s) N, which stay open on
-  // purpose". Everything else waits on a signal nothing emitted or on a route control
-  // never reached — that is STRANDED, and the driver decides it under a synthesized
-  // role or stops with `deadlock` naming the items. A workflow run has no scheduler
-  // left to unstick, so it names them; a stranded item that appears nowhere in the
-  // report is the silent degrade this project does not ship.
-  if (!awaitingHuman) {
-    const open = (i) => byIndex.has(i) && !closed.has(i) && !byIndex.get(i).done
-    // The last dispatch's bypass set, plus everything sitting behind it: a node whose
-    // dependency was routed past could never have run either.
-    const around = new Set(routeDecision(closed, state, latch()).bypassed.filter(open))
-    for (let grew = true; grew; ) {
-      grew = false
-      for (const n of nodes) {
-        if (!open(n.index) || around.has(n.index)) continue
-        if (!n.deps.some((d) => open(d) && around.has(d))) continue
-        around.add(n.index)
-        grew = true
-      }
-    }
-    for (const n of nodes) {
-      if (!open(n.index)) continue
-      if (around.has(n.index)) {
-        routedAround.push({ item: n.text })
-        log(`  ↷ ${n.id} stays open on purpose — the graph routed around it`)
-        continue
-      }
-      const waiting = (n.needs || []).filter((k) => !Object.prototype.hasOwnProperty.call(state.signals, k))
-      stranded.push({ item: n.text, waiting_on: waiting })
-      log(`  ⚠ ${n.id} never became dispatchable: ${waiting.length ? `waits on signal ${waiting.map((k) => `"${k}"`).join(', ')}, which nothing emitted` : 'no wave and no route reached it'}`)
-    }
-  }
 }
 
 phase('Report')
-// Empty for a plan that authored no graph, so a plain checklist's note is the string it
-// has always been, byte for byte.
-const routedNote = routedAround.length
-  ? ` The graph routed around ${routedAround.length} item(s), which stay open on purpose.`
-  : ''
 const done = results.filter((r) => r.done)
 const incomplete = results.filter((r) => !r.done)
-// The calls this run made on your behalf, riskiest first, and the block that ends the
-// note. Both are empty for a run that decided nothing — the note is then the string it
-// has always been.
-const decided = byRisk(decisionsMade)
-const decidedNote = decidedForYou(decided)
 // The routed keys appear ONLY for a plan that authored a graph, so a plain checklist
 // reports exactly the shape it has always reported.
 return {
@@ -1224,18 +766,8 @@ return {
   done: done.length,
   incomplete: incomplete.map((r) => ({ item: r.text, blocking: r.blocking || [] })),
   ...(nodes ? { routes: routesTaken } : {}),
-  // What Leopold decided on your behalf, RISKIEST FIRST. Present only when it decided
-  // something, so a run with no persona path reports exactly the shape it has always
-  // reported — and every entry here is also in DECISIONS.md, with its charter basis.
-  ...(decisionsMade.length ? { decisions: decided } : {}),
-  ...(stranded.length ? { stranded } : {}),
-  // The branches the graph deliberately routed past. Reported, never counted as a
-  // failure — the driver's `routed_complete` says the same thing in its own words.
-  ...(routedAround.length ? { routed_around: routedAround } : {}),
   ...(awaitingHuman ? { awaiting_human: awaitingHuman } : {}),
-  note: (stranded.length && !awaitingHuman
-    ? `${stranded.length} item(s) never became dispatchable — the plan strands them (see \`stranded\`). Everything else is staged for your review; nothing was committed.${routedNote}`
-    : awaitingHuman
+  note: awaitingHuman
     ? `Stopped at a @human node ("${awaitingHuman.item}") — it is your decision to make. Everything so far is staged; nothing was committed.`
-    : `Everything is staged for your review; nothing was committed. Commit what you approve.${routedNote}`) + decidedNote,
+    : 'Everything is staged for your review; nothing was committed. Commit what you approve.',
 }

@@ -96,8 +96,34 @@ existir. Quando um item declara o tipo mais de uma vez, vence o último escrito.
 | `@gate` | Uma sessão **somente leitura** sobre o diff não commitado. Toda ferramenta de edição é negada — na sessão *e* no guard do driver. O veredito dele é o desfecho do nó: `done` → ok, `blocked` → `fail`, que uma rota `@on fail -> N` pode capturar. |
 | `@verify` | O mesmo nó somente leitura, mirado em prova em vez de julgamento: reexecuta build/lint/testes e diz se o trabalho realmente se sustenta. |
 | `@tool` | O texto do item **é um comando de shell** (ou o primeiro trecho entre crases). O driver executa — sem turno de modelo — e o status de saída cai no canal como `exit`, então `@on exit=0 -> 5` funciona sem nenhuma linha `@emit`. O bloqueio do git continua valendo: `@tool git push` é recusado, não executado. Um comando é morto depois de 30 minutos e registrado como `exit=124`. |
-| `@human` | Uma **pessoa** decide este item. A run para com `awaiting_human`, nomeia o item e deixa tudo staged. O hook de Stop faz o mesmo in-session, nos dois harnesses. |
+| `@human` | O plano pediu que uma **pessoa** decidisse este item. Sob a postura padrão (`autonomy: full`), **ninguém vai vir e a run decide**: o Leopold sintetiza o papel que a decisão exige a partir do item, da mission e do `CHARTER.md`, faz o trabalho sob esse papel e registra a decisão no `DECISIONS.md` com uma linha **Reversal**. Ele decide; nunca publica — o lock de git fica intacto. Configure [`autonomy: ask`](#autonomy) e ele para com `awaiting_human`. Os dois motores se comportam igual. |
 | `@feedback` | A run lê **a própria evidência** (`events.jsonl` + as métricas da run), somente leitura, e pode *propor* emendas ao plano. Nunca escreve o plano — veja "Nós de feedback e emendas" abaixo. |
+
+### Autonomy — quem decide um nó `@human` { #autonomy }
+
+`@human` é o único tipo cujo significado depende de uma postura da run, e não só do item.
+
+| `autonomy` | O que um nó `@human` faz |
+| --- | --- |
+| `full` (padrão) | Nenhum motor para. A run sintetiza o papel que a decisão exige, assume esse papel, conclui o item e registra a decisão no `DECISIONS.md` nomeando a persona, o fork, a base no charter e uma linha **Reversal**. |
+| `ask` | Os dois motores param no nó com `awaiting_human`, nomeiam o item e deixam tudo staged. Responda, marque o item como `[x]` e rode de novo para retomar. |
+
+Configure no `.leopold/GUARDRAILS.md` (`autonomy: ask`), ou por run com
+`LEOPOLD_AUTONOMY=ask` ou as flags `--ask` / `--autonomy ask` do driver. `ask`, `halt` e
+`human` escrevem a mesma postura estrita.
+
+Uma persona decide; ela nunca publica. `git commit` e `git push` continuam negados pelo
+`hooks/guard-irreversible.sh` nas duas posturas, e um force-push sempre — esse é o escopo
+inteiro da trava, como a [referência do guard](hooks.pt-BR.md#o-que-o-guard-garante)
+detalha.
+
+Todo o resto é política, não imposição. `git tag`, `npm publish`, `cargo publish`,
+`gh pr create` e `gh release create` rodam sem obstáculo; aumentar um budget, limpar o kill
+switch ou reescrever o `GUARDRAILS.md` também. Um papel sintetizado não é contido por
+maquinário em nenhum desses casos — ele é contido pelo charter que recebeu e pela instrução
+que carrega. O Leopold enuncia essa fronteira com honestidade por um motivo concreto: um
+papel que acredita que algo será impedido por ele não tem razão para se conter, e nada o
+impediria.
 
 ### Rótulos
 
@@ -197,13 +223,14 @@ Três comportamentos que vale internalizar:
 
 O `leopold graph` imprime o grafo e valida, saindo com código diferente de zero quando
 ele não é sólido; a mesma checagem roda como pré-voo antes de qualquer agente começar.
-São quatro classes de defeito, cada uma nomeando o culpado:
+São cinco classes de defeito, cada uma nomeando o culpado:
 
 | Código | Exemplo de mensagem |
 | --- | --- |
 | `cycle` | ``Cycle: item 4 ("Retry") -> item 2 ("Build") -> item 4 ("Retry"). The run could never finish, so nothing was dispatched.`` |
 | `dangling-edge` | ``item 4 ("Step 4") routes to item 99, which does not exist (`@on fail`).`` |
 | `unmet-need` | um item dá `@needs` numa chave que nenhum item alcançável emite |
+| `unroutable-signal` | uma rota `@on chave=valor` cuja chave nenhum item `@emit`e — a aresta nunca poderia disparar |
 | `unreachable` | nenhum caminho de dependência e nenhuma rota tomável chega ao item |
 
 ```console

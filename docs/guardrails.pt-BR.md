@@ -105,14 +105,27 @@ A run termina, e o Stop hook permite que a sessão pare, quando qualquer uma des
 
 1. **Plano completo** — nenhum item desmarcado resta no `PLAN.md`.
 2. **Kill switch** — `.leopold/STOP` existe (`/leopold-stop` ou `touch`).
-3. **Falha repetida** — o mesmo tipo de falha por N turnos consecutivos (padrão 3).
+3. **Falha repetida** — o mesmo tipo de falha por N turnos consecutivos (padrão 3),
+   *depois* da única mudança de abordagem conduzida por uma persona que a run ganha ao
+   bater no teto pela primeira vez. O teto em si nunca se move.
 4. **Budget de iterações** — o contador de iterações atingiu `max_iterations` (padrão 50).
 5. **Budget em USD** — o gasto acumulado cruzou `--budget`, se definido.
-6. **Escalação** — o protocolo de decisão encaminhou ao humano uma bifurcação
-   genuinamente irreversível + indecidível (raro; o maestro tem um viés forte para decidir sozinho).
+6. **Escalação** — uma bifurcação que nem um papel sintetizado conseguiu resolver (uma
+   resposta inutilizável, um erro do harness). Uma bifurcação que ele *consegue* resolver
+   é decidida e registrada, não escalada.
 
 Toda parada escreve um resumo final na saída da run e um evento `stop` em
-`events.jsonl`, dizendo qual condição disparou.
+`events.jsonl`, dizendo qual condição disparou. A lista completa — incluindo
+`context_budget`, `no_progress` e `routed_complete`, e se um papel sintetizado pode afetar
+cada uma — está em
+[O que ainda para a run](concepts/personas.md#o-que-ainda-para-a-run).
+
+**`awaiting_human` não está nessa lista sob a postura padrão.** Um nó `@human` é decidido
+por um papel que o Leopold sintetiza para ele, nos dois engines; configure
+[`autonomy: ask`](reference/plan-grammar.pt-BR.md#autonomy) no `GUARDRAILS.md` (ou
+`LEOPOLD_AUTONOMY=ask`, ou a flag `--ask` do driver) para que ele pare e espere por você.
+Uma persona decide; ela nunca publica — o git continua travado nas duas posturas, e
+nenhuma persona pode aumentar um budget, limpar o kill switch ou editar o `GUARDRAILS.md`.
 
 ---
 
@@ -150,6 +163,7 @@ commit e push.
 | Commit                      | travado    | `touch .leopold/ALLOW_GIT` |
 | Push                        | travado    | `touch .leopold/ALLOW_PUSH` |
 | Force-push                  | nunca      | não configurável           |
+| Autonomy                    | `full`     | `GUARDRAILS.md` (`autonomy: ask`) |
 | Máx. de falhas consecutivas | 3          | `GUARDRAILS.md`            |
 | Máx. de iterações           | 50         | `GUARDRAILS.md`            |
 | Budget em USD               | nenhum     | `--budget` no driver       |

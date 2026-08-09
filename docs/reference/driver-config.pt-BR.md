@@ -127,6 +127,8 @@ run single-provider byte-idêntico.
 | `--smart-routing` | desligado | pesquisa o raio de impacto real de cada item antes de rotear esforço (cai para palavras-chave; nunca rebaixa um piso critical) |
 | `--slice-scope` | desligado | entrega o conjunto de arquivos do smart-routing ao worker como uma nota de escopo "comece por estes arquivos" (precisa de `--smart-routing`) |
 | `--learn-on-finish` | desligado | em um término limpo, minera a run em propostas de emendas ao charter |
+| `--ask` | off | restaura o `@human` que trava: a run para com `awaiting_human` em vez de decidir o nó sob um papel sintetizado |
+| `--autonomy full\|ask` | `full` | o mesmo knob por extenso (`ask`, `halt` e `human` significam todos `ask`) |
 | `--dry-run` | — | carrega o brief e reporta; não roda nada |
 
 ## Variáveis de ambiente
@@ -149,6 +151,7 @@ run single-provider byte-idêntico.
 | `LEOPOLD_SMART_ROUTING` | `0` | `1` = o mesmo que `--smart-routing` |
 | `LEOPOLD_SLICE_SCOPE` | `0` | `1` = o mesmo que `--slice-scope` |
 | `LEOPOLD_LEARN_ON_FINISH` | `0` | `1` = o mesmo que `--learn-on-finish` |
+| `LEOPOLD_AUTONOMY` | `full` | `ask` = o mesmo que `--ask` (também respeitado pelo Stop hook e pelo engine de workflow) |
 | `ANTHROPIC_API_KEY` | nenhum | só para ambientes headless sem autenticação do Claude Code |
 
 ## Toggles no brief (GUARDRAILS.md)
@@ -157,6 +160,9 @@ A postura de orquestração pode viver junto com o brief em vez da linha de coma
 O `GUARDRAILS.md` pode definir qualquer um destes como `key: on|off`:
 
 ```markdown
+## Judgment posture
+- autonomy: full             # full | ask
+
 ## Quality & orchestration (SDK driver)
 - review: on
 - conformance: on
@@ -170,10 +176,38 @@ O `GUARDRAILS.md` pode definir qualquer um destes como `key: on|off`:
 
 Precedência: **flag de CLI / env var explícita → GUARDRAILS.md → padrão embutido.**
 
+### `autonomy: full | ask` { #autonomy }
+
+O `autonomy` é o único toggle que não é `on|off` — e o único que muda o que um plano
+*significa*.
+
+| Valor | O que um nó `@human` faz |
+| --- | --- |
+| `full` *(padrão)* | Nada trava por uma decisão de julgamento. O Leopold sintetiza o papel que a decisão exige, o assume, conclui o item e registra a decisão no `DECISIONS.md` com uma linha de **Reversal**. Escalações, grafos inválidos e falhas repetidas recebem o mesmo tratamento. |
+| `ask` | Os dois engines param no nó com `awaiting_human`, nomeiam o item e deixam tudo staged. Responda, marque o item `[x]` e rode de novo para retomar. |
+
+`ask`, `halt` e `human` escrevem a mesma postura estrita; um valor não reconhecido é
+ignorado e o padrão vale. O driver, o `/leopold-workflow` e o Stop hook in-session leem
+essa mesma chave com a mesma precedência, então um plano significa uma coisa só nos dois
+engines.
+
+**Uma persona decide; ela nunca publica.** `git commit`, `push`, force-push, `tag`,
+`publish` e abrir um PR externo continuam negados sob qualquer postura, e nenhuma persona
+pode aumentar um budget, limpar o kill switch ou editar o `GUARDRAILS.md`. Veja
+[Personas](../concepts/personas.md).
+
 ## Condições de parada
 
 Vêm do `.leopold/GUARDRAILS.md`, as mesmas do engine in-session: plano completo,
-kill switch (`touch .leopold/STOP`), falhas repetidas e o budget de iterações.
+kill switch (`touch .leopold/STOP`), falhas repetidas, o budget de iterações, o budget em
+USD e uma escalação ou grafo inválido que os caminhos de persona não conseguiram resolver.
+
+O `awaiting_human` **não** está entre elas sob a postura padrão — um nó `@human` é
+decidido, não estacionado. Defina `autonomy: ask` para tê-lo de volta.
+
+A lista completa e autoritativa de todas as condições de parada restantes — e, para cada
+uma, se uma persona pode afetá-la — está em
+[O que ainda para a run](../concepts/personas.md#o-que-ainda-para-a-run).
 
 ## Notificações
 

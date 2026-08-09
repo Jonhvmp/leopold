@@ -65,6 +65,11 @@ export interface RunItemOpts {
   /** System prompt append for a read-only node (kinds.ts builds it per kind). Ignored
    *  unless `readOnly` is set. */
   systemAppend?: string;
+  /** The ROLE this session assumes (persona.ts), appended AFTER whichever system prompt
+   *  the node kind already uses — a persona narrows who is deciding, it never replaces
+   *  the rules the session runs under. Empty/absent leaves the prompt byte-identical,
+   *  which is every session of every run that reaches no persona path. */
+  personaAppend?: string;
 }
 
 export async function runItem(opts: RunItemOpts): Promise<void> {
@@ -92,7 +97,7 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
       ...(opts.readOnly ? { disallowedTools: [...EDIT_TOOLS] } : {}),
       systemPrompt: {
         type: "preset", preset: "claude_code",
-        append: opts.readOnly ? (opts.systemAppend ?? WORKER_APPEND) : WORKER_APPEND,
+        append: (opts.readOnly ? (opts.systemAppend ?? WORKER_APPEND) : WORKER_APPEND) + (opts.personaAppend ?? ""),
       } as never,
     } as never,
   });

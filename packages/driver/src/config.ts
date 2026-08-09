@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { parseBudgetUsd } from "./budget.js";
-import type { Brief, RunState, DriverConfig } from "./types.js";
+import type { Autonomy, Brief, RunState, DriverConfig } from "./types.js";
 
 export function findLeoDir(cwd: string): string {
   let dir = path.resolve(cwd);
@@ -52,6 +52,43 @@ export function boolFrom(text: string, key: string): boolean | undefined {
   return undefined;
 }
 
+/** Read `autonomy: full | ask` from GUARDRAILS.md. Undefined when the key is absent or
+ *  says something this does not recognize — an unreadable posture must not silently
+ *  become the strict one, and the caller's default (`full`) stands.
+ *
+ *  Same shape as `boolFrom` (leading `-`, `**bold**`, a trailing comment all tolerated),
+ *  because this is one more line in the same list a human writes their guardrails in. */
+export function autonomyFrom(text: string): Autonomy | undefined {
+  const m = text.match(/^\s*-?\s*(?:\*\*)?autonomy(?:\*\*)?\s*:\s*([a-z]+)/im);
+  if (!m) return undefined;
+  const v = m[1].toLowerCase();
+  if (v === "full") return "full";
+  if (["ask", "halt", "human"].includes(v)) return "ask";
+  return undefined;
+}
+
+/** Resolve the judgment posture: explicit CLI flag / env > GUARDRAILS.md > `full`.
+ *  Exported for tests — the precedence is the promise, not the parsing. */
+export function resolveAutonomy(argv: string[], env: string | undefined, guardrails: string): Autonomy {
+  const explicit = flagValue(argv, "--autonomy") ?? (argv.includes("--ask") ? "ask" : undefined) ?? env;
+  if (explicit) {
+    const v = explicit.trim().toLowerCase();
+    if (v === "full") return "full";
+    if (["ask", "halt", "human"].includes(v)) return "ask";
+    // An unrecognized value used to fall straight through to the default — and the default
+    // is the PERMISSIVE posture. An operator who typed `--autonomy asks` or
+    // `LEOPOLD_AUTONOMY=Ask-only` got exactly the autonomy they were trying to switch off,
+    // silently. Every other knob falls back to a documented default; this one falls back to
+    // the one that matters, so it says so and takes the safe side.
+    console.warn(
+      `  ⚠ autonomy: "${explicit}" is not a posture I know — using "ask" (the strict one). ` +
+        `Valid: full | ask (halt, human also spell ask).`,
+    );
+    return "ask";
+  }
+  return autonomyFrom(guardrails) ?? "full";
+}
+
 /** Resolve a boolean knob with precedence: explicit CLI/env > GUARDRAILS > default. */
 function resolveBool(explicitOn: boolean, explicitOff: boolean, fromGuardrails: boolean | undefined, dflt: boolean): boolean {
   if (explicitOn) return true;
@@ -80,6 +117,12 @@ export function initState(brief: Brief): RunState {
     max_failures: intFrom(brief.guardrails, "max_failures", 3),
     started_at: new Date().toISOString(),
     orchestrator_pid: process.pid,
+    // The repeated-failure rescue (rescue.ts) is spent PER RUN, and it is written here
+    // explicitly because `writeState` merges forward: a `true` left on disk by the last
+    // run would otherwise deny this one its single change of approach forever. It pairs
+    // with `consecutive_failures`, which starts at zero right above for the same reason —
+    // the failures reset, so the one attempt that answers them resets with them.
+    failure_rescue_used: false,
   };
   // The amendment budget is the ONE counter that survives re-entry. Re-running the
   // driver is the documented way to resume (every escalation and failure notice says
@@ -153,7 +196,12 @@ export function clearRunTokens(leoDir: string): void {
 /** Read `--flag value` from argv (the value is the next token). */
 function flagValue(argv: string[], name: string): string | undefined {
   const i = argv.indexOf(name);
-  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined;
+  if (i >= 0 && i + 1 < argv.length) return argv[i + 1];
+  // `--flag=value` too. Only the space-separated form was read, so the equals form was not
+  // rejected — it was IGNORED, and the flag silently fell back to its default. Harmless on
+  // a number; on `--autonomy=ask` it handed back the posture the operator was switching off.
+  const eq = argv.find((a) => a.startsWith(`${name}=`));
+  return eq === undefined ? undefined : eq.slice(name.length + 1);
 }
 
 /** Parse a positive integer flag/env, clamped to >=1, with a fallback. */
@@ -194,5 +242,9 @@ export function loadConfig(argv: string[], guardrails = ""): DriverConfig {
     bestOfK: intArg(argv, "--best-of-k", process.env.LEOPOLD_BEST_OF_K, intFrom(g, "best_of_k", 1)),
     // Slice scope: opt-in; feeds smart_routing's file set to the worker as scope. --slice-scope / LEOPOLD_SLICE_SCOPE=1, or `slice_scope:` in guardrails.
     sliceScope: resolveBool(argv.includes("--slice-scope") || process.env.LEOPOLD_SLICE_SCOPE === "1", process.env.LEOPOLD_SLICE_SCOPE === "0", boolFrom(g, "slice_scope"), false),
+    // Judgment posture: `full` by default — a @human node is EXECUTED under a synthesized
+    // role instead of halting the run. `--autonomy ask` / `--ask` / LEOPOLD_AUTONOMY=ask,
+    // or `autonomy: ask` in guardrails, restores the halt for a plan written against it.
+    autonomy: resolveAutonomy(argv, process.env.LEOPOLD_AUTONOMY, g),
   };
 }

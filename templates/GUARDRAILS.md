@@ -2,6 +2,16 @@
 
 > The autonomy boundary for this run. Defaults are the recommended posture.
 
+## Judgment posture
+> Who decides a `@human` node, and what happens at an escalation, a deadlock or a
+> third repeated failure. `full` (default): nobody is coming, so the run synthesizes
+> the role that decision needs, decides it, and records the call in DECISIONS.md with
+> a Reversal line. `ask`: both engines stop at the node with `awaiting_human` and wait
+> for you. Override per run with `LEOPOLD_AUTONOMY=ask` or the driver's `--ask`.
+> A persona DECIDES; it never ships — git stays locked either way, and no persona may
+> raise a budget, clear the kill switch or edit this file.
+- autonomy: full             # full | ask
+
 ## Action classes
 - Autonomous: everything except the two gated git ops below — edit, build, lint,
   test, refactor, delete, stage, spawn. The run has full authority over the work.

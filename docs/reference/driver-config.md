@@ -128,6 +128,8 @@ single-provider run byte-for-byte unchanged.
 | `--smart-routing` | off | research each item's real blast radius before routing effort (falls back to keywords; never lowers a critical floor) |
 | `--slice-scope` | off | hand smart-routing's file set to the worker as a "start with these files" scope note (needs `--smart-routing`) |
 | `--learn-on-finish` | off | on a clean finish, mine the run into proposed charter amendments |
+| `--ask` | off | restore the halting `@human`: the run stops with `awaiting_human` instead of deciding the node under a synthesized role |
+| `--autonomy full\|ask` | `full` | the same knob spelled out (`ask`, `halt` and `human` all mean `ask`) |
 | `--dry-run` | — | load the brief and report; run nothing |
 
 ## Environment variables
@@ -150,6 +152,7 @@ single-provider run byte-for-byte unchanged.
 | `LEOPOLD_SMART_ROUTING` | `0` | `1` = same as `--smart-routing` |
 | `LEOPOLD_SLICE_SCOPE` | `0` | `1` = same as `--slice-scope` |
 | `LEOPOLD_LEARN_ON_FINISH` | `0` | `1` = same as `--learn-on-finish` |
+| `LEOPOLD_AUTONOMY` | `full` | `ask` = same as `--ask` (also honoured by the Stop hook and the workflow engine) |
 | `ANTHROPIC_API_KEY` | none | only for headless environments without Claude Code auth |
 
 ## Toggles in the brief (GUARDRAILS.md)
@@ -158,6 +161,9 @@ The orchestration posture can live with the brief instead of the command line.
 `GUARDRAILS.md` may set any of these as `key: on|off`:
 
 ```markdown
+## Judgment posture
+- autonomy: full             # full | ask
+
 ## Quality & orchestration (SDK driver)
 - review: on
 - conformance: on
@@ -171,10 +177,37 @@ The orchestration posture can live with the brief instead of the command line.
 
 Precedence: **explicit CLI flag / env var → GUARDRAILS.md → built-in default.**
 
+### `autonomy: full | ask` { #autonomy }
+
+`autonomy` is the one toggle that is not `on|off`, and the one that changes what a plan
+*means*.
+
+| Value | What a `@human` node does |
+| --- | --- |
+| `full` *(default)* | Nothing halts for a judgment call. Leopold synthesizes the role the decision needs, takes it, completes the item, and records the call in `DECISIONS.md` with a **Reversal** line. Escalations, invalid graphs and repeated failures get the same treatment. |
+| `ask` | Both engines stop at the node with `awaiting_human`, name the item and stage everything. Answer it, mark the item `[x]`, re-run to resume. |
+
+`ask`, `halt` and `human` all spell the strict posture; an unrecognised value is ignored
+and the default stands. The driver, `/leopold-workflow` and the in-session Stop hook read
+this same key with the same precedence, so a plan means one thing on both engines.
+
+**A persona decides; it never ships.** `git commit`, `push`, force-push, `tag`, `publish`
+and opening an external PR stay denied under either posture, and no persona may raise a
+budget, clear the kill switch or edit `GUARDRAILS.md`. See
+[Personas](../concepts/personas.md).
+
 ## Stop conditions
 
 Come from `.leopold/GUARDRAILS.md`, same as the in-session engine: plan complete,
-kill switch (`touch .leopold/STOP`), repeated failures, and the iteration budget.
+kill switch (`touch .leopold/STOP`), repeated failures, the iteration budget, the USD
+budget, and an escalation or invalid graph that the persona paths could not settle.
+
+`awaiting_human` is **not** among them under the default posture — a `@human` node is
+decided, not parked. Set `autonomy: ask` to get it back.
+
+The complete, authoritative list of every remaining stop condition — and, for each one,
+whether a persona can affect it — is
+[What still stops the run](../concepts/personas.md#what-still-stops-the-run).
 
 ## Notifications
 

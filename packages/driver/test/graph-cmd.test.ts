@@ -29,9 +29,9 @@ const ROUTED_PLAN = `# Plan
 `;
 
 const CYCLE_PLAN = `- [ ] Ship it
-      @on again -> 2
+      @on fail -> 2
 - [ ] Roll back
-      @on again -> 1
+      @on fail -> 1
 `;
 
 /** Run the command with stdout/stderr captured, so the exit-code contract and the

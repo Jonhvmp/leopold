@@ -6,6 +6,8 @@
 // It is a one-shot reasoning call with NO tools that returns a JSON verdict.
 
 import { query } from "./sdk.js";
+import { charterHardRules, NO_EXECUTION_CLAUSE, MAX_FIELD, DEFAULT_REVERSAL } from "./persona.js";
+import type { Persona, PersonaDecision } from "./persona.js";
 import type { Brief, WorkerStatus, ConductorVerdict, DriverConfig } from "./types.js";
 
 function system(brief: Brief): string {
@@ -92,4 +94,138 @@ Return the JSON verdict now.`;
     }
   }
   return parseVerdict(text);
+}
+
+// ---------------------------------------------------------------------------
+// Escalation, settled instead of surrendered.
+//
+// `decide()` above escalates as a last resort, and that used to END THE RUN: the item
+// sat there with a question attached until a person came back. For the people who adopt
+// an autonomous harness, that means it sat there. So an escalation is now one more fork
+// a synthesized role takes: the run works out WHO should settle it, that role settles it
+// against the charter, the decision goes back to the worker as an instruction, and the
+// item finishes.
+//
+// Three properties this rests on, none of them a hope about a prompt:
+//   - THE BINDING RULES COME FROM THE CHARTER, IN CODE. `charterHardRules` lifts them
+//     verbatim here exactly as it does for a persona, so a role settling a fork is bound
+//     whether or not synthesis produced a persona at all.
+//   - THE TRUST BOUNDARY DOES NOT MOVE. A resolution may conclude "ship it"; the guard
+//     still denies the push. `NO_EXECUTION_CLAUSE` is the same sentence the node prompt
+//     uses — one writer, so the two cannot drift.
+//   - AN UNSETTLEABLE FORK STILL ESCALATES. An unparseable or empty answer returns
+//     undefined and the caller falls back to the old escalation stop. Loud, never silent.
+
+/** A fork the worker escalated, as settled by a role. `reply` is what the worker is told;
+ *  the inherited fields are what DECISIONS.md records. */
+export interface EscalationResolution extends PersonaDecision {
+  /** The instruction that goes back to the worker so it can finish the item. */
+  reply: string;
+}
+
+function clip(s: unknown, max = MAX_FIELD): string {
+  const t = String(s ?? "").replace(/\s+/g, " ").trim();
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + "…" : t;
+}
+
+/** The system prompt the resolution call runs under. Pure, so the framing — and the fact
+ *  that it never claims authority the guard denies — is inspectable in a test. */
+export function escalationSystemPrompt(brief: Brief, persona?: Persona): string {
+  const rules = persona?.constraints ?? charterHardRules(brief.charter);
+  const who = persona
+    ? `You are ${persona.name.toUpperCase()} — ${persona.role}.\nYour expertise: ${persona.expertise.join("; ")}.${persona.optimizesFor.length ? `\nYou optimize for: ${persona.optimizesFor.join("; ")}.` : ""}${persona.rationale ? `\n${persona.rationale}` : ""}`
+    : `You are Leopold, sitting in the user's seat. No role could be synthesized for this fork, so you take it yourself, bound by the same charter.`;
+
+  return `${who}
+
+A coding worker hit a fork it could not settle and escalated it. NO HUMAN IS COMING. You have the seat: settle it now, decide it the way the charter below decides, and hand the worker a concrete instruction it can act on so the item gets FINISHED. Do not ask a question back, do not defer, do not tell the worker to wait or to leave the work partial. Prefer the reversible option when two are close, and say plainly how a human undoes what you chose.
+
+YOU ARE BOUND BY THESE RULES. They come from the project's charter, they are not advice, and a decision that breaks one is wrong however well argued:
+${rules.map((r) => `  - ${r}`).join("\n") || "  - (the charter states no binding rule; decide on the mission alone)"}
+
+${NO_EXECUTION_CLAUSE}
+
+Respond with ONLY a single JSON object, no prose, no code fence, shaped exactly:
+{"decision":"the call you made, in one line","why":"the charter/mission basis for it","reversal":"how a human undoes this, concretely — the file to revert, the flag to flip","reply":"the instruction the worker receives: what to do now, on your decision, through to a verified finish"}
+
+=== MISSION ===
+${brief.mission}
+
+=== CHARTER (this is how this project decides; you are bound by it) ===
+${brief.charter}`;
+}
+
+/** The user turn of the resolution call. Pure. */
+export function escalationUserPrompt(status: WorkerStatus, why: string): string {
+  return `The worker escalated this while working on item "${status.item}".
+
+THE FORK: ${clip(status.decisionNeeded ?? status.summary, 900)}
+WORKER STATUS: ${status.kind} — ${clip(status.summary, 600)}
+WHAT IT TRIED / EVIDENCE: ${clip(status.evidence ?? "", 600) || "(none)"}
+WHY IT WAS ESCALATED: ${clip(why, 600) || "(the conductor could not settle it from the charter)"}
+
+Settle it. Return the JSON object now.`;
+}
+
+/** Parse a resolution answer. PURE, and strict about the two fields that make it usable:
+ *  without a decision there is nothing to record, and without a reply there is nothing to
+ *  push back to the worker — either way the caller must fall back to escalating.
+ *  The Reversal is never empty: `DEFAULT_REVERSAL` is always true of a Leopold run. */
+export function parseResolution(text: string): EscalationResolution | undefined {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = fenced ? fenced[1] : text.match(/\{[\s\S]*\}/)?.[0] ?? "";
+  let obj: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) obj = parsed as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+  const decision = clip(obj.decision);
+  const reply = clip(obj.reply, 1200);
+  if (!decision || !reply) return undefined;
+  return { decision, why: clip(obj.why), reversal: clip(obj.reversal) || DEFAULT_REVERSAL, reply };
+}
+
+/** Settle an escalated fork under `persona` (or under the charter alone when synthesis
+ *  produced none). ONE model call through the same sdk.ts seam, no tools, one turn — and
+ *  it never throws: every failure path returns undefined so the caller escalates exactly
+ *  as it did before personas existed. */
+export async function resolveEscalation(
+  cfg: DriverConfig,
+  brief: Brief,
+  status: WorkerStatus,
+  why: string,
+  persona?: Persona,
+): Promise<EscalationResolution | undefined> {
+  let text = "";
+  try {
+    const q = query({
+      prompt: escalationUserPrompt(status, why),
+      options: {
+        ...(cfg.conductorModel ? { model: cfg.conductorModel } : {}),
+        leopoldRole: "conductor",
+        systemPrompt: escalationSystemPrompt(brief, persona),
+        allowedTools: [],
+        settingSources: [],
+        maxTurns: 1,
+        permissionMode: "default",
+      } as never,
+    });
+    for await (const msg of q as AsyncIterable<{
+      type: string;
+      message?: { content?: Array<{ type: string; text?: string }> };
+      result?: string;
+    }>) {
+      if (msg.type === "assistant") {
+        for (const b of msg.message?.content ?? []) if (b.type === "text" && b.text) text += b.text;
+      } else if (msg.type === "result") {
+        if (!text && typeof msg.result === "string") text = msg.result;
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  if (!text.trim()) return undefined;
+  return parseResolution(text);
 }

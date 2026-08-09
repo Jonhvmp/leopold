@@ -225,16 +225,37 @@ export function renderMermaid(graph: Graph): string {
  *  names the offending item by index and text; this only groups and counts them. */
 export function renderDiagnostics(diags: GraphDiagnostic[]): string {
   if (diags.length === 0) return "Graph is valid: no cycles, no dangling edges, every item reachable.";
-  const out: string[] = [
-    `Invalid graph — ${diags.length} problem${diags.length === 1 ? "" : "s"}. No agent would be dispatched.`,
-    "",
-  ];
-  // The diagnostic's own message already says which defect it is ("Cycle: …",
-  // "routes to item 99, which does not exist"); repeating the code would only make
-  // the line longer. The machine form (--json) is where the code belongs.
-  for (const d of diags) out.push(`  ✗ ${d.message}`);
-  out.push("");
-  out.push("Fix PLAN.md and run `leopold graph` again.");
+  const errors = diags.filter((d) => (d.severity ?? "error") === "error");
+  const warnings = diags.filter((d) => (d.severity ?? "error") === "warning");
+  const out: string[] = [];
+  // Errors and warnings must not be counted together. "No agent would be dispatched" is a
+  // statement about what the run will DO, and saying it over a plan that dispatches
+  // everything just fine is the same lie as staying silent about a dead route — pointed
+  // the other way. A warning gets its own heading, its own mark, and no verdict.
+  if (errors.length) {
+    out.push(
+      `Invalid graph — ${errors.length} problem${errors.length === 1 ? "" : "s"}. No agent would be dispatched.`,
+      "",
+    );
+    // The diagnostic's own message already says which defect it is ("Cycle: …",
+    // "routes to item 99, which does not exist"); repeating the code would only make
+    // the line longer. The machine form (--json) is where the code belongs.
+    for (const d of errors) out.push(`  ✗ ${d.message}`);
+    out.push("");
+  }
+  if (warnings.length) {
+    out.push(
+      errors.length
+        ? `Also ${warnings.length} warning${warnings.length === 1 ? "" : "s"} — the graph runs, but not as written:`
+        : `Graph is valid, with ${warnings.length} warning${warnings.length === 1 ? "" : "s"} — it runs, but not as written:`,
+      "",
+    );
+    for (const d of warnings) out.push(`  ⚠ ${d.message}`);
+    out.push("");
+  }
+  out.push(errors.length
+    ? "Fix PLAN.md and run `leopold graph` again."
+    : "The run will proceed. Fix the routing above if you meant it to fire.");
   return out.join("\n");
 }
 
@@ -256,8 +277,13 @@ export interface Preflight {
 export function preflightPlan(planPath: string): Preflight {
   const graph = buildGraph(parsePlan(fs.readFileSync(planPath, "utf8")));
   const diagnostics = validateGraph(graph);
+  // `ok` is about whether the graph can RUN, so only errors decide it. A warning still
+  // prints — a dead route the author wrote is worth saying out loud every time — but it
+  // does not refuse a plan that ran yesterday. See GraphDiagnosticSeverity for why that
+  // distinction had to exist the moment `unroutable-signal` started judging old text.
+  const blocking = diagnostics.filter((d) => (d.severity ?? "error") === "error");
   return {
-    ok: diagnostics.length === 0,
+    ok: blocking.length === 0,
     diagnostics,
     report: diagnostics.length ? renderDiagnostics(diagnostics) : "",
   };

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
-import { boolFrom, loadConfig, briefDigest, readAmendmentsAdded } from "../src/config.ts";
+import { boolFrom, autonomyFrom, loadConfig, briefDigest, readAmendmentsAdded } from "../src/config.ts";
 
 const GUARDRAILS = `# Guardrails
 ## Quality & orchestration
@@ -16,7 +16,7 @@ const GUARDRAILS = `# Guardrails
 
 // loadConfig reads process.env; snapshot and clear the knobs it looks at.
 const KEYS = ["LEOPOLD_REVIEW", "LEOPOLD_HYPOTHESES", "LEOPOLD_SMART_ROUTING", "LEOPOLD_LEARN_ON_FINISH",
-  "LEOPOLD_CONFORMANCE", "LEOPOLD_LITERAL_RESET", "LEOPOLD_BEST_OF_K", "LEOPOLD_SLICE_SCOPE"];
+  "LEOPOLD_CONFORMANCE", "LEOPOLD_LITERAL_RESET", "LEOPOLD_BEST_OF_K", "LEOPOLD_SLICE_SCOPE", "LEOPOLD_AUTONOMY"];
 function withCleanEnv<T>(fn: () => T): T {
   const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
   for (const k of KEYS) delete process.env[k];
@@ -72,6 +72,34 @@ test("an env var overrides the brief", () => {
     const cfg = loadConfig([], GUARDRAILS);
     assert.equal(cfg.hypotheses, true);
     assert.equal(cfg.smartRouting, false);
+  });
+});
+
+// --- autonomy: full | ask (the judgment posture) --------------------------------
+
+test("autonomyFrom reads the posture out of a guardrails line, bold or bulleted", () => {
+  assert.equal(autonomyFrom("- autonomy: ask"), "ask");
+  assert.equal(autonomyFrom("autonomy: full   # nothing halts"), "full");
+  assert.equal(autonomyFrom("- **autonomy**: ask"), "ask");
+  assert.equal(autonomyFrom("- AUTONOMY: Ask"), "ask");
+  assert.equal(autonomyFrom("nothing here"), undefined);
+  assert.equal(autonomyFrom("- autonomy: sometimes"), undefined,
+    "an unrecognized posture is not a licence to invent one");
+});
+
+test("autonomy defaults to full, and the brief or a flag or env can set it to ask", () => {
+  withCleanEnv(() => {
+    assert.equal(loadConfig([], "").autonomy, "full", "nothing halts by default");
+    assert.equal(loadConfig([], "- autonomy: ask\n").autonomy, "ask", "the brief sets the posture");
+    assert.equal(loadConfig(["--autonomy", "ask"], "").autonomy, "ask");
+    assert.equal(loadConfig(["--ask"], "").autonomy, "ask");
+    // Precedence: an explicit flag/env beats the brief, in both directions.
+    assert.equal(loadConfig(["--autonomy", "full"], "- autonomy: ask\n").autonomy, "full");
+    process.env.LEOPOLD_AUTONOMY = "ask";
+    assert.equal(loadConfig([], "- autonomy: full\n").autonomy, "ask");
+    process.env.LEOPOLD_AUTONOMY = "nonsense";
+    assert.equal(loadConfig([], "- autonomy: ask\n").autonomy, "ask",
+      "an unreadable override falls through to the brief, never to a silent default");
   });
 });
 
@@ -173,4 +201,26 @@ test("readAmendmentsAdded reads the run's spent budget, and refuses to invent on
   w('{"amendments_added":2}'); assert.equal(readAmendmentsAdded(leo), 2);
   w('{"amendments_added":"3"}'); assert.equal(readAmendmentsAdded(leo), 3, "a string counter still counts");
   w('{"amendments_added":-5}'); assert.equal(readAmendmentsAdded(leo), 0, "a negative counter is not a refund");
+});
+
+// The posture flag is the one knob whose default is the PERMISSIVE side, so it is the one
+// knob that must not fail open. Two ways it did: `flagValue` only read the space-separated
+// form, so `--autonomy=ask` was ignored rather than rejected; and an unrecognized explicit
+// value fell straight through to the default. Either way an operator who was switching
+// autonomy OFF silently got it on, with @human nodes executed and escalations auto-settled.
+test("an autonomy value the driver cannot read never resolves to the permissive posture", () => {
+  const warn = console.warn; const seen: string[] = [];
+  console.warn = ((m: unknown) => { seen.push(String(m)); }) as typeof console.warn;
+  try {
+    withCleanEnv(() => {
+      assert.equal(loadConfig(["--autonomy=ask"], "").autonomy, "ask", "the --flag=value form must be read");
+      assert.equal(loadConfig(["--autonomy=full"], "").autonomy, "full");
+      assert.equal(loadConfig(["--autonomy", "asked"], "").autonomy, "ask", "a typo takes the safe side");
+      assert.equal(loadConfig(["--autonomy", "Ask-only"], "").autonomy, "ask");
+    });
+  } finally { console.warn = warn; }
+  assert.equal(seen.filter((m) => /not a posture I know/.test(m)).length, 2,
+    "an ignored posture must SAY it was ignored — silent is how the operator never finds out");
+  // And the default is untouched: nothing typed still means full (decision D0).
+  withCleanEnv(() => { assert.equal(loadConfig([], "").autonomy, "full"); });
 });

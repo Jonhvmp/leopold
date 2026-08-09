@@ -153,18 +153,41 @@ test("a node may only emit what it declared; anything else is refused", async ()
   assert.ok(!r.logs.some((l) => l.includes("stolen=")));
 });
 
-test("a @human node stops the run and asks, dispatching nothing after it", async () => {
-  const plan = `# Plan
+const HUMAN_PLAN = `# Plan
 - [ ] Build the thing
 - [ ] (after: 1) @human Approve the rollout
 - [ ] (after: 2) Announce it
 `;
-  const r = await driveWorkflow(plan, () => ({}));
+
+test("a @human node executes under a synthesized role and the run carries on", async () => {
+  const r = await driveWorkflow(HUMAN_PLAN, () => ({}));
+  assert.deepEqual(workflowOrder(r.agents), [1, 2, 3]);
+  const out = r.result as { awaiting_human?: unknown; decisions?: unknown[] };
+  assert.equal(out.awaiting_human, undefined, "nothing halts under the default autonomy");
+  assert.equal(out.decisions?.length, 1, "the call it made is reported");
+  // …and the driver walks the same plan in the same order.
+  assert.deepEqual(driverOrder(HUMAN_PLAN, () => ({ done: true })), [1, 2, 3]);
+});
+
+test("with autonomy: ask a @human node stops the run and asks, dispatching nothing after it", async () => {
+  const respond: Responder = ({ opts }) =>
+    String(opts.label || "").startsWith("verify:") ? { ok: true, blocking: [] } : { summary: "done" };
+  const r = await runWorkflow(SCRIPT, {
+    args: { ...compile(HUMAN_PLAN), autonomy: "ask" },
+    respond,
+  });
   assert.deepEqual(workflowOrder(r.agents), [1]);
   const out = r.result as { awaiting_human?: { item: string }; note: string };
   assert.ok(out.awaiting_human, "the run must report that it is awaiting a human");
   assert.match(out.awaiting_human!.item, /Approve the rollout/);
   assert.match(out.note, /@human/);
+});
+
+test("`autonomy: ask` in GUARDRAILS.md compiles into the payload; `full` never does", () => {
+  const ask = compileBrief({ mission: "m", charter: CHARTER, guardrails: "- autonomy: ask\n", planText: HUMAN_PLAN });
+  assert.equal(ask.autonomy, "ask");
+  assert.equal("autonomy" in compileBrief({ mission: "m", charter: CHARTER, guardrails: "- autonomy: full\n", planText: HUMAN_PLAN }), false);
+  assert.equal("autonomy" in compile(HUMAN_PLAN), false, "the default is never written");
 });
 
 test("a @tool node routes on its command's exit status, with no @emit line", async () => {
@@ -311,4 +334,48 @@ test("a later node overwriting the routed-on signal never un-takes the route —
     order,
     "the driver dispatches the same order the workflow ran",
   );
+});
+
+// --- what "open" means when the run ends ------------------------------------------
+//
+// Two different things end up open, and reporting them as one was a false alarm on the
+// happy path of EVERY branching plan: the branch the graph deliberately routed past
+// stays open on purpose, and the driver says so (`routed_complete` → "the graph routed
+// around item(s) N"). Only a node nothing could ever dispatch is stranded.
+
+test("a branch the graph routed past is not reported as stranded", async () => {
+  const r = await driveWorkflow(BRANCH_PLAN, (id) => (id === "i2" ? { migrated: "true" } : {}));
+  const out = r.result as { stranded?: unknown[]; routed_around?: Array<{ item: string }>; note: string };
+  assert.equal(out.stranded, undefined, "the rolled-back branch was routed past, not stranded");
+  assert.deepEqual(out.routed_around, [{ item: "Roll the migration back" }]);
+  assert.match(out.note, /Everything is staged for your review/);
+  assert.match(out.note, /routed around 1 item\(s\), which stay open on purpose/);
+  assert.doesNotMatch(out.note, /strands/);
+  // The driver reports the same plan the same way: a steer ends the run complete.
+  assert.deepEqual(driverOrder(BRANCH_PLAN, (i) => ({ done: true, signals: i === 2 ? { migrated: "true" } : undefined })), [1, 2, 3]);
+});
+
+// Item 5 hangs off item 1, which never steers, so nothing routed past it — but the only
+// node that emits the signal it waits on is the branch the migration did not take. It is
+// genuinely stranded, and must still be named.
+const STRAND_PLAN = `# Plan
+- [ ] Prepare the ground
+- [ ] (after: 1) Run the database migration
+      @emit migrated=true
+      @emit migrated=false
+      @on migrated=true -> 3
+      @on migrated=false -> 4
+- [ ] (after: 2) Ship the feature behind the flag
+- [ ] (after: 2) Roll the migration back
+      @emit rolled_back=true
+- [ ] (after: 1) Publish the audit
+      @needs rolled_back
+`;
+
+test("a node waiting on a signal nothing emits is still reported as stranded", async () => {
+  const r = await driveWorkflow(STRAND_PLAN, (id) => (id === "i2" ? { migrated: "true" } : {}));
+  const out = r.result as { stranded?: Array<{ item: string; waiting_on: string[] }>; routed_around?: Array<{ item: string }>; note: string };
+  assert.deepEqual(out.stranded, [{ item: "Publish the audit", waiting_on: ["rolled_back"] }]);
+  assert.deepEqual(out.routed_around, [{ item: "Roll the migration back" }], "the routed-past branch is still told apart from it");
+  assert.match(out.note, /1 item\(s\) never became dispatchable/);
 });

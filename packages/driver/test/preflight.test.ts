@@ -9,6 +9,14 @@
 // The other half of the gate is that a VALID plan is untouched by it — same start,
 // same output, no new line on stdout or stderr — which is what makes this safe to
 // put in front of every run.
+//
+// THE REFUSAL TESTS RUN UNDER `--autonomy ask` ON PURPOSE. Under the default `full`
+// posture a malformed graph is REPAIRED first (a plan engineer proposes the narrowest
+// fix through the amend.ts bounds), so "zero tokens" is no longer what a broken plan
+// costs there — it costs one repair attempt and, if that fails, refuses exactly as it
+// does here. `ask` is the posture that keeps the original contract, so it is the one
+// that asserts it; test/graph-repair.test.ts owns the `full` half, including the claim
+// that an unrepairable plan still dispatches no worker.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import os from "node:os";
@@ -116,6 +124,8 @@ async function drive(root: string, argv: string[]): Promise<{ error?: unknown } 
 }
 
 const BASE = ["--no-review", "--no-hypotheses", "--no-literal-reset"];
+/** The posture that refuses a malformed graph without trying to repair it. */
+const REFUSE = [...BASE, "--autonomy", "ask"];
 
 // A route to item 99 in a 3-item plan: the classic dangling edge.
 const DANGLING_PLAN = `# Plan
@@ -132,10 +142,10 @@ const VALID_PLAN = `# Plan
 - [ ] (after: 1) Announce the release
 `;
 
-test("a dangling edge refuses the run before the first agent: zero agents spawned", async () => {
+test("under autonomy: ask a dangling edge refuses the run before the first agent: zero agents spawned", async () => {
   const { root, leo } = briefRepo(DANGLING_PLAN);
   const fake = installCountingFake();
-  const r = await drive(root, BASE);
+  const r = await drive(root, REFUSE);
 
   // The run refused, naming the defect.
   assert.ok(r.error instanceof InvalidPlanGraphError, `expected InvalidPlanGraphError, got ${String(r.error)}`);
@@ -169,7 +179,7 @@ test("a dangling edge refuses the run before the first agent: zero agents spawne
 test("--dry-run is gated too: a malformed plan never even prints the dry run", async () => {
   const { root } = briefRepo(DANGLING_PLAN);
   const fake = installCountingFake();
-  const r = await drive(root, ["--dry-run"]);
+  const r = await drive(root, ["--dry-run", "--autonomy", "ask"]);
   assert.ok(r.error instanceof InvalidPlanGraphError);
   assert.equal(fake.count(), 0);
   assert.doesNotMatch(r.out, /DRY RUN/);
@@ -184,7 +194,7 @@ test("a cycle is refused the same way, naming every item in it", async () => {
       @on fail -> 1
 `);
   const fake = installCountingFake();
-  const r = await drive(root, BASE);
+  const r = await drive(root, REFUSE);
   assert.ok(r.error instanceof InvalidPlanGraphError);
   assert.equal((r.error as InvalidPlanGraphError).diagnostics[0].code, "cycle");
   assert.match(r.err, /item 1/);

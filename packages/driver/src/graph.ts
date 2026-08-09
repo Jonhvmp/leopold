@@ -25,9 +25,10 @@
 
 //
 // VALIDATION. validateGraph is the gate that runs BEFORE the first agent: it names
-// the four ways a plan's graph can be malformed — a cycle, an edge to an item that
-// does not exist, an item nothing can ever dispatch, and an `@needs` no item emits —
-// and every diagnostic names the offending item by index AND by text.
+// the five ways a plan's graph can be malformed — a cycle, an edge to an item that
+// does not exist, an item nothing can ever dispatch, an `@needs` no item emits, and
+// an `@on key=value` route whose key no item emits — and every diagnostic names the
+// offending item by index AND by text.
 
 import { TOOL_EXIT_SIGNAL } from "./kinds.js";
 import type { PlanItem, PlanNodeKind, PlanRoute } from "./plan.js";
@@ -77,6 +78,12 @@ export interface GraphState {
 
 const TRUTHY = new Set(["true", "1", "yes", "on", "ok", "pass", "passed", "success"]);
 
+/** The only outcome words the engine ever records: `settleNode` writes `ok` when the item
+ *  closed and `fail` when it did not, and nothing else ever lands in `status`. A bare-word
+ *  `@on` condition therefore only means something if it is one of these — or a signal key
+ *  some node emits. Anything else is an edge that cannot fire. */
+const OUTCOME_WORDS = new Set(["ok", "fail"]);
+
 /** Build the graph a plan declares. Pure: same items in, same graph out. */
 export function buildGraph(items: PlanItem[]): Graph {
   const nodes: GraphNode[] = items.map((i) => ({
@@ -122,7 +129,13 @@ function routeMatches(route: PlanRoute, from: number, state: GraphState): boolea
   if (!word) return false;
   const outcome = state.status?.[from];
   if (outcome !== undefined && outcome !== null && String(outcome).trim() !== "") {
-    return String(outcome).trim().toLowerCase() === word;
+    if (String(outcome).trim().toLowerCase() === word) return true;
+    // Fall through to the signal rather than returning. `settleNode` records "ok"/"fail"
+    // for the node BEFORE the routes are taken, so `outcome` is always defined for the node
+    // that just settled — which made the signal fallback this function documents
+    // (`@emit ready=true` then `@on ready -> 3`) reachable only for a node carried over
+    // from an earlier session. The bare-word spelling worked or not depending on when you
+    // ran it; now it means one thing.
   }
   if (!Object.prototype.hasOwnProperty.call(signals, route.when.trim())) return false;
   const v = String(signals[route.when.trim()]).trim().toLowerCase();
@@ -276,19 +289,41 @@ export function routeDecision(
 
 /** The four ways a plan's graph can be malformed. One code per defect class, so a
  *  caller can filter, count or exit on a specific one without parsing prose. */
-export type GraphDiagnosticCode = "cycle" | "dangling-edge" | "unreachable" | "unmet-need";
+export type GraphDiagnosticCode =
+  | "cycle"
+  | "dangling-edge"
+  | "unreachable"
+  | "unmet-need"
+  | "unroutable-signal";
+
+/** How hard a diagnostic bites.
+ *
+ *  `error` — the graph cannot run: a cycle, an edge to nothing, an item nothing reaches,
+ *  a `@needs` nobody emits. The run refuses, as it always has.
+ *
+ *  `warning` — the graph runs, but not the way its author wrote it. This exists because
+ *  `unroutable-signal` is a NEW verdict on OLD text: a 0.15 plan carrying
+ *  `@on migrated=false -> 7` with no matching `@emit` ran fine (the route was simply dead),
+ *  and making that fatal would refuse to dispatch a single item of a plan that worked
+ *  yesterday — against the promise `compile.ts` and `graph-cmd.ts` both state in as many
+ *  words, "never a new way for an existing plan to be rejected". The plan item this
+ *  implements asks that such routing "either works or is REPORTED"; loudly reported is
+ *  what that is. */
+export type GraphDiagnosticSeverity = "error" | "warning";
 
 export interface GraphDiagnostic {
   code: GraphDiagnosticCode;
+  /** Absent means `error` — every diagnostic that predates the severity split is one. */
+  severity?: GraphDiagnosticSeverity;
   /** The item this diagnostic is about (1-based). For a cycle, its lowest member. */
   index: number;
   /** Every item this diagnostic names, ascending. `[index]` for everything but a
    *  cycle, where it is the whole cycle. */
   items: number[];
-  /** dangling-edge only: the target exactly as written — `0` when the `@on` line
-   *  carried no target at all. */
+  /** dangling-edge and unroutable-signal only: the target exactly as written — `0`
+   *  when the `@on` line carried no target at all. */
   target?: number;
-  /** unmet-need only: the signal key nobody emits. */
+  /** unmet-need and unroutable-signal only: the signal key nobody emits. */
   key?: string;
   /** One line, naming the offender by index and text. Ready to print as-is. */
   message: string;
@@ -433,8 +468,8 @@ function reachableSet(
 /** Validate the graph a plan declares, BEFORE any agent runs.
  *
  *  Returns one diagnostic per defect, ordered cycle → dangling-edge → unmet-need →
- *  unreachable and by item index within a class, so the output is stable enough to
- *  diff. An empty array means the graph is sound.
+ *  unroutable-signal → unreachable and by item index within a class, so the output is
+ *  stable enough to diff. An empty array means the graph is sound.
  *
  *  A plan that declares no `@on`, `@needs` or `@emit` can never produce a diagnostic:
  *  `(after:)` edges only ever point forward from an existing item, so they cannot
@@ -498,7 +533,47 @@ export function validateGraph(graph: Graph): GraphDiagnostic[] {
     }
   }
 
-  // 4. Unreachable — nothing can ever dispatch it. Items already named by a cycle or
+  // 4. Unroutable signals — the `@on` half of the same rule. A route conditioned on
+  //    `key=value` can only ever fire if something puts `key` on the channel, and
+  //    routeMatches treats an absent key as no match in BOTH directions, so
+  //    `@on migrated=false -> 7` with no `@emit migrated` anywhere is an edge that
+  //    can never be taken: the routing the author wrote silently does not happen.
+  //    Status routes (`@on fail`) need no signal — they test the node's own outcome —
+  //    and are never diagnosed. An edge already named as dangling is skipped: it has
+  //    a more fundamental defect and one line per defect is the contract.
+  const unroutable: GraphDiagnostic[] = [];
+  for (const e of graph.edges) {
+    if (e.kind !== "route" || !e.condition) continue;
+    if (!byIndex.has(e.from) || !byIndex.has(e.to)) continue;
+    // Both spellings of the same dead edge. `@on migrated=false` is a signal condition;
+    // `@on migrated` parses as a STATUS condition, and a status word only ever matches an
+    // outcome the engine records — which is `ok` or `fail`, nothing else — or, failing
+    // that, a signal of the same name. So a bare word that is neither an outcome word nor
+    // an emitted key can no more fire than the `key=value` form can. Diagnosing one and
+    // staying silent on the other is how "the routing either works or is reported" stayed
+    // half true.
+    const key = e.condition.kind === "signal"
+      ? (e.condition.key ?? "")
+      : e.condition.when.trim();
+    if (!key) continue;
+    if (e.condition.kind === "status" && OUTCOME_WORDS.has(key.toLowerCase())) continue;
+    if (emitted.has(key)) continue;
+    unroutable.push({
+      code: "unroutable-signal",
+      severity: "warning",
+      index: e.from,
+      items: [e.from],
+      target: e.to,
+      key,
+      message:
+        `${name(byIndex.get(e.from), e.from)} routes to item ${e.to} on signal "${key}"` +
+        ` (\`@on ${e.when ?? key}\`), which no item emits — the route can never be taken.`,
+    });
+  }
+  unroutable.sort((a, b) => a.index - b.index || (a.target ?? 0) - (b.target ?? 0));
+  out.push(...unroutable);
+
+  // 5. Unreachable — nothing can ever dispatch it. Items already named by a cycle or
   //    an unmet need are skipped: that diagnostic IS the reason, and repeating it
   //    downstream would bury the offender under its own consequences.
   const { reachable } = reachableSet(graph, byIndex);

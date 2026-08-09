@@ -95,8 +95,33 @@ written wins.
 | `@gate` | A **review-only** session over the uncommitted diff. Every editing tool is denied — on the session *and* in the driver's guard. Its verdict is the node's outcome: `done` → ok, `blocked` → `fail`, which an `@on fail -> N` route can catch. |
 | `@verify` | The same review-only node aimed at proof instead of judgement: re-run the build/lint/tests and say whether the work actually holds. |
 | `@tool` | The item's text **is a shell command** (or the first backticked span in it). The driver runs it — no model turn — and its exit status lands on the channel as `exit`, so `@on exit=0 -> 5` works with no `@emit` line. The git lock still applies: `@tool git push` is refused, not run. A command is killed after 30 minutes and recorded as `exit=124`. |
-| `@human` | A **person** decides this item. The run stops with `awaiting_human`, names the item and stages everything. The Stop hook does the same in-session, on both harnesses. |
+| `@human` | The plan asked a **person** to decide this item. Under the default posture (`autonomy: full`) **no person is coming and the run decides it**: Leopold synthesizes the role the decision needs from the item, the mission and `CHARTER.md`, does the work under it, and records the call in `DECISIONS.md` with a **Reversal** line. It decides; it never ships — the git lock is untouched. Set [`autonomy: ask`](#autonomy) and it halts with `awaiting_human` instead. Both engines behave identically. |
 | `@feedback` | The run reads **its own evidence** (`events.jsonl` + the run metrics) read-only and may *propose* plan amendments. It never writes the plan — see [Feedback nodes](#feedback-nodes-and-amendments). |
+
+### Autonomy — who decides a `@human` node { #autonomy }
+
+`@human` is the one kind whose meaning depends on a run-level posture rather than on the
+item alone.
+
+| `autonomy` | What a `@human` node does |
+| --- | --- |
+| `full` (default) | Neither engine halts. The run synthesizes the role the decision needs, takes it, completes the item, and appends the call to `DECISIONS.md` naming the persona, the fork, the charter basis and a **Reversal** line. |
+| `ask` | Both engines halt at the node with `awaiting_human`, name the item and stage everything. Answer it, mark the item `[x]`, and re-run to resume. |
+
+Set it in `.leopold/GUARDRAILS.md` (`autonomy: ask`), or per run with `LEOPOLD_AUTONOMY=ask`
+or the driver's `--ask` / `--autonomy ask`. `ask`, `halt` and `human` all spell the strict
+posture.
+
+A persona decides; it never ships. `git commit` and `git push` are denied by
+`hooks/guard-irreversible.sh` under either posture, and a force-push always — that is the
+lock's entire scope, as [the guard reference](hooks.md#what-the-guard-enforces) spells out.
+
+Everything else is policy, not enforcement. `git tag`, `npm publish`, `cargo publish`,
+`gh pr create` and `gh release create` run unimpeded; so does raising a budget, clearing the
+kill switch or rewriting `GUARDRAILS.md`. A synthesized role is bound to none of those by
+machinery — it is bound by the charter it was given and by the instruction it carries, and
+Leopold states the boundary honestly for a concrete reason: a role told something will be
+caught for it has no reason to hold back, and nothing would stop it.
 
 ### Labels
 
@@ -192,7 +217,7 @@ Three behaviours worth internalising:
 ## Validation — a malformed graph fails before the first agent runs
 
 `leopold graph` prints the graph and validates it, exiting non-zero when it is unsound;
-the same check runs as pre-flight before any agent starts. Four defect classes, each
+the same check runs as pre-flight before any agent starts. Five defect classes, each
 naming the offender:
 
 | Code | Example message |
@@ -200,6 +225,7 @@ naming the offender:
 | `cycle` | ``Cycle: item 4 ("Retry") -> item 2 ("Build") -> item 4 ("Retry"). The run could never finish, so nothing was dispatched.`` |
 | `dangling-edge` | ``item 4 ("Step 4") routes to item 99, which does not exist (`@on fail`).`` |
 | `unmet-need` | an item `@needs` a key no reachable item ever emits |
+| `unroutable-signal` | an `@on key=value` route whose key no item `@emit`s — the edge could never fire |
 | `unreachable` | no dependency path and no takeable route ever reaches the item |
 
 ```console

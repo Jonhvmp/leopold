@@ -30,7 +30,8 @@ flowchart TD
     Budget -- não --> Plan{itens do plano em aberto?}
     Plan -- não --> Allow
     Plan -- sim --> Human{"próximo item aberto<br/>é um nó @human?"}
-    Human -- sim --> Ask(["exit 0 · permite parar ·<br/>awaiting_human"])
+    Human -- "sim · autonomy: ask" --> Ask(["exit 0 · permite parar ·<br/>awaiting_human"])
+    Human -- "sim · autonomy: full" --> Persona["bloqueia · reinjeta:<br/>sintetize o papel, decida,<br/>registre com uma Reversal"]
     Human -- não --> Block["incrementa iteração ·<br/>bloqueia · reinjeta continue"]
 ```
 
@@ -41,16 +42,42 @@ parar é sempre seguro.
 
 Itens do `PLAN.md` podem declarar um tipo de nó (`@node work|gate|human|tool|verify|feedback`,
 ou os atalhos `@gate` / `@human` / `@tool` / `@verify` / `@feedback`). O motor in-session age sobre um
-deles: quando o próximo item aberto é um nó **`@human`**, o hook permite a parada com
-`stopped_reason: awaiting_human`, nomeia o item no stderr e registra um evento
-`awaiting_human` — exatamente o que o driver faz ao chegar num nó humano, então um plano
-significa a mesma coisa nos dois motores. Responda, marque o item como `[x]` e
-`/leopold-run` retoma.
+deles — **`@human`** — e o que ele faz com um depende da postura de julgamento
+([`autonomy`](#autonomy)), nunca do harness em que você está:
+
+- **`autonomy: full` (o padrão).** Ninguém vai vir, então o hook **bloqueia a parada** e
+  reinjeta uma instrução para sintetizar o papel que aquela decisão exige — um nome, um
+  título de papel, a expertise que o item realmente demanda, o que esse papel otimiza e as
+  regras duras copiadas literalmente do `CHARTER.md` — assumir esse papel, fazer o item e
+  registrar a decisão em `.leopold/DECISIONS.md` com uma linha **Reversal**. Ele registra
+  um evento `persona` (`fork: "human"`, `engine: "hook"`) e nomeia o item no stderr. A
+  fronteira de confiança não muda: um papel *decide*, ele nunca publica — e a instrução
+  reinjetada é precisa sobre o que de fato garante isso. O `guard-irreversible.sh` nega
+  `git commit` e `git push` (force-push sempre) e mais nada; `git tag`, `npm publish`,
+  `gh pr create`, `gh release create`, aumentar um budget no `state.json` e editar o
+  `GUARDRAILS.md` **não são bloqueados por hook nenhum** — são regras que o papel recebe
+  para cumprir sozinho, e ele é avisado com todas as letras de que nenhum hook vai impedi-lo.
+  Veja [o que o guard garante e o que não garante](#o-que-o-guard-garante).
+- **`autonomy: ask`.** O hook permite a parada com `stopped_reason: awaiting_human`,
+  nomeia o item no stderr e registra um evento `awaiting_human`. Responda, marque o item
+  como `[x]` e `/leopold-run` retoma.
+
+Nos dois casos ele bate com o driver, que resolve o mesmo nó do mesmo jeito a partir da
+mesma postura — então um plano significa a mesma coisa nos dois motores.
 
 Qualquer outro tipo continua como antes, e um item que não declara tipo é um nó `work` —
 ou seja, um plano escrito antes da gramática existir percorre o hook por um caminho
 idêntico. O `packages/driver/test/hook-kinds.test.ts` parseia os mesmos planos com o hook
 e com o parser do driver e quebra o build se os dois discordarem.
+
+#### `autonomy: full | ask` { #autonomy }
+
+A postura é lida primeiro de `LEOPOLD_AUTONOMY`, depois de `autonomy:` no
+`.leopold/GUARDRAILS.md`, e o padrão é `full`. `ask`, `halt` e `human` escrevem a postura
+estrita; um valor que nenhum motor reconhece é tratado como ausente em vez de como `ask`,
+porque uma linha ilegível nunca pode parar uma run em silêncio. Isso espelha o
+`resolveAutonomy()` em `packages/driver/src/config.ts` — a única fonte extra do driver é a
+flag `--autonomy` / `--ask`, que uma run in-session não tem equivalente.
 
 ## `guard-irreversible.sh` — o hook de PreToolUse
 
@@ -61,6 +88,29 @@ permitir. Ele só adiciona negações; nunca afrouxa as permissões do próprio 
 O Codex entrega esse evento com as mesmas chaves — `tool_name` (a ferramenta de shell
 dele é reportada como `Bash`), `tool_input.command`, `cwd`, `transcript_path` — e
 respeita a mesma resposta de negação.
+
+### O que o guard garante
+
+O escopo tem exatamente dois comandos de largura, e importa saber quais dois — sob
+`autonomy: full` um nó `@human` é executado por um papel sintetizado, e é justamente ali
+que moram as chamadas irreversíveis. Cada linha abaixo tem um caso em
+`scripts/test-guard.sh`.
+
+| Tentativa | Guard | Por quê |
+| --- | --- | --- |
+| `git commit` (incl. `git -c …`, `git -C …`, `/usr/bin/git`, tabs) | **negado** — a não ser que exista `.leopold/ALLOW_GIT` | a run prepara, o humano commita |
+| `git push` | **negado** — a não ser que exista `.leopold/ALLOW_PUSH` | dar push é decisão do usuário |
+| `git push --force` / `-f` | **negado**, sempre, com token ou sem | nada que uma run faça justifica |
+| `git tag`, `npm publish`, `cargo publish`, `gh pr create`, `gh release create` | **permitido** | fora do escopo do lock |
+| `rm -rf`, `git reset --hard`, `git clean -fd`, qualquer outro comando | **permitido** | o worker é livre para trabalhar |
+| editar qualquer arquivo, incluindo `.leopold/GUARDRAILS.md` e `state.json` | **permitido** — o guard só inspeciona `Bash` | edições nunca são guardadas |
+
+Ou seja: as outras regras da run — não dar tag, não publicar, não abrir PR externo, nunca
+aumentar um budget nem editar o `GUARDRAILS.md` — são **política, não garantia**. O Leopold
+diz exatamente isso a todo papel sintetizado, com essas palavras: um papel que acredita que
+um hook vai barrar o `npm publish` não tem motivo para se segurar, e nada o impediria. Se
+você precisa disso garantido em vez de instruído, negue nas permissões do próprio harness —
+o `guard-irreversible.sh` nunca as afrouxa, ele só acrescenta as duas negações de git.
 
 Veja a tabela de política em [Guardrails](../guardrails.md).
 
