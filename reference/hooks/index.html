@@ -711,6 +711,8 @@
       
         
       
+        
+      
     
     
     
@@ -855,6 +857,34 @@
     
   
     Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1440,6 +1470,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Node kinds">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#autonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        autonomy: full | ask
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1455,6 +1502,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="guard-irreversible.sh — the PreToolUse hook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-guard-enforces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the guard enforces
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1867,6 +1931,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Node kinds">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#autonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        autonomy: full | ask
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1882,6 +1963,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="guard-irreversible.sh — the PreToolUse hook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-guard-enforces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the guard enforces
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1991,21 +2089,47 @@ layer exists to go wrong. See <a href="../../concepts/harnesses/">Claude Code an
     Budget -- no --&gt; Plan{open plan items?}
     Plan -- no --&gt; Allow
     Plan -- yes --&gt; Human{"next open item&lt;br/&gt;is a @human node?"}
-    Human -- yes --&gt; Ask(["exit 0 · allow stop ·&lt;br/&gt;awaiting_human"])
+    Human -- "yes · autonomy: ask" --&gt; Ask(["exit 0 · allow stop ·&lt;br/&gt;awaiting_human"])
+    Human -- "yes · autonomy: full" --&gt; Persona["block · re-inject:&lt;br/&gt;synthesize the role, decide it,&lt;br/&gt;log it with a Reversal"]
     Human -- no --&gt; Block["increment iteration ·&lt;br/&gt;block · re-inject continue"]</code></pre>
 <p>Fail-open: any unexpected error allows the stop. Continuity is best-effort;
 halting is always safe.</p>
 <h3 id="node-kinds">Node kinds<a class="headerlink" href="#node-kinds" title="Permanent link">&para;</a></h3>
 <p><code>PLAN.md</code> items may declare a node kind (<code>@node work|gate|human|tool|verify|feedback</code>, or
 the <code>@gate</code> / <code>@human</code> / <code>@tool</code> / <code>@verify</code> / <code>@feedback</code> shorthands). The in-session engine acts on one
-of them: when the next open item is a <strong><code>@human</code></strong> node, the hook allows the stop with
-<code>stopped_reason: awaiting_human</code>, names the item on stderr and logs an <code>awaiting_human</code>
-event — the same thing the driver does when a run reaches a human node, so a plan means
-the same on both engines. Answer it, mark the item <code>[x]</code>, and <code>/leopold-run</code> resumes.</p>
+of them — <strong><code>@human</code></strong> — and what it does with one depends on the judgment posture
+(<a href="#autonomy"><code>autonomy</code></a>), never on which harness you are running:</p>
+<ul>
+<li><strong><code>autonomy: full</code> (the default).</strong> No person is coming, so the hook <strong>blocks the stop</strong>
+  and re-injects an instruction to synthesize the role that decision needs — a name, a
+  role title, the expertise the item actually demands, what it optimizes for, and the hard
+  rules lifted verbatim from <code>CHARTER.md</code> — take that role, do the item, and append the
+  call to <code>.leopold/DECISIONS.md</code> with a <strong>Reversal</strong> line. It logs a <code>persona</code> event
+  (<code>fork: "human"</code>, <code>engine: "hook"</code>) and names the item on stderr. The trust boundary is
+  unchanged: a role <em>decides</em>, it never ships — and the re-injected instruction is precise
+  about what actually enforces that. <code>guard-irreversible.sh</code> denies <code>git commit</code> and
+  <code>git push</code> (force-push unconditionally) and nothing else; <code>git tag</code>, <code>npm publish</code>,
+  <code>gh pr create</code>, <code>gh release create</code>, raising a budget in <code>state.json</code> and editing
+  <code>GUARDRAILS.md</code> are <strong>not blocked by any hook</strong> — they are rules the role is told to keep
+  itself, and it is told plainly that no hook will stop it. See
+  <a href="#what-the-guard-enforces">what the guard does and does not enforce</a>.</li>
+<li><strong><code>autonomy: ask</code>.</strong> The hook allows the stop with <code>stopped_reason: awaiting_human</code>,
+  names the item on stderr and logs an <code>awaiting_human</code> event. Answer it, mark the item
+  <code>[x]</code>, and <code>/leopold-run</code> resumes.</li>
+</ul>
+<p>Either way it matches the driver, which resolves the same node the same way from the same
+posture — so a plan means the same thing on both engines.</p>
 <p>Every other kind continues exactly as before, and an item that declares no kind is a
 <code>work</code> node — so a plan written before the grammar existed takes an identical path
 through the hook. <code>packages/driver/test/hook-kinds.test.ts</code> parses the same plans with
 the hook and with the driver's parser and fails the build if they ever disagree.</p>
+<h4 id="autonomy"><code>autonomy: full | ask</code><a class="headerlink" href="#autonomy" title="Permanent link">&para;</a></h4>
+<p>The posture is read from <code>LEOPOLD_AUTONOMY</code> first, then <code>autonomy:</code> in
+<code>.leopold/GUARDRAILS.md</code>, and defaults to <code>full</code>. <code>ask</code>, <code>halt</code> and <code>human</code> all spell the
+strict posture; a value neither engine recognizes is treated as absent rather than as
+<code>ask</code>, because an unreadable line must never silently halt a run. This mirrors
+<code>resolveAutonomy()</code> in <code>packages/driver/src/config.ts</code> — the driver's one extra source is
+its <code>--autonomy</code> / <code>--ask</code> flag, which an in-session run has no equivalent of.</p>
 <h2 id="guard-irreversiblesh-the-pretooluse-hook"><code>guard-irreversible.sh</code> — the PreToolUse hook<a class="headerlink" href="#guard-irreversiblesh-the-pretooluse-hook" title="Permanent link">&para;</a></h2>
 <p>Runs before every tool call. Contract: read JSON on stdin; print a
 <code>hookSpecificOutput</code> with <code>permissionDecision: "deny"</code> to block, or exit 0 to
@@ -2013,6 +2137,57 @@ allow. It only adds denials; it never loosens the harness's own permissions.</p>
 <p>Codex delivers this event with the same keys — <code>tool_name</code> (its shell tool is
 reported as <code>Bash</code>), <code>tool_input.command</code>, <code>cwd</code>, <code>transcript_path</code> — and honors the
 same deny reply.</p>
+<h3 id="what-the-guard-enforces">What the guard enforces<a class="headerlink" href="#what-the-guard-enforces" title="Permanent link">&para;</a></h3>
+<p>The scope is deliberately two commands wide, and it matters that you know exactly which
+two — under <code>autonomy: full</code> a <code>@human</code> node is executed by a synthesized role, and that is
+where irreversible calls live. Every row below has a case in <code>scripts/test-guard.sh</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Attempt</th>
+<th>Guard</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git commit</code> (incl. <code>git -c …</code>, <code>git -C …</code>, <code>/usr/bin/git</code>, tabs)</td>
+<td><strong>denied</strong> — unless <code>.leopold/ALLOW_GIT</code> exists</td>
+<td>the run stages, the human commits</td>
+</tr>
+<tr>
+<td><code>git push</code></td>
+<td><strong>denied</strong> — unless <code>.leopold/ALLOW_PUSH</code> exists</td>
+<td>pushing is the user's call</td>
+</tr>
+<tr>
+<td><code>git push --force</code> / <code>-f</code></td>
+<td><strong>denied</strong>, always, token or not</td>
+<td>nothing a run does justifies it</td>
+</tr>
+<tr>
+<td><code>git tag</code>, <code>npm publish</code>, <code>cargo publish</code>, <code>gh pr create</code>, <code>gh release create</code></td>
+<td><strong>allowed</strong></td>
+<td>outside the lock's scope</td>
+</tr>
+<tr>
+<td><code>rm -rf</code>, <code>git reset --hard</code>, <code>git clean -fd</code>, any other shell command</td>
+<td><strong>allowed</strong></td>
+<td>the worker is free to work</td>
+</tr>
+<tr>
+<td>editing any file, <code>.leopold/GUARDRAILS.md</code> and <code>state.json</code> included</td>
+<td><strong>allowed</strong> — the guard only inspects <code>Bash</code></td>
+<td>edits are never guarded</td>
+</tr>
+</tbody>
+</table>
+<p>So the run's other rules — do not tag, do not publish, do not open an external PR, never
+raise a budget or edit <code>GUARDRAILS.md</code> — are <strong>policy, not enforcement</strong>. Leopold tells
+every synthesized role exactly that, in those words: a role that believes a hook will catch
+<code>npm publish</code> has no reason to hold back, and nothing would stop it. If you need those
+enforced rather than instructed, deny them in the harness's own permission settings —
+<code>guard-irreversible.sh</code> never loosens those, it only adds the two git denials.</p>
 <p>See the policy table in <a href="../../guardrails/">Guardrails</a>.</p>
 <h2 id="enhancepy-the-userpromptsubmit-prompt-enhancer"><code>enhance.py</code> — the UserPromptSubmit prompt enhancer<a class="headerlink" href="#enhancepy-the-userpromptsubmit-prompt-enhancer" title="Permanent link">&para;</a></h2>
 <p>Runs on every prompt you submit (the event takes no matcher, so all gating is

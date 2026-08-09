@@ -18,7 +18,7 @@
         <link rel="prev" href="../two-phases/">
       
       
-        <link rel="next" href="../../canvas/">
+        <link rel="next" href="../personas/">
       
       
         
@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -970,6 +972,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1927,16 +1957,19 @@ the waves:</p>
 dispatches from the same deterministic routing function <code>/leopold-run</code>'s scheduler uses,
 so the same plan takes the same path on both engines. A node emits a signal, the state
 channel carries it, the graph decides where it leads — no model call ever picks an edge.
-A <code>@human</code> node stops the run and asks; a <code>@tool</code> node routes on its command's exit
-status; a <code>@gate</code> or <code>@verify</code> node judges the diff and may not edit it.</p>
+A <code>@human</code> node is decided by a role the run synthesizes for it (or halts with
+<code>awaiting_human</code> under <a href="../../reference/plan-grammar/#autonomy"><code>autonomy: ask</code></a>); a
+<code>@tool</code> node routes on its command's exit status; a <code>@gate</code> or <code>@verify</code> node judges the
+diff and may not edit it.</p>
 <p>Two guarantees hold around that switch:</p>
 <ul>
 <li><strong><code>graph</code> only appears when the plan actually authors one.</strong> A checklist written
   before this grammar existed compiles to a byte-identical payload and runs the wave
   loop untouched — same prompts, same report shape.</li>
 <li><strong>A malformed graph is refused before the first agent runs.</strong> A cycle, a route to an
-  item that does not exist, an unreachable item, or a <code>@needs</code> nobody emits fails the
-  compile, naming the offending item by index and text.</li>
+  item that does not exist, an unreachable item, a <code>@needs</code> nobody emits, or an <code>@on</code>
+  routing on a signal nobody emits fails the compile, naming the offending item by
+  index and text.</li>
 </ul>
 <p>Because waves cannot express a branch, a plan with graph grammar must be compiled by
 <code>leopold workflow</code> rather than by hand — <code>/leopold-workflow</code> says so and defers to it.</p>
@@ -2052,13 +2085,13 @@ workflow runs, the panel hides itself.</p>
         
         
           
-          <a href="../../canvas/" class="md-footer__link md-footer__link--next" aria-label="Next: The Canvas">
+          <a href="../personas/" class="md-footer__link md-footer__link--next" aria-label="Next: Personas">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                The Canvas
+                Personas
               </div>
             </div>
             <div class="md-footer__button md-icon">

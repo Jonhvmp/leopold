@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -860,6 +862,34 @@
     
   
     Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1044,6 +1074,17 @@
     <span class="md-ellipsis">
       
         The decision log format
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-i-decided-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "What I decided for you"
       
     </span>
   </a>
@@ -1868,6 +1909,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-i-decided-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "What I decided for you"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#worked-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2006,16 +2058,50 @@ allowed to make this," it is probably an irreversible-and-ambiguous fork: stop.<
 <h2 id="the-decision-log-format">The decision log format<a class="headerlink" href="#the-decision-log-format" title="Permanent link">&para;</a></h2>
 <p>Every non-mechanical decision appends to <code>DECISIONS.md</code>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>## D&lt;N&gt; — &lt;one-line title&gt;          (turn &lt;iteration&gt;, &lt;timestamp&gt;)
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Fork:        &lt;the choice that came up&gt;
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Class:       reversible | irreversible
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Charter:     &lt;what the charter said, or &quot;silent&quot;&gt;
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Decision:    &lt;what you chose&gt;
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Why:         &lt;the principle or charter rule that drove it&gt;
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Reversal:    &lt;how to undo this if the human disagrees&gt;
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Persona:     &lt;the role Leopold assumed to decide this — only when it synthesized one&gt;
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Fork:        &lt;the choice that came up&gt;
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Class:       reversible | irreversible
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Charter:     &lt;what the charter said, or &quot;silent&quot;&gt;
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Decision:    &lt;what you chose&gt;
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Why:         &lt;the principle or charter rule that drove it&gt;
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>Reversal:    &lt;how to undo this if the human disagrees&gt;
 </span></code></pre></div>
 <p>The <code>Reversal</code> line matters most: it is the human's escape hatch. If you cannot
 write a credible reversal line, the decision is probably irreversible and you
 should re-check the core test.</p>
+<p><code>Persona:</code> appears when the run reached work that used to wait for a person — a
+<code>@human</code> node, an escalation, a plan repair, a third failure of the same kind —
+and Leopold synthesized the role that work needed instead of halting. The entry
+then names who decided, which stop path it came from, and what charter rules
+bound them. When no role could be synthesized the line still appears, saying so:
+an autonomous call with no record of who made it is not auditable. Every one of
+those paths writes through the same single writer, so a persona decision, a
+conductor decision and a canvas steer are all one shape in the file.</p>
+<hr />
+<h2 id="what-i-decided-for-you">"What I decided for you"<a class="headerlink" href="#what-i-decided-for-you" title="Permanent link">&para;</a></h2>
+<p>A trail nobody opens is not a trail, so the run does not wait for you to open it.
+Every run ends with the calls it made on your behalf, riskiest first:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>What I decided for you (3 calls, riskiest first):
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  1. [escalation] Nadia Ferro — Data Engineer (D7): run the production migration in two reversible halves
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>     Reversal: run migrations/002_down.sql
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  2. [human] Rui Salgado — Release Engineer (D4): approve the cutover behind a flag, staged only
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>     Reversal: flip cutover_enabled back to false in config/flags.yml
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  3. [repeated-failure] Ana Reis — Build Engineer (D9): split the suite and run the slow half serially
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>     Reversal: revert the Makefile change
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>The full trail — charter basis and why — is in .leopold/DECISIONS.md.
+</span></code></pre></div>
+<p>It is in the completion report and in the notification (terminal, and the webhook
+body if you set one), on both engines: <code>/leopold-run</code> and <code>/leopold-workflow</code> read
+the same entries and rank them the same way.</p>
+<p><strong>Risk is ordering, not a verdict.</strong> The rank is the fork the call came up at — an
+escalation reads before a <code>@human</code> node, which reads before a plan repair, which
+reads before a repeated-failure rescue — nudged up when nobody could be
+synthesized for it, when the subject is heavy (production, data, anything
+outbound), or when the role stated no reversal of its own and took the default.
+Nothing is ever hidden: past five calls the rest are counted, and <code>DECISIONS.md</code>
+is one line away.</p>
+<p>A run that decided nothing on your behalf prints nothing here — the report is what
+it always was.</p>
 <hr />
 <h2 id="worked-examples">Worked examples<a class="headerlink" href="#worked-examples" title="Permanent link">&para;</a></h2>
 <ul>

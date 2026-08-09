@@ -711,6 +711,8 @@
       
         
       
+        
+      
     
     
     
@@ -855,6 +857,34 @@
     
   
     Workflows dinâmicos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1549,6 +1579,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#autonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Autonomy — quem decide um nó @human
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rotulos" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1930,6 +1971,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#autonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Autonomy — quem decide um nó @human
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rotulos" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2136,7 +2188,7 @@ existir. Quando um item declara o tipo mais de uma vez, vence o último escrito.
 </tr>
 <tr>
 <td><code>@human</code></td>
-<td>Uma <strong>pessoa</strong> decide este item. A run para com <code>awaiting_human</code>, nomeia o item e deixa tudo staged. O hook de Stop faz o mesmo in-session, nos dois harnesses.</td>
+<td>O plano pediu que uma <strong>pessoa</strong> decidisse este item. Sob a postura padrão (<code>autonomy: full</code>), <strong>ninguém vai vir e a run decide</strong>: o Leopold sintetiza o papel que a decisão exige a partir do item, da mission e do <code>CHARTER.md</code>, faz o trabalho sob esse papel e registra a decisão no <code>DECISIONS.md</code> com uma linha <strong>Reversal</strong>. Ele decide; nunca publica — o lock de git fica intacto. Configure <a href="#autonomy"><code>autonomy: ask</code></a> e ele para com <code>awaiting_human</code>. Os dois motores se comportam igual.</td>
 </tr>
 <tr>
 <td><code>@feedback</code></td>
@@ -2144,6 +2196,40 @@ existir. Quando um item declara o tipo mais de uma vez, vence o último escrito.
 </tr>
 </tbody>
 </table>
+<h3 id="autonomy">Autonomy — quem decide um nó <code>@human</code><a class="headerlink" href="#autonomy" title="Permanent link">&para;</a></h3>
+<p><code>@human</code> é o único tipo cujo significado depende de uma postura da run, e não só do item.</p>
+<table>
+<thead>
+<tr>
+<th><code>autonomy</code></th>
+<th>O que um nó <code>@human</code> faz</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>full</code> (padrão)</td>
+<td>Nenhum motor para. A run sintetiza o papel que a decisão exige, assume esse papel, conclui o item e registra a decisão no <code>DECISIONS.md</code> nomeando a persona, o fork, a base no charter e uma linha <strong>Reversal</strong>.</td>
+</tr>
+<tr>
+<td><code>ask</code></td>
+<td>Os dois motores param no nó com <code>awaiting_human</code>, nomeiam o item e deixam tudo staged. Responda, marque o item como <code>[x]</code> e rode de novo para retomar.</td>
+</tr>
+</tbody>
+</table>
+<p>Configure no <code>.leopold/GUARDRAILS.md</code> (<code>autonomy: ask</code>), ou por run com
+<code>LEOPOLD_AUTONOMY=ask</code> ou as flags <code>--ask</code> / <code>--autonomy ask</code> do driver. <code>ask</code>, <code>halt</code> e
+<code>human</code> escrevem a mesma postura estrita.</p>
+<p>Uma persona decide; ela nunca publica. <code>git commit</code> e <code>git push</code> continuam negados pelo
+<code>hooks/guard-irreversible.sh</code> nas duas posturas, e um force-push sempre — esse é o escopo
+inteiro da trava, como a <a href="../hooks/#o-que-o-guard-garante">referência do guard</a>
+detalha.</p>
+<p>Todo o resto é política, não imposição. <code>git tag</code>, <code>npm publish</code>, <code>cargo publish</code>,
+<code>gh pr create</code> e <code>gh release create</code> rodam sem obstáculo; aumentar um budget, limpar o kill
+switch ou reescrever o <code>GUARDRAILS.md</code> também. Um papel sintetizado não é contido por
+maquinário em nenhum desses casos — ele é contido pelo charter que recebeu e pela instrução
+que carrega. O Leopold enuncia essa fronteira com honestidade por um motivo concreto: um
+papel que acredita que algo será impedido por ele não tem razão para se conter, e nada o
+impediria.</p>
 <h3 id="rotulos">Rótulos<a class="headerlink" href="#rotulos" title="Permanent link">&para;</a></h3>
 <p>Um rótulo opcional pode vir depois do tipo: <code>nome:</code> (explícito, em qualquer caixa), ou
 uma palavra minúscula solta quando ainda há texto do item depois dela.</p>
@@ -2240,7 +2326,7 @@ tipos de condição:</p>
 <h2 id="validacao-um-grafo-malformado-falha-antes-do-primeiro-agente-rodar">Validação — um grafo malformado falha antes do primeiro agente rodar<a class="headerlink" href="#validacao-um-grafo-malformado-falha-antes-do-primeiro-agente-rodar" title="Permanent link">&para;</a></h2>
 <p>O <code>leopold graph</code> imprime o grafo e valida, saindo com código diferente de zero quando
 ele não é sólido; a mesma checagem roda como pré-voo antes de qualquer agente começar.
-São quatro classes de defeito, cada uma nomeando o culpado:</p>
+São cinco classes de defeito, cada uma nomeando o culpado:</p>
 <table>
 <thead>
 <tr>
@@ -2260,6 +2346,10 @@ São quatro classes de defeito, cada uma nomeando o culpado:</p>
 <tr>
 <td><code>unmet-need</code></td>
 <td>um item dá <code>@needs</code> numa chave que nenhum item alcançável emite</td>
+</tr>
+<tr>
+<td><code>unroutable-signal</code></td>
+<td>uma rota <code>@on chave=valor</code> cuja chave nenhum item <code>@emit</code>e — a aresta nunca poderia disparar</td>
 </tr>
 <tr>
 <td><code>unreachable</code></td>

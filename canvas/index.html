@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://jonhvmp.github.io/leopold/canvas/">
       
       
-        <link rel="prev" href="../concepts/dynamic-workflows/">
+        <link rel="prev" href="../concepts/personas/">
       
       
         <link rel="next" href="../quality-and-orchestration/">
@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -860,6 +862,34 @@
     
   
     Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1851,9 +1881,12 @@ runtime writes, and lays them out as a directed graph with a hand-rolled layered
   edge in its own colour, carrying the condition <strong>as written</strong> (<code>migrated=false</code>), so a
   branch never reads like a dependency. The inspector lists an item's routes, the signals
   it <code>@emit</code>s and the ones it <code>@needs</code>.</li>
-<li><strong>A <code>@human</code> node waiting on you.</strong> When either engine reaches one it logs
-  <code>awaiting_human</code>, and the node switches to a distinct <code>awaiting</code> state — amber, pulsing,
-  labelled <em>needs you</em>. Nothing is inferred: the node waits only when the run says it does.</li>
+<li><strong>A <code>@human</code> node waiting on you — when one actually is.</strong> Under the default posture
+  (<code>autonomy: full</code>) neither engine waits at a <code>@human</code> node: it logs a <code>persona</code> event
+  instead, which the timeline shows with the role the run synthesized to decide it. Under
+  <a href="../reference/plan-grammar/#autonomy"><code>autonomy: ask</code></a> the engine logs <code>awaiting_human</code>
+  and the node switches to a distinct <code>awaiting</code> state — amber, pulsing, labelled <em>needs
+  you</em>. Nothing is inferred: the node waits only when the run says it does.</li>
 <li><strong>Dynamic-workflow</strong> phases and agents: phase→phase (<code>seq</code>), phase→agent (<code>contains</code>),
   and each adversarial-verify agent linked to the exact node it reviews (<code>verifies</code>).
   The edge is precise wherever Leopold's own scripts label agents <code>impl:&lt;id&gt;</code> /
@@ -1924,7 +1957,7 @@ nothing it shows is a claim the tests don't back.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../concepts/dynamic-workflows/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Dynamic Workflows">
+          <a href="../concepts/personas/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Personas">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1934,7 +1967,7 @@ nothing it shows is a claim the tests don't back.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Dynamic Workflows
+                Personas
               </div>
             </div>
           </a>

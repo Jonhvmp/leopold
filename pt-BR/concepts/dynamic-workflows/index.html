@@ -18,7 +18,7 @@
         <link rel="prev" href="../two-phases/">
       
       
-        <link rel="next" href="../../canvas/">
+        <link rel="next" href="../personas/">
       
       
         
@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -970,6 +972,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1927,17 +1957,19 @@ compilador emite uma chave extra ao lado das ondas:</p>
 despacha a partir da mesma função de roteamento determinística que o scheduler do
 <code>/leopold-run</code> usa, então o mesmo plano segue o mesmo caminho nos dois engines. Um nó
 emite um sinal, o canal de estado carrega esse sinal, e o grafo decide para onde ele
-leva — nenhuma chamada de modelo escolhe uma aresta. Um nó <code>@human</code> para a run e
-pergunta; um nó <code>@tool</code> roteia pelo exit status do comando; um nó <code>@gate</code> ou <code>@verify</code>
-julga o diff e não pode editá-lo.</p>
+leva — nenhuma chamada de modelo escolhe uma aresta. Um nó <code>@human</code> é decidido por um
+papel que a run sintetiza para ele (ou para com <code>awaiting_human</code> sob
+<a href="../../reference/plan-grammar/#autonomy"><code>autonomy: ask</code></a>); um nó <code>@tool</code> roteia
+pelo exit status do comando; um nó <code>@gate</code> ou <code>@verify</code> julga o diff e não pode editá-lo.</p>
 <p>Duas garantias sustentam essa chave:</p>
 <ul>
 <li><strong><code>graph</code> só aparece quando o plano realmente declara um.</strong> Um checklist escrito antes
   dessa gramática existir compila para um payload byte a byte idêntico e roda o loop de
   ondas intocado — mesmos prompts, mesmo formato de relatório.</li>
 <li><strong>Um grafo malformado é recusado antes do primeiro agente rodar.</strong> Um ciclo, uma rota
-  para um item que não existe, um item inalcançável ou um <code>@needs</code> que ninguém emite
-  falham na compilação, nomeando o item ofensor por índice e por texto.</li>
+  para um item que não existe, um item inalcançável, um <code>@needs</code> que ninguém emite ou um
+  <code>@on</code> que roteia por um sinal que ninguém emite falham na compilação, nomeando o item
+  ofensor por índice e por texto.</li>
 </ul>
 <p>Como ondas não conseguem expressar um branch, um plano com gramática de grafo precisa ser
 compilado pelo <code>leopold workflow</code> em vez de à mão — a <code>/leopold-workflow</code> diz isso e
@@ -2054,13 +2086,13 @@ agente com um ponto de status (pulsa enquanto roda), rótulo, tokens, chamadas d
         
         
           
-          <a href="../../canvas/" class="md-footer__link md-footer__link--next" aria-label="Próximo: O Canvas">
+          <a href="../personas/" class="md-footer__link md-footer__link--next" aria-label="Próximo: Personas">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Próximo
               </span>
               <div class="md-ellipsis">
-                O Canvas
+                Personas
               </div>
             </div>
             <div class="md-footer__button md-icon">

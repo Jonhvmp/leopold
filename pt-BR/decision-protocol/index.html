@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -860,6 +862,34 @@
     
   
     Workflows dinâmicos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1044,6 +1074,17 @@
     <span class="md-ellipsis">
       
         O formato do log de decisões
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#o-que-eu-decidi-por-voce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "O que eu decidi por você"
       
     </span>
   </a>
@@ -1868,6 +1909,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#o-que-eu-decidi-por-voce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "O que eu decidi por você"
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#exemplos-resolvidos" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2006,16 +2058,50 @@ para tomar esta", ela provavelmente é uma bifurcação irreversível-e-ambígua
 <h2 id="o-formato-do-log-de-decisoes">O formato do log de decisões<a class="headerlink" href="#o-formato-do-log-de-decisoes" title="Permanent link">&para;</a></h2>
 <p>Toda decisão não mecânica é anexada ao <code>DECISIONS.md</code>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>## D&lt;N&gt; — &lt;one-line title&gt;          (turn &lt;iteration&gt;, &lt;timestamp&gt;)
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Fork:        &lt;the choice that came up&gt;
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Class:       reversible | irreversible
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Charter:     &lt;what the charter said, or &quot;silent&quot;&gt;
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Decision:    &lt;what you chose&gt;
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Why:         &lt;the principle or charter rule that drove it&gt;
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Reversal:    &lt;how to undo this if the human disagrees&gt;
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Persona:     &lt;o papel que o Leopold assumiu pra decidir — só quando ele sintetizou um&gt;
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Fork:        &lt;the choice that came up&gt;
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Class:       reversible | irreversible
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Charter:     &lt;what the charter said, or &quot;silent&quot;&gt;
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Decision:    &lt;what you chose&gt;
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Why:         &lt;the principle or charter rule that drove it&gt;
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>Reversal:    &lt;how to undo this if the human disagrees&gt;
 </span></code></pre></div>
 <p>A linha <code>Reversal</code> é a que mais importa: ela é a saída de emergência do humano. Se você
 não consegue escrever uma linha de reversão crível, a decisão provavelmente é irreversível
 e você deveria reconferir o teste central.</p>
+<p><code>Persona:</code> aparece quando a run chegou num trabalho que antes esperava por uma pessoa —
+um nó <code>@human</code>, uma escalação, um reparo de plano, a terceira falha do mesmo tipo — e o
+Leopold sintetizou o papel que aquele trabalho exigia em vez de parar. A entrada então
+diz quem decidiu, de qual ponto de parada ela veio e quais regras do charter prendiam
+esse papel. Quando nenhum papel pôde ser sintetizado, a linha continua lá dizendo isso:
+uma decisão autônoma sem registro de quem a tomou não é auditável. Todos esses caminhos
+escrevem pelo mesmo escritor único, então uma decisão de persona, uma decisão do conductor
+e um steer do canvas têm todos a mesma forma no arquivo.</p>
+<hr />
+<h2 id="o-que-eu-decidi-por-voce">"O que eu decidi por você"<a class="headerlink" href="#o-que-eu-decidi-por-voce" title="Permanent link">&para;</a></h2>
+<p>Uma trilha que ninguém abre não é uma trilha, então a run não espera você abrir. Toda
+run termina com as decisões que ela tomou no seu lugar, da mais arriscada primeiro:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>What I decided for you (3 calls, riskiest first):
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  1. [escalation] Nadia Ferro — Data Engineer (D7): run the production migration in two reversible halves
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>     Reversal: run migrations/002_down.sql
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  2. [human] Rui Salgado — Release Engineer (D4): approve the cutover behind a flag, staged only
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>     Reversal: flip cutover_enabled back to false in config/flags.yml
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  3. [repeated-failure] Ana Reis — Build Engineer (D9): split the suite and run the slow half serially
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>     Reversal: revert the Makefile change
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>The full trail — charter basis and why — is in .leopold/DECISIONS.md.
+</span></code></pre></div>
+<p>Isso aparece no relatório final e na notificação (terminal, e no corpo do webhook se
+você configurou um), nos dois motores: <code>/leopold-run</code> e <code>/leopold-workflow</code> leem as
+mesmas entradas e as ordenam do mesmo jeito.</p>
+<p><strong>Risco é ordenação, não veredito.</strong> A ordem vem do ponto de parada em que a decisão
+surgiu — uma escalação vem antes de um nó <code>@human</code>, que vem antes de um reparo de plano,
+que vem antes de um resgate por falha repetida — e sobe quando nenhum papel pôde ser
+sintetizado, quando o assunto é pesado (produção, dados, qualquer coisa que sai pra
+fora) ou quando o papel não declarou uma reversão própria e ficou com a padrão. Nada é
+escondido: passando de cinco decisões, o resto é contado, e o <code>DECISIONS.md</code> está a uma
+linha de distância.</p>
+<p>Uma run que não decidiu nada no seu lugar não imprime nada aqui — o relatório é o mesmo
+de sempre.</p>
 <hr />
 <h2 id="exemplos-resolvidos">Exemplos resolvidos<a class="headerlink" href="#exemplos-resolvidos" title="Permanent link">&para;</a></h2>
 <ul>

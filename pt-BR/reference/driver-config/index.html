@@ -711,6 +711,8 @@
       
         
       
+        
+      
     
     
     
@@ -855,6 +857,34 @@
     
   
     Workflows dinâmicos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1623,6 +1653,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Toggles no brief (GUARDRAILS.md)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#autonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        autonomy: full | ask
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1954,6 +2001,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Toggles no brief (GUARDRAILS.md)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#autonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        autonomy: full | ask
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2194,6 +2258,16 @@ run single-provider byte-idêntico.</p>
 <td>em um término limpo, minera a run em propostas de emendas ao charter</td>
 </tr>
 <tr>
+<td><code>--ask</code></td>
+<td>off</td>
+<td>restaura o <code>@human</code> que trava: a run para com <code>awaiting_human</code> em vez de decidir o nó sob um papel sintetizado</td>
+</tr>
+<tr>
+<td><code>--autonomy full\|ask</code></td>
+<td><code>full</code></td>
+<td>o mesmo knob por extenso (<code>ask</code>, <code>halt</code> e <code>human</code> significam todos <code>ask</code>)</td>
+</tr>
+<tr>
 <td><code>--dry-run</code></td>
 <td>—</td>
 <td>carrega o brief e reporta; não roda nada</td>
@@ -2291,6 +2365,11 @@ run single-provider byte-idêntico.</p>
 <td><code>1</code> = o mesmo que <code>--learn-on-finish</code></td>
 </tr>
 <tr>
+<td><code>LEOPOLD_AUTONOMY</code></td>
+<td><code>full</code></td>
+<td><code>ask</code> = o mesmo que <code>--ask</code> (também respeitado pelo Stop hook e pelo engine de workflow)</td>
+</tr>
+<tr>
 <td><code>ANTHROPIC_API_KEY</code></td>
 <td>nenhum</td>
 <td>só para ambientes headless sem autenticação do Claude Code</td>
@@ -2300,20 +2379,58 @@ run single-provider byte-idêntico.</p>
 <h2 id="toggles-no-brief-guardrailsmd">Toggles no brief (GUARDRAILS.md)<a class="headerlink" href="#toggles-no-brief-guardrailsmd" title="Permanent link">&para;</a></h2>
 <p>A postura de orquestração pode viver junto com o brief em vez da linha de comando.
 O <code>GUARDRAILS.md</code> pode definir qualquer um destes como <code>key: on|off</code>:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">-</span><span class="w"> </span>review: on
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">-</span><span class="w"> </span>conformance: on
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gu">## Judgment posture</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">-</span><span class="w"> </span>autonomy: full             # full | ask
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">-</span><span class="w"> </span>review: on
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">-</span><span class="w"> </span>conformance: on
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
 </span></code></pre></div>
 <p>Precedência: <strong>flag de CLI / env var explícita → GUARDRAILS.md → padrão embutido.</strong></p>
+<h3 id="autonomy"><code>autonomy: full | ask</code><a class="headerlink" href="#autonomy" title="Permanent link">&para;</a></h3>
+<p>O <code>autonomy</code> é o único toggle que não é <code>on|off</code> — e o único que muda o que um plano
+<em>significa</em>.</p>
+<table>
+<thead>
+<tr>
+<th>Valor</th>
+<th>O que um nó <code>@human</code> faz</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>full</code> <em>(padrão)</em></td>
+<td>Nada trava por uma decisão de julgamento. O Leopold sintetiza o papel que a decisão exige, o assume, conclui o item e registra a decisão no <code>DECISIONS.md</code> com uma linha de <strong>Reversal</strong>. Escalações, grafos inválidos e falhas repetidas recebem o mesmo tratamento.</td>
+</tr>
+<tr>
+<td><code>ask</code></td>
+<td>Os dois engines param no nó com <code>awaiting_human</code>, nomeiam o item e deixam tudo staged. Responda, marque o item <code>[x]</code> e rode de novo para retomar.</td>
+</tr>
+</tbody>
+</table>
+<p><code>ask</code>, <code>halt</code> e <code>human</code> escrevem a mesma postura estrita; um valor não reconhecido é
+ignorado e o padrão vale. O driver, o <code>/leopold-workflow</code> e o Stop hook in-session leem
+essa mesma chave com a mesma precedência, então um plano significa uma coisa só nos dois
+engines.</p>
+<p><strong>Uma persona decide; ela nunca publica.</strong> <code>git commit</code>, <code>push</code>, force-push, <code>tag</code>,
+<code>publish</code> e abrir um PR externo continuam negados sob qualquer postura, e nenhuma persona
+pode aumentar um budget, limpar o kill switch ou editar o <code>GUARDRAILS.md</code>. Veja
+<a href="../../concepts/personas/">Personas</a>.</p>
 <h2 id="condicoes-de-parada">Condições de parada<a class="headerlink" href="#condicoes-de-parada" title="Permanent link">&para;</a></h2>
 <p>Vêm do <code>.leopold/GUARDRAILS.md</code>, as mesmas do engine in-session: plano completo,
-kill switch (<code>touch .leopold/STOP</code>), falhas repetidas e o budget de iterações.</p>
+kill switch (<code>touch .leopold/STOP</code>), falhas repetidas, o budget de iterações, o budget em
+USD e uma escalação ou grafo inválido que os caminhos de persona não conseguiram resolver.</p>
+<p>O <code>awaiting_human</code> <strong>não</strong> está entre elas sob a postura padrão — um nó <code>@human</code> é
+decidido, não estacionado. Defina <code>autonomy: ask</code> para tê-lo de volta.</p>
+<p>A lista completa e autoritativa de todas as condições de parada restantes — e, para cada
+uma, se uma persona pode afetá-la — está em
+<a href="../../concepts/personas/#o-que-ainda-para-a-run">O que ainda para a run</a>.</p>
 <h2 id="notificacoes">Notificações<a class="headerlink" href="#notificacoes" title="Permanent link">&para;</a></h2>
 <p>Ao concluir ou escalar, o driver escreve no terminal e no <code>events.jsonl</code>,
 e faz POST de JSON para <code>LEOPOLD_WEBHOOK</code> se estiver definido:</p>

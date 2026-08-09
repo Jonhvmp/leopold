@@ -711,6 +711,8 @@
       
         
       
+        
+      
     
     
     
@@ -855,6 +857,34 @@
     
   
     Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -2016,11 +2046,11 @@ any time with <code>leopold-driver workflow</code>. See
 <tbody>
 <tr>
 <td><code>state.json</code></td>
-<td><code>active</code>, <code>iteration</code>, <code>max_iterations</code>, <code>consecutive_failures</code>, <code>max_failures</code>, timestamps</td>
+<td><code>active</code>, <code>iteration</code>, <code>max_iterations</code>, <code>consecutive_failures</code>, <code>max_failures</code>, <code>failure_rescue_used</code> (the run's single persona-led change of approach, spent once), timestamps</td>
 </tr>
 <tr>
 <td><code>events.jsonl</code></td>
-<td>structured event stream (incl. <code>review</code>, <code>hypothesis</code>, <code>learn</code>, <code>cost</code> events)</td>
+<td>structured event stream (incl. <code>review</code>, <code>hypothesis</code>, <code>failure_rescue</code>, <code>learn</code>, <code>cost</code> events)</td>
 </tr>
 <tr>
 <td><code>STOP</code></td>

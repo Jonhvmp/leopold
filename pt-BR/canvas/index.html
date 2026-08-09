@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/canvas/">
       
       
-        <link rel="prev" href="../concepts/dynamic-workflows/">
+        <link rel="prev" href="../concepts/personas/">
       
       
         <link rel="next" href="../quality-and-orchestration/">
@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -860,6 +862,34 @@
     
   
     Workflows dinâmicos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1851,9 +1881,12 @@ mão (sem framework, sem bundler, sem web fonts — funciona 100% offline):</p>
   aresta arqueada e tracejada, em cor própria, carregando a condição <strong>como foi escrita</strong>
   (<code>migrated=false</code>) — assim um desvio nunca se confunde com uma dependência. O inspector
   lista as rotas do item, os sinais que ele emite (<code>@emit</code>) e os que exige (<code>@needs</code>).</li>
-<li><strong>Um nó <code>@human</code> esperando por você.</strong> Quando qualquer um dos engines chega nele,
-  registra <code>awaiting_human</code> e o nó entra num estado <code>awaiting</code> distinto — âmbar, pulsando,
-  escrito <em>needs you</em>. Nada é inferido: o nó só espera quando a run diz que espera.</li>
+<li><strong>Um nó <code>@human</code> esperando por você — quando ele realmente está.</strong> Sob a postura padrão
+  (<code>autonomy: full</code>), nenhum dos engines espera num nó <code>@human</code>: ele registra um evento
+  <code>persona</code>, que a timeline mostra com o papel que a run sintetizou para decidir. Sob
+  <a href="../reference/plan-grammar/#autonomy"><code>autonomy: ask</code></a>, o engine registra
+  <code>awaiting_human</code> e o nó entra num estado <code>awaiting</code> distinto — âmbar, pulsando, escrito
+  <em>needs you</em>. Nada é inferido: o nó só espera quando a run diz que espera.</li>
 <li>Fases e agents de <strong>dynamic workflow</strong>: fase→fase (<code>seq</code>), fase→agent (<code>contains</code>), e
   cada agent de verificação adversarial ligado ao nó exato que ele revisa (<code>verifies</code>).
   A aresta é precisa onde os próprios scripts do Leopold rotulam os agents como
@@ -1925,7 +1958,7 @@ autônoma de código — e nada que ele mostra é uma afirmação que os testes 
       <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
         
           
-          <a href="../concepts/dynamic-workflows/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Workflows dinâmicos">
+          <a href="../concepts/personas/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Personas">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1935,7 +1968,7 @@ autônoma de código — e nada que ele mostra é uma afirmação que os testes 
                 Anterior
               </span>
               <div class="md-ellipsis">
-                Workflows dinâmicos
+                Personas
               </div>
             </div>
           </a>

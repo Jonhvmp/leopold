@@ -711,6 +711,8 @@
       
         
       
+        
+      
     
     
     
@@ -855,6 +857,34 @@
     
   
     Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -1909,7 +1939,7 @@ implement the autonomous run.</p>
     end
     ENDTURN --&gt; STOP{{"Stop hook&lt;br/&gt;stop-continuity.sh"}}
     STOP -- "work remains,&lt;br/&gt;no stop condition" --&gt; CONT["block stop ·&lt;br/&gt;re-inject continue"]
-    STOP -- "plan done / kill / budget /&lt;br/&gt;@human node next" --&gt; HALT([allow stop])
+    STOP -- "plan done / kill / budget /&lt;br/&gt;@human node next under autonomy: ask" --&gt; HALT([allow stop])
     CONT --&gt; Turn</code></pre>
 <h3 id="stop-hook-continuity">Stop hook — continuity<a class="headerlink" href="#stop-hook-continuity" title="Permanent link">&para;</a></h3>
 <p>When the agent finishes a turn, the <code>Stop</code> hook reads <code>.leopold/state.json</code> and
@@ -1919,10 +1949,13 @@ bare "continue"; it is a compact instruction that tells the agent to read the
 plan, take the next item, apply the decision protocol, log, and not ask. Each
 continuation increments an iteration counter, which feeds the budget stop
 condition.</p>
-<p>One plan construct changes that answer: if the next open item is a <strong><code>@human</code></strong>
-node, nobody but you can finish it, so the hook allows the stop with
-<code>awaiting_human</code> and names the item instead of re-injecting — the same thing the
-driver does when a run reaches a human node. See
+<p>One plan construct changes what that instruction says: a <strong><code>@human</code></strong> node. Under
+the default posture (<code>autonomy: full</code>) nobody is coming to decide it, so the hook
+still blocks the stop — but the re-injected instruction tells the agent to
+synthesize the role that decision needs, take it, do the item, and record the call
+in <code>DECISIONS.md</code> with a <strong>Reversal</strong> line. Under <code>autonomy: ask</code> the hook allows
+the stop with <code>awaiting_human</code> and names the item instead. Either way it matches
+what the driver does at the same node. See
 <a href="../../reference/hooks/#node-kinds">Hooks → Node kinds</a>.</p>
 <div class="admonition info">
 <p class="admonition-title">Fail-open by design</p>

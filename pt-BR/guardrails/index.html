@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -860,6 +862,34 @@
     
   
     Workflows dinâmicos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -2197,14 +2227,26 @@ máquina.</p>
 <ol>
 <li><strong>Plano completo</strong> — nenhum item desmarcado resta no <code>PLAN.md</code>.</li>
 <li><strong>Kill switch</strong> — <code>.leopold/STOP</code> existe (<code>/leopold-stop</code> ou <code>touch</code>).</li>
-<li><strong>Falha repetida</strong> — o mesmo tipo de falha por N turnos consecutivos (padrão 3).</li>
+<li><strong>Falha repetida</strong> — o mesmo tipo de falha por N turnos consecutivos (padrão 3),
+   <em>depois</em> da única mudança de abordagem conduzida por uma persona que a run ganha ao
+   bater no teto pela primeira vez. O teto em si nunca se move.</li>
 <li><strong>Budget de iterações</strong> — o contador de iterações atingiu <code>max_iterations</code> (padrão 50).</li>
 <li><strong>Budget em USD</strong> — o gasto acumulado cruzou <code>--budget</code>, se definido.</li>
-<li><strong>Escalação</strong> — o protocolo de decisão encaminhou ao humano uma bifurcação
-   genuinamente irreversível + indecidível (raro; o maestro tem um viés forte para decidir sozinho).</li>
+<li><strong>Escalação</strong> — uma bifurcação que nem um papel sintetizado conseguiu resolver (uma
+   resposta inutilizável, um erro do harness). Uma bifurcação que ele <em>consegue</em> resolver
+   é decidida e registrada, não escalada.</li>
 </ol>
 <p>Toda parada escreve um resumo final na saída da run e um evento <code>stop</code> em
-<code>events.jsonl</code>, dizendo qual condição disparou.</p>
+<code>events.jsonl</code>, dizendo qual condição disparou. A lista completa — incluindo
+<code>context_budget</code>, <code>no_progress</code> e <code>routed_complete</code>, e se um papel sintetizado pode afetar
+cada uma — está em
+<a href="../concepts/personas/#o-que-ainda-para-a-run">O que ainda para a run</a>.</p>
+<p><strong><code>awaiting_human</code> não está nessa lista sob a postura padrão.</strong> Um nó <code>@human</code> é decidido
+por um papel que o Leopold sintetiza para ele, nos dois engines; configure
+<a href="../reference/plan-grammar/#autonomy"><code>autonomy: ask</code></a> no <code>GUARDRAILS.md</code> (ou
+<code>LEOPOLD_AUTONOMY=ask</code>, ou a flag <code>--ask</code> do driver) para que ele pare e espere por você.
+Uma persona decide; ela nunca publica — o git continua travado nas duas posturas, e
+nenhuma persona pode aumentar um budget, limpar o kill switch ou editar o <code>GUARDRAILS.md</code>.</p>
 <hr />
 <h2 id="o-kill-switch">O kill switch<a class="headerlink" href="#o-kill-switch" title="Permanent link">&para;</a></h2>
 <p>Duas formas de parar uma run na próxima fronteira de turno:</p>
@@ -2248,6 +2290,11 @@ commit e push.</p>
 <td>Force-push</td>
 <td>nunca</td>
 <td>não configurável</td>
+</tr>
+<tr>
+<td>Autonomy</td>
+<td><code>full</code></td>
+<td><code>GUARDRAILS.md</code> (<code>autonomy: ask</code>)</td>
 </tr>
 <tr>
 <td>Máx. de falhas consecutivas</td>

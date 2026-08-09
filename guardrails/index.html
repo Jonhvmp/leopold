@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -860,6 +862,34 @@
     
   
     Dynamic Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/personas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Personas
   
 
     
@@ -2194,14 +2224,25 @@ true:</p>
 <ol>
 <li><strong>Plan complete</strong> — no unchecked items remain in <code>PLAN.md</code>.</li>
 <li><strong>Kill switch</strong> — <code>.leopold/STOP</code> exists (<code>/leopold-stop</code> or <code>touch</code>).</li>
-<li><strong>Repeated failure</strong> — the same kind of failure N consecutive turns (default 3).</li>
+<li><strong>Repeated failure</strong> — the same kind of failure N consecutive turns (default 3),
+   <em>after</em> the one persona-led change of approach the run gets when it first hits the
+   ceiling. The ceiling itself never moves.</li>
 <li><strong>Iteration budget</strong> — the iteration counter reached <code>max_iterations</code> (default 50).</li>
 <li><strong>USD budget</strong> — accumulated spend crossed <code>--budget</code>, if set.</li>
-<li><strong>Escalation</strong> — the decision protocol routed a genuinely irreversible + unsettleable
-   fork to the human (rare; the conductor is biased hard toward deciding itself).</li>
+<li><strong>Escalation</strong> — a fork a synthesized role could not settle either (an unusable
+   answer, a harness error). A fork it <em>can</em> settle is decided and logged, not escalated.</li>
 </ol>
 <p>Every stop writes a final summary to the run output and a <code>stop</code> event to
-<code>events.jsonl</code>, naming which condition fired.</p>
+<code>events.jsonl</code>, naming which condition fired. The complete list — including
+<code>context_budget</code>, <code>no_progress</code> and <code>routed_complete</code>, and whether a synthesized role can
+affect each one — is
+<a href="../concepts/personas/#what-still-stops-the-run">What still stops the run</a>.</p>
+<p><strong><code>awaiting_human</code> is not on that list under the default posture.</strong> A <code>@human</code> node is
+decided by a role Leopold synthesizes for it, on both engines; set
+<a href="../reference/plan-grammar/#autonomy"><code>autonomy: ask</code></a> in <code>GUARDRAILS.md</code> (or
+<code>LEOPOLD_AUTONOMY=ask</code>, or the driver's <code>--ask</code>) to have it stop and wait for you
+instead. A persona decides; it never ships — git stays locked either way, and no persona
+may raise a budget, clear the kill switch or edit <code>GUARDRAILS.md</code>.</p>
 <hr />
 <h2 id="the-kill-switch">The kill switch<a class="headerlink" href="#the-kill-switch" title="Permanent link">&para;</a></h2>
 <p>Two ways to stop a run at the next turn boundary:</p>
@@ -2245,6 +2286,11 @@ commit and push.</p>
 <td>Force-push</td>
 <td>never</td>
 <td>not configurable</td>
+</tr>
+<tr>
+<td>Autonomy</td>
+<td><code>full</code></td>
+<td><code>GUARDRAILS.md</code> (<code>autonomy: ask</code>)</td>
 </tr>
 <tr>
 <td>Max consecutive fails</td>
