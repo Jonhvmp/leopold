@@ -101,7 +101,7 @@ echo "menu component screen — Settings only where an extension declares config
 # nowhere (the submenu unreachable) would both be wrong. Component order comes from the
 # registry's .order fields; select serena's slot, then back, then quit.
 slot() { # <ext-name> -> the 1-based menu number of that extension
-  local i=1 d
+  local d
   for d in "$ROOT/extensions"/*/; do
     [ -f "${d}extension.json" ] || continue
     printf '%s\t%s\n' "$(jq -r '.order // 99' "${d}extension.json")" "$(basename "$d")"
