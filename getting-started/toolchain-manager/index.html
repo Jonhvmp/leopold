@@ -1984,7 +1984,10 @@
 <p>Every component lives under <code>extensions/&lt;name&gt;/</code> with two files:</p>
 <ul>
 <li><code>extension.json</code> — metadata the menu renders (<code>name</code>, <code>title</code>, <code>summary</code>, <code>order</code>).</li>
-<li><code>manage.sh</code> — the actions the menu calls: <code>detect | status | install | update | remove | doctor</code>.</li>
+<li><code>manage.sh</code> — the actions the menu calls: <code>detect | status | install | update | remove | doctor</code>,
+  plus optional verbs an extension may declare in its <code>extension.json</code>: <code>toggle</code> (an on/off
+  switch), <code>dashboard</code> (a <code>watch</code> view), and <code>configure</code> (a settings submenu, rendered as
+  <code>s) Settings</code> on the component's screen).</li>
 </ul>
 <p>The menu discovers everything in that folder, so <strong>adding a component is dropping in a
 folder</strong> — no menu code changes. <code>detect</code> is the single source of truth for "installed?".
@@ -2017,6 +2020,16 @@ same discipline the <a href="../../guardrails/">cost guardrails</a> enforce),
 which is why it is mandatory rather than optional. Setup uses Serena's official path, not the
 MCP marketplace (which ships stale commands). Manage with <code>make serena-install</code> /
 <code>make serena-doctor</code>.</p>
+<p><strong>The dashboard stays out of your browser.</strong> Serena's own default opens a dashboard tab on
+every launch — and since each harness registers Serena as a stdio server, every new CLI
+session spawns its own Serena and its own tab. The installer turns that off
+(<code>web_dashboard_open_on_launch: false</code>) on the config it creates, or when the key was never
+set; a value you chose yourself is never overridden by install or update. The dashboard
+itself stays on — open it at <code>http://localhost:24282/dashboard/</code> whenever you want it.
+Flip it back, and adjust Serena's other day-to-day settings (<code>log_level</code>, <code>tool_timeout</code>,
+<code>token_count_estimator</code>, …), under <code>leopold menu</code> → serena → <strong>Settings</strong> — each entry shows
+the live value from <code>~/.serena/serena_config.yml</code>, writes back only the key you changed, and
+running Serena instances pick changes up on their next session.</p>
 <h3 id="gstack">gstack<a class="headerlink" href="#gstack" title="Permanent link">&para;</a></h3>
 <p>The planning + QA skill suite Leopold conducts (<code>/spec</code>, <code>/autoplan</code>, <code>/plan-*-review</code>, …).
 A separate MIT project by Garry Tan; the extension clones it and runs its setup. Needs Bun.</p>

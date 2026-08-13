@@ -1984,7 +1984,10 @@ pergunta pontual de "instalar o gstack?" do instalador num registry orientado a 
 <p>Cada componente vive em <code>extensions/&lt;name&gt;/</code> com dois arquivos:</p>
 <ul>
 <li><code>extension.json</code> — metadados que o menu renderiza (<code>name</code>, <code>title</code>, <code>summary</code>, <code>order</code>).</li>
-<li><code>manage.sh</code> — as ações que o menu chama: <code>detect | status | install | update | remove | doctor</code>.</li>
+<li><code>manage.sh</code> — as ações que o menu chama: <code>detect | status | install | update | remove | doctor</code>,
+  mais verbos opcionais que uma extensão pode declarar no seu <code>extension.json</code>: <code>toggle</code>
+  (liga/desliga), <code>dashboard</code> (uma visão <code>watch</code>) e <code>configure</code> (um submenu de configurações,
+  renderizado como <code>s) Settings</code> na tela do componente).</li>
 </ul>
 <p>O menu descobre tudo que está nessa pasta, então <strong>adicionar um componente é só largar uma
 pasta ali</strong> — sem mudar código do menu. O <code>detect</code> é a fonte única da verdade pra "instalado?".
@@ -2017,6 +2020,16 @@ menos tokens — a mesma disciplina que os <a href="../../guardrails/">guardrail
 e é por isso que ela é obrigatória em vez de opcional. O setup usa o caminho oficial da Serena, não o
 marketplace de MCP (que traz comandos desatualizados). Gerencie com <code>make serena-install</code> /
 <code>make serena-doctor</code>.</p>
+<p><strong>O dashboard fica fora do seu browser.</strong> O default da própria Serena abre uma aba de
+dashboard a cada launch — e como cada harness registra a Serena como servidor stdio, cada
+sessão nova do CLI cria sua própria Serena e sua própria aba. O instalador desliga isso
+(<code>web_dashboard_open_on_launch: false</code>) no config que ele cria, ou quando a chave nunca foi
+definida; um valor que você escolheu nunca é sobrescrito por install ou update. O dashboard
+em si continua ligado — abra em <code>http://localhost:24282/dashboard/</code> quando quiser. Reverta,
+e ajuste as outras configurações do dia a dia da Serena (<code>log_level</code>, <code>tool_timeout</code>,
+<code>token_count_estimator</code>, …), em <code>leopold menu</code> → serena → <strong>Settings</strong> — cada entrada mostra
+o valor vivo do <code>~/.serena/serena_config.yml</code>, escreve de volta só a chave que você mudou, e
+instâncias da Serena já em execução pegam a mudança na próxima sessão.</p>
 <h3 id="gstack">gstack<a class="headerlink" href="#gstack" title="Permanent link">&para;</a></h3>
 <p>A suíte de skills de planejamento + QA que o Leopold conduz (<code>/spec</code>, <code>/autoplan</code>, <code>/plan-*-review</code>, …).
 Um projeto MIT separado, do Garry Tan; a extensão clona o repositório e roda o setup dele. Precisa de Bun.</p>
