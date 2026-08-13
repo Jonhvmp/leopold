@@ -74,6 +74,15 @@ hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@bash -n extensions/ovmem/manage.sh
 	@python3 -m py_compile extensions/enhance/payload/enhance.py
 	@python3 -m py_compile extensions/ovmem/payload/ovmem.py extensions/ovmem/payload/dashboard.py
+	@# The SAME lint CI runs (ci.yml), so `make test` green means the hooks job's lint is
+	@# green too. A machine without shellcheck says so out loud instead of skipping into a
+	@# local-passes-CI-fails surprise — that already happened once (SC2034, PR #58).
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		shellcheck -S warning hooks/*.sh install.sh scripts/*.sh extensions/*/*.sh && echo "shellcheck: clean"; \
+	else \
+		echo "WARNING: shellcheck not installed — CI lints with it and this machine cannot."; \
+		echo "         install: https://github.com/koalaman/shellcheck#installing (static binary works in ~/.local/bin)"; \
+	fi
 	@echo "hooks + installers + harness lib + enhance/ovmem engines: syntax OK"
 
 hooks-test: ## Run the hook behavior tests

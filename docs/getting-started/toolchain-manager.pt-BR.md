@@ -28,7 +28,10 @@ Escolha um componente pra instalar, atualizar, remover ou rodar o doctor dele.
 Cada componente vive em `extensions/<name>/` com dois arquivos:
 
 - `extension.json` — metadados que o menu renderiza (`name`, `title`, `summary`, `order`).
-- `manage.sh` — as ações que o menu chama: `detect | status | install | update | remove | doctor`.
+- `manage.sh` — as ações que o menu chama: `detect | status | install | update | remove | doctor`,
+  mais verbos opcionais que uma extensão pode declarar no seu `extension.json`: `toggle`
+  (liga/desliga), `dashboard` (uma visão `watch`) e `configure` (um submenu de configurações,
+  renderizado como `s) Settings` na tela do componente).
 
 O menu descobre tudo que está nessa pasta, então **adicionar um componente é só largar uma
 pasta ali** — sem mudar código do menu. O `detect` é a fonte única da verdade pra "instalado?".
@@ -66,6 +69,17 @@ menos tokens — a mesma disciplina que os [guardrails de custo](../guardrails.m
 e é por isso que ela é obrigatória em vez de opcional. O setup usa o caminho oficial da Serena, não o
 marketplace de MCP (que traz comandos desatualizados). Gerencie com `make serena-install` /
 `make serena-doctor`.
+
+**O dashboard fica fora do seu browser.** O default da própria Serena abre uma aba de
+dashboard a cada launch — e como cada harness registra a Serena como servidor stdio, cada
+sessão nova do CLI cria sua própria Serena e sua própria aba. O instalador desliga isso
+(`web_dashboard_open_on_launch: false`) no config que ele cria, ou quando a chave nunca foi
+definida; um valor que você escolheu nunca é sobrescrito por install ou update. O dashboard
+em si continua ligado — abra em `http://localhost:24282/dashboard/` quando quiser. Reverta,
+e ajuste as outras configurações do dia a dia da Serena (`log_level`, `tool_timeout`,
+`token_count_estimator`, …), em `leopold menu` → serena → **Settings** — cada entrada mostra
+o valor vivo do `~/.serena/serena_config.yml`, escreve de volta só a chave que você mudou, e
+instâncias da Serena já em execução pegam a mudança na próxima sessão.
 
 ### gstack
 
