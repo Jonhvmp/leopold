@@ -28,7 +28,10 @@ Pick a component to install, update, remove, or run its doctor.
 Every component lives under `extensions/<name>/` with two files:
 
 - `extension.json` — metadata the menu renders (`name`, `title`, `summary`, `order`).
-- `manage.sh` — the actions the menu calls: `detect | status | install | update | remove | doctor`.
+- `manage.sh` — the actions the menu calls: `detect | status | install | update | remove | doctor`,
+  plus optional verbs an extension may declare in its `extension.json`: `toggle` (an on/off
+  switch), `dashboard` (a `watch` view), and `configure` (a settings submenu, rendered as
+  `s) Settings` on the component's screen).
 
 The menu discovers everything in that folder, so **adding a component is dropping in a
 folder** — no menu code changes. `detect` is the single source of truth for "installed?".
@@ -66,6 +69,17 @@ same discipline the [cost guardrails](../guardrails.md) enforce),
 which is why it is mandatory rather than optional. Setup uses Serena's official path, not the
 MCP marketplace (which ships stale commands). Manage with `make serena-install` /
 `make serena-doctor`.
+
+**The dashboard stays out of your browser.** Serena's own default opens a dashboard tab on
+every launch — and since each harness registers Serena as a stdio server, every new CLI
+session spawns its own Serena and its own tab. The installer turns that off
+(`web_dashboard_open_on_launch: false`) on the config it creates, or when the key was never
+set; a value you chose yourself is never overridden by install or update. The dashboard
+itself stays on — open it at `http://localhost:24282/dashboard/` whenever you want it.
+Flip it back, and adjust Serena's other day-to-day settings (`log_level`, `tool_timeout`,
+`token_count_estimator`, …), under `leopold menu` → serena → **Settings** — each entry shows
+the live value from `~/.serena/serena_config.yml`, writes back only the key you changed, and
+running Serena instances pick changes up on their next session.
 
 ### gstack
 

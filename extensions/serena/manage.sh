@@ -130,6 +130,36 @@ register_mcp() { # <harness>
   fi
 }
 
+# ---- the global Serena config (~/.serena/serena_config.yml) ------------------
+#
+# One writer for this surface, same rule as the hook wiring: every read and write of
+# the YAML goes through these helpers, always a targeted single-key edit (temp + mv,
+# comments and every other line preserved), never a template rewrite. The file is
+# Serena's, not ours — Leopold adjusts exactly the keys the user asked about and
+# leaves the rest alone.
+
+serena_cfg() { echo "$HOME/.serena/serena_config.yml"; }
+
+cfg_get() { # <key> -> value, or "(absent)" when the file has no such line
+  local f line; f="$(serena_cfg)"
+  [ -f "$f" ] || { echo "(absent)"; return; }
+  line="$(grep -m1 -E "^$1:" "$f" 2>/dev/null || true)"
+  [ -n "$line" ] || { echo "(absent)"; return; }
+  printf '%s\n' "${line#*:}" | sed 's/#.*$//' | awk '{$1=$1; print}'
+}
+
+cfg_set() { # <key> <value>  (atomic; appends when the key has no line yet)
+  local f tmp; f="$(serena_cfg)"
+  [ -f "$f" ] || return 1
+  tmp="$(mktemp)" || return 1
+  if grep -qE "^$1:" "$f"; then
+    sed "s|^$1:.*|$1: $2|" "$f" > "$tmp" || { rm -f "$tmp"; return 1; }
+  else
+    cat "$f" > "$tmp" && printf '\n%s: %s\n' "$1" "$2" >> "$tmp" || { rm -f "$tmp"; return 1; }
+  fi
+  mv "$tmp" "$f"
+}
+
 # ---- commands ----------------------------------------------------------------
 
 install_cli() { # <install|update>
@@ -151,9 +181,98 @@ install_cli() { # <install|update>
   ok "serena $(sver) ready"
 
   # Global config is created automatically on first run; only init if it is missing.
-  if [ ! -f "$HOME/.serena/serena_config.yml" ]; then
+  #
+  # THE DASHBOARD DEFAULT. `serena init` writes `web_dashboard_open_on_launch: true`
+  # (verified against serena-agent on this machine), and both harnesses register Serena
+  # as a stdio MCP server — so every new CLI session spawns its own Serena process and
+  # every one of them opens a browser tab. A day of sessions is a browser full of
+  # dashboards nobody asked for. So:
+  #   - a config THIS install just created  -> set the key to false (the dashboard
+  #     stays reachable; it just stops hijacking the browser),
+  #   - a pre-existing config missing the key -> append false (no choice is overridden,
+  #     because none was ever expressed),
+  #   - a pre-existing config that HAS the key -> leave it alone, whatever it says.
+  #     Install and update never silently flip a value someone may have chosen; the
+  #     `configure` menu below is where a deliberate change is made, both ways.
+  local cfg_was_missing=""
+  [ -f "$(serena_cfg)" ] || cfg_was_missing=1
+  if [ -n "$cfg_was_missing" ]; then
     serena init </dev/null >/dev/null 2>&1 || warn "serena init skipped (the MCP server creates the global config on first start)"
   fi
+  if [ -f "$(serena_cfg)" ]; then
+    if [ -n "$cfg_was_missing" ] || [ "$(cfg_get web_dashboard_open_on_launch)" = "(absent)" ]; then
+      if cfg_set web_dashboard_open_on_launch false; then
+        ok "dashboard auto-open disabled (web_dashboard stays on — open it at http://localhost:24282/dashboard/)"
+      fi
+    elif [ "$(cfg_get web_dashboard_open_on_launch)" = "true" ]; then
+      warn "Serena opens a dashboard tab on every session (web_dashboard_open_on_launch: true)."
+      warn "  flip it in: leopold menu -> serena -> Settings"
+    fi
+  fi
+}
+
+# ---- configure: the Serena settings submenu ----------------------------------
+#
+# The keys that matter day to day, read live from the config and written back one at
+# a time. A key this Serena version does not ship (its line is absent) is not offered
+# a toggle — writing a setting the server never reads would be a control that lies.
+do_configure() {
+  local f; f="$(serena_cfg)"
+  [ -f "$f" ] || { warn "no Serena config at $f — run install first (or start one Serena session)"; return 1; }
+  local a v
+  while true; do
+    echo
+    say "Serena settings ($f)"
+    printf '   1) web_dashboard_open_on_launch  = %s   (toggle — the browser-tab-per-session fix)\n' "$(cfg_get web_dashboard_open_on_launch)"
+    printf '   2) web_dashboard                 = %s   (toggle the dashboard server entirely)\n' "$(cfg_get web_dashboard)"
+    printf '   3) log_level                     = %s   (cycle 10 debug / 20 info / 30 warn / 40 error)\n' "$(cfg_get log_level)"
+    printf '   4) tool_timeout                  = %s   (edit, seconds)\n' "$(cfg_get tool_timeout)"
+    printf '   5) token_count_estimator         = %s   (cycle CHAR_COUNT / TIKTOKEN_GPT4O / ANTHROPIC_CLAUDE_SONNET_4)\n' "$(cfg_get token_count_estimator)"
+    [ "$(cfg_get record_tool_usage_stats)" != "(absent)" ] \
+      && printf '   6) record_tool_usage_stats       = %s   (toggle)\n' "$(cfg_get record_tool_usage_stats)"
+    grep -qE '^web_dashboard_interface:' "$f" 2>/dev/null \
+      && printf '   7) web_dashboard_interface       = %s   (edit: empty, browser or tray_manager)\n' "$(cfg_get web_dashboard_interface)"
+    printf '   b) back\n\n   select: '
+    read -r a || a="b"
+    case "$a" in
+      1) case "$(cfg_get web_dashboard_open_on_launch)" in
+           true) cfg_set web_dashboard_open_on_launch false ;;
+           *)    cfg_set web_dashboard_open_on_launch true ;;
+         esac ;;
+      2) case "$(cfg_get web_dashboard)" in
+           true) cfg_set web_dashboard false ;;
+           *)    cfg_set web_dashboard true ;;
+         esac ;;
+      3) case "$(cfg_get log_level)" in
+           10) cfg_set log_level 20 ;; 20) cfg_set log_level 30 ;;
+           30) cfg_set log_level 40 ;; *)  cfg_set log_level 10 ;;
+         esac ;;
+      4) printf '   tool_timeout (seconds): '; read -r v || v=""
+         case "$v" in
+           ''|*[!0-9]*) warn "not a number — unchanged" ;;
+           *) cfg_set tool_timeout "$v" ;;
+         esac ;;
+      5) case "$(cfg_get token_count_estimator)" in
+           CHAR_COUNT)     cfg_set token_count_estimator TIKTOKEN_GPT4O ;;
+           TIKTOKEN_GPT4O) cfg_set token_count_estimator ANTHROPIC_CLAUDE_SONNET_4 ;;
+           *)              cfg_set token_count_estimator CHAR_COUNT ;;
+         esac ;;
+      6) [ "$(cfg_get record_tool_usage_stats)" = "(absent)" ] && continue
+         case "$(cfg_get record_tool_usage_stats)" in
+           true) cfg_set record_tool_usage_stats false ;;
+           *)    cfg_set record_tool_usage_stats true ;;
+         esac ;;
+      7) grep -qE '^web_dashboard_interface:' "$f" 2>/dev/null || continue
+         printf '   web_dashboard_interface (empty / browser / tray_manager): '; read -r v || v=""
+         case "$v" in
+           ""|browser|tray_manager) cfg_set web_dashboard_interface "$v" ;;
+           *) warn "not one of: (empty), browser, tray_manager — unchanged" ;;
+         esac ;;
+      b|B|"") return 0 ;;
+      *) ;;
+    esac
+    echo "   (running Serena instances pick changes up on their next session)"
+  done
 }
 
 do_install() {
@@ -203,9 +322,10 @@ case "${1:-}" in
       echo
     else echo "not installed"; fi
     ;;
-  install) do_install install ;;
-  update)  do_install update ;;
-  remove)  do_remove ;;
+  install)   do_install install ;;
+  update)    do_install update ;;
+  remove)    do_remove ;;
+  configure) do_configure ;;
   doctor)
     echo "serena:   $(have serena && serena --version 2>/dev/null | head -1 || echo missing)"
     echo "uv:       $(have uv && echo present || echo missing)"
@@ -229,5 +349,5 @@ case "${1:-}" in
       fi
     done
     ;;
-  *) echo "usage: manage.sh {detect|status|install|update|remove|doctor}" >&2; exit 2 ;;
+  *) echo "usage: manage.sh {detect|status|install|update|remove|doctor|configure}" >&2; exit 2 ;;
 esac

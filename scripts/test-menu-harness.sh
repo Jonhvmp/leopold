@@ -95,5 +95,24 @@ has   "the other controls are still there"           "$out" "d) Doctor all"
 has   "and the header names the one harness"         "$out" "Claude Code"
 
 echo
+echo "menu component screen — Settings only where an extension declares configure"
+# serena declares "configure": true in its extension.json; ovmem does not. The entry is
+# data-driven, so a menu that showed it everywhere (a control that cannot work) or
+# nowhere (the submenu unreachable) would both be wrong. Component order comes from the
+# registry's .order fields; select serena's slot, then back, then quit.
+slot() { # <ext-name> -> the 1-based menu number of that extension
+  local i=1 d
+  for d in "$ROOT/extensions"/*/; do
+    [ -f "${d}extension.json" ] || continue
+    printf '%s\t%s\n' "$(jq -r '.order // 99' "${d}extension.json")" "$(basename "$d")"
+  done | sort -n | awk -v n="$1" '$2==n{print NR}'
+}
+SER="$(slot serena)"; OVM="$(slot ovmem)"
+out="$(drive both "${SER}\nb\nq\n")"
+has   "serena's screen offers s) Settings"      "$out" "s) Settings"
+out="$(drive both "${OVM}\nb\nq\n")"
+hasnt "ovmem's screen does not"                 "$out" "s) Settings"
+
+echo
 if [ "$FAIL" -eq 0 ]; then printf '\033[32m%d passed, 0 failed\033[0m\n' "$PASS"; exit 0
 else printf '\033[31m%d passed, %d FAILED\033[0m\n' "$PASS" "$FAIL"; exit 1; fi

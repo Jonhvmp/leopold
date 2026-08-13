@@ -222,6 +222,116 @@ if [ -n "$CODEX_BIN" ]; then
 fi
 
 echo
+echo "serena extension — the dashboard default and the settings surface (issue #57)"
+
+# The real `serena init` creates the global config with web_dashboard_open_on_launch: true
+# (verified against serena-agent on this machine) — that is the browser-tab-per-session
+# problem. Teach the stub to do the same, comments included, so the install path is
+# exercised against the shape the real tool produces.
+cat > "$STUB/serena" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+  --version) echo "serena 9.9.9" ;;
+  init)
+    mkdir -p "$HOME/.serena"
+    [ -f "$HOME/.serena/serena_config.yml" ] || cat > "$HOME/.serena/serena_config.yml" <<'YAML'
+# whether to start the Serena Dashboard.
+# We strongly recommend to always enable this option!
+web_dashboard: true
+
+# whether to open the Dashboard window/browser tab when Serena starts.
+web_dashboard_open_on_launch: true
+
+log_level: 20
+
+tool_timeout: 240
+
+token_count_estimator: CHAR_COUNT
+
+web_dashboard_interface:
+YAML
+    ;;
+  *) exit 0 ;;
+esac
+EOF
+chmod +x "$STUB/serena"
+
+# A second sealed home per scenario, so these runs cannot disturb the wiring the
+# assertions above already checked.
+runh() { # <home> <arg...>
+  local hm="$1"; shift
+  mkdir -p "$hm/codex" "$hm/claude"
+  env -i PATH="$STUB" HOME="$hm" CLAUDE_HOME="$hm/claude" CODEX_HOME="$hm/codex" \
+      LEOPOLD_HARNESS=codex FAKE_CLAUDE_MCP="$FAKE_CLAUDE_MCP" TERM=dumb \
+      bash "$MANAGE" "$@" 2>&1
+}
+cfgof() { echo "$1/.serena/serena_config.yml"; }
+
+# 1. Fresh install: the config this install creates gets auto-open OFF, dashboard ON.
+H1="$TD/h-fresh"
+out="$(runh "$H1" install)"
+check "fresh install: config was created"           "$([ -f "$(cfgof "$H1")" ] && echo yes || echo no)" "yes"
+check "fresh install: dashboard auto-open is OFF"   "$(grep -m1 '^web_dashboard_open_on_launch:' "$(cfgof "$H1")")" "web_dashboard_open_on_launch: false"
+check "fresh install: the dashboard itself stays ON" "$(grep -m1 '^web_dashboard:' "$(cfgof "$H1")")" "web_dashboard: true"
+check "fresh install: init's comments survive the edit" \
+  "$(grep -c 'strongly recommend' "$(cfgof "$H1")")" "1"
+has "fresh install says what it did" "$out" "dashboard auto-open disabled"
+
+# 2. A pre-existing config that HAS the key is never clobbered — install or update.
+H2="$TD/h-chose-true"; mkdir -p "$H2/.serena"
+printf '# my file\nweb_dashboard: true\nweb_dashboard_open_on_launch: true\n' > "$(cfgof "$H2")"
+before="$(cat "$(cfgof "$H2")")"
+runh "$H2" install >/dev/null
+check "install leaves a deliberate true alone"  "$(grep -m1 '^web_dashboard_open_on_launch:' "$(cfgof "$H2")")" "web_dashboard_open_on_launch: true"
+runh "$H2" update >/dev/null
+check "update leaves it alone too"              "$(grep -m1 '^web_dashboard_open_on_launch:' "$(cfgof "$H2")")" "web_dashboard_open_on_launch: true"
+check "...and the file is byte-identical"       "$(cat "$(cfgof "$H2")")" "$before"
+has "...but the session-tab consequence is said out loud" "$(runh "$H2" install)" "leopold menu"
+
+# 3. A pre-existing config MISSING the key expressed no choice: the key is appended.
+H3="$TD/h-no-key"; mkdir -p "$H3/.serena"
+printf '# custom preamble\nweb_dashboard: true\nlog_level: 20\n' > "$(cfgof "$H3")"
+runh "$H3" install >/dev/null
+check "absent key is set to false"       "$(grep -m1 '^web_dashboard_open_on_launch:' "$(cfgof "$H3")")" "web_dashboard_open_on_launch: false"
+check "the rest of the file is intact"   "$(grep -c '^# custom preamble' "$(cfgof "$H3")")" "1"
+
+# 4. The settings submenu: entry 1 toggles the key both ways, touching only its line.
+H4="$TD/h-menu"; runh "$H4" install >/dev/null
+printf '1\nb\n' | runh "$H4" configure >/dev/null
+check "configure toggles auto-open false -> true" "$(grep -m1 '^web_dashboard_open_on_launch:' "$(cfgof "$H4")")" "web_dashboard_open_on_launch: true"
+printf '1\nb\n' | runh "$H4" configure >/dev/null
+check "...and back true -> false (reversible)"    "$(grep -m1 '^web_dashboard_open_on_launch:' "$(cfgof "$H4")")" "web_dashboard_open_on_launch: false"
+check "the toggle touched ONLY its own line" \
+  "$(diff <(grep -v '^web_dashboard_open_on_launch:' "$(cfgof "$H4")") <(grep -v '^web_dashboard_open_on_launch:' "$(cfgof "$H1")") >/dev/null && echo same || echo differs)" "same"
+
+# 5-7. The other entries read the live value and write only their key.
+printf '3\nb\n' | runh "$H4" configure >/dev/null
+check "log_level cycles 20 -> 30"                "$(grep -m1 '^log_level:' "$(cfgof "$H4")")" "log_level: 30"
+printf '4\n300\nb\n' | runh "$H4" configure >/dev/null
+check "tool_timeout edits to a number"           "$(grep -m1 '^tool_timeout:' "$(cfgof "$H4")")" "tool_timeout: 300"
+out="$(printf '4\nabc\nb\n' | runh "$H4" configure)"
+check "a non-number is refused, value unchanged" "$(grep -m1 '^tool_timeout:' "$(cfgof "$H4")")" "tool_timeout: 300"
+has "...and says so" "$out" "not a number"
+printf '5\nb\n' | runh "$H4" configure >/dev/null
+check "token_count_estimator cycles"             "$(grep -m1 '^token_count_estimator:' "$(cfgof "$H4")")" "token_count_estimator: TIKTOKEN_GPT4O"
+printf '7\nbrowser\nb\n' | runh "$H4" configure >/dev/null
+check "web_dashboard_interface accepts browser"  "$(grep -m1 '^web_dashboard_interface:' "$(cfgof "$H4")")" "web_dashboard_interface: browser"
+out="$(printf '7\nfoo|bar\nb\n' | runh "$H4" configure)"
+check "...and refuses a value Serena has no meaning for" "$(grep -m1 '^web_dashboard_interface:' "$(cfgof "$H4")")" "web_dashboard_interface: browser"
+
+# 8. A key this Serena version does not ship is not offered a control that lies.
+out="$(printf 'b\n' | runh "$H4" configure)"
+hasnt "record_tool_usage_stats (absent here) is not offered" "$out" "record_tool_usage_stats"
+printf '6\nb\n' | runh "$H4" configure >/dev/null
+check "...and picking its number writes nothing" "$(grep -c '^record_tool_usage_stats:' "$(cfgof "$H4")")" "0"
+
+# 9. configure with no config at all: a clear message, not a crash into an empty menu.
+H9="$TD/h-noconfig"; mkdir -p "$H9"
+out="$(printf 'b\n' | runh "$H9" configure)"; rc=$?
+check "configure without a config exits non-zero" "$rc" "1"
+has "...and says where the config comes from" "$out" "run install first"
+
+echo
 echo "serena extension — nothing escaped the temp dirs"
 HOME="$REAL_HOME"
 check "the real ~/.codex gained no new entries"  "$(real_codex_fp)"  "$CODEX_BEFORE"

@@ -2,7 +2,8 @@
 # Leopold - toolchain manager.
 # A data-driven menu over the extension registry in ../extensions/. Each extension
 # is a self-contained folder with an extension.json (metadata) and a manage.sh that
-# implements: detect | status | install | update | remove | doctor.
+# implements: detect | status | install | update | remove | doctor — plus optional
+# verbs declared in extension.json: toggle, dashboard (watch), configure (settings).
 #
 # Works from a clone (./scripts/leopold-menu.sh) and from an install under any
 # harness - ~/.claude/leopold/scripts/ on a Claude Code machine,
@@ -189,9 +190,11 @@ component_menu() {
     [ -n "$caps" ] && printf "  %scapabilities:%s %s\n\n" "$C_DIM" "$C_RESET" "$caps"
     local has_dash=""; [ -n "$(_jget "$d/extension.json" dashboard)" ] && has_dash=1
     local has_tog="";  [ -n "$(_jget "$d/extension.json" toggle)" ] && has_tog=1
+    local has_cfg="";  [ -n "$(_jget "$d/extension.json" configure)" ] && has_cfg=1
     local extra=""
     [ -n "$has_tog" ]  && extra="$extra    t) Toggle on/off"
     [ -n "$has_dash" ] && extra="$extra    w) Watch"
+    [ -n "$has_cfg" ]  && extra="$extra    s) Settings"
     printf "   1) Install    2) Update    3) Remove    4) Doctor%s    b) Back\n\n" "$extra"
     printf "select: "; read -r a || a="b"
     case "$a" in
@@ -201,6 +204,7 @@ component_menu() {
       4) ext_run "$d" doctor  || true; pause ;;
       t|T) [ -n "$has_tog" ] && { ext_run "$d" toggle || true; }; pause ;;
       w|W) [ -n "$has_dash" ] && { ext_run "$d" watch || true; }; pause ;;
+      s|S) [ -n "$has_cfg" ] && { ext_run "$d" configure || true; }; pause ;;
       b|B|"") return ;;
       *) ;;
     esac

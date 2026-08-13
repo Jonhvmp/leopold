@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-13
+
+### Fixed
+- **Serena no longer opens a dashboard tab on every session.** (#57) Serena's own default
+  is `web_dashboard_open_on_launch: true`, and both harnesses register it as a stdio MCP
+  server — so every new CLI session spawned its own Serena process and its own browser
+  tab. The installer now sets the key to `false` on a config it creates (or when the key
+  was never set), while the dashboard itself stays on at
+  `http://localhost:24282/dashboard/`. A value you set yourself is never overridden by
+  install or update — that is what the menu is for.
+
+### Added
+- **`leopold menu` → serena → Settings.** The extension contract gains an optional
+  `configure` verb (declared in `extension.json`, rendered as `s) Settings`), and the
+  serena extension implements it: toggle `web_dashboard_open_on_launch` (both ways) and
+  `web_dashboard`, cycle `log_level` and `token_count_estimator`, edit `tool_timeout` and
+  `web_dashboard_interface`. Each entry shows the live value from
+  `~/.serena/serena_config.yml`, writes back only the selected key (atomic, comments
+  preserved), hides keys the installed Serena version does not ship, and reminds you that
+  running instances pick changes up on their next session.
+
 ## [0.16.0] - 2026-08-09
 
 **Read this before upgrading: `@human` no longer halts a run.** Until 0.15.0 a `@human`
