@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.17.0] - 2026-08-13
 
+### Changed
+- **Dependencies, the whole Dependabot queue at once** (#39–#45): TypeScript 6.0.3 → 7.0.2
+  (typecheck, build and all 510 driver tests pass on 7), `@anthropic-ai/claude-agent-sdk`
+  ^0.3.221, `@types/node` and `tsx` current, `actions/setup-node` v7 and
+  `actions/setup-python` v7 in CI, and the docs floors raised to `mkdocs-material>=9.7.7`
+  and `mkdocs-static-i18n>=1.3.1`. `npm audit` is clean after the refresh.
+
 ### Fixed
 - **Serena no longer opens a dashboard tab on every session.** (#57) Serena's own default
   is `web_dashboard_open_on_launch: true`, and both harnesses register it as a stdio MCP
