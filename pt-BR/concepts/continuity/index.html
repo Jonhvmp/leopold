@@ -1027,6 +1027,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#as-tres-memorias" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        As três memórias
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#por-que-usd-nao-e-governador" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1464,6 +1475,8 @@
       
         
       
+        
+      
     
     
     
@@ -1692,6 +1705,34 @@
     
   
     Asset Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/sdk-worker-hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks do worker SDK
   
 
     
@@ -1939,6 +1980,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#as-tres-memorias" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        As três memórias
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#por-que-usd-nao-e-governador" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2106,6 +2158,13 @@ então nada renova:</p>
 </ul>
 <p>O watcher não é um agendador: ele reage a um roll de janela detectado (um evento
 <code>window_relaunch</code> marca cada um), nunca acorda uma run por timer.</p>
+<p><strong>Custo em billing API.</strong> O cap do checkpoint é proporcional à janela —
+<code>min(32KB, 2% de max_context_mb)</code> — então o único knob que governa custo por turno
+governa o checkpoint também: um projeto em API que abaixa <code>max_context_mb</code> ganha turnos
+mais baratos, rolls mais cedo e checkpoint proporcionalmente menor, automaticamente. Um
+<code>max_checkpoint_kb:</code> explícito no <code>GUARDRAILS.md</code> sobrepõe a fórmula. O cap nunca deriva
+de billing nem do comportamento da própria run — um cap que a run pudesse crescer
+sofrendo seria um budget que se aumenta sozinho.</p>
 <h2 id="o-que-ainda-para-uma-run">O que ainda para uma run<a class="headerlink" href="#o-que-ainda-para-uma-run" title="Permanent link">&para;</a></h2>
 <p>Contexto não para mais uma run; estes param. É a mesma lista completa de
 <a href="../personas/#o-que-ainda-para-a-run">O que ainda para a run</a> — as duas condições novas
@@ -2168,6 +2227,57 @@ na 0.18.0 estão marcadas:</p>
 janelas ainda prepara e reporta; o humano é quem entrega. <code>context_budget</code> ainda
 aparece como <code>stopped_reason</code> — mas agora marca um roll de janela em uma run que
 continua, não uma morte.</p>
+<h2 id="as-tres-memorias">As três memórias<a class="headerlink" href="#as-tres-memorias" title="Permanent link">&para;</a></h2>
+<p>Desde a 0.19.0 uma run lembra em três camadas distintas. Elas não se sobrepõem — cada
+uma responde uma pergunta diferente, e uma feature que borra duas delas está errada
+mesmo quando conveniente:</p>
+<table>
+<thead>
+<tr>
+<th>Memória</th>
+<th>O que ela lembra</th>
+<th>Vida útil</th>
+<th>Funciona offline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.leopold/CHECKPOINT.md</code></td>
+<td><strong>O estado de trabalho DESTA run</strong>: item em andamento, erros e correções, próximo passo.</td>
+<td>Morre com a run — arquivado no fim limpo, nunca semeia a run seguinte.</td>
+<td>Sim — arquivo simples, sem rede.</td>
+</tr>
+<tr>
+<td><code>.leopold/runs/</code> + <code>leopold recall</code></td>
+<td><strong>O arquivo de decisões do próprio projeto</strong>: MISSION, PLAN e DECISIONS.md de cada run concluída, com o Reversal anexado. <code>leopold recall &lt;query&gt;</code> busca nele, ranqueado e limitado ao cwd; toda run começa com um digest limitado das decisões mais recentes.</td>
+<td>Versionado com o repo — greppável, revisável, sobrevive a tudo que o repo sobrevive.</td>
+<td>Sim — busca lexical, zero rede, zero dependências.</td>
+</tr>
+<tr>
+<td>ovmem (OpenViking)</td>
+<td><strong>Aprendizado destilado entre runs</strong>: o que as sessões da máquina ensinaram, deduplicado e reconsolidado no servidor, compartilhado entre projetos e harnesses.</td>
+<td>Sobrevive a tudo — vive fora do repo, no store de memória da máquina.</td>
+<td>Não — precisa do servidor OpenViking local (e do provedor de embedding). Opcional por construção: ausente, tudo acima continua funcionando.</td>
+</tr>
+</tbody>
+</table>
+<p>Duas regras amarram as três:</p>
+<ul>
+<li><strong>Texto de run passada é conteúdo não confiável.</strong> Um checkpoint, um trecho do
+  recall, um digest de início de run, uma memória reidratada: tudo dado, nunca
+  instrução. Toda superfície que injeta texto de run passada em um prompt carrega a
+  mesma frase de enquadramento, e um teste de drift falha se qualquer ponto de injeção
+  a perder.</li>
+<li><strong>Memória é enriquecimento, nunca dependência.</strong> Um projeto sem runs arquivadas
+  começa byte-idêntico a um sem a feature; um servidor ovmem morto loga uma linha e a
+  run continua.</li>
+</ul>
+<p>Quando uma run está ativa, os flushes do ovmem são <strong>cientes da run</strong>: a sessão OV
+ganha o título <code>leopold · &lt;projeto&gt; · run &lt;stamp&gt; · window N of M · &lt;engine&gt;</code> em vez
+de um UUID cru, então um humano navegando a memória distingue janelas de chats.
+Workers do driver SDK são efêmeros — os hooks deles disparam sim (verificado ao vivo,
+evidência em <a href="../../reference/sdk-worker-hooks/">SDK Worker Hooks</a>), então o ovmem
+suprime flushes por item por padrão e a sessão do condutor carrega a run.</p>
 <h2 id="por-que-usd-nao-e-governador">Por que USD não é governador<a class="headerlink" href="#por-que-usd-nao-e-governador" title="Permanent link">&para;</a></h2>
 <p><code>total_cost_usd</code> não reflete a contabilidade real na cobrança por assinatura, então um
 teto em USD não pode ser o governador padrão de uma run autônoma — ele mentiria para a

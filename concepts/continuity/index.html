@@ -1027,6 +1027,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-three-memories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The three memories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-usd-is-not-a-governor" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1464,6 +1475,8 @@
       
         
       
+        
+      
     
     
     
@@ -1692,6 +1705,34 @@
     
   
     Asset Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/sdk-worker-hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDK Worker Hooks
   
 
     
@@ -1939,6 +1980,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-three-memories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The three memories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-usd-is-not-a-governor" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2105,6 +2157,13 @@ does:</p>
 </ul>
 <p>The watcher is not a scheduler: it reacts to a detected window roll (a
 <code>window_relaunch</code> event marks each one), it never wakes a run on a timer.</p>
+<p><strong>Cost on API billing.</strong> The checkpoint cap is proportional to the window —
+<code>min(32KB, 2% of max_context_mb)</code> — so the one knob that governs per-turn cost governs
+the checkpoint too: an API-billed project that lowers <code>max_context_mb</code> gets cheaper
+turns, earlier rolls, and a proportionally smaller checkpoint, automatically. An
+explicit <code>max_checkpoint_kb:</code> in <code>GUARDRAILS.md</code> overrides the formula outright. The
+cap is never derived from billing or from the run's own behavior — a cap the run could
+grow by struggling would be a budget that raises itself.</p>
 <h2 id="what-still-stops-a-run">What still stops a run<a class="headerlink" href="#what-still-stops-a-run" title="Permanent link">&para;</a></h2>
 <p>Context does not stop a run any more; these do. This is the same complete list as
 <a href="../personas/#what-still-stops-the-run">What still stops the run</a> — the two conditions
@@ -2166,6 +2225,56 @@ new in 0.18.0 are marked:</p>
 <p>And the boundary that never moved: <strong>the git lock</strong>. A run that survives ten windows
 still stages and reports; the human ships. <code>context_budget</code> still appears as a
 <code>stopped_reason</code> — but it now marks a window roll on a run that continues, not a death.</p>
+<h2 id="the-three-memories">The three memories<a class="headerlink" href="#the-three-memories" title="Permanent link">&para;</a></h2>
+<p>Since 0.19.0 a run remembers on three distinct layers. They do not overlap — each
+answers a different question, and a feature that blurs two of them is wrong even when
+convenient:</p>
+<table>
+<thead>
+<tr>
+<th>Memory</th>
+<th>What it remembers</th>
+<th>Lifetime</th>
+<th>Works offline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.leopold/CHECKPOINT.md</code></td>
+<td><strong>This run's working state</strong>: in-flight item, errors and fixes, next step.</td>
+<td>Dies with the run — archived on clean finish, never seeds the next run.</td>
+<td>Yes — plain file, no network.</td>
+</tr>
+<tr>
+<td><code>.leopold/runs/</code> + <code>leopold recall</code></td>
+<td><strong>The project's own decision archive</strong>: every finished run's MISSION, PLAN, DECISIONS.md with the Reversal attached. <code>leopold recall &lt;query&gt;</code> searches it, ranked and cwd-scoped; every run starts with a bounded digest of the most recent decisions.</td>
+<td>Versioned with the repo — greppable, reviewable, survives everything the repo survives.</td>
+<td>Yes — lexical search, zero network, zero dependencies.</td>
+</tr>
+<tr>
+<td>ovmem (OpenViking)</td>
+<td><strong>Distilled cross-run learning</strong>: what the machine's sessions taught, deduped and reconsolidated server-side, shared across projects and harnesses.</td>
+<td>Survives everything — lives outside the repo, in the machine's memory store.</td>
+<td>No — needs the local OpenViking server (plus its embedding provider). Optional by construction: absent, everything above still works.</td>
+</tr>
+</tbody>
+</table>
+<p>Two rules bind all three:</p>
+<ul>
+<li><strong>Past-run text is untrusted content.</strong> A checkpoint, a recall excerpt, a run-start
+  digest, a rehydrated memory: all data, never instructions. Every surface that
+  injects past-run text into a prompt carries the same framing sentence, and a drift
+  test fails if any injection site drops it.</li>
+<li><strong>Memory is enrichment, never a dependency.</strong> A project with no archived runs starts
+  byte-identically to one without the feature; a dead ovmem server logs one line and
+  the run continues.</li>
+</ul>
+<p>When a run is active, ovmem flushes are <strong>run-aware</strong>: the OV session is titled
+<code>leopold · &lt;project&gt; · run &lt;stamp&gt; · window N of M · &lt;engine&gt;</code> instead of a bare
+UUID, so a human browsing memory can tell windows from chats. SDK driver workers are
+ephemeral — their hooks do fire (verified live, evidence in
+<a href="../../reference/sdk-worker-hooks/">SDK Worker Hooks</a>), so ovmem suppresses per-item
+flushes by default and the conductor's session carries the run.</p>
 <h2 id="why-usd-is-not-a-governor">Why USD is not a governor<a class="headerlink" href="#why-usd-is-not-a-governor" title="Permanent link">&para;</a></h2>
 <p><code>total_cost_usd</code> does not reflect real accounting on subscription billing, so a USD
 ceiling cannot be the default governor of an autonomous run — it would lie for most

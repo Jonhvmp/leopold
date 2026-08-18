@@ -218,6 +218,13 @@
         <xhtml:link rel="alternate" hreflang="pt-BR" href="https://jonhvmp.github.io/leopold/pt-BR/reference/plan-grammar/"/>
     </url>
     <url>
+        <loc>https://jonhvmp.github.io/leopold/reference/sdk-worker-hooks/</loc>
+        <lastmod>2026-08-18</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://jonhvmp.github.io/leopold/reference/sdk-worker-hooks/"/>
+        <xhtml:link rel="alternate" hreflang="pt-BR" href="https://jonhvmp.github.io/leopold/pt-BR/reference/sdk-worker-hooks/"/>
+    </url>
+    <url>
         <loc>https://jonhvmp.github.io/leopold/reference/skills/</loc>
         <lastmod>2026-08-18</lastmod>
         <changefreq>daily</changefreq>
@@ -440,6 +447,13 @@
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="pt-BR" href="https://jonhvmp.github.io/leopold/pt-BR/reference/plan-grammar/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://jonhvmp.github.io/leopold/reference/plan-grammar/"/>
+    </url>
+    <url>
+        <loc>https://jonhvmp.github.io/leopold/pt-BR/reference/sdk-worker-hooks/</loc>
+        <lastmod>2026-08-18</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="pt-BR" href="https://jonhvmp.github.io/leopold/pt-BR/reference/sdk-worker-hooks/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://jonhvmp.github.io/leopold/reference/sdk-worker-hooks/"/>
     </url>
     <url>
         <loc>https://jonhvmp.github.io/leopold/pt-BR/reference/skills/</loc>
