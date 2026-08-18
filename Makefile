@@ -116,6 +116,10 @@ gstack-test: ## Run the gstack extension tests (hermetic: temp homes, stubbed gi
 skills-test: ## Run the skill path tests (no SKILL.md may hardcode a harness home)
 	@bash scripts/test-skill-paths.sh
 
+.PHONY: persona-test
+persona-test: ## Run the persona module tests (vendored skills whole, conductor contracts pinned)
+	@bash scripts/test-persona-skill.sh
+
 .PHONY: menu-test
 menu-test: ## Run the toolchain-menu harness-switch tests (hermetic: temp homes, stubbed PATH)
 	@bash scripts/test-menu-harness.sh
@@ -178,7 +182,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

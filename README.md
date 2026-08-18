@@ -88,6 +88,7 @@ Then, in any project:
 /leopold-learn    # mine your decisions + sessions → proposed charter amendments
 /leopold-enhance  # global prompt enhancer: status, on/off, preview, learn
 /leopold-triage   # triage a backlog (quarantined classifiers, dedupe, fix plans)
+/leopold-persona  # synthetic customers walk a product flow and report bugs + friction
 /leopold-watch    # live web dashboard: cost meters, events, decisions, Stop
 /leopold-status   # see where it is (terminal)
 /leopold-stop     # take the seat back

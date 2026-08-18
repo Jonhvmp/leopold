@@ -6,6 +6,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-08-18
+
+**The persona walks.** Real customers find what builders cannot — bugs on the unhappy
+path, screens that confuse, flows that quietly lose people. This release puts a
+synthetic customer in front of the product: an evidence-grounded persona walks a
+declared flow, perceiving the real interface, reacting in character, journaling every
+step, and ends the run with a structured report of what broke, what confused, and
+where it gave up.
+
+### Added
+- **The persona module** under `.leopold/persona/`: `personas/` (the cast, as
+  `persona-contract/1.0` files), `flows/` (entry point, goal, success criteria,
+  domain allowlist, out-of-bounds actions, app-version pin), and `runs/` — one
+  deliverable tree per run (`<UTCstamp>-<flow>/<persona>/JOURNEY.jsonl + evidence/ +
+  FINDINGS.md`, with a cross-persona `REPORT.md` at the root). Nothing loose.
+- **Two vendored persona skills** (portable agent-skills spec, both harnesses):
+  `persona-contract-builder` compiles evidence-grounded persona contracts — claim
+  catalog, source ledger, epistemic boundaries, validation gate; no stereotypes, no
+  invented citations. `persona-contract-runtime` enacts a contract one bounded turn
+  at a time — sincerity protocol, anti-drift gate, and an `instrumented` mode that
+  returns observed behavior, friction points and a state delta per turn.
+- **`/leopold-persona`** (Claude Code) / **`$leopold-persona`** (Codex CLI) — the
+  conductor: `init` scaffolds the namespace, `build` compiles a contract through the
+  builder skill, `run <flow>` walks a persona (or the whole cast) through the flow —
+  perceive → enact → journal → act — then distills per-persona findings and the run
+  report, findings ranked by severity × how many personas hit the same wall.
+- **Continuity for long flows**: `JOURNEY.jsonl` chains each turn's `state_delta`
+  into the next turn's prior state, so a context-window roll resumes mid-journey
+  from the journal tail without losing a step — journal re-reads framed as past-run
+  data, never as instructions.
+- **Hard bounds**: navigation never leaves the flow's domain allowlist, and
+  irreversible product actions (payments, deletions, destructive submits) are never
+  executed — the intent is journaled as a finding instead. Test credentials come
+  from the secrets vault; recorded and reported text stays under the credential mask.
+- **Docs**: Persona Testing concept page (en + pt-BR), flow template
+  (`templates/persona/FLOW.md`), README entries.
+- **Tests**: `scripts/test-persona-skill.sh` in `make test` and CI — vendored skills
+  asserted whole (truncation guard), conductor contracts (namespace, journal chain,
+  audit gate, framing, hard bounds) pinned, key assertions verified by mutation.
+
 ## [0.19.2] - 2026-08-18
 
 ### Security

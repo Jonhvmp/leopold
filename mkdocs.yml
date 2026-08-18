@@ -151,6 +151,7 @@ nav:
       - The Two Phases: concepts/two-phases.md
       - Dynamic Workflows: concepts/dynamic-workflows.md
       - Personas: concepts/personas.md
+      - Persona Testing: concepts/persona-testing.md
       - Continuity: concepts/continuity.md
       - The Canvas: canvas.md
       - Quality & Orchestration: quality-and-orchestration.md
