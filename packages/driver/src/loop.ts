@@ -840,7 +840,8 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     if (reason === "plan_complete" || reason === "routed_complete") {
       try {
         if (fs.existsSync(cpPath)) {
-          const arch = path.join(brief.leoDir, "runs", new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "Z").replace("T", "T"));
+          // The archive dir name matches the hook's: `date -u +%Y%m%dT%H%M%SZ`.
+          const arch = path.join(brief.leoDir, "runs", new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "Z"));
           fs.mkdirSync(arch, { recursive: true });
           fs.renameSync(cpPath, path.join(arch, "CHECKPOINT.md"));
           logEvent(brief.leoDir, { event: "checkpoint_archived", reason, to: arch });
