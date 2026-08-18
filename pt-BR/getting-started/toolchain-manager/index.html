@@ -2117,8 +2117,11 @@ ainda está sem a fiação.</p>
 <ul>
 <li>pede uma chave da OpenAI e <strong>valida contra chat + embeddings</strong> antes de salvar
   (ela precisa do escopo <code>model.request</code>, não só de embedding),</li>
-<li>escreve <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>), pluga os 4 hooks de forma idempotente em todo
-  harness presente e verifica de ponta a ponta com uma ida e volta de commit → extract.</li>
+<li>guarda a chave no cofre de credenciais da plataforma (Keychain no macOS, ou
+  <code>secret-tool</code> quando disponível, com um arquivo de env <code>chmod 600</code> como fallback),
+  escreve <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>) com um placeholder de ambiente no
+  lugar dela, pluga os 4 hooks de forma idempotente em todo harness presente e
+  verifica de ponta a ponta com uma ida e volta de commit → extract.</li>
 </ul>
 <p>Tudo é <strong>local e privado</strong>: o servidor OpenViking faz bind em <code>127.0.0.1</code> (loopback) no
 dispositivo do próprio usuário — ele não fica exposto à rede, e nada aponta pra um servidor

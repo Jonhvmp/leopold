@@ -2117,8 +2117,11 @@ still missing its wiring.</p>
 <ul>
 <li>prompts for an OpenAI key, <strong>validates it against chat + embeddings</strong> before saving
   (it needs the <code>model.request</code> scope, not just embedding),</li>
-<li>writes <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>), wires the 4 hooks idempotently into every
-  harness present, and verifies end-to-end with a commit → extract round-trip.</li>
+<li>stores the key in the platform credential store (macOS Keychain, or <code>secret-tool</code>
+  where available, with a <code>chmod 600</code> env file as the fallback), writes
+  <code>~/.openviking/ov.conf</code> (<code>chmod 600</code>) with an environment placeholder in its place,
+  wires the 4 hooks idempotently into every harness present, and verifies end-to-end
+  with a commit → extract round-trip.</li>
 </ul>
 <p>Everything is <strong>local and private</strong>: the OpenViking server binds to <code>127.0.0.1</code> (loopback) on
 the user's own device — it is not exposed to the network, and nothing points to a central
