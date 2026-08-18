@@ -1,6 +1,6 @@
 ---
 name: leopold-doctor
-version: 0.1.2
+version: 0.1.3
 description: "Diagnose the Leopold install on every harness present (Claude Code, Codex): checks skills, hooks and their wiring, gstack, the driver toolchain, and whether an update is available."
 allowed-tools:
   - Bash
@@ -23,6 +23,13 @@ bash "$LEO/scripts/leopold-doctor.sh"
 
 It checks every harness it finds — Claude Code and Codex — since Leopold's skills
 and both hooks run on either.
+
+Run it from the project directory when a run's continuity is the question: with a
+`.leopold/` brief present, doctor also reports whether the run will survive a full
+context window — checkpoint present / absent / malformed (naming the section that
+failed parsing), the `continuity` setting (auto relaunches; manual names
+`/leopold-run` as the resume), windows used vs `max_windows`, the last window's
+closed-item count, and the kill switch.
 
 Report the summary. If any `[FAIL]` lines appear, tell the user the exact fix
 (usually re-running `./install.sh`, installing `jq`, or installing the plugin).

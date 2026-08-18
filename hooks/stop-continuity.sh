@@ -45,7 +45,7 @@ active="$(jq -r '.active // false' "$STATE" 2>/dev/null || echo false)"
 # `iter >= max` test below error out (and get swallowed), silently skipping the
 # budget -> unbounded loop. So any present budget field must be an integer. Missing
 # fields fall back to the safe defaults below (50 / 0 / 3), so the budget still holds.
-for f in iteration max_iterations consecutive_failures max_failures; do
+for f in iteration max_iterations consecutive_failures max_failures windows max_windows; do
   v="$(jq -r --arg k "$f" '.[$k] // empty' "$STATE" 2>/dev/null)"
   if [ -n "$v" ] && ! printf '%s' "$v" | grep -qE '^[0-9]+$'; then
     state_invalid "non-numeric $f ($v)"
@@ -63,12 +63,21 @@ allow_stop() {
   # so the next run re-locks git and does not halt immediately on a stale STOP.
   rm -f "$LEO/STOP" "$LEO/ALLOW_GIT" "$LEO/ALLOW_PUSH" "$LEO/ALLOW_PUBLISH" 2>/dev/null || true
   # on_finish policy (GUARDRAILS.md): archive the run logs on a clean finish.
-  if [ "$r" = "plan_complete" ] && grep -qiE '^[[:space:]]*-?[[:space:]]*on_finish:[[:space:]]*archive' "$LEO/GUARDRAILS.md" 2>/dev/null; then
+  if [ "$r" = "plan_complete" ]; then
     arch="$LEO/runs/$(date -u +%Y%m%dT%H%M%SZ)"
-    mkdir -p "$arch" 2>/dev/null || true
-    [ -f "$LEO/DECISIONS.md" ] && mv "$LEO/DECISIONS.md" "$arch/" 2>/dev/null || true
-    [ -f "$LEO/events.jsonl" ] && mv "$LEO/events.jsonl" "$arch/" 2>/dev/null || true
-    cp "$LEO/PLAN.md" "$arch/" 2>/dev/null || true
+    if grep -qiE '^[[:space:]]*-?[[:space:]]*on_finish:[[:space:]]*archive' "$LEO/GUARDRAILS.md" 2>/dev/null; then
+      mkdir -p "$arch" 2>/dev/null || true
+      [ -f "$LEO/DECISIONS.md" ] && mv "$LEO/DECISIONS.md" "$arch/" 2>/dev/null || true
+      [ -f "$LEO/events.jsonl" ] && mv "$LEO/events.jsonl" "$arch/" 2>/dev/null || true
+      cp "$LEO/PLAN.md" "$arch/" 2>/dev/null || true
+    fi
+    # The checkpoint is RUN state and this run is over: it goes with the run, always
+    # (on_finish or not). Left in place, a dead window's state would seed the NEXT
+    # run on this project as if it were a continuation.
+    if [ -f "$LEO/CHECKPOINT.md" ]; then
+      mkdir -p "$arch" 2>/dev/null || true
+      mv "$LEO/CHECKPOINT.md" "$arch/" 2>/dev/null || true
+    fi
   fi
   exit 0
 }
@@ -80,6 +89,19 @@ iter="$(jq -r '.iteration // 0' "$STATE" 2>/dev/null || echo 0)"
 max_iter="$(jq -r '.max_iterations // 50' "$STATE" 2>/dev/null || echo 50)"
 fails="$(jq -r '.consecutive_failures // 0' "$STATE" 2>/dev/null || echo 0)"
 max_fails="$(jq -r '.max_failures // 3' "$STATE" 2>/dev/null || echo 3)"
+
+# Window identity for THIS turn, resolved ONCE: the roll branch below enforces the
+# ceiling and the re-injected reason names it (`Window N/max`), so the number the agent
+# is told and the number the roll enforces cannot drift apart. `windows` counts from 1
+# (state carries it across reseeds); `max_windows` is state > GUARDRAILS.md > 10.
+windows="$(jq -r '.windows // 1' "$STATE" 2>/dev/null || echo 1)"
+case "$windows" in (*[!0-9]*|"") windows=1 ;; esac
+max_windows="$(jq -r '.max_windows // empty' "$STATE" 2>/dev/null || true)"
+if [ -z "$max_windows" ]; then
+  mw_line="$(grep -m1 -iE '^[[:space:]]*-?[[:space:]]*(\*\*)?max_windows(\*\*)?[[:space:]]*:' "$LEO/GUARDRAILS.md" 2>/dev/null || true)"
+  max_windows="$(printf '%s' "${mw_line#*:}" | grep -oE '[0-9]+' 2>/dev/null | head -1)"
+fi
+case "$max_windows" in (*[!0-9]*|"") max_windows=10 ;; esac
 
 # Budgets. An iteration budget is a COST CEILING the user set: it stops, always.
 if [ "$iter" -ge "$max_iter" ] 2>/dev/null; then allow_stop "iteration_budget"; fi
@@ -108,19 +130,156 @@ if [ "$fails" -ge "$max_fails" ] 2>/dev/null; then
   RESCUE_NOTE="LAST ATTEMPT ON THIS ITEM. It has failed $fails times in a row -- the ceiling this run allows ($max_fails) -- and the run gets exactly ONE more attempt before it stops. Do NOT refine the approach that failed: work out what the previous framing got wrong, then SYNTHESIZE the role this failure actually needs (name, the expertise it demands, what it optimizes for, bound by .leopold/CHARTER.md's hard rules), take that role, and attack the item a genuinely different way -- a different entry point, mechanism, decomposition or dropped assumption. Append the call to .leopold/DECISIONS.md naming the role, the approach, why it differs from what failed, and a Reversal line. You may NOT raise max_failures or any budget, clear the kill switch, or edit .leopold/GUARDRAILS.md; git stays locked. If this attempt fails too, say so plainly and the run stops. "
 fi
 
-# Context budget — the real money pit. A long run accumulates context every turn; on a
-# big-context model it never auto-compacts, so each turn re-bills the whole (growing)
-# transcript and any fork clones it (one report: a session ballooned to ~6MB over 681
-# turns). Stop when the transcript passes max_context_mb (default 5) so it cannot silently
-# balloon. The brief persists -> a fresh /leopold-run resumes from PLAN.md with clean context.
+# Context budget — a WINDOW ROLL, not a death. A long run accumulates context every turn;
+# on a big-context model it never auto-compacts, so each turn re-bills the whole (growing)
+# transcript (one report: a session ballooned to ~6MB over 681 turns). The window is a
+# consumable, the RUN is not:
+#   * At ~80% of max_context_mb (default 5) the turn is blocked with a CHECKPOINT
+#     instruction: write or merge .leopold/CHECKPOINT.md — the ONE contract defined in
+#     packages/driver/src/checkpoint.ts (fixed sections, merge-don't-nest, 32768-byte cap
+#     that fails loud; packages/driver/test/checkpoint.test.ts fails the build if this
+#     hook's wording drifts from that contract) — then continue the plan.
+#   * At 100% the stop happens with the same reason it always had (`context_budget` —
+#     consumers read it), but the state says roll: `windows` is incremented, the
+#     checkbox vector is snapshotted for the cross-window progress gate, and
+#     `checkpoint_written` records whether the agent actually wrote the checkpoint.
+#     A missing checkpoint is LOUD in the stop message, never silent, and the message
+#     always names the resume path. The brief persists -> /leopold-run (relaunched by
+#     `leopold watch` under `continuity: auto`, or by a human) reseeds the next window.
+#   * Rolling is free, PRODUCING is mandatory: each roll records how many plan items the
+#     ending window closed (checkbox vector diff vs the window-start snapshot). Two
+#     consecutive windows closing zero items stop the run (`no_progress_across_windows`)
+#     with no resume pointer, and `max_windows` (state > GUARDRAILS > 10) caps the total
+#     windows one run may consume.
+CHECKPOINT_SECTIONS="In-Flight Item, Files and Code, Errors and Fixes, Decisions This Run, Learned Constraints, Current Work, Next Step"
 max_ctx_mb="$(jq -r '.max_context_mb // 5' "$STATE" 2>/dev/null || echo 5)"
 case "$max_ctx_mb" in (*[!0-9]*|"") max_ctx_mb=5 ;; esac
 ctx_mb=0
+CHECKPOINT_NOTE=""
 tpath="$(printf '%s' "$input" | jq -r '.transcript_path // empty' 2>/dev/null || true)"
 if [ -n "$tpath" ] && [ -f "$tpath" ]; then
   ctx_bytes="$(wc -c < "$tpath" 2>/dev/null || echo 0)"
   ctx_mb="$(awk "BEGIN{printf \"%.1f\", ${ctx_bytes:-0}/1048576}" 2>/dev/null || echo 0)"
-  [ "$(( ${ctx_bytes:-0} / 1048576 ))" -ge "$max_ctx_mb" ] 2>/dev/null && allow_stop "context_budget"
+  if [ "$max_ctx_mb" -gt 0 ] 2>/dev/null; then
+    ctx_pct="$(( ${ctx_bytes:-0} * 100 / (max_ctx_mb * 1048576) ))" 2>/dev/null || ctx_pct=0
+  else
+    # max_context_mb: 0 always stopped immediately, PLAIN — no roll, no windows++, no
+    # resume pointer. Whoever set 0 asked for no context spend at all; handing them a
+    # relaunch loop instead would be the opposite.
+    allow_stop "context_budget"
+  fi
+  # A finished plan NEVER rolls, whatever the transcript weighs. The final turn is
+  # exactly when the transcript is largest, so "closed the last item while crossing the
+  # budget" is common — and it must end as plan_complete (which archives the checkpoint
+  # and the run), not as a roll with a resume pointer to nothing, and never as a
+  # no_progress verdict on a run that just finished. Falling through reaches the
+  # plan_complete check below, the one place that owns the completion path.
+  roll_open="$(grep -cE '^[[:space:]]*- \[ \]' "$LEO/PLAN.md" 2>/dev/null || true)"
+  if [ "$ctx_pct" -ge 100 ] 2>/dev/null && [ "${roll_open:-0}" -gt 0 ] 2>/dev/null; then
+    # The window is full: roll it. Same bytes threshold as ever (bytes >= max*1MiB), same
+    # stopped_reason — the new semantics ride NEW state fields only.
+    #
+    # `checkpoint_written` means what it says: the file must LOOK like the contract this
+    # hook just described (title line + under the 32768-byte cap), not merely exist — a
+    # leftover or garbage file claiming "the next window continues from it" points the
+    # relaunch at a lie.
+    checkpoint_written=false
+    if [ -s "$LEO/CHECKPOINT.md" ] \
+       && head -1 "$LEO/CHECKPOINT.md" 2>/dev/null | grep -q '^# Leopold Checkpoint' \
+       && [ "$(wc -c < "$LEO/CHECKPOINT.md" 2>/dev/null || echo 99999)" -le 32768 ] 2>/dev/null; then
+      checkpoint_written=true
+    fi
+    # Current checkbox vector (one char per checkbox, file order: x=closed, o=open).
+    plan_vec="$(grep -E '^[[:space:]]*- \[( |x|X)\]' "$LEO/PLAN.md" 2>/dev/null \
+      | sed -E 's/^[[:space:]]*- \[[xX]\].*/x/; s/^[[:space:]]*- \[ \].*/o/' | tr -d '\n')"
+
+    # ---- The livelock gate: rolling is free, producing is mandatory ------------------
+    # Items CLOSED in the ending window = the diff of the current vector against the
+    # snapshot taken when this window STARTED (`window_plan_vector`, carried through the
+    # reseed). A checkbox counts when it is `x` now and was not `x` then; a box beyond
+    # the snapshot's length is a new item, and closing one is progress too. A fresh run
+    # has no snapshot, so every checked box counts — that can only make window 1 look
+    # MORE productive, the safe direction for a gate that ends runs. A reseed is not
+    # progress; only checked boxes are.
+    prev_vec="$(jq -r '.window_plan_vector // ""' "$STATE" 2>/dev/null || true)"
+    closed="$(awk -v p="$prev_vec" -v c="$plan_vec" 'BEGIN{n=0
+      for(i=1;i<=length(c);i++){pc=(i<=length(p))?substr(p,i,1):"o"
+        if(substr(c,i,1)=="x" && pc!="x")n++}
+      print n}' 2>/dev/null || echo 0)"
+    case "$closed" in (*[!0-9]*|"") closed=0 ;; esac
+    zstreak="$(jq -r '.window_zero_streak // 0' "$STATE" 2>/dev/null || echo 0)"
+    case "$zstreak" in (*[!0-9]*|"") zstreak=0 ;; esac
+    if [ "$closed" -eq 0 ] 2>/dev/null; then zstreak=$((zstreak + 1)); else zstreak=0; fi
+    # The per-window progress record is appended UNCONDITIONALLY — the stopped state
+    # must say what each window produced, especially the windows that produced nothing.
+    tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
+    jq --argjson c "$closed" --argjson z "$zstreak" \
+       '.window_progress=((.window_progress // []) + [$c]) | .window_zero_streak=$z' \
+       "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+    if [ "$zstreak" -ge 2 ] 2>/dev/null; then
+      # Two consecutive windows closed zero plan items: the run is rolling without
+      # producing. Stop with the honest reason and write NO resume pointer — windows is
+      # not incremented, no fresh snapshot is taken, and the reason is not
+      # `context_budget`, so nothing relaunches a third window to "give it one more
+      # shot". That third window is the livelock this gate exists to stop.
+      stuck="$(grep -m1 -E '^[[:space:]]*- \[ \]' "$LEO/PLAN.md" 2>/dev/null \
+        | sed -E 's/^[[:space:]]*- \[ \][[:space:]]*//')"
+      log_event "$(jq -cn --arg ts "$now" --argjson a "$((windows - 1))" --argjson b "$windows" \
+        --arg s "${stuck:-}" \
+        '{ts:$ts,event:"no_progress_across_windows",windows:[$a,$b],stuck_item:$s}' \
+        2>/dev/null || echo '{}')"
+      {
+        echo "Leopold: windows $((windows - 1)) and $windows both closed ZERO plan items -- the run stopped producing, so it stops running (no_progress_across_windows)."
+        [ -n "${stuck:-}" ] && echo "Stuck on: $stuck"
+        echo "No resume pointer was written and nothing relaunches this run. A person should look at the stuck item; when it is unblocked, /leopold-run starts a deliberate new attempt."
+      } >&2
+      allow_stop "no_progress_across_windows"
+    fi
+
+    # ---- max_windows: the ceiling on total context windows for one RUN ---------------
+    # Resolved once at the top (state.json > GUARDRAILS.md > 10). When the ending window
+    # IS the ceiling, the run stops naming it — no roll, no resume pointer.
+    if [ "$windows" -ge "$max_windows" ] 2>/dev/null; then
+      log_event "$(jq -cn --arg ts "$now" --argjson w "$windows" --argjson m "$max_windows" \
+        '{ts:$ts,event:"max_windows",window:$w,max_windows:$m}' 2>/dev/null || echo '{}')"
+      {
+        echo "Leopold: window $windows is the last this run allows (max_windows: $max_windows) -- the window ceiling is reached, so the run stops here."
+        echo "No resume pointer was written and nothing relaunches this run. Raise max_windows in .leopold/GUARDRAILS.md if the run genuinely needs more windows, then /leopold-run."
+      } >&2
+      allow_stop "max_windows"
+    fi
+
+    # The window produced (or the streak is still under the gate) and the ceiling holds:
+    # roll it. Snapshot the checkbox vector at the moment this window ends — the gate
+    # diffs the NEXT roll against it.
+    next_windows=$((windows + 1))
+    tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
+    jq --argjson w "$next_windows" --argjson cw "$checkpoint_written" --arg vec "$plan_vec" \
+       '.windows=$w | .checkpoint_written=$cw | .window_plan_vector=$vec' \
+       "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+    log_event "$(jq -cn --arg ts "$now" --argjson w "$windows" --argjson cw "$checkpoint_written" \
+      --arg vec "$plan_vec" --argjson cm "${ctx_mb:-0}" --argjson ic "$closed" --argjson z "$zstreak" \
+      '{ts:$ts,event:"window_roll",window:$w,checkpoint_written:$cw,plan_vector:$vec,context_mb:$cm,items_closed:$ic,zero_streak:$z}' \
+      2>/dev/null || echo '{}')"
+    {
+      echo "Leopold: the context window is full (${ctx_mb} MB, budget ${max_ctx_mb} MB) -- window $windows closed. This is a window roll, not a death: the run's state and brief persist."
+      if [ "$checkpoint_written" = "true" ]; then
+        echo "Checkpoint: .leopold/CHECKPOINT.md is written; the next window continues from it."
+      else
+        echo "WARNING: no .leopold/CHECKPOINT.md was written before the window filled -- the next window resumes from the brief and PLAN.md alone, without this window's working state."
+      fi
+      echo "Resume: run /leopold-run in this project (under continuity: auto, leopold watch relaunches it automatically)."
+    } >&2
+    allow_stop "context_budget"
+  elif [ "$ctx_pct" -ge 80 ] 2>/dev/null; then
+    # Proactive maintenance: checkpoint BEFORE the window dies, while there is still
+    # context to write it from. Re-injected every turn in the band so the checkpoint
+    # stays current (the instruction is merge-shaped, so repeating it is idempotent).
+    # The `checkpoint_instruction` event is logged at the bottom, once the turn is
+    # certain — the same decided-here-spent-there split the rescue uses, so the event
+    # stream never claims an instruction a stop condition swallowed.
+    CHECKPOINT_NOTE="CONTEXT WINDOW AT ${ctx_pct}% OF BUDGET (${ctx_mb} of ${max_ctx_mb} MB). Before anything else this turn, write or merge .leopold/CHECKPOINT.md so the next window can continue this run when this one fills. The format is fixed: the title line \`# Leopold Checkpoint\`, then exactly these seven \`##\` sections, in this order: ${CHECKPOINT_SECTIONS}. It carries RUN state only -- never restate MISSION, CHARTER, GUARDRAILS or the plan; the next window re-reads those files itself. If the file already exists, MERGE into ONE flat document: In-Flight Item, Current Work and Next Step are replaced by the current view; in the other sections keep still-true lines, append new ones, drop stale ones -- never paste a prior checkpoint (its title or any duplicate heading) inside the new one. Keep the whole file under 32768 bytes; if it will not fit, consolidate harder -- never truncate. Then continue the plan as normal. "
+  fi
 fi
 
 # ---- The plan grammar: node kinds -------------------------------------------------
@@ -339,6 +498,10 @@ if [ "$RESCUE_GRANT" = "1" ]; then
   log_event "$(jq -cn --arg ts "$now" --argjson f "$fails" --argjson m "$max_fails" \
     '{ts:$ts,event:"failure_rescue",engine:"hook",failures:$f,max_failures:$m,extra_attempts:1}' 2>/dev/null || echo '{}')"
 fi
+if [ -n "$CHECKPOINT_NOTE" ]; then
+  log_event "$(jq -cn --arg ts "$now" --argjson p "${ctx_pct:-0}" --argjson cm "${ctx_mb:-0}" \
+    '{ts:$ts,event:"checkpoint_instruction",context_pct:$p,context_mb:$cm}' 2>/dev/null || echo '{}')"
+fi
 
 # Increment the iteration counter; persist the progress signature.
 next=$((iter + 1))
@@ -348,7 +511,15 @@ jq --argjson n "$next" --arg t "$now" --argjson np "$np" --arg sig "$sig" --argj
     | (if $tp != "" then .transcript_path=$tp else . end)' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
 log_event "{\"ts\":\"$now\",\"event\":\"turn_start\",\"iteration\":$next,\"open_items\":$open_items,\"no_progress\":$np}"
 
-reason="${RESCUE_NOTE}${HUMAN_NOTE}Leopold autonomous mode is ACTIVE (turn $next/$max_iter, $open_items open plan items). Do not stop. Steps: (1) Read .leopold/PLAN.md and pick the next unchecked item. (2) Complete it; reach for the gstack playbook skill that fits the situation. (3) On any fork, apply .leopold/CHARTER.md and the decision protocol: if the call is reversible OR the charter is clear, decide it yourself, append the decision to .leopold/DECISIONS.md, and keep going; stop only for an irreversible AND ambiguous fork, a charter contradiction, or a mission-premise change. (4) Mark the finished item as done ([x]) in PLAN.md. Hard rules: the guard denies git commit and git push. Nothing else is enforced for you, so the rest is yours to keep: no tagging, no publishing, no external PR, no raising a budget. Never edit files outside this project, and never touch .leopold/GUARDRAILS.md or the hooks. When the plan is complete or a stop condition is met, write a short final summary and then stop. End that summary with a section titled \"What I decided for you\": every call you made on the human's behalf, read back from .leopold/DECISIONS.md, riskiest first, one line each naming the persona and the Reversal -- and nothing at all if you made none."
+# The re-grounding sentence, defined ONCE for the whole bash surface and injected into
+# every continued turn. A continuation follows narration from earlier in the window (or
+# a reseeded one), and the workspace may have outrun it. The driver's retry and rescue
+# leads carry the SAME words (packages/driver/src/worker.ts, REGROUND_SENTENCE);
+# packages/driver/test/reground.test.ts fails the build the moment the two surfaces
+# drift, and scripts/test-hooks.sh asserts this is the hook's only copy.
+REGROUND_SENTENCE="Treat the current workspace, tool results, and durable session state as authoritative; inspect them instead of assuming earlier narration is still current."
+
+reason="${CHECKPOINT_NOTE}${RESCUE_NOTE}${HUMAN_NOTE}Leopold autonomous mode is ACTIVE (turn $next/$max_iter, $open_items open plan items). Window $windows/$max_windows. $REGROUND_SENTENCE Do not stop. Steps: (1) Read .leopold/PLAN.md and pick the next unchecked item. (2) Complete it; reach for the gstack playbook skill that fits the situation. (3) On any fork, apply .leopold/CHARTER.md and the decision protocol: if the call is reversible OR the charter is clear, decide it yourself, append the decision to .leopold/DECISIONS.md, and keep going; stop only for an irreversible AND ambiguous fork, a charter contradiction, or a mission-premise change. (4) Mark the finished item as done ([x]) in PLAN.md. Hard rules: the guard denies git commit and git push. Nothing else is enforced for you, so the rest is yours to keep: no tagging, no publishing, no external PR, no raising a budget. Never edit files outside this project, and never touch .leopold/GUARDRAILS.md or the hooks. When the plan is complete or a stop condition is met, write a short final summary and then stop. End that summary with a section titled \"What I decided for you\": every call you made on the human's behalf, read back from .leopold/DECISIONS.md, riskiest first, one line each naming the persona and the Reversal -- and nothing at all if you made none."
 
 jq -cn --arg r "$reason" '{decision:"block", reason:$r}'
 exit 0

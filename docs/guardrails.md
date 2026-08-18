@@ -66,12 +66,20 @@ Cost in a long autonomous run blows up because the main session grows every turn
 on a big-context model it never auto-compacts, so each turn re-bills the whole
 accumulated transcript. The defenses that matter:
 
-- **USD budget hard-stop.** Pass `--budget <usd>` to the driver; the run stops the
-  moment accumulated spend (from the CLI's real `total_cost_usd`) crosses it, with
-  work staged for review. This is the dependable ceiling.
-- **Bounded, resumable runs.** A run ends on `max_iterations` (default 50) so it
-  can't spin forever; the brief persists, so a fresh `/leopold-run` resumes from
-  `PLAN.md` with clean context. Bounded + resumable beats one giant session.
+- **Progress is the governor, not USD.** `total_cost_usd` does not reflect real
+  accounting on subscription billing, so a cost counter is deliberately **not** the
+  default governor of an autonomous run. The run is gated on durable progress —
+  checked-off plan items — via the [livelock gate](concepts/continuity.md), plus the
+  hard ceilings below. API-billed users who want a hard cost cap can opt in with the
+  driver's `--budget <usd>`: the run stops the moment accumulated spend (from the
+  CLI's `total_cost_usd`) crosses it, with work staged for review. It is an opt-in
+  ceiling, never the default, and nothing else depends on it.
+- **Bounded, resumable runs.** A run ends on `max_iterations` (default 50 — the
+  **run's** ceiling, carried across context windows) and on `max_windows` (default
+  10), so it can't spin forever; the brief persists, so a fresh `/leopold-run`
+  resumes from `PLAN.md` with clean context. Since 0.18.0 a filled context window is
+  a **window roll, not a stop**: the run checkpoints and continues in a fresh window
+  — see [Continuity](concepts/continuity.md).
 - **Lean orchestrator.** The protocol delegates bulk-output work (authoring content,
   generating files) to a subagent that **writes to a file**, so the output never
   accumulates in the orchestrator's context.
@@ -106,9 +114,20 @@ true:
    *after* the one persona-led change of approach the run gets when it first hits the
    ceiling. The ceiling itself never moves.
 4. **Iteration budget** — the iteration counter reached `max_iterations` (default 50).
-5. **USD budget** — accumulated spend crossed `--budget`, if set.
-6. **Escalation** — a fork a synthesized role could not settle either (an unusable
+   The counter carries across context windows: it is the run's ceiling, never reset
+   by a window roll.
+5. **USD budget** — accumulated spend crossed `--budget`, if you opted in (driver
+   only; never the default governor).
+6. **Livelock across windows** — two consecutive context windows closed zero plan
+   items (`no_progress_across_windows`). Rolling is free; producing is mandatory.
+7. **Window ceiling** — the run consumed `max_windows` context windows (default 10).
+8. **Escalation** — a fork a synthesized role could not settle either (an unusable
    answer, a harness error). A fork it *can* settle is decided and logged, not escalated.
+
+**A full context window is deliberately not on this list any more.** Since 0.18.0 it
+is a window roll: the run writes `.leopold/CHECKPOINT.md` and the next window
+continues the plan (relaunched by `leopold watch` under `continuity: auto`). See
+[Continuity](concepts/continuity.md).
 
 Every stop writes a final summary to the run output and a `stop` event to
 `events.jsonl`, naming which condition fired. The complete list — including
@@ -161,8 +180,10 @@ commit and push.
 | Force-push            | never   | not configurable           |
 | Autonomy              | `full`  | `GUARDRAILS.md` (`autonomy: ask`) |
 | Max consecutive fails | 3       | `GUARDRAILS.md`            |
-| Max iterations        | 50      | `GUARDRAILS.md`            |
-| USD budget            | none    | `--budget` on the driver   |
+| Max iterations        | 50 (per run, across windows) | `GUARDRAILS.md` |
+| Continuity            | `auto`  | `GUARDRAILS.md` (`continuity: manual`) |
+| Max windows           | 10      | `GUARDRAILS.md` (`max_windows:`) |
+| USD budget            | none (opt-in) | `--budget` on the driver |
 
 ## Run hygiene and parallel runs
 

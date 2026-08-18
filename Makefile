@@ -88,6 +88,10 @@ hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 hooks-test: ## Run the hook behavior tests
 	@bash scripts/test-hooks.sh
 
+.PHONY: doctor-test
+doctor-test: ## Run the doctor project-continuity tests (hermetic: temp homes + temp project)
+	@bash scripts/test-doctor-continuity.sh
+
 .PHONY: harness-test
 harness-test: ## Run the shared harness-wiring tests (hermetic: temp CLAUDE_HOME/CODEX_HOME)
 	@bash scripts/test-harness-lib.sh
@@ -126,9 +130,10 @@ enhance-test: ## Run the prompt-enhancer behavior tests (stubbed claude, no netw
 	@bash scripts/test-enhance-ext.sh
 
 .PHONY: watch-test
-watch-test: ## Run the dashboard DAG-builder + steer-command tests (stdlib, no network)
+watch-test: ## Run the dashboard DAG-builder + steer-command + continuity-relaunch tests (stdlib, hermetic)
 	@python3 -m py_compile scripts/leopold-watch.py
 	@python3 scripts/test-watch-graph.py
+	@python3 scripts/test-watch-continuity.py
 
 # ---- Driver -----------------------------------------------------------------
 
@@ -173,7 +178,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

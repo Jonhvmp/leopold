@@ -38,6 +38,47 @@ flowchart TD
 Fail-open: qualquer erro inesperado permite a parada. A continuidade é melhor esforço;
 parar é sempre seguro.
 
+### O roll da janela de contexto
+
+Desde a 0.18.0 o budget de contexto é **um evento de manutenção, não uma morte** — a
+mudança de comportamento é explícita, não implícita. O hook mede o transcript contra
+`max_context_mb` (padrão 5 MB) a cada turno:
+
+- **Em ~80% do budget** o turno é bloqueado com uma instrução de checkpoint: escrever
+  ou fazer merge do `.leopold/CHECKPOINT.md` — o contrato único em
+  `packages/driver/src/checkpoint.ts` (título fixo, sete seções fixas,
+  merge-sem-aninhar, teto de 32768 bytes que falha alto) — e então continuar o plano.
+  A instrução é reinjetada a cada turno na faixa; o merge é idempotente. Um evento
+  `checkpoint_instruction` é logado.
+- **Em 100%** a parada acontece com o motivo de sempre —
+  `stopped_reason: context_budget`, consumidores o leem — mas o estado diz roll:
+  `windows` é incrementado, o vetor de checkboxes do plano é fotografado, e
+  `checkpoint_written` registra se o checkpoint existe (um ausente é nomeado em voz
+  alta na mensagem de stop, nunca em silêncio). A mensagem sempre nomeia o caminho de
+  retomada; um evento `window_roll` é logado.
+- **Antes de rolar, dois gates rodam.** O **gate de livelock**: cada roll registra
+  quantos itens do plano a janela que termina fechou (diff do vetor de checkboxes
+  contra a fotografia do início da janela); duas janelas consecutivas fechando zero
+  itens param a run com `no_progress_across_windows` — sem ponteiro de retomada, nada
+  relança. E o **`max_windows`** (state > `GUARDRAILS.md` > 10) limita o total de
+  janelas que uma run pode consumir; alcançá-lo para a run com `max_windows`.
+- **Budgets sobrevivem ao roll.** `iteration`/`max_iterations` é o teto da run somando
+  todas as janelas, e one-shots gastos (o resgate de falha, o reparo de deadlock)
+  continuam gastos por toda ressemeadura. Nada que um roll faz renova um budget ou
+  limpa o `.leopold/STOP`.
+
+Com `continuity: auto` (o padrão no `GUARDRAILS.md`), o `leopold watch` detecta o roll
+e relança a run headless no harness dono da sessão (`claude -p` / `codex exec`),
+depois de rechecar por conta própria o kill switch, o `max_windows` e o gate de
+livelock. Com `continuity: manual` nada relança — você retoma com `/leopold-run`. A
+instrução de continue reinjetada também carrega a linha da janela (`Window N/max`) e
+manda o agente tratar o workspace, os resultados de ferramentas e o estado durável
+como autoridade acima da narração anterior. A história completa:
+[Continuidade](../concepts/continuity.md).
+
+Um projeto sem checkpoint e com guardrails padrão se comporta exatamente como na
+0.17.x, exceto que a mensagem de stop agora nomeia o caminho de retomada.
+
 ### Tipos de nó
 
 Itens do `PLAN.md` podem declarar um tipo de nó (`@node work|gate|human|tool|verify|feedback`,
@@ -210,6 +251,9 @@ não têm como divergir.
 ## Log de eventos
 
 Os dois hooks do engine anexam eventos estruturados em `.leopold/events.jsonl`
-(`turn_start`, `stop`, `guard_block`), que o `/leopold-status` lê. O enhancer, por sua
+(`turn_start`, `stop`, `guard_block`, e os eventos de continuidade
+`checkpoint_instruction`, `window_roll`, `no_progress_across_windows`,
+`max_windows`; o watcher adiciona `window_relaunch` / `window_relaunch_refused`),
+que o `/leopold-status` lê. O enhancer, por sua
 vez, registra no próprio ledger global — `~/.claude/enhance/enhancements.jsonl`, uma
 linha por injeção ou tentativa falha — que o `/leopold-enhance learn` minera.

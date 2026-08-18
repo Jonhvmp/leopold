@@ -31,6 +31,8 @@ jobs:
         run: python3 -m py_compile scripts/*.py extensions/*/payload/*.py
       - name: Hook behavior tests
         run: bash scripts/test-hooks.sh
+      - name: Doctor project-continuity tests
+        run: bash scripts/test-doctor-continuity.sh
       - name: Guard red-team tests (bypass attempts must stay blocked)
         run: bash scripts/test-guard.sh
       - name: Enhance behavior tests (stubbed claude, no network)
@@ -53,6 +55,8 @@ jobs:
         run: bash scripts/test-gstack-ext.sh
       - name: Dashboard DAG + transcript tests (Claude + Codex parsing, stdlib only)
         run: python3 scripts/test-watch-graph.py
+      - name: "Watcher continuity relaunch tests (hermetic: stub harnesses, temp homes)"
+        run: python3 scripts/test-watch-continuity.py
 
   driver:
     name: driver (${{ matrix.os }})

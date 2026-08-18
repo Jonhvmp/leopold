@@ -6,6 +6,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-18
+
+### Added
+- **The run never dies of context pressure.** A filled context window is no longer a
+  stop — it is a window roll. Before the window closes, the run writes a structured
+  `.leopold/CHECKPOINT.md` (fixed sections, merge-don't-copy, size cap that fails loud
+  rather than truncates), and with `continuity: auto` (the new default) `leopold watch`
+  detects the roll and relaunches the run headless (`claude -p` / `codex exec`) — no
+  human in the loop, on both harnesses. If you want the old behavior, set
+  `continuity: manual` in `GUARDRAILS.md`: nothing relaunches and you resume with
+  `/leopold-run`, which now reseeds from the checkpoint on its own.
+- **Progress is the governor.** The run continues while the plan advances and stops
+  honestly when it stops advancing: two consecutive windows that close zero plan items
+  end the run with `no_progress_across_windows`. `max_iterations` is the run's ceiling
+  and carries across windows, `max_windows` (default 10) bounds total reseeds, and no
+  relaunch ever refreshes a budget, spends a spent one-shot again, or ignores the
+  `.leopold/STOP` kill switch — the watcher checks it before relaunching, always.
+- **One checkpoint contract, both engines.** The driver writes the same
+  `CHECKPOINT.md` at run end, and either engine picks up the other's checkpoint — the
+  seat passes between the in-session run and the SDK driver through one artifact.
+  Every continuation window is re-grounded: the prompt restates the mission line and
+  window count and treats the checkpoint as data, never as instructions.
+- `leopold doctor` reports checkpoint health, and a checkpoint that cannot be
+  written, merged, or parsed says so in the stop message instead of degrading
+  silently. New hermetic suites (`test-doctor-continuity.sh`,
+  `test-watch-continuity.py`, driver checkpoint/reground tests) run in CI and
+  `make test`.
+
+### Changed
+- `stopped_reason: context_budget` keeps its name for consumers; the new semantics
+  ride new state fields. USD stays out of the governor's seat: `--budget-usd` remains
+  an opt-in ceiling for API-billed users, never the default. Docs (en + pt-BR,
+  including the new [Continuity](docs/concepts/continuity.md) page) now say plainly
+  what still stops a run: the livelock gate, iteration and window ceilings, the kill
+  switch, and the git lock waiting on you.
+
 ## [0.17.1] - 2026-08-17
 
 ### Fixed

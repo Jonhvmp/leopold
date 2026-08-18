@@ -201,8 +201,10 @@ persona cannot touch any of it.
 | `routed_complete` | A route steered the run to a terminal node; remaining items are named in the report. | — |
 | `kill_switch` | `.leopold/STOP` exists (`/leopold-stop`, or `touch`). | **Never.** It may not clear it. |
 | `iteration_budget` | The counter reached `max_iterations` (default 50). | **Never.** It may not raise it. |
-| `budget_exceeded` | Accumulated real spend crossed `--budget-usd`. | **Never.** |
-| `context_budget` | The in-session engine's context ceiling (default 5 MB). | **Never.** |
+| `budget_exceeded` | Accumulated real spend crossed `--budget-usd` (opt-in, driver only). | **Never.** |
+| `context_budget` | One context window filled (default 5 MB). Since 0.18.0 this is a **window roll, not a death**: the run checkpoints and the next window continues — see [Continuity](continuity.md). | **Never.** |
+| `no_progress_across_windows` | Two consecutive windows closed zero plan items — the livelock gate. Nothing relaunches. | **Never.** |
+| `max_windows` | The run consumed its window ceiling (default 10). Nothing relaunches. | **Never.** It may not raise it. |
 | `no_progress` | N turns in a row with no change in the plan's signature (default 6). | **Never.** |
 | `repeated_failure` | The same kind of failure hit the ceiling **and** the one persona-led change of approach was already spent, or produced nothing. | Buys **one** attempt, once per run. Never raises the ceiling. |
 | `escalation` | A fork a synthesized role could not settle either — an unusable answer, or a harness error. | Settles what it can; an unsettleable fork still stops. |

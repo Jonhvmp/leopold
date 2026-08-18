@@ -8,8 +8,10 @@
 
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { loadBrief, initState, writeState, killSwitch, loadConfig, clearRunTokens, readAmendmentsAdded, briefDigest } from "./config.js";
-import { runItem } from "./worker.js";
+import { runItem, REGROUND_SENTENCE } from "./worker.js";
 import { decide, resolveEscalation, type EscalationResolution } from "./conductor.js";
 import { logEvent, logDecision, logPersonaDecision, openItems, nextOpenItem } from "./log.js";
 import { notify } from "./notify.js";
@@ -46,6 +48,7 @@ import {
 } from "./persona.js";
 import { rescueRepeatedFailure } from "./rescue.js";
 import { parseAmendments, applyAmendments, MAX_ADDED_ITEMS, type AmendProposal } from "./amend.js";
+import { readCheckpoint, writeCheckpoint, mergeCheckpoints, driverCheckpoint, checkpointLead } from "./checkpoint.js";
 import { runTournament, type RunAttempt } from "./tournament.js";
 import { currentProvider } from "./sdk.js";
 import { HARNESSES } from "./provider.js";
@@ -68,11 +71,14 @@ function diffStat(cwd: string): string {
 const FRESH_RESTART =
   "The previous attempt at this item FAILED. Treat its code as a dead end written by someone else: do NOT patch, extend, or try to salvage it. Where that approach went wrong, replace it wholesale with a genuinely different one instead of adjusting it in place — reworking a failed diff pulls back toward the same dead end. Start from the behavior the item needs, not from the code already sitting there.";
 
-/** Combine the fresh-restart framing with the root-cause panel's lead (if any).
+/** Combine the fresh-restart framing with the root-cause panel's lead (if any),
+ *  plus the re-grounding sentence — a retry follows a window's worth of narration
+ *  about an attempt that no longer stands, so it must trust the tree over the story.
  *  Exported for unit tests — the framing must survive on every serial retry
  *  whether or not the hypothesis panel produced a surviving lead. */
 export function retryLead(panelLead?: string): string {
-  return panelLead ? `${FRESH_RESTART}\n\n${panelLead}` : FRESH_RESTART;
+  const framing = `${FRESH_RESTART} ${REGROUND_SENTENCE}`;
+  return panelLead ? `${framing}\n\n${panelLead}` : framing;
 }
 
 /** Whether a serial retry should do a LITERAL reset (restore the pre-item snapshot)
@@ -673,6 +679,19 @@ function haltForHuman(brief: Brief, state: RunState, node: PlanItem, cwd: string
   );
 }
 
+/** The one {inFlight, failureDetail} pair the run-end checkpoint reports, chosen from
+ *  the per-item trace: the most recently FAILED open item wins (that is the item the
+ *  next window must pick up), else any open item, else nothing. Exported for tests. */
+export function pickTrace(open: Map<string, string | undefined>): { inFlight?: string; failureDetail?: string } {
+  let fallback: { inFlight?: string; failureDetail?: string } = {};
+  let chosen: { inFlight?: string; failureDetail?: string } | null = null;
+  for (const [item, detail] of open) {
+    fallback = { inFlight: item };
+    if (detail !== undefined) chosen = { inFlight: item, failureDetail: detail };
+  }
+  return chosen ?? fallback;
+}
+
 /** The plan's graph is malformed, so the run never started. Carries the diagnostics
  *  so an embedder gets the same named offenders the CLI printed, not just a string. */
 export class InvalidPlanGraphError extends Error {
@@ -764,6 +783,38 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   writeState(brief.leoDir, state);
   const recent: string[] = [];
 
+  // Continuity — the seat passes between engines through ONE artifact. A checkpoint
+  // present at start is a prior window's run state (the in-session engine's or a
+  // previous driver run's): it seeds the FIRST dispatched item's lead, framed as
+  // untrusted past-window data. One that will not parse is said out loud and the run
+  // continues from the brief and PLAN.md alone — never silently, never fatally.
+  const cpPath = path.join(brief.leoDir, "CHECKPOINT.md");
+  let resumeLead: string | undefined;
+  try {
+    const priorCp = readCheckpoint(cpPath);
+    if (priorCp) {
+      resumeLead = checkpointLead(priorCp);
+      logEvent(brief.leoDir, { event: "checkpoint_consumed", next_step: priorCp["Next Step"].slice(0, 200) || null });
+      console.log("Resuming from .leopold/CHECKPOINT.md — a prior window's run state, treated as data.");
+    }
+  } catch (err) {
+    logEvent(brief.leoDir, { event: "checkpoint_error", phase: "read", error: String(err).slice(0, 300) });
+    console.warn(`  ⚠ .leopold/CHECKPOINT.md exists but does not parse (${String(err).slice(0, 160)}) — resuming from the brief and PLAN.md alone.`);
+  }
+  /** Consumed by the first dispatch only — every later take returns undefined. */
+  const takeResumeLead = (): string | undefined => {
+    const lead = resumeLead;
+    resumeLead = undefined;
+    return lead;
+  };
+  /** What the run knows about itself for the run-end checkpoint, PER ITEM: everything
+   *  dispatched and not yet closed, each with what its last failed attempt reported.
+   *  One shared slot was a real bug under --parallel: item B's dispatch overwrote item
+   *  A's in-flight mark, and B's success then cleared A's failure detail — so the
+   *  checkpoint attributed A's failure to B, or omitted it entirely, exactly when the
+   *  next window needed it. A Map keyed by item text cannot cross-talk. */
+  const trace = { open: new Map<string, string | undefined>() };
+
   const harness = HARNESSES[currentProvider()];
   logEvent(brief.leoDir, {
     event: "run_start", conductor: cfg.conductorModel, provider: harness.id,
@@ -780,6 +831,54 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     writeState(brief.leoDir, state);
     clearRunTokens(brief.leoDir);
     logEvent(brief.leoDir, { event: "stop", reason });
+    // A COMPLETED run archives its checkpoint instead of writing one — the same rule the
+    // hook's allow_stop keeps, in the same words: the checkpoint is RUN state and this
+    // run is over; left in place, a dead window's state would seed the NEXT mission on
+    // this project as if it were a continuation. Reproduced before this guard existed:
+    // a fresh brief's /leopold-run carried the dead run's iteration=50 and stopped on
+    // turn 1 with iteration_budget.
+    if (reason === "plan_complete" || reason === "routed_complete") {
+      try {
+        if (fs.existsSync(cpPath)) {
+          const arch = path.join(brief.leoDir, "runs", new Date().toISOString().replace(/[-:]/g, "").replace(/\..*/, "Z").replace("T", "T"));
+          fs.mkdirSync(arch, { recursive: true });
+          fs.renameSync(cpPath, path.join(arch, "CHECKPOINT.md"));
+          logEvent(brief.leoDir, { event: "checkpoint_archived", reason, to: arch });
+        }
+      } catch (err) {
+        logEvent(brief.leoDir, { event: "checkpoint_error", phase: "archive", error: String(err).slice(0, 300) });
+        console.warn(`  ⚠ could not archive .leopold/CHECKPOINT.md (${String(err).slice(0, 160)}) — remove it before briefing the next mission.`);
+      }
+      if (worktree) cleanupWorktree(brief.root, worktree, brief.leoDir);
+      return;
+    }
+    // Checkpoint parity: every UNFINISHED run end writes the one artifact, merging what
+    // a prior window left, so either engine can pick this run up. A checkpoint that
+    // cannot be merged or written says so — in the log and on stderr — never silently.
+    try {
+      const next = driverCheckpoint({
+        stopReason: reason, iteration: state.iteration,
+        ...pickTrace(trace.open),
+        nextOpen: nextOpenItem(brief.planPath), decisions: recent.slice(-8),
+      });
+      let prior = null;
+      try {
+        prior = readCheckpoint(cpPath);
+      } catch (err) {
+        // The prior file exists but does not parse: useless to the next window as it
+        // stands. Keep its bytes beside the real artifact (never silently discarded),
+        // and write a fresh, parseable checkpoint in its place.
+        const kept = `${cpPath}.unparsed`;
+        fs.renameSync(cpPath, kept);
+        logEvent(brief.leoDir, { event: "checkpoint_error", phase: "merge", error: String(err).slice(0, 300), kept });
+        console.warn(`  ⚠ the existing .leopold/CHECKPOINT.md does not parse (${String(err).slice(0, 160)}) — kept at ${path.basename(kept)}; writing a fresh one.`);
+      }
+      writeCheckpoint(cpPath, prior ? mergeCheckpoints(prior, next) : next);
+      logEvent(brief.leoDir, { event: "checkpoint_written", reason, merged: prior !== null });
+    } catch (err) {
+      logEvent(brief.leoDir, { event: "checkpoint_error", phase: "write", error: String(err).slice(0, 300) });
+      console.warn(`  ⚠ could not write .leopold/CHECKPOINT.md (${String(err).slice(0, 160)}) — the next window resumes from the brief and PLAN.md alone.`);
+    }
     if (worktree) cleanupWorktree(brief.root, worktree, brief.leoDir);
   };
 
@@ -788,7 +887,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
   const routing = newRouting();
 
   if (cfg.parallel > 1) {
-    await runParallel(brief, cfg, state, recent, routing, stop);
+    await runParallel(brief, cfg, state, recent, routing, stop, takeResumeLead, trace);
     return;
   }
 
@@ -925,13 +1024,14 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
       ? retryLead(pendingRescue!)
       : isRetry
         ? retryLead(await leadForRetry(brief, cfg, item, cwd, lastFailed!.detail))
-        : undefined;
+        : takeResumeLead();
     // Only clear it when it was actually CONSUMED. The graph does not have to dispatch the
     // item that failed — a `rerun`/`inject` steer rewrites PLAN.md at this turn boundary,
     // and a route can send the run somewhere else entirely. Clearing unconditionally threw
     // the lead away in exactly those cases while `failure_rescue_used` stayed spent, so the
     // run lost its last attempt without ever making it.
     if (rescued) pendingRescue = null;
+    trace.open.set(item, trace.open.get(item));
     // Carry the dispatched item's @scenario acceptance lines into the worker prompt +
     // review gate, and its @emit declarations into the signals it may report (both
     // empty for an item that declares neither).
@@ -963,6 +1063,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
       const left = setItemDone(brief.planPath, next.index);
       state.consecutive_failures = 0;
       lastFailed = null;
+      trace.open.delete(item);
       writeState(brief.leoDir, state);
       logEvent(brief.leoDir, { event: "item_done", item, open_left: left });
       console.log(`  done. ${left} items left.`);
@@ -972,6 +1073,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
       // plan would stop itself by successfully walking its own error path.
       state.consecutive_failures = 0;
       lastFailed = null;
+      trace.open.delete(item);
       writeState(brief.leoDir, state);
       logEvent(brief.leoDir, {
         event: "item_routed", item, index: next.index,
@@ -981,6 +1083,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     } else {
       state.consecutive_failures += 1;
       lastFailed = { index: next.index, text: item, detail: outcome.detail ?? "" };
+      trace.open.set(item, outcome.detail ?? "");
       writeState(brief.leoDir, state);
       logEvent(brief.leoDir, { event: "item_incomplete", item, fails: state.consecutive_failures });
     }
@@ -994,6 +1097,8 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
 async function runParallel(
   brief: Brief, cfg: DriverConfig, state: RunState, recent: string[],
   routing: RunRouting, stop: (reason: string) => void,
+  takeResumeLead: () => string | undefined,
+  trace: { open: Map<string, string | undefined> },
 ): Promise<void> {
   const baseRoot = brief.root;
   const runShort = randomUUID().slice(0, 6);
@@ -1051,9 +1156,13 @@ async function runParallel(
       // panel evidence already in it — so it never runs the panel a second time.
       const rescue = rescueLeads.get(pi.index);
       if (rescue !== undefined) rescueLeads.delete(pi.index);
+      // A checkpoint left by a prior window rides the FIRST dispatched item only;
+      // takeResumeLead self-clears, and this line runs before dispatch()'s first
+      // await, so concurrent dispatches cannot both take it.
       const lead = rescue ?? (prior !== undefined
         ? await leadForRetry(brief, cfg, pi.text, cwd, prior)
-        : undefined);
+        : takeResumeLead());
+      trace.open.set(pi.text, trace.open.get(pi.text));
       const outcome = await processItem(
         brief, cfg, state, recent, pi.text, pi.scenarios, cwd, lead, steer, pi.emits,
         { kind: pi.kind, label: pi.kindLabel },
@@ -1079,6 +1188,7 @@ async function runParallel(
           // Handled by the plan's own error path: not a retry, not a failure.
           state.consecutive_failures = 0;
           failedDetail.delete(pi.index);
+          trace.open.delete(pi.text);
           logEvent(brief.leoDir, {
             event: "item_routed", item: pi.text, index: pi.index,
             to: settled.routes.map((r) => r.to), open: true,
@@ -1088,6 +1198,7 @@ async function runParallel(
         state.consecutive_failures += 1;
         failedDetail.set(pi.index, outcome.detail ?? "");
         lastFailed = { index: pi.index, text: pi.text, detail: outcome.detail ?? "" };
+        trace.open.set(pi.text, outcome.detail ?? "");
         logEvent(brief.leoDir, { event: "item_incomplete", item: pi.text, fails: state.consecutive_failures });
         return;
       }
@@ -1113,6 +1224,7 @@ async function runParallel(
         logEvent(brief.leoDir, { event: "item_done", item: pi.text, open_left: left, applied });
         console.log(`  done: "${pi.text}". ${left} items left.${applied ? "" : " (conflict — manual merge)"}`);
       });
+      trace.open.delete(pi.text);
       // Only reclaim the worktree when its work is safely on the main tree.
       if (applied && wt) cleanupWorktree(baseRoot, wt, brief.leoDir);
     } finally {

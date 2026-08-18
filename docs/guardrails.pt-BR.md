@@ -68,12 +68,21 @@ O custo em uma run autônoma longa explode porque a sessão principal cresce a c
 turno: em um modelo de contexto grande ela nunca auto-compacta, então cada turno
 recobra o transcript inteiro acumulado. As defesas que importam:
 
-- **Hard-stop de budget em USD.** Passe `--budget <usd>` para o driver; a run para
-  no momento em que o gasto acumulado (do `total_cost_usd` real da CLI) cruza o
-  valor, com o trabalho em stage para revisão. Esse é o teto confiável.
-- **Runs limitadas e retomáveis.** Uma run termina em `max_iterations` (padrão 50),
-  então não gira para sempre; o brief persiste, então um `/leopold-run` novo retoma
-  do `PLAN.md` com contexto limpo. Limitada + retomável ganha de uma sessão gigante.
+- **O governador é o progresso, não USD.** `total_cost_usd` não reflete a
+  contabilidade real na cobrança por assinatura, então um contador de custo
+  deliberadamente **não** é o governador padrão de uma run autônoma. A run é
+  governada por progresso durável — itens do plano fechados — via o
+  [gate de livelock](concepts/continuity.md), mais os tetos rígidos abaixo. Usuários
+  cobrados por API que querem um teto rígido podem optar pelo `--budget <usd>` do
+  driver: a run para no momento em que o gasto acumulado (do `total_cost_usd` da
+  CLI) cruza o valor, com o trabalho em stage para revisão. É um teto opt-in, nunca
+  o padrão, e nada mais depende dele.
+- **Runs limitadas e retomáveis.** Uma run termina em `max_iterations` (padrão 50 —
+  o teto **da run**, carregado através das janelas de contexto) e em `max_windows`
+  (padrão 10), então não gira para sempre; o brief persiste, então um `/leopold-run`
+  novo retoma do `PLAN.md` com contexto limpo. Desde a 0.18.0 uma janela de contexto
+  cheia é um **roll de janela, não uma parada**: a run faz checkpoint e continua em
+  uma janela nova — veja [Continuidade](concepts/continuity.md).
 - **Orquestrador enxuto.** O protocolo delega trabalho de saída volumosa (redigir
   conteúdo, gerar arquivos) a um subagent que **escreve em arquivo**, então a saída
   nunca se acumula no contexto do orquestrador.
@@ -109,10 +118,22 @@ A run termina, e o Stop hook permite que a sessão pare, quando qualquer uma des
    *depois* da única mudança de abordagem conduzida por uma persona que a run ganha ao
    bater no teto pela primeira vez. O teto em si nunca se move.
 4. **Budget de iterações** — o contador de iterações atingiu `max_iterations` (padrão 50).
-5. **Budget em USD** — o gasto acumulado cruzou `--budget`, se definido.
-6. **Escalação** — uma bifurcação que nem um papel sintetizado conseguiu resolver (uma
+   O contador atravessa as janelas de contexto: é o teto da run, nunca zerado por um
+   roll de janela.
+5. **Budget em USD** — o gasto acumulado cruzou `--budget`, se você optou por ele
+   (só no driver; nunca o governador padrão).
+6. **Livelock entre janelas** — duas janelas de contexto consecutivas fecharam zero
+   itens do plano (`no_progress_across_windows`). Rolar é de graça; produzir é
+   obrigatório.
+7. **Teto de janelas** — a run consumiu `max_windows` janelas de contexto (padrão 10).
+8. **Escalação** — uma bifurcação que nem um papel sintetizado conseguiu resolver (uma
    resposta inutilizável, um erro do harness). Uma bifurcação que ele *consegue* resolver
    é decidida e registrada, não escalada.
+
+**Uma janela de contexto cheia deliberadamente não está mais nesta lista.** Desde a
+0.18.0 ela é um roll de janela: a run escreve o `.leopold/CHECKPOINT.md` e a próxima
+janela continua o plano (relançada pelo `leopold watch` com `continuity: auto`). Veja
+[Continuidade](concepts/continuity.md).
 
 Toda parada escreve um resumo final na saída da run e um evento `stop` em
 `events.jsonl`, dizendo qual condição disparou. A lista completa — incluindo
@@ -165,8 +186,10 @@ commit e push.
 | Force-push                  | nunca      | não configurável           |
 | Autonomy                    | `full`     | `GUARDRAILS.md` (`autonomy: ask`) |
 | Máx. de falhas consecutivas | 3          | `GUARDRAILS.md`            |
-| Máx. de iterações           | 50         | `GUARDRAILS.md`            |
-| Budget em USD               | nenhum     | `--budget` no driver       |
+| Máx. de iterações           | 50 (por run, através das janelas) | `GUARDRAILS.md` |
+| Continuidade                | `auto`     | `GUARDRAILS.md` (`continuity: manual`) |
+| Máx. de janelas             | 10         | `GUARDRAILS.md` (`max_windows:`) |
+| Budget em USD               | nenhum (opt-in) | `--budget` no driver  |
 
 ## Higiene de run e runs paralelas
 

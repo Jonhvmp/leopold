@@ -26,9 +26,26 @@
 - Push: locked (ALLOW_PUSH to unlock; force-push always denied)
 
 ## Stop conditions
-- max_iterations: 50
+- max_iterations: 50         # the RUN's ceiling — it carries across context windows
 - max_failures: 3            # consecutive failures of the same kind
 - token/time budget: none    # set if you want a hard ceiling
+
+## Continuity
+> Context pressure is maintenance, not death. When the window fills, the run writes
+> `.leopold/CHECKPOINT.md` and stops as a window roll; the next window reseeds from it
+> and re-reads this brief. `auto` (default): `leopold watch` relaunches the rolled
+> window headless (`claude -p` / `codex exec`) with no human in the loop. `manual`:
+> nothing relaunches — you resume with `/leopold-run`.
+> The kill switch beats `continuity: auto`, always — the watcher checks
+> `.leopold/STOP` BEFORE relaunching, and a relaunch never refreshes a budget.
+> What still stops a run: the livelock gate (2 consecutive windows closing zero plan
+> items), max_iterations, max_windows, max_failures, the kill switch, and the git lock
+> waiting on you. A filled context window is no longer on that list.
+> USD is deliberately NOT a governor: `total_cost_usd` lies on subscription billing,
+> so autonomy is gated on durable progress (checked-off plan items), never on cost.
+> API-billed users who want a hard cap can opt in with the driver's `--budget-usd`.
+- continuity: auto           # auto | manual
+- max_windows: 10            # total context windows one run may span
 
 ## Quality & orchestration (SDK driver)
 > Toggles the SDK driver reads from here. A CLI flag or env var overrides the brief.
