@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-08-18
+
+### Security
+- **Credential masking on everything a run records or reports.** The ovmem engine
+  masks credential-shaped strings (provider keys, tokens, JWTs, bearer values,
+  key/secret assignments) at ingest, so nothing a session happened to print becomes
+  a recallable long-term memory; ordinary content — git SHAs, code, URLs — passes
+  untouched. The driver applies the same mask to every notification body before it
+  is printed, logged, or POSTed to a webhook. Both masks carry hermetic regression
+  tests verified by mutation.
+
 ## [0.19.1] - 2026-08-18
 
 ### Security
