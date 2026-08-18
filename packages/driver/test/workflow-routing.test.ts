@@ -253,10 +253,10 @@ test("a plan with no graph grammar compiles to a byte-identical payload", () => 
       maxReviewRounds: 2,
       waves: [
         [
-          { id: "i1", text: "First thing", effort: "medium", critical: false, sensitive: false },
-          { id: "i2", text: "Second thing", effort: "medium", critical: false, sensitive: false },
+          { id: "i1", text: "First thing", scenarios: [], effort: "medium", critical: false, sensitive: false },
+          { id: "i2", text: "Second thing", scenarios: [], effort: "medium", critical: false, sensitive: false },
         ],
-        [{ id: "i3", text: "Third depends on first", effort: "medium", critical: false, sensitive: false }],
+        [{ id: "i3", text: "Third depends on first", scenarios: [], effort: "medium", critical: false, sensitive: false }],
       ],
     }),
   );

@@ -67,3 +67,28 @@ test("a dependency cycle is rejected, not silently dropped", () => {
 test("an empty plan is a compile error", () => {
   assert.throws(() => compileBrief({ mission: "m", charter: "", planText: "# Plan\n(no items)" }), /no checkbox items/i);
 });
+
+// --- issue #60: the compiler must ship the whole item, or refuse to ship at all -------
+
+test("wrapped done-when prose and @scenario lines survive compilation", () => {
+  const plan =
+    "- [ ] Register the JSON flag — done when: the CLI emits valid JSON on stdout\n" +
+    "      and the table keeps printing unchanged without the flag.\n" +
+    "      @scenario no flag → the table prints unchanged\n" +
+    "      @scenario flag set → stdout is valid JSON\n";
+  const c = compileBrief({ mission: "m", charter: CHARTER, planText: plan });
+  const it = c.waves[0][0];
+  assert.equal(
+    it.text,
+    "Register the JSON flag — done when: the CLI emits valid JSON on stdout and the table keeps printing unchanged without the flag.",
+    "the wrapped sentence must arrive whole — a worker prompted with a mid-sentence fragment guesses the acceptance criteria",
+  );
+  assert.deepEqual(it.scenarios, ["no flag → the table prints unchanged", "flag set → stdout is valid JSON"],
+    "scenarios are load-bearing: without them conformance passes vacuously");
+});
+
+test("an item with no scenarios compiles with an empty list, nothing else changed", () => {
+  const c = compileBrief({ mission: "m", charter: CHARTER, planText: "- [ ] Plain item\n" });
+  assert.deepEqual(c.waves[0][0].scenarios, []);
+  assert.equal(c.waves[0][0].text, "Plain item");
+});

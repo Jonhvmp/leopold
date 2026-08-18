@@ -17,6 +17,12 @@ import { parsePlan, type PlanEmit, type PlanItem, type PlanNodeKind, type PlanRo
 export interface WorkflowItem {
   id: string;
   text: string;
+  /** The item's `@scenario` acceptance lines, verbatim. Load-bearing: the runner hands
+   *  these to the implementer as the definition of done and to the conformance reviewer
+   *  as the checklist — an item compiled without its scenarios passes conformance
+   *  vacuously, which is issue #60's silent failure mode. Empty for an item that
+   *  declares none. */
+  scenarios: string[];
   effort: Effort;
   critical: boolean;
   sensitive: boolean;
@@ -131,6 +137,7 @@ export function compileBrief(brief: {
     return {
       id: `i${pi.index}`,
       text: pi.text,
+      scenarios: pi.scenarios,
       effort: k.effort,
       critical: k.critical,
       sensitive: diffIsSensitive(pi.text),
@@ -138,6 +145,24 @@ export function compileBrief(brief: {
   };
 
   const waves = wavesOf(items).map((wave) => wave.map(classify));
+
+  // Self-check, not belt-and-braces: this compiler once shipped items with their
+  // `@scenario` lines silently dropped, and NOTHING downstream noticed — conformance
+  // passed vacuously and the run merely got quieter and weaker (issue #60). The parse is
+  // the single source of truth, so any future edit that loses scenarios between parse and
+  // emit must refuse to compile rather than emit a plan that looks whole and is not.
+  for (const wave of waves) {
+    for (const item of wave) {
+      const src = items.find((pi) => `i${pi.index}` === item.id);
+      if (src && src.scenarios.length !== item.scenarios.length) {
+        throw new Error(
+          `compiler bug: item ${item.id} has ${src.scenarios.length} @scenario line(s) in ` +
+            `PLAN.md but ${item.scenarios.length} in the compiled output — refusing to emit ` +
+            `a plan that would pass conformance vacuously.`,
+        );
+      }
+    }
+  }
   const compiled: CompiledWorkflow = {
     mission: brief.mission,
     charter: brief.charter,

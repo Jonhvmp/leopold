@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-08-17
+
+### Fixed
+- **The workflow compiler ships the whole item again.** (#60) `leopold workflow` truncated
+  every plan item at its first physical line: wrapped `done when:` prose — which the brief
+  templates themselves encourage — was cut mid-sentence, and all `@scenario` lines were
+  dropped from `workflow-args.json`. Workers were prompted with an amputated item and had
+  to guess the acceptance criteria, and `conformance` passed vacuously because the cases it
+  verifies never reached the runtime. No error anywhere; the run just got quietly weaker.
+  Three layers fixed together: the parser joins indented continuation lines into the item
+  text (structure untouched — indices, deps, done flags and scenario lists are
+  byte-identical across every archived plan fixture), compiled items carry a `scenarios`
+  field, and the runner hands those lines to the implementer as the definition of done and
+  to every reviewer as a checklist whose unmet case IS a blocking finding. The compiler now
+  also refuses to emit an item whose source declares `@scenario` lines its output lost —
+  the silent version of this bug can not ship again.
+
+### Changed
+- `@anthropic-ai/claude-agent-sdk` 0.3.228 (#59).
+
 ## [0.17.0] - 2026-08-13
 
 ### Changed

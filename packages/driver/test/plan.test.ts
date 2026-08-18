@@ -421,3 +421,42 @@ test("restoreCheckboxes puts a forged checkbox back to what the driver last knew
   // The item TEXT is untouched by the restore — only the box moved, only the box moves back.
   assert.deepEqual(parsePlan(fs.readFileSync(p, "utf8")).map((i) => i.text), parsePlan(PLAN).map((i) => i.text));
 });
+
+// --- wrapped item prose is the item's text, not debris (issue #60) --------------------
+//
+// The brief templates wrap `done when:` sentences at ~95 columns, and the parser used to
+// drop every continuation line: workers were prompted with a mid-sentence fragment, and
+// the workflow compiler shipped the amputation into workflow-args.json where conformance
+// then passed vacuously. Indented non-marker lines are the item's own prose, joined.
+test("indented continuation lines join into the item text", () => {
+  const items = parsePlan(
+    "- [ ] Register the JSON flag — done when: the CLI emits valid JSON on stdout\n" +
+    "      and the table keeps printing unchanged without the flag.\n" +
+    "      @scenario no flag → the table prints unchanged\n" +
+    "      @scenario flag set → stdout is valid JSON\n",
+  );
+  assert.equal(
+    items[0].text,
+    "Register the JSON flag — done when: the CLI emits valid JSON on stdout and the table keeps printing unchanged without the flag.",
+  );
+  assert.deepEqual(items[0].scenarios, ["no flag → the table prints unchanged", "flag set → stdout is valid JSON"]);
+});
+
+test("unindented prose, headings and blank lines are still nobody's text", () => {
+  const items = parsePlan(
+    "# Plan\n\n> commentary blockquote\n\n- [ ] First item\n\nA paragraph between items.\n\n- [ ] Second item\n      its wrapped tail\n## a heading\n",
+  );
+  assert.equal(items[0].text, "First item", "unindented prose must not glue onto the item above");
+  assert.equal(items[1].text, "Second item its wrapped tail");
+});
+
+test("a single-line plan parses byte-identically to before", () => {
+  const items = parsePlan("- [ ] Alpha\n- [x] Beta\n- [ ] (after: 1) Gamma\n");
+  assert.deepEqual(items.map((i) => i.text), ["Alpha", "Beta", "Gamma"]);
+});
+
+test("an indented line starting with @ is a marker lane, never joined prose", () => {
+  const items = parsePlan("- [ ] Item\n      @scenario a → b\n      @futuremarker something\n      real continuation\n");
+  assert.equal(items[0].text, "Item real continuation", "@-lines are reserved, known today or not");
+  assert.deepEqual(items[0].scenarios, ["a → b"]);
+});
