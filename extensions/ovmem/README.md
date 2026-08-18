@@ -105,6 +105,32 @@ OVMEM_PROVIDER=bedrock OVMEM_CHAT_MODEL=claude-3-5-haiku OVMEM_EMBED_MODEL=titan
 - **PreCompact** — flush the transcript delta + commit *before* compaction destroys it
 - **SessionEnd** — flush + commit, then the weekly hotness prune (`ovmem-cleanup.py`)
 
+### Run-aware tagging (Leopold 0.19.0)
+
+When a flush fires inside an active Leopold run, the OV session it creates is tagged
+with run identity instead of landing as a bare UUID:
+
+- **Title**: `leopold · <project> · run <stamp> · window N of M · <engine>` — a human
+  browsing the memory base can tell an autonomous run's windows from ordinary chats.
+- **Metadata**: `{"leopold": {"project", "run_started_at", "window", "engine"}}` on
+  the `POST /sessions` body — extra fields an old OpenViking server ignores, so the
+  tag is additive by construction.
+
+The rule is **tag, never guess**: the flush is run-aware only when
+`<cwd>/.leopold/state.json` proves a run — `active: true`, or
+`stopped_reason: "context_budget"` (the window-roll gap where the SessionEnd flush
+fires before the relaunch). No file, unreadable JSON, or a finished run → the flush
+body stays byte-identical to an untagged one. A failed tag never fails a flush:
+memory is enrichment, not a dependency.
+
+One more consequence of runs: the SDK driver spawns an ephemeral session per plan
+item (workers, review lenses, judges), and their hooks **do** fire — verified live,
+evidence in [docs/reference/sdk-worker-hooks.md](../../docs/reference/sdk-worker-hooks.md).
+Flushing each would dump an untagged OV session per spawn into the base, so ovmem
+suppresses per-item flushes inside driver-spawned sessions by default (the
+`LEOPOLD_SDK_WORKER=1` marker); the conductor's session carries the run. Reversal:
+set `LEOPOLD_OVMEM_WORKER_FLUSH=1` on the driver to restore per-item flushes.
+
 Dedup and obsolescence are handled natively by OpenViking on commit. Cold-memory
 accumulation is pruned by `ovmem-cleanup.py` (hotness = frequency × recency decay).
 Everything is local: the server binds `127.0.0.1` only. The lone outbound call is to the

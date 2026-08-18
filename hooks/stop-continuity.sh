@@ -152,6 +152,20 @@ fi
 #     with no resume pointer, and `max_windows` (state > GUARDRAILS > 10) caps the total
 #     windows one run may consume.
 CHECKPOINT_SECTIONS="In-Flight Item, Files and Code, Errors and Fixes, Decisions This Run, Learned Constraints, Current Work, Next Step"
+# The effective checkpoint cap: min(32768, max(8192, 2% of the window)) — the same
+# formula checkpointCapBytes() computes in packages/driver/src/checkpoint.ts, held to
+# the same numbers by pin tests on both sides. With the default 5MB window this is
+# exactly 32768 (unchanged); a smaller window scales the cap down with it, so the one
+# knob that governs cost (max_context_mb) governs the checkpoint too. An explicit
+# `max_checkpoint_kb:` line in GUARDRAILS.md overrides the formula outright.
+cp_cap() { # $1 = max_context_mb -> cap in bytes
+  ovr="$(grep -m1 -iE '^[[:space:]]*-?[[:space:]]*(\*\*)?max_checkpoint_kb(\*\*)?[[:space:]]*:[[:space:]]*[0-9]+' "$LEO/GUARDRAILS.md" 2>/dev/null | grep -oE '[0-9]+' | head -1)"
+  if [ -n "$ovr" ] && [ "$ovr" -gt 0 ] 2>/dev/null; then echo $((ovr * 1024)); return; fi
+  w=$(( ${1:-5} * 1048576 * 2 / 100 ))
+  [ "$w" -lt 8192 ] && w=8192
+  [ "$w" -gt 32768 ] && w=32768
+  echo "$w"
+}
 max_ctx_mb="$(jq -r '.max_context_mb // 5' "$STATE" 2>/dev/null || echo 5)"
 case "$max_ctx_mb" in (*[!0-9]*|"") max_ctx_mb=5 ;; esac
 ctx_mb=0
@@ -186,7 +200,7 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
     checkpoint_written=false
     if [ -s "$LEO/CHECKPOINT.md" ] \
        && head -1 "$LEO/CHECKPOINT.md" 2>/dev/null | grep -q '^# Leopold Checkpoint' \
-       && [ "$(wc -c < "$LEO/CHECKPOINT.md" 2>/dev/null || echo 99999)" -le 32768 ] 2>/dev/null; then
+       && [ "$(wc -c < "$LEO/CHECKPOINT.md" 2>/dev/null || echo 999999)" -le "$(cp_cap "$max_ctx_mb")" ] 2>/dev/null; then
       checkpoint_written=true
     fi
     # Current checkbox vector (one char per checkbox, file order: x=closed, o=open).
@@ -278,7 +292,7 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
     # The `checkpoint_instruction` event is logged at the bottom, once the turn is
     # certain — the same decided-here-spent-there split the rescue uses, so the event
     # stream never claims an instruction a stop condition swallowed.
-    CHECKPOINT_NOTE="CONTEXT WINDOW AT ${ctx_pct}% OF BUDGET (${ctx_mb} of ${max_ctx_mb} MB). Before anything else this turn, write or merge .leopold/CHECKPOINT.md so the next window can continue this run when this one fills. The format is fixed: the title line \`# Leopold Checkpoint\`, then exactly these seven \`##\` sections, in this order: ${CHECKPOINT_SECTIONS}. It carries RUN state only -- never restate MISSION, CHARTER, GUARDRAILS or the plan; the next window re-reads those files itself. If the file already exists, MERGE into ONE flat document: In-Flight Item, Current Work and Next Step are replaced by the current view; in the other sections keep still-true lines, append new ones, drop stale ones -- never paste a prior checkpoint (its title or any duplicate heading) inside the new one. Keep the whole file under 32768 bytes; if it will not fit, consolidate harder -- never truncate. Then continue the plan as normal. "
+    CHECKPOINT_NOTE="CONTEXT WINDOW AT ${ctx_pct}% OF BUDGET (${ctx_mb} of ${max_ctx_mb} MB). Before anything else this turn, write or merge .leopold/CHECKPOINT.md so the next window can continue this run when this one fills. The format is fixed: the title line \`# Leopold Checkpoint\`, then exactly these seven \`##\` sections, in this order: ${CHECKPOINT_SECTIONS}. It carries RUN state only -- never restate MISSION, CHARTER, GUARDRAILS or the plan; the next window re-reads those files itself. If the file already exists, MERGE into ONE flat document: In-Flight Item, Current Work and Next Step are replaced by the current view; in the other sections keep still-true lines, append new ones, drop stale ones -- never paste a prior checkpoint (its title or any duplicate heading) inside the new one. Keep the whole file under $(cp_cap "$max_ctx_mb") bytes; if it will not fit, consolidate harder -- never truncate. Then continue the plan as normal. "
   fi
 fi
 

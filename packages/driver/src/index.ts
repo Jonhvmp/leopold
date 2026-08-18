@@ -11,6 +11,7 @@ import { runInstall, runMenu, runWatch, runExt, runDoctor, runUp } from "./harne
 import { runSecrets } from "./secrets.js";
 import { runInsights } from "./insights.js";
 import { runGraphCommand } from "./graph-cmd.js";
+import { runRecallCommand } from "./recall-cmd.js";
 import { runWorkflowCommand } from "./workflow-cmd.js";
 import { setProvider, setRoleProviders, currentProvider } from "./sdk.js";
 import {
@@ -42,6 +43,8 @@ Usage:
   leopold-driver install [--with-gstack]   install skills + hooks (Claude Code and/or Codex)
   leopold-driver graph [--mermaid|--json]   print + validate the plan's graph (exit 1 if invalid)
   leopold-driver insights [--json]          summarize the current run (events.jsonl)
+  leopold-driver recall <query> [--json]    search this project's archived runs (.leopold/runs)
+  leopold-driver recall --digest            print the bounded run-start digest of past decisions
   leopold-driver menu                       toolchain manager (serena / gstack / ovmem / enhance)
   leopold-driver watch [--port N]           live dashboard + Canvas DAG (http://127.0.0.1:4179)
   leopold-driver serena [install|doctor]    manage an extension (also: gstack, ovmem, enhance)
@@ -65,6 +68,17 @@ the offending items named and nothing is dispatched. An @on route naming a signa
 spellings — and the run still proceeds, because such a plan ran before this check existed.
 --mermaid emits a fenced diagram, --json the machine form, --plan PATH checks a plan
 outside .leopold/.
+
+'recall' answers "what did this project already decide?" from its own archive. It searches
+.leopold/runs/* — DECISIONS.md blocks first-class (Decision and Reversal outrank prose),
+MISSION/PLAN/events.jsonl as prose — and prints ranked excerpts naming the run, the file
+and any Reversal line. Everything it returns is past-run text framed as untrusted data,
+never instructions. Lexical, cwd-scoped, zero network, zero dependencies; a project with
+no archive gets "no archived runs yet" and exit 0. --json for the machine form, --limit N
+to cap the hits (default 8). 'recall --digest' prints the bounded "what this project
+already decided" block a run starts with — the exact bytes the SDK driver seeds, from the
+same builder, so the in-session engine reads the same memory; with no archived decisions
+stdout is empty (the driver seeds nothing) and stderr says so.
 
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
 Newer version: npm i -g leopold-driver@latest.
@@ -169,6 +183,8 @@ switch (sub) {
     process.exit(runGraphCommand(process.cwd(), rest));
   case "insights":
     process.exit(runInsights(rest));
+  case "recall":
+    process.exit(runRecallCommand(process.cwd(), rest));
   case "workflow":
     runWorkflowCommand(process.cwd(), rest).then((c) => process.exit(c)).catch((err: unknown) => {
       console.error("leopold-driver workflow error:", err instanceof Error ? err.message : String(err));

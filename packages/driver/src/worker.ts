@@ -97,7 +97,10 @@ export async function runItem(opts: RunItemOpts): Promise<void> {
     prompt: channel,
     options: {
       cwd: opts.cwd ?? brief.worktreeRoot ?? brief.root,
-      env: { ...process.env },
+      // LEOPOLD_SDK_WORKER=1 (the ephemeral-session marker any inheriting hook can
+      // read — verified live, docs/reference/sdk-worker-hooks.md; ovmem suppresses
+      // per-item flushes on it) is injected by the query seam in sdk.ts for EVERY
+      // driver-spawned session, this one included. Not set here: one writer.
       maxTurns: cfg.maxTurnsPerItem,
       leopoldRole: "executor",
       permissionMode: "default",

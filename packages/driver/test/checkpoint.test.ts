@@ -20,6 +20,7 @@ import {
   writeCheckpoint,
   readCheckpoint,
   type Checkpoint,
+  checkpointCapBytes,
 } from "../src/checkpoint.ts";
 
 function sample(): Checkpoint {
@@ -275,4 +276,22 @@ test("doctor's checkpoint validator carries the one contract verbatim", () => {
     doctor.includes(`CP_MAX_BYTES=${CHECKPOINT_MAX_BYTES}`),
     `doctor must name the ${CHECKPOINT_MAX_BYTES}-byte cap`,
   );
+});
+
+// The cap is proportional to the window — the knob that governs cost governs the
+// checkpoint too — with the DEFAULT unchanged: min(32768, max(8192, 2% of window)).
+// hooks/stop-continuity.sh computes the same formula in bash (its suite pins the 1MB
+// case at 20971 and the GUARDRAILS override at 12288); these pins hold the TS side to
+// the same numbers so the two languages cannot drift.
+test("checkpointCapBytes: proportional, floored, ceilinged, override wins", () => {
+  assert.equal(checkpointCapBytes(5), 32768, "the default 5MB window keeps the exact old cap");
+  assert.equal(checkpointCapBytes(1), 20971, "1MB window -> 2% = 20971 (the hook suite pins this same number)");
+  assert.equal(checkpointCapBytes(10), 32768, "the absolute ceiling holds however big the window");
+  assert.equal(checkpointCapBytes(0), 8192, "the floor keeps tiny windows usable");
+  assert.equal(checkpointCapBytes(1, 12), 12288, "an explicit GUARDRAILS override wins outright");
+  // A run can NEVER grow its own cap: the function takes config, not behavior.
+  const tight = serializeCheckpoint(emptyCheckpoint(), 8192);
+  assert.ok(tight.length > 0);
+  assert.throws(() => serializeCheckpoint({ ...emptyCheckpoint(), "Current Work": "x".repeat(9000) }, 8192),
+    /over the 8192-byte cap/);
 });

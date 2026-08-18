@@ -67,9 +67,31 @@ export function resetQuery(): void { override = undefined; }
  *  A call site may tag itself with `options.leopoldRole` ("executor" | "review" |
  *  "conductor"); under a hybrid assignment that decides which harness answers, and
  *  otherwise it is ignored. The tag is stripped from nothing — both backends already
- *  ignore unknown option keys — so tagging a call site is a one-word change. */
+ *  ignore unknown option keys — so tagging a call site is a one-word change.
+ *
+ *  Every session spawned through this seam also gets LEOPOLD_SDK_WORKER=1 in its
+ *  environment. Everything the driver spawns here is an ephemeral helper — a
+ *  per-item worker, a review lens, a tournament judge, a hypothesis, a route probe,
+ *  a one-shot conductor decision — never a session a human lives in, so hooks that
+ *  inherit the environment (ovmem keys its per-item flush suppression on this
+ *  marker) can tell a driver-spawned session from a real one. Marking it at ONE
+ *  call site (worker.ts, as it used to be) left reviewer/judge/hypothesis/route
+ *  sessions — which also load `settingSources: ["user","project"]` hooks —
+ *  flushing one untagged OV session each; the seam is where the marker belongs.
+ *  Sessions that load no settings (`settingSources: []`) run no hooks, so the
+ *  marker is inert there. Injected before the test-override dispatch so a fake
+ *  query sees exactly what a real backend would. */
 export function query(...args: Parameters<QueryFn>): ReturnType<QueryFn> {
+  const req = args[0] as
+    | { options?: { leopoldRole?: AgentRole; env?: Record<string, string | undefined> } }
+    | undefined;
+  if (req) {
+    const env = req.options?.env ?? (process.env as Record<string, string | undefined>);
+    // A FRESH request object, never a mutation of the caller's: this seam is the one
+    // path every model call flows through, and a caller that reuses or inspects its
+    // request after query() must not find an env snapshot it never set.
+    args[0] = { ...req, options: { ...req.options, env: { ...env, LEOPOLD_SDK_WORKER: "1" } } } as unknown as (typeof args)[0];
+  }
   if (override) return override(...args);
-  const opts = (args[0] as { options?: { leopoldRole?: AgentRole } } | undefined)?.options;
-  return implFor(providerForRole(opts?.leopoldRole))(...args);
+  return implFor(providerForRole(req?.options?.leopoldRole))(...args);
 }

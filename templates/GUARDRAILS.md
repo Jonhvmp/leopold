@@ -40,6 +40,7 @@
 > `.leopold/STOP` BEFORE relaunching, and a relaunch never refreshes a budget.
 > What still stops a run: the livelock gate (2 consecutive windows closing zero plan
 > items), max_iterations, max_windows, max_failures, the kill switch, and the git lock
+<!-- max_checkpoint_kb: 32   # optional: override the proportional checkpoint cap (default: min(32KB, 2% of max_context_mb)) -->
 > waiting on you. A filled context window is no longer on that list.
 > USD is deliberately NOT a governor: `total_cost_usd` lies on subscription billing,
 > so autonomy is gated on durable progress (checked-off plan items), never on cost.

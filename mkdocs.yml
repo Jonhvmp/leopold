@@ -124,6 +124,7 @@ plugins:
             Brief Artifacts: Artefatos do brief
             Plan Grammar: Gramática do plano
             Driver Config: Config do driver
+            SDK Worker Hooks: Hooks do worker SDK
             Comparisons: Comparações
             Contributing: Como contribuir
 
@@ -171,6 +172,7 @@ nav:
       - Plan Grammar: reference/plan-grammar.md
       - Driver Config: reference/driver-config.md
       - Asset Home: reference/leopold-home.md
+      - SDK Worker Hooks: reference/sdk-worker-hooks.md
   - Comparisons:
       - Leopold vs Ralph: comparisons/ralph.md
   - Roadmap: roadmap.md
