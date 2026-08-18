@@ -295,7 +295,7 @@
   "run-universal-harness.md": [
     {
       "index": 1,
-      "text": "Add a `leopold home` subcommand to the driver that prints the resolved Leopold",
+      "text": "Add a `leopold home` subcommand to the driver that prints the resolved Leopold asset home, using the same precedence as the installer, and document the no-CLI shell fallback one-liner in `docs/reference/`. — done when: the command prints an absolute path on both harness layouts and the fallback resolves identically. path as `leopold home` in all three cases above",
       "done": true,
       "deps": [],
       "scenarios": [
@@ -307,7 +307,7 @@
     },
     {
       "index": 2,
-      "text": "Replace every hardcoded `~/.claude` path in `skills/*/SKILL.md` with",
+      "text": "Replace every hardcoded `~/.claude` path in `skills/*/SKILL.md` with the resolver from item 1 (30 occurrences across 8 skills; `leopold-enhance` has 18 of them). — done when: no SKILL.md contains the literal `~/.claude`, and each changed command still runs on a Claude-only layout. doctor script exactly as before this change `$CODEX_HOME/leopold` and runs the same script",
       "done": true,
       "deps": [
         1
@@ -320,7 +320,7 @@
     },
     {
       "index": 3,
-      "text": "Make the skills' prose harness-neutral: say \"the agent\"/\"the harness\"",
+      "text": "Make the skills' prose harness-neutral: say \"the agent\"/\"the harness\" instead of \"Claude Code\" where the statement is not Claude-specific, and where a tool is named, name both harnesses' equivalents so the sentence is actionable on either (subagent spawn, task list, skill invocation, slash command). — done when: the remaining \"Claude Code\" mentions are only in statements that are genuinely Claude-specific, and every tool reference an agent must act on names both. equivalent alongside the Claude one, not only `Task`/`TodoWrite` and `leopold doctor` counts 12 skills after a reinstall",
       "done": true,
       "deps": [
         2
@@ -332,7 +332,7 @@
     },
     {
       "index": 4,
-      "text": "Extract one shared hook-wiring helper for the extensions (e.g.",
+      "text": "Extract one shared hook-wiring helper for the extensions (e.g. `extensions/lib/harness.sh`) that resolves the target harnesses and writes a hook into `settings.json` (jq) or `config.toml` (marker block), idempotently, with a backup and post-write validation + rollback — the same contract `scripts/install-codex.sh` already proved. — done when: the helper is covered by a hermetic test and `install-codex.sh` uses it rather than its own copy. one hook entry, and the file still parses as TOML one hook entry, and the file still parses as JSON and the helper exits non-zero with the block printed for manual use",
       "done": true,
       "deps": [],
       "scenarios": [
@@ -343,7 +343,7 @@
     },
     {
       "index": 5,
-      "text": "Port the **serena** extension to Codex: register the MCP server with",
+      "text": "Port the **serena** extension to Codex: register the MCP server with `codex mcp add` and wire its hooks through the shared helper; `manage.sh install|status|doctor` all report per harness. — done when: a temp-home Codex install registers serena and its doctor is green. state for each, not just Claude's and changes nothing",
       "done": true,
       "deps": [
         4
@@ -356,7 +356,7 @@
     },
     {
       "index": 6,
-      "text": "Port the **enhance** extension to Codex: wire its UserPromptSubmit",
+      "text": "Port the **enhance** extension to Codex: wire its UserPromptSubmit hook into `config.toml` via the shared helper, keep the enabled/disabled state file shared across harnesses. — done when: toggling on one harness is reflected in `manage.sh status` for both, and the existing `scripts/test-enhance.sh` still passes unchanged. `config.toml` points at `enhance.py` unmodified (silent no-op), same as on Claude",
       "done": true,
       "deps": [
         4
@@ -369,7 +369,7 @@
     },
     {
       "index": 7,
-      "text": "Port the **ovmem** extension to Codex: wire its UserPromptSubmit,",
+      "text": "Port the **ovmem** extension to Codex: wire its UserPromptSubmit, SessionStart, SessionEnd and PreCompact hooks through the shared helper and make its payload handling tolerate Codex's session payload shape. — done when: a temp-home Codex install wires all four events and ovmem's doctor is green. in `config.toml` and the file parses error and injects its memory block",
       "done": true,
       "deps": [
         4
@@ -382,7 +382,7 @@
     },
     {
       "index": 8,
-      "text": "Make the **gstack** extension harness-aware: install its skills into",
+      "text": "Make the **gstack** extension harness-aware: install its skills into every detected harness's skills dir and report per harness. — done when: a Codex-only machine gets gstack skills where Codex looks for them. skills root",
       "done": true,
       "deps": [
         4
@@ -394,7 +394,7 @@
     },
     {
       "index": 9,
-      "text": "Teach `scripts/leopold-watch.py` to read a Codex transcript: detect a Codex",
+      "text": "Teach `scripts/leopold-watch.py` to read a Codex transcript: detect a Codex rollout JSONL (`session_meta` first line) and parse `event_msg` / `payload.type == \"token_count\"` → `info.total_token_usage` for tokens and context, plus `agent_message` for assistant text; add the OpenAI models to the price map. — done when: a Codex-conducted run shows real tokens, cost and context in the dashboard, and a Claude run is unchanged. reports non-zero tokens and a non-zero cost estimate before this change for this harness instead of showing zeros",
       "done": true,
       "deps": [],
       "scenarios": [
@@ -405,7 +405,7 @@
     },
     {
       "index": 10,
-      "text": "Make `scripts/leopold-menu.sh` and `scripts/leopold-up.sh` harness-aware:",
+      "text": "Make `scripts/leopold-menu.sh` and `scripts/leopold-up.sh` harness-aware: resolve the asset home like item 1, and have `leopold-up` seed project permissions/trust for whichever harness is present (`.claude/settings.json` and/or Codex project trust) and point `/init` at the right memory file (`CLAUDE.md` vs `AGENTS.md`). — done when: both scripts run to completion on a Codex-only temp layout. and lists all four extensions (`AGENTS.md`) as the target, not `CLAUDE.md`",
       "done": true,
       "deps": [],
       "scenarios": [
@@ -415,7 +415,7 @@
     },
     {
       "index": 11,
-      "text": "Add a hermetic `scripts/test-codex-install.sh` covering the",
+      "text": "Add a hermetic `scripts/test-codex-install.sh` covering the whole Codex path — skills, both hooks, all four extensions, idempotency, rollback on invalid TOML — against temp homes only, and wire it into the Makefile `test` target and CI. — done when: the suite is green and provably touches no real harness home. temp dir → passes, and the real `~/.codex/config.toml` mtime is unchanged the backup and the suite asserts the rollback happened",
       "done": true,
       "deps": [
         5,
@@ -431,7 +431,7 @@
     },
     {
       "index": 12,
-      "text": "Update the docs and metadata for the universal install:",
+      "text": "Update the docs and metadata for the universal install: `docs/concepts/harnesses.md` + pt-BR (extensions and dashboard sections), `docs/getting-started/install.md` + pt-BR, `docs/reference/hooks.md`, README, CHANGELOG (close the Unreleased block as 0.14.0), and bump `VERSION` + `packages/driver/package.json` to 0.14.0. — done when: docs build `--strict` clean and no doc claims a capability the tests do not cover. all read 0.14.0",
       "done": true,
       "deps": [
         3,
@@ -447,7 +447,7 @@
     },
     {
       "index": 13,
-      "text": "Final verification sweep and hand-off: `make test`, the guard",
+      "text": "Final verification sweep and hand-off: `make test`, the guard red-team suite, driver typecheck/build/tests, CLI smoke, `npm pack` dry-run, a dual-harness install into temp homes, and `leopold doctor` on both. Stage everything and report readiness — do NOT commit, push or tag. — done when: every suite is green and the working tree is fully staged with a written summary of what changed and what the human should review first.",
       "done": true,
       "deps": [
         12

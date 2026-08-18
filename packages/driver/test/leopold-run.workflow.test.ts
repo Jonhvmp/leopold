@@ -154,3 +154,38 @@ test("an empty plan throws instead of reporting a clean zero-item run", async ()
     /no plan items reached the workflow/i,
   );
 });
+
+// --- issue #60's runtime half: scenarios must reach the prompts, or conformance is a rubber stamp
+test("@scenario lines reach the implementer AND the reviewer prompts", async () => {
+  const prompts: Record<string, string[]> = { impl: [], verify: [] };
+  const r = await runWorkflow(SCRIPT, {
+    args: baseArgs([[{
+      id: "i1",
+      text: "Register the JSON flag — done when: the CLI emits valid JSON on stdout and the table keeps printing unchanged.",
+      scenarios: ["no flag → the table prints unchanged", "flag set → stdout is valid JSON"],
+      effort: "medium", critical: false, sensitive: false,
+    }]]),
+    respond: ({ prompt, opts }) => {
+      const label = String(opts.label || "");
+      if (label.startsWith("verify:")) { prompts.verify.push(prompt); return { ok: true, blocking: [] }; }
+      prompts.impl.push(prompt); return "impl done";
+    },
+  });
+  assert.equal((r.result as { done: number }).done, 1);
+  for (const [who, seen] of Object.entries(prompts)) {
+    assert.ok(seen.length > 0, `no ${who} prompt captured`);
+    for (const s of ["no flag → the table prints unchanged", "flag set → stdout is valid JSON"]) {
+      assert.ok(seen[0].includes(s), `${who} prompt is missing the acceptance case "${s}" — conformance would pass vacuously`);
+    }
+  }
+  // And an item with NO scenarios builds the prompt this script has always built.
+  const plain = await runWorkflow(SCRIPT, {
+    args: baseArgs([[{ id: "i1", text: "plain", effort: "medium", critical: false, sensitive: false }]]),
+    respond: ({ prompt, opts }) => {
+      if (!String(opts.label || "").startsWith("verify:"))
+        assert.ok(!prompt.includes("acceptance case"), "a scenario-less item must not grow a scenarios block");
+      return String(opts.label || "").startsWith("verify:") ? { ok: true, blocking: [] } : "impl done";
+    },
+  });
+  assert.equal((plain.result as { done: number }).done, 1);
+});

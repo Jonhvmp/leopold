@@ -119,6 +119,17 @@ Report the value that is actually TRUE of what you did, not the one you hoped fo
 `
 }
 
+// The item's @scenario acceptance lines, rendered for a prompt. Empty string for an item
+// that declares none, so such items' prompts stay byte-identical to what this script has
+// always built. These lines are load-bearing: the compiler once dropped them and every
+// conformance check downstream passed vacuously (issue #60) — the implementer builds to
+// them, the reviewer judges against them.
+function scenariosBlock(item, framing) {
+  const list = item.scenarios || []
+  if (list.length === 0) return ''
+  return `\n${framing}\n${list.map((s) => `  @scenario ${s}`).join('\n')}\n`
+}
+
 // `decide` is set ONLY on a node that reached a persona path (today: `@human` under
 // `autonomy: full`). Without it `personaAppend` and `decisionAsk` are both the empty
 // string, so the prompt is byte-identical to the one this script has always built.
@@ -128,7 +139,7 @@ function implPrompt(item, feedback, decide) {
 Work on this plan item now, completely and verified (build, lint, tests as the item needs):
 
   ${item.text}
-${feedback ? `\nA prior review found blocking issues — fix every one first:\n${feedback}\n` : ''}${signalsBlock(item)}${decisionAsk(decide)}
+${scenariosBlock(item, 'It is done ONLY when every one of these acceptance cases holds:')}${feedback ? `\nA prior review found blocking issues — fix every one first:\n${feedback}\n` : ''}${signalsBlock(item)}${decisionAsk(decide)}
 Make the edits in the repo. Do NOT commit. When it is genuinely done and verified, return a one-paragraph summary of what changed and how you verified it.`
 }
 
@@ -165,7 +176,7 @@ function reviewPrompt(item, lens) {
   return `You are a Leopold review gate: a strict, independent senior reviewer. You did NOT write this code. Review ONLY the current uncommitted diff for the plan item:
 
   ${item.text}
-
+${scenariosBlock(item, 'The item declares these acceptance cases — an unmet one IS a blocking finding:')}
 Steps:
 1. Run \`git --no-pager diff HEAD\` (and \`--stat\`) to see the change; read surrounding code as needed.
 2. If /code-review is available, invoke it and fold its findings in. ${lensLine}

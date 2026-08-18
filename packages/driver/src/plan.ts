@@ -276,8 +276,8 @@ export function parsePlan(text: string): PlanItem[] {
       items.push(current);
       continue;
     }
-    // A marker line attaches to the item above it. Non-checkbox, non-marker lines
-    // (blank lines, wrapped continuations, prose) are ignored, exactly as before.
+    // A marker line attaches to the item above it. Blank lines and unindented prose
+    // (headings, blockquotes, paragraphs between items) are ignored, exactly as before.
     if (!current) continue;
     const s = line.match(SCENARIO);
     if (s) {
@@ -309,7 +309,18 @@ export function parsePlan(text: string): PlanItem[] {
         current.kind = marker.kind;
         if (marker.kindLabel) current.kindLabel = marker.kindLabel;
       }
+      continue;
     }
+    // An INDENTED non-marker line is the item's own prose, wrapped — the brief templates
+    // themselves wrap `done when:` sentences at ~95 columns. Dropping these truncated
+    // every item at its first physical line: workers were prompted with a mid-sentence
+    // fragment and had to guess the acceptance criteria, and the workflow compiler
+    // shipped the amputation into workflow-args.json (issue #60) where nothing ever
+    // flagged it. Joined with a single space, so `text` reads as the one sentence the
+    // author wrote. Unindented lines stay ignored — headings, blockquotes and paragraphs
+    // between items are the plan's commentary, not any item's text — and so do lines
+    // starting with `@`, which are reserved for markers, known today or future.
+    if (bare && /^[ \t]/.test(line)) current.text = current.text ? `${current.text} ${bare}` : bare;
   }
   return items;
 }

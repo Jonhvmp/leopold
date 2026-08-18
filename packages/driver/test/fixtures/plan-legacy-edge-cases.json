@@ -144,7 +144,7 @@
     "scenario lines and prose continuation": [
       {
         "index": 1,
-        "text": "Build login",
+        "text": "Build login continued prose line",
         "done": false,
         "deps": [],
         "scenarios": [
