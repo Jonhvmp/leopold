@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -890,6 +892,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/continuity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Continuidade
   
 
     
@@ -2195,12 +2225,21 @@ própria run.</p>
 turno: em um modelo de contexto grande ela nunca auto-compacta, então cada turno
 recobra o transcript inteiro acumulado. As defesas que importam:</p>
 <ul>
-<li><strong>Hard-stop de budget em USD.</strong> Passe <code>--budget &lt;usd&gt;</code> para o driver; a run para
-  no momento em que o gasto acumulado (do <code>total_cost_usd</code> real da CLI) cruza o
-  valor, com o trabalho em stage para revisão. Esse é o teto confiável.</li>
-<li><strong>Runs limitadas e retomáveis.</strong> Uma run termina em <code>max_iterations</code> (padrão 50),
-  então não gira para sempre; o brief persiste, então um <code>/leopold-run</code> novo retoma
-  do <code>PLAN.md</code> com contexto limpo. Limitada + retomável ganha de uma sessão gigante.</li>
+<li><strong>O governador é o progresso, não USD.</strong> <code>total_cost_usd</code> não reflete a
+  contabilidade real na cobrança por assinatura, então um contador de custo
+  deliberadamente <strong>não</strong> é o governador padrão de uma run autônoma. A run é
+  governada por progresso durável — itens do plano fechados — via o
+  <a href="../concepts/continuity/">gate de livelock</a>, mais os tetos rígidos abaixo. Usuários
+  cobrados por API que querem um teto rígido podem optar pelo <code>--budget &lt;usd&gt;</code> do
+  driver: a run para no momento em que o gasto acumulado (do <code>total_cost_usd</code> da
+  CLI) cruza o valor, com o trabalho em stage para revisão. É um teto opt-in, nunca
+  o padrão, e nada mais depende dele.</li>
+<li><strong>Runs limitadas e retomáveis.</strong> Uma run termina em <code>max_iterations</code> (padrão 50 —
+  o teto <strong>da run</strong>, carregado através das janelas de contexto) e em <code>max_windows</code>
+  (padrão 10), então não gira para sempre; o brief persiste, então um <code>/leopold-run</code>
+  novo retoma do <code>PLAN.md</code> com contexto limpo. Desde a 0.18.0 uma janela de contexto
+  cheia é um <strong>roll de janela, não uma parada</strong>: a run faz checkpoint e continua em
+  uma janela nova — veja <a href="../concepts/continuity/">Continuidade</a>.</li>
 <li><strong>Orquestrador enxuto.</strong> O protocolo delega trabalho de saída volumosa (redigir
   conteúdo, gerar arquivos) a um subagent que <strong>escreve em arquivo</strong>, então a saída
   nunca se acumula no contexto do orquestrador.</li>
@@ -2230,12 +2269,23 @@ máquina.</p>
 <li><strong>Falha repetida</strong> — o mesmo tipo de falha por N turnos consecutivos (padrão 3),
    <em>depois</em> da única mudança de abordagem conduzida por uma persona que a run ganha ao
    bater no teto pela primeira vez. O teto em si nunca se move.</li>
-<li><strong>Budget de iterações</strong> — o contador de iterações atingiu <code>max_iterations</code> (padrão 50).</li>
-<li><strong>Budget em USD</strong> — o gasto acumulado cruzou <code>--budget</code>, se definido.</li>
+<li><strong>Budget de iterações</strong> — o contador de iterações atingiu <code>max_iterations</code> (padrão 50).
+   O contador atravessa as janelas de contexto: é o teto da run, nunca zerado por um
+   roll de janela.</li>
+<li><strong>Budget em USD</strong> — o gasto acumulado cruzou <code>--budget</code>, se você optou por ele
+   (só no driver; nunca o governador padrão).</li>
+<li><strong>Livelock entre janelas</strong> — duas janelas de contexto consecutivas fecharam zero
+   itens do plano (<code>no_progress_across_windows</code>). Rolar é de graça; produzir é
+   obrigatório.</li>
+<li><strong>Teto de janelas</strong> — a run consumiu <code>max_windows</code> janelas de contexto (padrão 10).</li>
 <li><strong>Escalação</strong> — uma bifurcação que nem um papel sintetizado conseguiu resolver (uma
    resposta inutilizável, um erro do harness). Uma bifurcação que ele <em>consegue</em> resolver
    é decidida e registrada, não escalada.</li>
 </ol>
+<p><strong>Uma janela de contexto cheia deliberadamente não está mais nesta lista.</strong> Desde a
+0.18.0 ela é um roll de janela: a run escreve o <code>.leopold/CHECKPOINT.md</code> e a próxima
+janela continua o plano (relançada pelo <code>leopold watch</code> com <code>continuity: auto</code>). Veja
+<a href="../concepts/continuity/">Continuidade</a>.</p>
 <p>Toda parada escreve um resumo final na saída da run e um evento <code>stop</code> em
 <code>events.jsonl</code>, dizendo qual condição disparou. A lista completa — incluindo
 <code>context_budget</code>, <code>no_progress</code> e <code>routed_complete</code>, e se um papel sintetizado pode afetar
@@ -2303,12 +2353,22 @@ commit e push.</p>
 </tr>
 <tr>
 <td>Máx. de iterações</td>
-<td>50</td>
+<td>50 (por run, através das janelas)</td>
 <td><code>GUARDRAILS.md</code></td>
 </tr>
 <tr>
+<td>Continuidade</td>
+<td><code>auto</code></td>
+<td><code>GUARDRAILS.md</code> (<code>continuity: manual</code>)</td>
+</tr>
+<tr>
+<td>Máx. de janelas</td>
+<td>10</td>
+<td><code>GUARDRAILS.md</code> (<code>max_windows:</code>)</td>
+</tr>
+<tr>
 <td>Budget em USD</td>
-<td>nenhum</td>
+<td>nenhum (opt-in)</td>
 <td><code>--budget</code> no driver</td>
 </tr>
 </tbody>

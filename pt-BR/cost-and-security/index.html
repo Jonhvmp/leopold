@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -890,6 +892,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/continuity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Continuidade
   
 
     
@@ -1914,7 +1944,14 @@ em <code>.leopold/</code>, secrets criptografados em disco, consentimento na CLI
 <h2 id="1-hard-stop-de-budget-em-usd-driver-sdk">1. Hard-stop de budget em USD (driver SDK)<a class="headerlink" href="#1-hard-stop-de-budget-em-usd-driver-sdk" title="Permanent link">&para;</a></h2>
 <p>A CLI do Claude Code já reporta <code>total_cost_usd</code> por sessão, então não existe mapa de
 preços de modelo: o driver acumula o custo real por item e para a run quando ele cruza
-o teto. Esse é o teto de dólares confiável para uma run autônoma.</p>
+o teto.</p>
+<p><strong>Este é um teto opt-in, nunca o governador da run.</strong> Na cobrança por assinatura o
+<code>total_cost_usd</code> não reflete a contabilidade real, então um contador em USD não pode
+governar uma run autônoma — esse papel é do progresso durável (itens do plano
+fechados) e dos tetos rígidos (<code>max_iterations</code>, <code>max_windows</code>, o gate de livelock —
+veja <a href="../concepts/continuity/">Continuidade</a>). O <code>--budget-usd</code> continua existindo para
+usuários cobrados por API que querem um teto rígido em dólares; nunca é o padrão e
+nada mais depende dele.</p>
 <ul>
 <li><code>leopold-driver run --budget-usd 5</code> (ou <code>LEOPOLD_BUDGET_USD=5</code>) define um teto de $5.</li>
 <li><code>worker.ts</code> lê <code>total_cost_usd</code> do evento <code>result</code>; <code>loop.ts</code> acumula em

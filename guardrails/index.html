@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -890,6 +892,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/continuity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Continuity
   
 
     
@@ -2193,12 +2223,20 @@ else is gated: PR creation, publishing, and deploys are the run's own call.</p>
 on a big-context model it never auto-compacts, so each turn re-bills the whole
 accumulated transcript. The defenses that matter:</p>
 <ul>
-<li><strong>USD budget hard-stop.</strong> Pass <code>--budget &lt;usd&gt;</code> to the driver; the run stops the
-  moment accumulated spend (from the CLI's real <code>total_cost_usd</code>) crosses it, with
-  work staged for review. This is the dependable ceiling.</li>
-<li><strong>Bounded, resumable runs.</strong> A run ends on <code>max_iterations</code> (default 50) so it
-  can't spin forever; the brief persists, so a fresh <code>/leopold-run</code> resumes from
-  <code>PLAN.md</code> with clean context. Bounded + resumable beats one giant session.</li>
+<li><strong>Progress is the governor, not USD.</strong> <code>total_cost_usd</code> does not reflect real
+  accounting on subscription billing, so a cost counter is deliberately <strong>not</strong> the
+  default governor of an autonomous run. The run is gated on durable progress —
+  checked-off plan items — via the <a href="../concepts/continuity/">livelock gate</a>, plus the
+  hard ceilings below. API-billed users who want a hard cost cap can opt in with the
+  driver's <code>--budget &lt;usd&gt;</code>: the run stops the moment accumulated spend (from the
+  CLI's <code>total_cost_usd</code>) crosses it, with work staged for review. It is an opt-in
+  ceiling, never the default, and nothing else depends on it.</li>
+<li><strong>Bounded, resumable runs.</strong> A run ends on <code>max_iterations</code> (default 50 — the
+  <strong>run's</strong> ceiling, carried across context windows) and on <code>max_windows</code> (default
+  10), so it can't spin forever; the brief persists, so a fresh <code>/leopold-run</code>
+  resumes from <code>PLAN.md</code> with clean context. Since 0.18.0 a filled context window is
+  a <strong>window roll, not a stop</strong>: the run checkpoints and continues in a fresh window
+  — see <a href="../concepts/continuity/">Continuity</a>.</li>
 <li><strong>Lean orchestrator.</strong> The protocol delegates bulk-output work (authoring content,
   generating files) to a subagent that <strong>writes to a file</strong>, so the output never
   accumulates in the orchestrator's context.</li>
@@ -2227,11 +2265,21 @@ true:</p>
 <li><strong>Repeated failure</strong> — the same kind of failure N consecutive turns (default 3),
    <em>after</em> the one persona-led change of approach the run gets when it first hits the
    ceiling. The ceiling itself never moves.</li>
-<li><strong>Iteration budget</strong> — the iteration counter reached <code>max_iterations</code> (default 50).</li>
-<li><strong>USD budget</strong> — accumulated spend crossed <code>--budget</code>, if set.</li>
+<li><strong>Iteration budget</strong> — the iteration counter reached <code>max_iterations</code> (default 50).
+   The counter carries across context windows: it is the run's ceiling, never reset
+   by a window roll.</li>
+<li><strong>USD budget</strong> — accumulated spend crossed <code>--budget</code>, if you opted in (driver
+   only; never the default governor).</li>
+<li><strong>Livelock across windows</strong> — two consecutive context windows closed zero plan
+   items (<code>no_progress_across_windows</code>). Rolling is free; producing is mandatory.</li>
+<li><strong>Window ceiling</strong> — the run consumed <code>max_windows</code> context windows (default 10).</li>
 <li><strong>Escalation</strong> — a fork a synthesized role could not settle either (an unusable
    answer, a harness error). A fork it <em>can</em> settle is decided and logged, not escalated.</li>
 </ol>
+<p><strong>A full context window is deliberately not on this list any more.</strong> Since 0.18.0 it
+is a window roll: the run writes <code>.leopold/CHECKPOINT.md</code> and the next window
+continues the plan (relaunched by <code>leopold watch</code> under <code>continuity: auto</code>). See
+<a href="../concepts/continuity/">Continuity</a>.</p>
 <p>Every stop writes a final summary to the run output and a <code>stop</code> event to
 <code>events.jsonl</code>, naming which condition fired. The complete list — including
 <code>context_budget</code>, <code>no_progress</code> and <code>routed_complete</code>, and whether a synthesized role can
@@ -2299,12 +2347,22 @@ commit and push.</p>
 </tr>
 <tr>
 <td>Max iterations</td>
-<td>50</td>
+<td>50 (per run, across windows)</td>
 <td><code>GUARDRAILS.md</code></td>
 </tr>
 <tr>
+<td>Continuity</td>
+<td><code>auto</code></td>
+<td><code>GUARDRAILS.md</code> (<code>continuity: manual</code>)</td>
+</tr>
+<tr>
+<td>Max windows</td>
+<td>10</td>
+<td><code>GUARDRAILS.md</code> (<code>max_windows:</code>)</td>
+</tr>
+<tr>
 <td>USD budget</td>
-<td>none</td>
+<td>none (opt-in)</td>
 <td><code>--budget</code> on the driver</td>
 </tr>
 </tbody>

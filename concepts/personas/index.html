@@ -18,7 +18,7 @@
         <link rel="prev" href="../dynamic-workflows/">
       
       
-        <link rel="next" href="../../canvas/">
+        <link rel="next" href="../continuity/">
       
       
         
@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -1111,6 +1113,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../continuity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Continuity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2346,13 +2376,23 @@ persona cannot touch any of it.</p>
 </tr>
 <tr>
 <td><code>budget_exceeded</code></td>
-<td>Accumulated real spend crossed <code>--budget-usd</code>.</td>
+<td>Accumulated real spend crossed <code>--budget-usd</code> (opt-in, driver only).</td>
 <td><strong>Never.</strong></td>
 </tr>
 <tr>
 <td><code>context_budget</code></td>
-<td>The in-session engine's context ceiling (default 5 MB).</td>
+<td>One context window filled (default 5 MB). Since 0.18.0 this is a <strong>window roll, not a death</strong>: the run checkpoints and the next window continues — see <a href="../continuity/">Continuity</a>.</td>
 <td><strong>Never.</strong></td>
+</tr>
+<tr>
+<td><code>no_progress_across_windows</code></td>
+<td>Two consecutive windows closed zero plan items — the livelock gate. Nothing relaunches.</td>
+<td><strong>Never.</strong></td>
+</tr>
+<tr>
+<td><code>max_windows</code></td>
+<td>The run consumed its window ceiling (default 10). Nothing relaunches.</td>
+<td><strong>Never.</strong> It may not raise it.</td>
 </tr>
 <tr>
 <td><code>no_progress</code></td>
@@ -2455,13 +2495,13 @@ wait for a person.</p>
         
         
           
-          <a href="../../canvas/" class="md-footer__link md-footer__link--next" aria-label="Next: The Canvas">
+          <a href="../continuity/" class="md-footer__link md-footer__link--next" aria-label="Next: Continuity">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                The Canvas
+                Continuity
               </div>
             </div>
             <div class="md-footer__button md-icon">

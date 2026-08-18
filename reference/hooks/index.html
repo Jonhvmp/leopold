@@ -713,6 +713,8 @@
       
         
       
+        
+      
     
     
     
@@ -885,6 +887,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/continuity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Continuity
   
 
     
@@ -1462,6 +1492,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-context-window-roll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The context window roll
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#node-kinds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1923,6 +1964,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-context-window-roll" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The context window roll
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#node-kinds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2094,6 +2146,44 @@ layer exists to go wrong. See <a href="../../concepts/harnesses/">Claude Code an
     Human -- no --&gt; Block["increment iteration ·&lt;br/&gt;block · re-inject continue"]</code></pre>
 <p>Fail-open: any unexpected error allows the stop. Continuity is best-effort;
 halting is always safe.</p>
+<h3 id="the-context-window-roll">The context window roll<a class="headerlink" href="#the-context-window-roll" title="Permanent link">&para;</a></h3>
+<p>Since 0.18.0 the context budget is <strong>a maintenance event, not a death</strong> — the
+behavior change is explicit, not implied. The hook measures the transcript against
+<code>max_context_mb</code> (default 5 MB) every turn:</p>
+<ul>
+<li><strong>At ~80% of the budget</strong> the turn is blocked with a checkpoint instruction: write
+  or merge <code>.leopold/CHECKPOINT.md</code> — the one contract in
+  <code>packages/driver/src/checkpoint.ts</code> (fixed title, seven fixed sections,
+  merge-don't-nest, 32768-byte cap that fails loud) — then continue the plan. The
+  instruction re-injects every turn in the band; merging is idempotent. A
+  <code>checkpoint_instruction</code> event is logged.</li>
+<li><strong>At 100%</strong> the stop happens with the reason it always had —
+  <code>stopped_reason: context_budget</code>, consumers read it — but the state says roll:
+  <code>windows</code> is incremented, the plan's checkbox vector is snapshotted, and
+  <code>checkpoint_written</code> records whether the checkpoint exists (a missing one is named
+  loudly in the stop message, never silently). The message always names the resume
+  path; a <code>window_roll</code> event is logged.</li>
+<li><strong>Before rolling, two gates run.</strong> The <strong>livelock gate</strong>: each roll records how
+  many plan items the ending window closed (checkbox-vector diff vs the
+  window-start snapshot); two consecutive windows closing zero items stop the run
+  with <code>no_progress_across_windows</code> — no resume pointer, nothing relaunches. And
+  <strong><code>max_windows</code></strong> (state &gt; <code>GUARDRAILS.md</code> &gt; 10) caps the total windows one run
+  may consume; reaching it stops the run with <code>max_windows</code>.</li>
+<li><strong>Budgets survive the roll.</strong> <code>iteration</code>/<code>max_iterations</code> is the run's ceiling
+  across all windows, and spent one-shots (the failure rescue, the deadlock repair)
+  stay spent through every reseed. Nothing a roll does refreshes a budget or clears
+  <code>.leopold/STOP</code>.</li>
+</ul>
+<p>Under <code>continuity: auto</code> (the default in <code>GUARDRAILS.md</code>), <code>leopold watch</code> detects
+the roll and relaunches the run headless on the harness that owns it (<code>claude -p</code> /
+<code>codex exec</code>), after independently re-checking the kill switch, <code>max_windows</code> and
+the livelock gate. Under <code>continuity: manual</code> nothing relaunches — you resume with
+<code>/leopold-run</code>. The re-injected continue instruction also carries the window line
+(<code>Window N/max</code>) and tells the agent to treat the workspace, tool results and
+durable state as authoritative over earlier narration. Full story:
+<a href="../../concepts/continuity/">Continuity</a>.</p>
+<p>A project with no checkpoint and default guardrails behaves exactly as 0.17.x
+except that the stop message now names the resume path.</p>
 <h3 id="node-kinds">Node kinds<a class="headerlink" href="#node-kinds" title="Permanent link">&para;</a></h3>
 <p><code>PLAN.md</code> items may declare a node kind (<code>@node work|gate|human|tool|verify|feedback</code>, or
 the <code>@gate</code> / <code>@human</code> / <code>@tool</code> / <code>@verify</code> / <code>@feedback</code> shorthands). The in-session engine acts on one
@@ -2268,7 +2358,10 @@ arm their own git lock. <code>leopold doctor</code> reports which state each har
 </div>
 <h2 id="event-log">Event log<a class="headerlink" href="#event-log" title="Permanent link">&para;</a></h2>
 <p>The two engine hooks append structured events to <code>.leopold/events.jsonl</code>
-(<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>), which <code>/leopold-status</code> reads. The enhancer
+(<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>, and the continuity events
+<code>checkpoint_instruction</code>, <code>window_roll</code>, <code>no_progress_across_windows</code>,
+<code>max_windows</code>; the watcher adds <code>window_relaunch</code> / <code>window_relaunch_refused</code>),
+which <code>/leopold-status</code> reads. The enhancer
 logs to its own global ledger instead — <code>~/.claude/enhance/enhancements.jsonl</code>,
 one line per injection or failed attempt — which <code>/leopold-enhance learn</code> mines.</p>
 
