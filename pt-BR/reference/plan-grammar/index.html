@@ -2149,7 +2149,7 @@ de tipo de nó — as duas ordens funcionam.</p>
 <h2 id="scenario-os-casos-de-aceitacao"><code>@scenario</code> — os casos de aceitação<a class="headerlink" href="#scenario-os-casos-de-aceitacao" title="Permanent link">&para;</a></h2>
 <div class="language-markdown highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">- [ ]</span> Add a <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>      <span class="ni">@scenario</span> no flag → the human-readable table prints, exactly as before
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table&#39;s exact fields
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table's exact fields
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> with no rows → prints <span class="sb">`[]`</span> and exits 0
 </span></code></pre></div>
 <p>Um caso por linha, <code>dado X → quando Y → então Z</code>, escrito de um jeito que quem chama
@@ -2233,9 +2233,9 @@ impediria.</p>
 <h3 id="rotulos">Rótulos<a class="headerlink" href="#rotulos" title="Permanent link">&para;</a></h3>
 <p>Um rótulo opcional pode vir depois do tipo: <code>nome:</code> (explícito, em qualquer caixa), ou
 uma palavra minúscula solta quando ainda há texto do item depois dela.</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">- [ ]</span> <span class="ni">@gate</span> security Review the auth diff     ← tipo gate, rótulo &quot;security&quot;
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">- [ ]</span> <span class="ni">@human</span> Ask the team                     ← sem rótulo (&quot;Ask&quot; tem maiúscula: é texto)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> build: make test                  ← rótulo &quot;build&quot;, comando <span class="sb">`make test`</span>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">- [ ]</span> <span class="ni">@gate</span> security Review the auth diff     ← tipo gate, rótulo "security"
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">- [ ]</span> <span class="ni">@human</span> Ask the team                     ← sem rótulo ("Ask" tem maiúscula: é texto)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> build: make test                  ← rótulo "build", comando <span class="sb">`make test`</span>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> make test                         ← SEM rótulo; o texto é o comando, palavra por palavra
 </span></code></pre></div>
 <p>Um nó <code>@tool</code> nunca aceita rótulo solto. O texto dele é o comando, então engolir a
@@ -2427,7 +2427,7 @@ divergir.</p>
 </span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>      <span class="ni">@on</span> migrated=false -&gt; 5
 </span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="k">- [ ]</span> (after: 3) <span class="ni">@gate</span> release Review the staged diff for anything that should not ship
 </span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="k">- [ ]</span> (after: 2) Roll the migration back and record why it failed — done when: the schema is back at the previous revision
-</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="k">- [ ]</span> (after: 4) <span class="ni">@feedback</span> Read this run&#39;s evidence and propose at most 3 follow-ups
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="k">- [ ]</span> (after: 4) <span class="ni">@feedback</span> Read this run's evidence and propose at most 3 follow-ups
 </span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="k">- [ ]</span> (after: 6) <span class="ni">@human</span> Decide whether this ships today
 </span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>      <span class="ni">@needs</span> migrated
 </span></code></pre></div>

@@ -2105,14 +2105,14 @@ página é basicamente sobre ela.</p>
 publica. O Codex entrega o PreToolUse com as mesmas chaves do Claude Code —
 <code>tool_name</code> (a ferramenta de shell dele chega como <code>Bash</code>), <code>tool_input.command</code>,
 <code>cwd</code>, <code>transcript_path</code> — e honra a mesma resposta:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">&quot;hookSpecificOutput&quot;</span><span class="p">:{</span><span class="nt">&quot;hookEventName&quot;</span><span class="p">:</span><span class="s2">&quot;PreToolUse&quot;</span><span class="p">,</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w"> </span><span class="nt">&quot;permissionDecision&quot;</span><span class="p">:</span><span class="s2">&quot;deny&quot;</span><span class="p">,</span><span class="nt">&quot;permissionDecisionReason&quot;</span><span class="p">:</span><span class="s2">&quot;…&quot;</span><span class="p">}}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">"hookSpecificOutput"</span><span class="p">:{</span><span class="nt">"hookEventName"</span><span class="p">:</span><span class="s2">"PreToolUse"</span><span class="p">,</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w"> </span><span class="nt">"permissionDecision"</span><span class="p">:</span><span class="s2">"deny"</span><span class="p">,</span><span class="nt">"permissionDecisionReason"</span><span class="p">:</span><span class="s2">"…"</span><span class="p">}}</span>
 </span></code></pre></div>
 <p><strong><code>stop-continuity.sh</code> (Stop) — o motor autônomo.</strong> Quando o agente termina um turno,
 ele lê <code>state.json</code> e <code>PLAN.md</code>; se ainda há trabalho e nenhuma condição de parada
 bateu, bloqueia o encerramento e reinjeta a próxima instrução. O Codex entrega o Stop
 com <code>cwd</code>, <code>transcript_path</code> e <code>stop_hook_active</code>, e honra a mesma resposta:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span><span class="nt">&quot;decision&quot;</span><span class="p">:</span><span class="s2">&quot;block&quot;</span><span class="p">,</span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="s2">&quot;…&quot;</span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span><span class="nt">"decision"</span><span class="p">:</span><span class="s2">"block"</span><span class="p">,</span><span class="nt">"reason"</span><span class="p">:</span><span class="s2">"…"</span><span class="p">}</span>
 </span></code></pre></div>
 <p>Ou seja: autonomia não é exclusividade do Claude. O <code>/leopold-run</code> mantém uma sessão
 Codex andando do mesmo jeito que mantém uma sessão do Claude Code — mesmos orçamentos,
@@ -2145,18 +2145,18 @@ Code está em jogo (assim instalações existentes continuam funcionando), senã
 marcadores:</p>
 <div class="language-toml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># &gt;&gt;&gt; leopold (managed) &gt;&gt;&gt;</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">[[hooks.PreToolUse]]</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Bash"</span>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/voce/.claude/leopold/hooks/guard-irreversible.sh&quot;</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/guard-irreversible.sh"</span>
 </span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
 </span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
 </span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="k">[[hooks.Stop]]</span>
 </span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
 </span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="k">[[hooks.Stop.hooks]]</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/home/voce/.claude/leopold/hooks/stop-continuity.sh&quot;</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/stop-continuity.sh"</span>
 </span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span>
 </span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="c1"># &lt;&lt;&lt; leopold (managed) &lt;&lt;&lt;</span>
 </span></code></pre></div>

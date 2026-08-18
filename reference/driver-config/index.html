@@ -2077,9 +2077,9 @@
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>leopold<span class="w"> </span>workflow<span class="w">                     </span><span class="c1"># compile the brief into a dynamic workflow (emit)</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--print<span class="w">             </span><span class="c1"># dump the compiled args JSON</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w">               </span><span class="c1"># execute it headlessly (experimental runtime)</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>leopold<span class="w"> </span>graph<span class="w">                        </span><span class="c1"># print + validate the plan&#39;s graph (exit 1 if invalid)</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>leopold<span class="w"> </span>graph<span class="w">                        </span><span class="c1"># print + validate the plan's graph (exit 1 if invalid)</span>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>leopold<span class="w"> </span>graph<span class="w"> </span>--mermaid<span class="w">              </span><span class="c1"># the same graph as a fenced mermaid diagram</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>leopold<span class="w"> </span>insights<span class="w">                     </span><span class="c1"># summarize the run&#39;s events.jsonl</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>leopold<span class="w"> </span>insights<span class="w">                     </span><span class="c1"># summarize the run's events.jsonl</span>
 </span></code></pre></div>
 <h2 id="graph-pre-flight-leopold-graph">Graph pre-flight (<code>leopold graph</code>)<a class="headerlink" href="#graph-pre-flight-leopold-graph" title="Permanent link">&para;</a></h2>
 <p>The command to run before you trust a plan. It parses <code>.leopold/PLAN.md</code> into the
@@ -2087,10 +2087,10 @@ same graph the scheduler routes on — node kinds (<code>@gate</code>, <code>@hu
 <code>@verify</code>), <code>(after:)</code> dependency edges, conditional <code>@on</code> routes, <code>@emit</code>/<code>@needs</code>
 signals — prints it, and validates it. <strong>A malformed graph fails here, before the
 first agent runs</strong>, with the offending items named:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>✗ Cycle: item 4 (&quot;Run the migration&quot;) -&gt; item 9 (&quot;Roll back&quot;) -&gt; item 4 (…). …
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>✗ item 7 (&quot;Ship it&quot;) routes to item 12, which does not exist (`@on fail`).
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>✗ item 5 (&quot;Deploy&quot;) needs signal &quot;approved&quot;, which no item emits.
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>✗ item 8 (&quot;Clean up&quot;) is unreachable: no wave and no route can dispatch it.
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>✗ Cycle: item 4 ("Run the migration") -&gt; item 9 ("Roll back") -&gt; item 4 (…). …
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>✗ item 7 ("Ship it") routes to item 12, which does not exist (`@on fail`).
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>✗ item 5 ("Deploy") needs signal "approved", which no item emits.
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>✗ item 8 ("Clean up") is unreachable: no wave and no route can dispatch it.
 </span></code></pre></div>
 <table>
 <thead>
@@ -2434,7 +2434,7 @@ whether a persona can affect it — is
 <h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
 <p>On completion or escalation, the driver writes to the terminal and <code>events.jsonl</code>,
 and POSTs JSON to <code>LEOPOLD_WEBHOOK</code> if set:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Leopold finished&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plan complete; everything staged.&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;leopold&quot;</span><span class="w"> </span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leopold finished"</span><span class="p">,</span><span class="w"> </span><span class="nt">"body"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plan complete; everything staged."</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leopold"</span><span class="w"> </span><span class="p">}</span>
 </span></code></pre></div>
 <p>When <code>learn_on_finish</code> is on, the completion notice also lists any proposed
 charter amendments (written to <code>.leopold/CHARTER-amendments.md</code>; the charter

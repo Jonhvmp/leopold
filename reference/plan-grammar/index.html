@@ -2147,7 +2147,7 @@ marker — both orders work.</p>
 <h2 id="scenario-the-acceptance-cases"><code>@scenario</code> — the acceptance cases<a class="headerlink" href="#scenario-the-acceptance-cases" title="Permanent link">&para;</a></h2>
 <div class="language-markdown highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">- [ ]</span> Add a <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>      <span class="ni">@scenario</span> no flag → the human-readable table prints, exactly as before
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table&#39;s exact fields
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table's exact fields
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> with no rows → prints <span class="sb">`[]`</span> and exits 0
 </span></code></pre></div>
 <p>One case per line, <code>given X → when Y → then Z</code>, phrased so a caller could observe it.
@@ -2231,9 +2231,9 @@ caught for it has no reason to hold back, and nothing would stop it.</p>
 <h3 id="labels">Labels<a class="headerlink" href="#labels" title="Permanent link">&para;</a></h3>
 <p>An optional label may follow the kind: <code>name:</code> (explicit, any case), or a bare
 lowercase word when item text follows it.</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">- [ ]</span> <span class="ni">@gate</span> security Review the auth diff     ← kind gate, label &quot;security&quot;
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">- [ ]</span> <span class="ni">@human</span> Ask the team                     ← no label (&quot;Ask&quot; is capitalised: it is text)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> build: make test                  ← label &quot;build&quot;, command <span class="sb">`make test`</span>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">- [ ]</span> <span class="ni">@gate</span> security Review the auth diff     ← kind gate, label "security"
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">- [ ]</span> <span class="ni">@human</span> Ask the team                     ← no label ("Ask" is capitalised: it is text)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> build: make test                  ← label "build", command <span class="sb">`make test`</span>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">- [ ]</span> <span class="ni">@tool</span> make test                         ← NO label; the text is the command, word for word
 </span></code></pre></div>
 <p>A <code>@tool</code> node never takes a bare label. Its text is the command, so eating the first
@@ -2421,7 +2421,7 @@ driver's test suite parses, validates and routes — not a second copy that can 
 </span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>      <span class="ni">@on</span> migrated=false -&gt; 5
 </span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="k">- [ ]</span> (after: 3) <span class="ni">@gate</span> release Review the staged diff for anything that should not ship
 </span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="k">- [ ]</span> (after: 2) Roll the migration back and record why it failed — done when: the schema is back at the previous revision
-</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="k">- [ ]</span> (after: 4) <span class="ni">@feedback</span> Read this run&#39;s evidence and propose at most 3 follow-ups
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="k">- [ ]</span> (after: 4) <span class="ni">@feedback</span> Read this run's evidence and propose at most 3 follow-ups
 </span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="k">- [ ]</span> (after: 6) <span class="ni">@human</span> Decide whether this ships today
 </span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>      <span class="ni">@needs</span> migrated
 </span></code></pre></div>

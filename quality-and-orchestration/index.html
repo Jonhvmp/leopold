@@ -2095,7 +2095,7 @@ uncommitted diff against <em>every</em> scenario before the item closes — an u
 to the worker as the concrete fix, not a vague "doesn't work":</p>
 <div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Register the <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>      <span class="ni">@scenario</span> no flag → the table prints unchanged
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table&#39;s exact fields
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table's exact fields
 </span></code></pre></div>
 <p>The lens is <strong>active only when the item declares <code>@scenario</code> lines</strong>, so scenario-less plans
 behave exactly as before — fully backward compatible. On by default; <code>--no-conformance</code> /

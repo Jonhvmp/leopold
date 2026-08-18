@@ -2077,9 +2077,9 @@
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>leopold<span class="w"> </span>workflow<span class="w">                     </span><span class="c1"># compile the brief into a dynamic workflow (emit)</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--print<span class="w">             </span><span class="c1"># dump the compiled args JSON</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w">               </span><span class="c1"># execute it headlessly (experimental runtime)</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>leopold<span class="w"> </span>graph<span class="w">                        </span><span class="c1"># print + validate the plan&#39;s graph (exit 1 if invalid)</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>leopold<span class="w"> </span>graph<span class="w">                        </span><span class="c1"># print + validate the plan's graph (exit 1 if invalid)</span>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>leopold<span class="w"> </span>graph<span class="w"> </span>--mermaid<span class="w">              </span><span class="c1"># the same graph as a fenced mermaid diagram</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>leopold<span class="w"> </span>insights<span class="w">                     </span><span class="c1"># summarize the run&#39;s events.jsonl</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>leopold<span class="w"> </span>insights<span class="w">                     </span><span class="c1"># summarize the run's events.jsonl</span>
 </span></code></pre></div>
 <h2 id="pre-voo-do-grafo-leopold-graph">Pré-voo do grafo (<code>leopold graph</code>)<a class="headerlink" href="#pre-voo-do-grafo-leopold-graph" title="Permanent link">&para;</a></h2>
 <p>O comando que você roda antes de confiar em um plano. Ele lê o <code>.leopold/PLAN.md</code> e
@@ -2087,10 +2087,10 @@ monta o mesmo grafo em que o scheduler roteia — tipos de nó (<code>@gate</cod
 <code>@tool</code>, <code>@verify</code>), arestas de dependência <code>(after:)</code>, rotas condicionais <code>@on</code>,
 sinais <code>@emit</code>/<code>@needs</code> —, imprime e valida. <strong>Um grafo malformado falha aqui, antes
 do primeiro agente rodar</strong>, com os itens culpados nomeados:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>✗ Cycle: item 4 (&quot;Run the migration&quot;) -&gt; item 9 (&quot;Roll back&quot;) -&gt; item 4 (…). …
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>✗ item 7 (&quot;Ship it&quot;) routes to item 12, which does not exist (`@on fail`).
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>✗ item 5 (&quot;Deploy&quot;) needs signal &quot;approved&quot;, which no item emits.
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>✗ item 8 (&quot;Clean up&quot;) is unreachable: no wave and no route can dispatch it.
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>✗ Cycle: item 4 ("Run the migration") -&gt; item 9 ("Roll back") -&gt; item 4 (…). …
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>✗ item 7 ("Ship it") routes to item 12, which does not exist (`@on fail`).
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>✗ item 5 ("Deploy") needs signal "approved", which no item emits.
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>✗ item 8 ("Clean up") is unreachable: no wave and no route can dispatch it.
 </span></code></pre></div>
 <table>
 <thead>
@@ -2434,7 +2434,7 @@ uma, se uma persona pode afetá-la — está em
 <h2 id="notificacoes">Notificações<a class="headerlink" href="#notificacoes" title="Permanent link">&para;</a></h2>
 <p>Ao concluir ou escalar, o driver escreve no terminal e no <code>events.jsonl</code>,
 e faz POST de JSON para <code>LEOPOLD_WEBHOOK</code> se estiver definido:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Leopold finished&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;body&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Plan complete; everything staged.&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;leopold&quot;</span><span class="w"> </span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leopold finished"</span><span class="p">,</span><span class="w"> </span><span class="nt">"body"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plan complete; everything staged."</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leopold"</span><span class="w"> </span><span class="p">}</span>
 </span></code></pre></div>
 <p>Quando <code>learn_on_finish</code> está ligado, o aviso de conclusão também lista as emendas
 propostas ao charter (escritas em <code>.leopold/CHARTER-amendments.md</code>; o charter
