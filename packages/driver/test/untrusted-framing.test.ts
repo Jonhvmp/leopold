@@ -149,11 +149,25 @@ test("the in-session skill carries both sentences verbatim — this is what pins
   );
 });
 
-test("the vendored asset skill is byte-identical to the repo skill — one text, two paths", () => {
+test("the vendored asset skill is byte-identical to the repo skill — one text, two paths", (t) => {
+  // What must ALWAYS hold: the build vendors skills/ into the package (copy-runtime.mjs
+  // regenerates assets/ from the repo tree on every build, so the published copy cannot
+  // drift by construction). The byte check below is the freshness guard for a tree that
+  // HAS been built — assets/ is gitignored, so a fresh checkout has nothing to compare.
+  const copyScript = fs.readFileSync(path.join(HERE, "..", "scripts", "copy-runtime.mjs"), "utf8");
+  assert.match(
+    copyScript,
+    /"skills"/,
+    "copy-runtime.mjs must vendor the skills/ dir — the published package carries the framing surface",
+  );
+  if (!fs.existsSync(ASSET_SKILL)) {
+    t.skip("assets/ not built — run `npm run build` to enable the byte-identity check");
+    return;
+  }
   assert.equal(
     fs.readFileSync(ASSET_SKILL, "utf8"),
     fs.readFileSync(SKILL, "utf8"),
-    "packages/driver/assets/skills/leopold-run/SKILL.md must match skills/leopold-run/SKILL.md byte-for-byte",
+    "packages/driver/assets/skills/leopold-run/SKILL.md must match skills/leopold-run/SKILL.md byte-for-byte — stale assets/, run `npm run build`",
   );
 });
 

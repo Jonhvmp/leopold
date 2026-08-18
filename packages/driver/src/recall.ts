@@ -85,7 +85,17 @@ export function parseDecisions(text: string): { blocks: DecisionBlock[]; malform
   // copied the template verbatim would otherwise archive it as a REAL decision — the
   // digest would then seed fabricated memory ("this project already decided…") into
   // every future run. Commented-out text is not a decision anybody made.
-  text = text.replace(/<!--[\s\S]*?-->/g, "");
+  //
+  // Stripping runs to a fixpoint — removing one region can splice the surrounding
+  // fragments into a fresh `<!--` — and a dangling unclosed `<!--` comments out the
+  // rest of the file in rendered markdown, so the parser drops that tail too.
+  for (;;) {
+    const stripped = text.replace(/<!--[\s\S]*?-->/g, "");
+    if (stripped === text) break;
+    text = stripped;
+  }
+  const dangling = text.indexOf("<!--");
+  if (dangling !== -1) text = text.slice(0, dangling);
   const blocks: DecisionBlock[] = [];
   let current: DecisionBlock | null = null;
   let currentField: string | null = null;

@@ -397,3 +397,31 @@ test("HTML-commented example blocks are never parsed as decisions (the real temp
   const real = parseDecisions(mixed).blocks;
   assert.equal(real.length, 1);
 });
+
+// A single-pass strip is not a strip: removing one comment can splice the fragments
+// around it into a fresh `<!--`, and an unclosed `<!--` comments out everything after
+// it in rendered markdown. Both must parse the way a renderer displays them.
+test("comment stripping survives spliced markers — one pass is not enough", () => {
+  const spliced = [
+    "## D1 — Real call",
+    "Decision:    keep",
+    "<!<!-- inner -->--",
+    "## D9 — Ghost from the spliced comment",
+    "Decision:    poison",
+    "-->",
+  ].join("\n");
+  const { blocks } = parseDecisions(spliced);
+  assert.deepEqual(blocks.map((b) => b.id), ["D1"], "a comment spliced together by the first strip pass leaked its contents as a decision");
+});
+
+test("an unclosed <!-- comments out the rest of the file, exactly as rendered", () => {
+  const dangling = [
+    "## D1 — Real call",
+    "Decision:    keep",
+    "<!--",
+    "## D9 — Ghost after the dangling comment",
+    "Decision:    poison",
+  ].join("\n");
+  const { blocks } = parseDecisions(dangling);
+  assert.deepEqual(blocks.map((b) => b.id), ["D1"], "text after an unclosed <!-- parsed as a decision — a renderer would never show it");
+});
