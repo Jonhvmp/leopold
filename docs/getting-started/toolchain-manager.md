@@ -114,8 +114,11 @@ The installer ships the **OpenAI profile**:
 
 - prompts for an OpenAI key, **validates it against chat + embeddings** before saving
   (it needs the `model.request` scope, not just embedding),
-- writes `~/.openviking/ov.conf` (`chmod 600`), wires the 4 hooks idempotently into every
-  harness present, and verifies end-to-end with a commit → extract round-trip.
+- stores the key in the platform credential store (macOS Keychain, or `secret-tool`
+  where available, with a `chmod 600` env file as the fallback), writes
+  `~/.openviking/ov.conf` (`chmod 600`) with an environment placeholder in its place,
+  wires the 4 hooks idempotently into every harness present, and verifies end-to-end
+  with a commit → extract round-trip.
 
 Everything is **local and private**: the OpenViking server binds to `127.0.0.1` (loopback) on
 the user's own device — it is not exposed to the network, and nothing points to a central

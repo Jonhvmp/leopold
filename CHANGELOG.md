@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-08-18
+
+### Security
+- **Hardened credential handling in the ovmem extension.** The installer now keeps
+  provider credentials in the platform credential store — macOS Keychain, or
+  `secret-tool` (libsecret) where available, with a `chmod 600`
+  `~/.openviking/secrets.env` as the fallback. `ov.conf` carries environment
+  placeholders in the `api_key` fields (resolved by the server at start time), the
+  bootstrap wrapper no longer embeds tokens, key validation keeps the credential off
+  the process command line, and the transient config backup is removed once the new
+  configuration is live. Re-running the installer migrates an existing setup;
+  reusing the stored credential works as before. Covered by hermetic regression
+  tests verified by mutation.
+
 ## [0.19.0] - 2026-08-18
 
 **The run remembers.** Every mission Leopold conducts leaves a decision trail behind —

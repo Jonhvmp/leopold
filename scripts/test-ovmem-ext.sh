@@ -510,6 +510,67 @@ check "settings.json still parses"            "$(jq -e . "$SET" >/dev/null 2>&1 
 check "the engine dir is gone"                "$( [ -e "$OVDIR" ] && echo yes || echo no )" "no"
 
 echo
+echo "ovmem extension — credentials never persist in config or wrapper"
+
+# The installer's credential-store, conf and wrapper writers, extracted the same way
+# ovmem_specs is: a change there that these tests do not follow fails loudly.
+CRED_FNS="$TD/cred-fns.sh"
+sed -n '/^cred_store_name()/,/^}/p;/^cred_put()/,/^}/p;/^cred_get()/,/^}/p;/^write_ov_conf()/,/^}/p;/^write_start_wrapper()/,/^}/p' \
+  "$ROOT/extensions/ovmem/install.sh" > "$CRED_FNS"
+check "the five credential functions extract whole" \
+  "$(grep -c '^\(cred_store_name\|cred_put\|cred_get\|write_ov_conf\|write_start_wrapper\)()' "$CRED_FNS")" "5"
+
+CRED_OUT="$(bash -c '
+  set -uo pipefail
+  TD="'"$TD"'"; mkdir -p "$TD/cred-home"
+  SECRETS_ENV="$TD/cred-home/secrets.env"
+  . "'"$CRED_FNS"'"
+  cred_store_name() { echo file; }   # deterministic backend for the suite
+  printf "%s" "sk-test-FAKECRED0001" | cred_put OPENAI_API_KEY
+  echo "envperm=$(stat -c %a "$SECRETS_ENV" 2>/dev/null || stat -f %Lp "$SECRETS_ENV")"
+  echo "get=$(cred_get OPENAI_API_KEY)"
+  printf "%s" "sk-test-ROTATED0002" | cred_put OPENAI_API_KEY
+  echo "rotated=$(cred_get OPENAI_API_KEY)"
+  echo "lines=$(grep -c "^export OPENAI_API_KEY=" "$SECRETS_ENV")"
+
+  OV_CONF="$TD/cred-home/ov.conf"; WORKSPACE="$TD/cred-home/data"
+  ROOTKEY="rk-local-0003"; CHAT_MODEL="gpt-5-mini"; EMBED_MODEL="text-embedding-3-small"
+  EMBED_DIM=1536; PROVIDER=openai
+  write_ov_conf
+  echo "confperm=$(stat -c %a "$OV_CONF" 2>/dev/null || stat -f %Lp "$OV_CONF")"
+  echo "vlmkey=$(jq -r .vlm.api_key "$OV_CONF")"
+  echo "embkey=$(jq -r .embedding.dense.api_key "$OV_CONF")"
+  echo "rootkey=$(jq -r .server.root_api_key "$OV_CONF")"
+  grep -q "sk-test" "$OV_CONF" && echo "conf-leak=yes" || echo "conf-leak=no"
+
+  BIN="$TD/cred-home/bin"; AWS_REGION_V="us-east-1"; PROVIDER=bedrock
+  write_start_wrapper
+  echo "wrapperperm=$(stat -c %a "$BIN/openviking-start" 2>/dev/null || stat -f %Lp "$BIN/openviking-start")"
+  bash -n "$BIN/openviking-start" && echo "wrapper-syntax=ok"
+  grep -qE "AWS_BEARER_TOKEN_BEDROCK=." "$BIN/openviking-start" && echo "wrapper-token=yes" || echo "wrapper-token=no"
+  grep -q "sk-test" "$BIN/openviking-start" && echo "wrapper-leak=yes" || echo "wrapper-leak=no"
+  echo "region=$(grep -c "^export AWS_REGION=us-east-1$" "$BIN/openviking-start")"
+  resolved="$(bash -c "curl(){ return 1; }; nohup(){ :; }; export -f curl nohup
+    . \"$BIN/openviking-start\" >/dev/null 2>&1; printf %s \"\${OPENAI_API_KEY:-}\"")"
+  echo "resolved=$resolved"
+' 2>&1)"
+has  "secrets env file is 0600"                        "$CRED_OUT" "envperm=600"
+has  "the stored credential round-trips"               "$CRED_OUT" "get=sk-test-FAKECRED0001"
+has  "storing again rotates, never appends"            "$CRED_OUT" "rotated=sk-test-ROTATED0002"
+has  "one export line after rotation"                  "$CRED_OUT" "lines=1"
+has  "ov.conf is 0600"                                 "$CRED_OUT" "confperm=600"
+has  "vlm api_key is the env placeholder"              "$CRED_OUT" 'vlmkey=${OPENAI_API_KEY}'
+has  "embedding api_key is the env placeholder"        "$CRED_OUT" 'embkey=${OPENAI_API_KEY}'
+has  "the local root key stays literal for the hooks"  "$CRED_OUT" "rootkey=rk-local-0003"
+has  "no credential material in ov.conf"               "$CRED_OUT" "conf-leak=no"
+has  "wrapper is 0700"                                 "$CRED_OUT" "wrapperperm=700"
+has  "wrapper parses"                                  "$CRED_OUT" "wrapper-syntax=ok"
+has  "no bedrock token baked into the wrapper"         "$CRED_OUT" "wrapper-token=no"
+has  "no credential material in the wrapper"           "$CRED_OUT" "wrapper-leak=no"
+has  "the region (not a secret) still rides the wrapper" "$CRED_OUT" "region=1"
+has  "wrapper resolves the credential at start time"   "$CRED_OUT" "resolved=sk-test-ROTATED0002"
+
+echo
 echo "ovmem extension — nothing escaped the temp dirs"
 HOME="$REAL_HOME"
 check "the real ~/.codex gained no new entries"      "$(real_codex_fp)"  "$CODEX_BEFORE"

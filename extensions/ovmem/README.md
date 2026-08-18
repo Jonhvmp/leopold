@@ -36,7 +36,10 @@ ovmem the real cost is **cents**: extraction only runs at PreCompact / SessionEn
 ### OpenAI
 
 One API key (needs the **embedding** and **`model.request`/chat** scopes). The installer
-validates the key against both before saving it to `~/.openviking/ov.conf` (`chmod 600`).
+validates the key against both, then stores it in the platform credential store — macOS
+Keychain, or `secret-tool` (libsecret) where available, with `~/.openviking/secrets.env`
+(`chmod 600`) as the fallback. `~/.openviking/ov.conf` (`chmod 600`) carries only an
+environment placeholder for it; the server resolves the real value at start time.
 
 - chat: `gpt-4o-mini` (default) · `gpt-4.1-mini` · `gpt-4o`
 - embed: `text-embedding-3-small` (1536d, default) · `text-embedding-3-large` (3072d)
