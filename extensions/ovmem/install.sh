@@ -53,6 +53,38 @@ ask_secret() { local p="$1" a=""
 confirm() { case "$(ask "$1 [Y/n]" "Y")" in [nN]*) return 1;; *) return 0;; esac; }
 j() { jq -r "$1" "$MODELS"; }
 
+# ---- credential store -------------------------------------------------------
+# Provider credentials live in the platform credential store (macOS Keychain, or
+# libsecret via secret-tool) with a 0600 env file as the fallback. ov.conf carries
+# `${VAR}` placeholders — OpenViking's config loader expands environment variables
+# at load time — so the config file itself stays shareable with diagnostics.
+SECRETS_ENV="$OV_DIR/secrets.env"
+cred_store_name() {
+  if [ "$(uname -s)" = Darwin ] && command -v security >/dev/null 2>&1; then echo keychain
+  elif command -v secret-tool >/dev/null 2>&1; then echo libsecret
+  else echo file; fi
+}
+cred_put() { # $1 = env var name; value on stdin
+  local v=""; IFS= read -r v || true; [ -n "$v" ] || return 0
+  case "$(cred_store_name)" in
+    keychain)  security add-generic-password -U -s openviking -a "$1" -w "$v" >/dev/null 2>&1 ;;
+    libsecret) printf '%s' "$v" | secret-tool store --label "openviking $1" service openviking account "$1" ;;
+    file)      ( umask 077
+                 local tmp="$SECRETS_ENV.tmp"
+                 { [ -f "$SECRETS_ENV" ] && grep -v "^export $1=" "$SECRETS_ENV" || true; } > "$tmp"
+                 printf 'export %s=%q\n' "$1" "$v" >> "$tmp"
+                 chmod 600 "$tmp"; mv "$tmp" "$SECRETS_ENV" ) ;;
+  esac
+}
+cred_get() { # $1 = env var name -> stdout (empty when absent)
+  # shellcheck disable=SC1090
+  case "$(cred_store_name)" in
+    keychain)  security find-generic-password -s openviking -a "$1" -w 2>/dev/null || true ;;
+    libsecret) secret-tool lookup service openviking account "$1" 2>/dev/null || true ;;
+    file)      [ -f "$SECRETS_ENV" ] && ( set +u; . "$SECRETS_ENV" >/dev/null 2>&1; eval "printf '%s' \"\${$1:-}\"" ) || true ;;
+  esac
+}
+
 # Run a command with a live "<label>… Ns" spinner so a long, silent step never looks
 # frozen — even when it's really a background download/reindex. stdout+stderr are captured
 # to SPIN_OUT so callers can use the output (or print it on failure). Headless: one line.
@@ -112,11 +144,17 @@ read_current() {
   CUR_DIM="$(jq -r '.embedding.dense.dimension // empty' "$OV_CONF" 2>/dev/null)"
   CUR_ROOTKEY="$(jq -r '.server.root_api_key // empty' "$OV_CONF" 2>/dev/null)"
   case "$CUR_CHAT_MODEL" in bedrock/*) CUR_PROVIDER=bedrock ;; ?*) CUR_PROVIDER=openai ;; esac
-  [ "$CUR_PROVIDER" = openai ] && CUR_OPENAI_KEY="$(jq -r '.vlm.api_key // empty' "$OV_CONF" 2>/dev/null)"
+  if [ "$CUR_PROVIDER" = openai ]; then
+    CUR_OPENAI_KEY="$(jq -r '.vlm.api_key // empty' "$OV_CONF" 2>/dev/null)"
+    # A `${VAR}` placeholder means the value lives in the credential store.
+    case "$CUR_OPENAI_KEY" in '${'*'}') CUR_OPENAI_KEY="$(cred_get OPENAI_API_KEY)" ;; esac
+  fi
   CUR_CHAT_ID="$(j ".chat[]|select(.model==\"$CUR_CHAT_MODEL\").id" 2>/dev/null | head -1)"
   CUR_EMBED_ID="$(j ".embed[]|select(.model==\"$CUR_EMBED_MODEL\").id" 2>/dev/null | head -1)"
+  CUR_AWS_TOKEN="$(cred_get AWS_BEARER_TOKEN_BEDROCK)"
   if [ -f "$BIN/openviking-start" ]; then
-    CUR_AWS_TOKEN="$( (eval "$(grep '^export AWS_BEARER_TOKEN_BEDROCK=' "$BIN/openviking-start" 2>/dev/null)"; printf '%s' "${AWS_BEARER_TOKEN_BEDROCK:-}") )"
+    # Older wrappers exported the token inline; read it once so a re-run migrates it.
+    [ -n "$CUR_AWS_TOKEN" ] || CUR_AWS_TOKEN="$( (eval "$(grep '^export AWS_BEARER_TOKEN_BEDROCK=' "$BIN/openviking-start" 2>/dev/null)"; printf '%s' "${AWS_BEARER_TOKEN_BEDROCK:-}") )"
     CUR_AWS_REGION="$( (eval "$(grep '^export AWS_REGION=' "$BIN/openviking-start" 2>/dev/null)"; printf '%s' "${AWS_REGION:-}") )"
   fi
 }
@@ -210,12 +248,15 @@ ok "OpenViking ready"
 # ---- auth (reuse existing credential when possible) ------------------------
 OPENAI_KEY=""; AWS_TOKEN=""; AWS_REGION_V=""
 validate_openai() { local cc ec
-  cc="$(curl -s -o /tmp/ovm_c.json -w '%{http_code}' -m 30 https://api.openai.com/v1/chat/completions \
-    -H "Authorization: Bearer $1" -H "Content-Type: application/json" \
+  # The Authorization header rides curl's stdin config (-K -), never its argv.
+  cc="$(printf 'header = "Authorization: Bearer %s"\n' "$1" | \
+    curl -s -K - -o /tmp/ovm_c.json -w '%{http_code}' -m 30 https://api.openai.com/v1/chat/completions \
+    -H "Content-Type: application/json" \
     -d "{\"model\":\"$CHAT_MODEL\",\"max_tokens\":5,\"messages\":[{\"role\":\"user\",\"content\":\"ok\"}]}" 2>/dev/null || echo 000)"
   if [ "$cc" != 200 ]; then grep -q "model.request" /tmp/ovm_c.json 2>/dev/null && warn "key missing the model.request (chat) scope" || warn "chat check failed (HTTP $cc)"; return 1; fi
-  ec="$(curl -s -o /tmp/ovm_e.json -w '%{http_code}' -m 30 https://api.openai.com/v1/embeddings \
-    -H "Authorization: Bearer $1" -H "Content-Type: application/json" -d "{\"model\":\"$EMBED_MODEL\",\"input\":\"ok\"}" 2>/dev/null || echo 000)"
+  ec="$(printf 'header = "Authorization: Bearer %s"\n' "$1" | \
+    curl -s -K - -o /tmp/ovm_e.json -w '%{http_code}' -m 30 https://api.openai.com/v1/embeddings \
+    -H "Content-Type: application/json" -d "{\"model\":\"$EMBED_MODEL\",\"input\":\"ok\"}" 2>/dev/null || echo 000)"
   [ "$ec" = 200 ] || { warn "embeddings check failed (HTTP $ec)"; return 1; }; return 0; }
 
 if [ "$PROVIDER" = openai ]; then
@@ -244,33 +285,76 @@ else
 fi
 
 # ---- ov.conf (preserve the root key on reconfigure) ------------------------
+write_ov_conf() {
+  # Provider credentials never land in the file: `${VAR}` placeholders are expanded
+  # by OpenViking's config loader from the server's environment at load time. The
+  # root_api_key stays literal — it is the local 127.0.0.1-only token the hooks read.
+  ( umask 077
+    if [ "$PROVIDER" = openai ]; then
+      jq -n --arg ws "$WORKSPACE" --arg rk "$ROOTKEY" --arg cm "$CHAT_MODEL" --arg em "$EMBED_MODEL" --argjson dim "$EMBED_DIM" '{
+        storage:{workspace:$ws}, server:{host:"127.0.0.1",port:1933,root_api_key:$rk},
+        embedding:{dense:{provider:"openai",model:$em,api_key:"${OPENAI_API_KEY}",api_base:"https://api.openai.com/v1",dimension:$dim}},
+        vlm:{provider:"openai",model:$cm,api_key:"${OPENAI_API_KEY}",api_base:"https://api.openai.com/v1",temperature:0.0,max_tokens:16384,max_retries:2},
+        output_language_override:"en"}' > "$OV_CONF"
+    else
+      jq -n --arg ws "$WORKSPACE" --arg rk "$ROOTKEY" --arg cm "$CHAT_MODEL" --arg em "$EMBED_MODEL" --argjson dim "$EMBED_DIM" '{
+        storage:{workspace:$ws}, server:{host:"127.0.0.1",port:1933,root_api_key:$rk},
+        embedding:{dense:{provider:"litellm",model:$em,api_key:"bedrock",dimension:$dim}},
+        vlm:{provider:"litellm",model:$cm,api_key:"bedrock",temperature:0.0,max_tokens:8192,max_retries:2},
+        output_language_override:"en"}' > "$OV_CONF"
+    fi
+    chmod 600 "$OV_CONF" )
+}
 say "writing $OV_CONF"
 mkdir -p "$OV_DIR" "$WORKSPACE"
-[ -f "$OV_CONF" ] && cp "$OV_CONF" "$OV_CONF.ovmem.bak"
+[ -f "$OV_CONF" ] && { cp "$OV_CONF" "$OV_CONF.ovmem.bak"; chmod 600 "$OV_CONF.ovmem.bak"; }
 ROOTKEY="${CUR_ROOTKEY:-$(openssl rand -hex 16 2>/dev/null || echo ov-local-dev-key)}"
 if [ "$PROVIDER" = openai ]; then
-  jq -n --arg key "$OPENAI_KEY" --arg ws "$WORKSPACE" --arg rk "$ROOTKEY" --arg cm "$CHAT_MODEL" --arg em "$EMBED_MODEL" --argjson dim "$EMBED_DIM" '{
-    storage:{workspace:$ws}, server:{host:"127.0.0.1",port:1933,root_api_key:$rk},
-    embedding:{dense:{provider:"openai",model:$em,api_key:$key,api_base:"https://api.openai.com/v1",dimension:$dim}},
-    vlm:{provider:"openai",model:$cm,api_key:$key,api_base:"https://api.openai.com/v1",temperature:0.0,max_tokens:16384,max_retries:2},
-    output_language_override:"en"}' > "$OV_CONF"
+  printf '%s' "$OPENAI_KEY" | cred_put OPENAI_API_KEY
 else
-  jq -n --arg ws "$WORKSPACE" --arg rk "$ROOTKEY" --arg cm "$CHAT_MODEL" --arg em "$EMBED_MODEL" --argjson dim "$EMBED_DIM" '{
-    storage:{workspace:$ws}, server:{host:"127.0.0.1",port:1933,root_api_key:$rk},
-    embedding:{dense:{provider:"litellm",model:$em,api_key:"bedrock",dimension:$dim}},
-    vlm:{provider:"litellm",model:$cm,api_key:"bedrock",temperature:0.0,max_tokens:8192,max_retries:2},
-    output_language_override:"en"}' > "$OV_CONF"
+  printf '%s' "$AWS_TOKEN" | cred_put AWS_BEARER_TOKEN_BEDROCK
 fi
-chmod 600 "$OV_CONF"; ok "ov.conf written (chmod 600)"
+write_ov_conf
+ok "ov.conf written (chmod 600; credentials in the $(cred_store_name) store)"
 
 # ---- server bootstrap wrapper (+ bedrock env) ------------------------------
-mkdir -p "$BIN"
-{ echo '#!/usr/bin/env bash'; echo '# Start OpenViking in the background if not already healthy.'
-  if [ "$PROVIDER" = bedrock ]; then printf 'export AWS_BEARER_TOKEN_BEDROCK=%q\n' "$AWS_TOKEN"; printf 'export AWS_REGION=%q\n' "$AWS_REGION_V"; printf 'export AWS_DEFAULT_REGION=%q\n' "$AWS_REGION_V"; fi
-  echo 'if curl -sf http://127.0.0.1:1933/health > /dev/null 2>&1; then exit 0; fi'
-  printf 'nohup "%s/openviking-server" --host 127.0.0.1 --port 1933 > /tmp/openviking.log 2>&1 &\n' "$BIN"
-  echo 'echo $! > /tmp/openviking.pid'; } > "$BIN/openviking-start"
-chmod 700 "$BIN/openviking-start"
+write_start_wrapper() {
+  mkdir -p "$BIN"
+  ( umask 077
+    { cat <<'EOS'
+#!/usr/bin/env bash
+# Start OpenViking in the background if not already healthy.
+# Provider credentials resolve at start time: the environment wins, then the
+# platform credential store, then ~/.openviking/secrets.env (0600).
+umask 077
+EOS
+      printf 'SECRETS_ENV=%q\n' "$SECRETS_ENV"
+      cat <<'EOS'
+[ -f "$SECRETS_ENV" ] && . "$SECRETS_ENV"
+ov_fetch() {
+  [ -n "${!1:-}" ] && return 0
+  local v=""
+  if [ "$(uname -s)" = Darwin ] && command -v security >/dev/null 2>&1; then
+    v="$(security find-generic-password -s openviking -a "$1" -w 2>/dev/null || true)"
+  elif command -v secret-tool >/dev/null 2>&1; then
+    v="$(secret-tool lookup service openviking account "$1" 2>/dev/null || true)"
+  fi
+  [ -n "$v" ] && export "$1=$v"; return 0; }
+ov_fetch OPENAI_API_KEY
+ov_fetch AWS_BEARER_TOKEN_BEDROCK
+EOS
+      if [ "$PROVIDER" = bedrock ]; then
+        printf 'export AWS_REGION=%q\nexport AWS_DEFAULT_REGION=%q\n' "$AWS_REGION_V" "$AWS_REGION_V"
+      fi
+      cat <<EOS
+if curl -sf http://127.0.0.1:1933/health > /dev/null 2>&1; then exit 0; fi
+nohup "$BIN/openviking-server" --host 127.0.0.1 --port 1933 > /tmp/openviking.log 2>&1 &
+echo \$! > /tmp/openviking.pid
+EOS
+    } > "$BIN/openviking-start" )
+  chmod 700 "$BIN/openviking-start"
+}
+write_start_wrapper
 
 # ---- apply: stop (lock-safe) -> (rebuild index if needed) -> start ----------
 H=(-H "x-api-key: $ROOTKEY" -H "X-OpenViking-Account: default" -H "X-OpenViking-User: ${USER:-default}" -H "X-OpenViking-Agent: claude-code" -H "Content-Type: application/json")
@@ -298,6 +382,9 @@ if [ "$REINDEX" = 1 ]; then
     die "the embedding switch failed; your previous setup ($CUR_PROVIDER/$CUR_EMBED_ID) was restored. See /tmp/openviking.log"
   fi
 fi
+# The conf backup exists for the rollback above; once the new config is live it has
+# no further use, so it does not linger.
+rm -f "$OV_CONF.ovmem.bak"
 
 # ---- vendor scripts + wire hooks (idempotent) ------------------------------
 say "installing ovmem engine + hooks"
@@ -359,7 +446,8 @@ if echo "$EXTRACT" | jq -e '.status=="ok"' >/dev/null 2>&1; then
   ok "extraction works (memories: $(echo "$EXTRACT" | jq '.result|if type=="array" then length else . end' 2>/dev/null))"
 else
   warn "extraction did not confirm. Last server errors:"
-  grep -iE "error|denied|expired|invalid|bedrock|token|scope|mismatch" /tmp/openviking.log 2>/dev/null | tail -3 | sed 's/^/     /' || true
+  grep -iE "error|denied|expired|invalid|bedrock|token|scope|mismatch" /tmp/openviking.log 2>/dev/null | tail -3 \
+    | sed -E 's/[A-Za-z0-9_-]{24,}/[masked]/g; s/^/     /' || true
   [ "$PROVIDER" = bedrock ] && warn "Bedrock: check the API key, the region, and that the model is enabled in AWS Bedrock model access."
 fi
 

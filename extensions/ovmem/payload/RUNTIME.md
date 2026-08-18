@@ -129,7 +129,11 @@ curl -s -H "x-api-key: ov-local-dev-key" -H "X-OpenViking-User: $USER" \
 
 ## OpenViking config dependencies
 
-`~/.openviking/ov.conf` (backup in `ov.conf.bak`):
+`~/.openviking/ov.conf` (`chmod 600`). Provider credentials are NOT in this file: the
+`api_key` fields hold `${VAR}` environment placeholders, resolved by the server at start
+from the platform credential store (macOS Keychain / `secret-tool`) or
+`~/.openviking/secrets.env` (`chmod 600`). When diagnosing, read individual fields
+(`jq -r .vlm.model ov.conf`) rather than printing whole files from `~/.openviking`.
 - `embedding.dense` -> OpenAI `text-embedding-3-small` (recall / semantic search).
 - `vlm` -> OpenAI `gpt-4o-mini`, **`max_tokens: 16384`** (the model's cap; without it
   OpenViking requests 32768 and OpenAI rejects with 400).
