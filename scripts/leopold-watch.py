@@ -3,8 +3,11 @@
 
 It reads the run's own files in `.leopold/` (state.json, PLAN.md, DECISIONS.md,
 events.jsonl) AND the Claude Code session transcript (for real token/cost data), and
-serves a dashboard on 127.0.0.1 with live (SSE) updates. Read-only except one action:
-a Stop button that touches `.leopold/STOP` — the same kill switch `/leopold-stop` uses.
+serves a dashboard on 127.0.0.1 with live (SSE) updates. Read-only except two actions:
+a Stop button that touches `.leopold/STOP` — the same kill switch `/leopold-stop` uses
+— and, under `continuity: auto`, the window-roll relaunch (see the continuity section
+below): when the Stop hook rolls a full context window, the watcher relaunches the run
+headless on the harness that owns it, so recovery is not a human act.
 
 Cost is parsed from the transcript JSONL of whichever harness ran the session: a Claude
 Code transcript (each assistant message carries `usage` + `model`) or a Codex CLI
@@ -26,6 +29,8 @@ import importlib.util
 import json
 import os
 import re
+import subprocess
+import threading
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -166,9 +171,17 @@ def read_plan(name="PLAN.md"):
                    "kindLabel": mk["kindLabel"], "routes": [], "emits": [], "needs": []}
             items.append(cur)
             continue
-        # A marker line attaches to the item above it; everything else is ignored,
-        # exactly as before this grammar existed.
-        if cur is None or not s.startswith("@"):
+        # A marker line attaches to the item above it. An INDENTED non-marker line is
+        # the item's own wrapped prose, joined with a single space — the very rule
+        # plan.ts gained in #60 (the workflow compiler truncated every item at its
+        # first physical line); the ParserAgreesWithTheDriver suite fails the moment
+        # this mirror and the driver read a plan differently. Unindented prose between
+        # items (headings, blockquotes, paragraphs) stays ignored, exactly as before.
+        if cur is None:
+            continue
+        if not s.startswith("@"):
+            if s and line[:1] in (" ", "\t"):
+                cur["text"] = (cur["text"] + " " + s) if cur["text"] else s
             continue
         r = _ROUTE_LINE.match(s)
         if r:
@@ -1112,6 +1125,261 @@ def apply_canvas_command(body):
     return 200, {"ok": True, "applied": "command"}
 
 
+# --------------------------------------------------------------------------- continuity
+# `continuity: auto` — the watcher fills the 2am seat. When the Stop hook rolls a full
+# context window (stopped_reason `context_budget`, `.leopold/CHECKPOINT.md` written,
+# open plan items left), this monitor relaunches the run headless on the harness that
+# owns the session (`claude -p` / `codex exec`) and logs a `window_relaunch` event.
+# It is DETECTION AND RELAUNCH ONLY — event-shaped, never a scheduler: it reacts to a
+# roll it can see in state.json; it never wakes a run on a timer.
+#
+# Safety is re-checked here, independently of the hook and IN THIS ORDER, before any
+# spawn — refusing loudly (one `window_relaunch_refused` event with the reason):
+#   1. the kill switch (.leopold/STOP): the user's hand on the plug beats
+#      `continuity: auto`, always;
+#   2. `max_windows` (state > GUARDRAILS > 10): a relaunch must not open a window the
+#      ceiling denies;
+#   3. the livelock gate (`window_zero_streak` >= 2): two consecutive windows that
+#      closed zero plan items are a stuck run, and relaunching a stuck run "to give it
+#      one more shot" is the livelock the gate exists to stop.
+# `continuity: manual` never relaunches and never logs — the stop message's resume
+# pointer (/leopold-run) is the whole story.
+#
+# EXACTLY ONCE: the decision (fired or refused) is recorded in state.json
+# (`relaunch_window` + `relaunch_result`) BEFORE the spawn, so a watcher restart that
+# observes the same roll re-checks the record and stands down instead of firing again.
+# The record dies with the roll it decides: the reseed (leopold-run Step 1) writes a
+# fresh state carrying only budgets and spent one-shots. A relaunch never refreshes a
+# budget and never clears STOP — this code writes only the record and the event; the
+# budgets ride the reseed because the checkpoint exists.
+CONTINUITY_POLL_SECS = 2.0
+# A roll older than this is history, not an event. Starting `leopold watch` on a project
+# whose run rolled hours ago must NOT spawn a headless agent as a side effect of opening
+# a dashboard — the same 10-minute line the run skill already draws for a stale run.
+CONTINUITY_FRESH_SECS = 600
+# After firing, the child must reactivate the run within this long, or the relaunch is
+# recorded as FAILED and said out loud — a Popen that opened is not a seat that is taken.
+CONTINUITY_REACTIVATE_SECS = 120
+
+
+def _guardrail_value(name):
+    """First token after a `name:` line in GUARDRAILS.md (same line shapes the hook
+    greps: optional list dash, optional bold), lowercased; '' when absent."""
+    rx = re.compile(r"^\s*-?\s*(?:\*\*)?%s(?:\*\*)?\s*:\s*(\S+)" % re.escape(name), re.I)
+    for line in _read("GUARDRAILS.md").splitlines():
+        m = rx.match(line)
+        if m:
+            return m.group(1).strip().lower()
+    return ""
+
+
+def read_continuity():
+    """auto | manual — the GUARDRAILS.md `continuity:` line, default auto. An
+    unrecognized value is treated as auto (exactly what leopold doctor reports):
+    an unreadable line must not silently turn the relaunch off."""
+    return "manual" if _guardrail_value("continuity") == "manual" else "auto"
+
+
+def _max_windows(state):
+    """The window ceiling, resolved the way the hook resolves it: state > GUARDRAILS > 10."""
+    try:
+        return int(state["max_windows"])
+    except (KeyError, TypeError, ValueError):
+        pass
+    m = re.search(r"\d+", _guardrail_value("max_windows"))
+    return int(m.group(0)) if m else 10
+
+
+def _open_items():
+    return len(re.findall(r"^\s*- \[ \]", _read("PLAN.md"), re.M))
+
+
+def _int_field(state, key, default):
+    try:
+        return int(state.get(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def log_run_event(entry):
+    entry = dict(entry)
+    entry.setdefault("ts", datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    with open(os.path.join(LEO, "events.jsonl"), "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def _parse_ts(v):
+    """An ISO-8601 UTC stamp -> epoch seconds, or None. The hook writes them with -u."""
+    try:
+        return time.mktime(time.strptime(str(v), "%Y-%m-%dT%H:%M:%SZ")) - time.timezone
+    except (TypeError, ValueError):
+        return None
+
+
+def _record_relaunch(window, result):
+    """The exactly-once record, written atomically. The hook ignores these fields (its
+    numeric-budget validation names its own list) and the reseed template drops them,
+    so the record lives exactly as long as the roll it decides."""
+    st = read_state()
+    if not st or st.get("_invalid"):
+        return
+    st["relaunch_window"] = window
+    st["relaunch_result"] = result
+    st["relaunch_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    p = os.path.join(LEO, "state.json")
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(st, f)
+    os.replace(tmp, p)
+
+
+def relaunch_argv(harness, project):
+    """The headless resume command for the harness that owns the session. ONE place,
+    so the monitor and its tests cannot disagree about what gets spawned."""
+    if harness == "claude":
+        # -p is headless print mode and the prompt is the same resume a human types.
+        # Permissions are skipped because nobody is there to grant them; git stays
+        # locked regardless — the guard hook rides this session like any other.
+        return ["claude", "--dangerously-skip-permissions", "-p", "/leopold-run"]
+    if harness == "codex":
+        # codex exec has no slash commands, so the prompt names the installed skill.
+        # Hook trust is bypassed for the reason the driver does it (providers/codex.ts):
+        # config-file hooks are inert until trusted, and a headless relaunch has nobody
+        # to click "trust" — without the bypass the Stop hook never re-engages the run.
+        return ["codex", "exec", "--skip-git-repo-check", "--dangerously-bypass-hook-trust",
+                "--sandbox", "workspace-write", "-C", project,
+                "Use the leopold-run skill to resume the autonomous Leopold run in this project."]
+    return []
+
+
+def continuity_tick(spawn=None):
+    """One pass of the roll monitor -> a verdict string (for the terminal line and the
+    tests): 'idle', 'manual', 'already_handled', 'relaunched:<harness>', or
+    'refused:<reason>'. `spawn` is injectable for tests; the default detaches a real
+    process with the project as its cwd."""
+    st = read_state()
+    if not st or st.get("_invalid") or st.get("active") is True:
+        return "idle"
+    if st.get("stopped_reason") != "context_budget":
+        return "idle"       # every other stop is final on purpose; only a roll resumes
+    if _open_items() == 0:
+        return "idle"       # nothing left to continue — not a resumable roll
+    if read_continuity() == "manual":
+        return "manual"
+    # The kill switch is checked BEFORE the exactly-once record is even consulted, and it
+    # never consumes it: STOP is the user's hand on the plug, and removing it must hand
+    # the roll back to the ordinary decision path — a refusal that permanently burned the
+    # one relaunch would leave the seat empty with the log claiming the switch did it.
+    if os.path.exists(os.path.join(LEO, "STOP")):
+        return "kill_switch"
+    window = _int_field(st, "windows", 1)   # the hook already incremented: this IS window N+1
+    if st.get("relaunch_window") == window and st.get("relaunch_result"):
+        # Fired is a claim about a Popen, not about the seat. If the child never
+        # reactivated the run within the grace window, say so — once, durably — instead
+        # of answering already_handled forever while the 2am seat stays empty.
+        result = str(st.get("relaunch_result") or "")
+        if result.startswith("fired:"):
+            fired_at = _parse_ts(st.get("relaunch_at"))
+            if fired_at is not None and time.time() - fired_at > CONTINUITY_REACTIVATE_SECS:
+                _record_relaunch(window, "failed:" + result.split(":", 1)[1])
+                log_run_event({"event": "window_relaunch_failed", "window": window,
+                               "detail": "child never reactivated the run within %ds"
+                                         % CONTINUITY_REACTIVATE_SECS})
+                return "relaunch_failed"
+        return "already_handled"            # decided once; re-checked, never re-fired
+
+    def refuse(reason, detail=""):
+        _record_relaunch(window, "refused:" + reason)
+        e = {"event": "window_relaunch_refused", "window": window, "reason": reason}
+        if detail:
+            e["detail"] = detail
+        log_run_event(e)
+        return "refused:" + reason
+
+    # Freshness: the monitor is event-shaped, and a roll from hours ago is not an event.
+    # Without this, merely opening the dashboard on an old project would spawn a headless
+    # permission-skipping agent. Recorded as a durable refusal: a roll this stale belongs
+    # to a human, who resumes with /leopold-run whenever they choose.
+    roll_at = _parse_ts(st.get("last_turn"))
+    if roll_at is None:
+        try:
+            roll_at = os.path.getmtime(os.path.join(LEO, "state.json"))
+        except OSError:
+            roll_at = None
+    if roll_at is not None and time.time() - roll_at > CONTINUITY_FRESH_SECS:
+        return refuse("stale_roll", "rolled %ds ago; the fresh bound is %ds"
+                      % (int(time.time() - roll_at), CONTINUITY_FRESH_SECS))
+    if window > _max_windows(st):
+        return refuse("max_windows")
+    if _int_field(st, "window_zero_streak", 0) >= 2:
+        return refuse("no_progress_across_windows")
+    cp = os.path.join(LEO, "CHECKPOINT.md")
+    try:
+        has_cp = os.path.getsize(cp) > 0
+    except OSError:
+        has_cp = False
+    if not has_cp:
+        # The hook already warned in the stop message; the event stream says why the
+        # seat stays empty rather than degrading into silence. /leopold-run resumes
+        # from the brief alone when a human decides that is good enough.
+        return refuse("checkpoint_missing")
+    tp = st.get("transcript_path") or find_transcript()
+    harness = detect_harness(tp) if tp and os.path.isfile(tp) else "unknown"
+    argv = relaunch_argv(harness, PROJECT)
+    if not argv:
+        return refuse("unknown_harness")
+    # Record FIRST, then fire: a crash between the two costs one relaunch, never two.
+    _record_relaunch(window, "fired:" + harness)
+    try:
+        if spawn is not None:
+            spawn(argv)
+        else:
+            subprocess.Popen(argv, cwd=PROJECT or None, stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+    except OSError as e:
+        _record_relaunch(window, "refused:spawn_failed")
+        log_run_event({"event": "window_relaunch_refused", "window": window,
+                       "reason": "spawn_failed", "detail": str(e)})
+        return "refused:spawn_failed"
+    log_run_event({"event": "window_relaunch", "window": window, "harness": harness,
+                   "binary": argv[0]})
+    return "relaunched:" + harness
+
+
+def continuity_loop(poll=CONTINUITY_POLL_SECS):
+    last_line = None
+
+    def say(line):
+        # One line per state CHANGE, never per tick: a 2s poll repeating itself is noise,
+        # and noise is how a real refusal gets scrolled away.
+        nonlocal last_line
+        if line != last_line:
+            print(line)
+            last_line = line
+
+    while True:
+        try:
+            verdict = continuity_tick()
+            if verdict.startswith("relaunched:"):
+                say("Leopold watch: window roll detected -> relaunched headless (%s)"
+                    % verdict.split(":", 1)[1])
+            elif verdict.startswith("refused:"):
+                say("Leopold watch: window roll detected but NOT relaunched (%s) — see .leopold/events.jsonl"
+                    % verdict.split(":", 1)[1])
+            elif verdict == "relaunch_failed":
+                say("Leopold watch: the relaunched window NEVER reactivated the run — the seat is empty. Resume by hand: /leopold-run (details in .leopold/events.jsonl)")
+            elif verdict == "kill_switch":
+                say("Leopold watch: window roll detected but .leopold/STOP is present — remove it and the relaunch decision is made again.")
+        except Exception as e:
+            # The monitor must never take the dashboard down — but a monitor that died
+            # quietly on every tick is a relaunch feature that silently stopped existing.
+            # Say it once per distinct error, keep looping.
+            say("Leopold watch: continuity monitor error (%s: %s) — monitor still polling, relaunches may not fire"
+                % (type(e).__name__, str(e)[:120]))
+        time.sleep(poll)
+
+
 # --------------------------------------------------------------------------- snapshot
 def _num(state, key, default):
     v = state.get(key, default)
@@ -2051,6 +2319,11 @@ def main():
     tabs = ext_dashboards()  # warm the cache once (single-threaded) + surface what's wired
     if tabs:
         print("Extension tabs: %s" % ", ".join(e["label"] for e in tabs))
+    # The continuity monitor: relaunches a rolled window under `continuity: auto`.
+    # A daemon thread, so Ctrl-C still ends the watch instantly.
+    threading.Thread(target=continuity_loop, daemon=True, name="continuity").start()
+    print("Continuity: %s (GUARDRAILS.md `continuity:`; auto relaunches a rolled window headless)"
+          % read_continuity())
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

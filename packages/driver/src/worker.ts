@@ -41,6 +41,17 @@ EVIDENCE: <build/lint/test result if relevant>
 
 Use needs-decision ONLY for a genuine fork that is both irreversible and unsettleable from the task + charter — that bar is high, and almost everything clears it on your own judgment. Use done only when the item is fully complete and verified.`;
 
+/** The re-grounding sentence every CONTINUATION carries — a retry, a rescue: any
+ *  attempt that follows earlier narration the workspace may have outrun. ONE
+ *  definition for the TypeScript surface: loop.ts (retryLead) and rescue.ts
+ *  (formatRescueLead) import it, never copy it. The in-session hook re-injects the
+ *  SAME words on every continued turn (hooks/stop-continuity.sh, REGROUND_SENTENCE=…);
+ *  test/reground.test.ts fails the build the moment the two surfaces drift.
+ *  Deliberately NOT part of WORKER_APPEND: a first attempt has no earlier narration
+ *  to distrust, so it does not re-ground. */
+export const REGROUND_SENTENCE =
+  "Treat the current workspace, tool results, and durable session state as authoritative; inspect them instead of assuming earlier narration is still current.";
+
 export interface RunItemOpts {
   brief: Brief;
   cfg: DriverConfig;

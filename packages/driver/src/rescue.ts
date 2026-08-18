@@ -32,6 +32,7 @@ import {
   type Persona, type PersonaDecision,
 } from "./persona.js";
 import { logEvent, logPersonaDecision } from "./log.js";
+import { REGROUND_SENTENCE } from "./worker.js";
 import type { Brief, DriverConfig, RunState } from "./types.js";
 
 /** What the role changing the approach is told about the failure. */
@@ -152,7 +153,7 @@ export function parseRescue(text: string): Omit<Rescue, "persona"> | undefined {
 export function formatRescueLead(r: Rescue, panelLead?: string): string {
   const who = r.persona ? `${r.persona.name}, ${r.persona.role},` : "Leopold";
   return (
-    `THIS IS THE LAST ATTEMPT ON THIS ITEM. It failed the maximum number of times this run allows, and instead of giving up, ${who} looked at the evidence and changed the approach. The previous attempts are a dead end: do not refine them, take the path below.\n` +
+    `THIS IS THE LAST ATTEMPT ON THIS ITEM. It failed the maximum number of times this run allows, and instead of giving up, ${who} looked at the evidence and changed the approach. The previous attempts are a dead end: do not refine them, take the path below. ${REGROUND_SENTENCE}\n` +
     `NEW APPROACH: ${r.approach}\n` +
     `HOW IT DIFFERS: ${r.different}\n` +
     `WHY: ${r.decision.why || r.decision.decision}\n` +

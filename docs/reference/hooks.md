@@ -37,6 +37,47 @@ flowchart TD
 Fail-open: any unexpected error allows the stop. Continuity is best-effort;
 halting is always safe.
 
+### The context window roll
+
+Since 0.18.0 the context budget is **a maintenance event, not a death** — the
+behavior change is explicit, not implied. The hook measures the transcript against
+`max_context_mb` (default 5 MB) every turn:
+
+- **At ~80% of the budget** the turn is blocked with a checkpoint instruction: write
+  or merge `.leopold/CHECKPOINT.md` — the one contract in
+  `packages/driver/src/checkpoint.ts` (fixed title, seven fixed sections,
+  merge-don't-nest, 32768-byte cap that fails loud) — then continue the plan. The
+  instruction re-injects every turn in the band; merging is idempotent. A
+  `checkpoint_instruction` event is logged.
+- **At 100%** the stop happens with the reason it always had —
+  `stopped_reason: context_budget`, consumers read it — but the state says roll:
+  `windows` is incremented, the plan's checkbox vector is snapshotted, and
+  `checkpoint_written` records whether the checkpoint exists (a missing one is named
+  loudly in the stop message, never silently). The message always names the resume
+  path; a `window_roll` event is logged.
+- **Before rolling, two gates run.** The **livelock gate**: each roll records how
+  many plan items the ending window closed (checkbox-vector diff vs the
+  window-start snapshot); two consecutive windows closing zero items stop the run
+  with `no_progress_across_windows` — no resume pointer, nothing relaunches. And
+  **`max_windows`** (state > `GUARDRAILS.md` > 10) caps the total windows one run
+  may consume; reaching it stops the run with `max_windows`.
+- **Budgets survive the roll.** `iteration`/`max_iterations` is the run's ceiling
+  across all windows, and spent one-shots (the failure rescue, the deadlock repair)
+  stay spent through every reseed. Nothing a roll does refreshes a budget or clears
+  `.leopold/STOP`.
+
+Under `continuity: auto` (the default in `GUARDRAILS.md`), `leopold watch` detects
+the roll and relaunches the run headless on the harness that owns it (`claude -p` /
+`codex exec`), after independently re-checking the kill switch, `max_windows` and
+the livelock gate. Under `continuity: manual` nothing relaunches — you resume with
+`/leopold-run`. The re-injected continue instruction also carries the window line
+(`Window N/max`) and tells the agent to treat the workspace, tool results and
+durable state as authoritative over earlier narration. Full story:
+[Continuity](../concepts/continuity.md).
+
+A project with no checkpoint and default guardrails behaves exactly as 0.17.x
+except that the stop message now names the resume path.
+
 ### Node kinds
 
 `PLAN.md` items may declare a node kind (`@node work|gate|human|tool|verify|feedback`, or
@@ -207,6 +248,9 @@ cannot drift.
 ## Event log
 
 The two engine hooks append structured events to `.leopold/events.jsonl`
-(`turn_start`, `stop`, `guard_block`), which `/leopold-status` reads. The enhancer
+(`turn_start`, `stop`, `guard_block`, and the continuity events
+`checkpoint_instruction`, `window_roll`, `no_progress_across_windows`,
+`max_windows`; the watcher adds `window_relaunch` / `window_relaunch_refused`),
+which `/leopold-status` reads. The enhancer
 logs to its own global ledger instead — `~/.claude/enhance/enhancements.jsonl`,
 one line per injection or failed attempt — which `/leopold-enhance learn` mines.

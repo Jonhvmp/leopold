@@ -205,8 +205,10 @@ uma persona não pode encostar em nada disso.
 | `routed_complete` | Uma rota levou a run a um nó terminal; os itens restantes são nomeados no relatório. | — |
 | `kill_switch` | O `.leopold/STOP` existe (`/leopold-stop`, ou `touch`). | **Nunca.** Ela não pode limpá-lo. |
 | `iteration_budget` | O contador alcançou o `max_iterations` (padrão 50). | **Nunca.** Ela não pode aumentá-lo. |
-| `budget_exceeded` | O gasto real acumulado cruzou o `--budget-usd`. | **Nunca.** |
-| `context_budget` | O teto de contexto do engine in-session (padrão 5 MB). | **Nunca.** |
+| `budget_exceeded` | O gasto real acumulado cruzou o `--budget-usd` (opt-in, só no driver). | **Nunca.** |
+| `context_budget` | Uma janela de contexto encheu (padrão 5 MB). Desde a 0.18.0 isto é um **roll de janela, não uma morte**: a run faz checkpoint e a próxima janela continua — veja [Continuidade](continuity.md). | **Nunca.** |
+| `no_progress_across_windows` | Duas janelas consecutivas fecharam zero itens do plano — o gate de livelock. Nada relança. | **Nunca.** |
+| `max_windows` | A run consumiu seu teto de janelas (padrão 10). Nada relança. | **Nunca.** Ela não pode aumentá-lo. |
 | `no_progress` | N turnos seguidos sem mudança na assinatura do plano (padrão 6). | **Nunca.** |
 | `repeated_failure` | O mesmo tipo de falha bateu no teto **e** a única mudança de abordagem conduzida por persona já tinha sido gasta, ou não produziu nada. | Compra **uma** tentativa, uma vez por run. Nunca eleva o teto. |
 | `escalation` | Um fork que nem um papel sintetizado conseguiu resolver — uma resposta inutilizável, ou um erro do harness. | Resolve o que dá; um fork insolúvel ainda para a run. |

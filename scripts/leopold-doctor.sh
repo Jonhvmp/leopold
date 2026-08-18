@@ -159,13 +159,121 @@ else
 fi
 
 if command -v node >/dev/null 2>&1; then pass "node present ($(node -v 2>/dev/null)) — SDK driver usable"; else note "node missing — the SDK driver (optional) needs Node 18+"; fi
-
 if [ -f "$SRC/VERSION" ]; then
   pass "engine source at $SRC (v$(tr -d '[:space:]' < "$SRC/VERSION"))"
   up="$(bash "$SRC/scripts/leopold-update-check.sh" 2>/dev/null || true)"
   [ -n "$up" ] && note "$up — run: make update"
 else
   note "no source clone at $SRC (plugin install? update via 'claude plugin update')"
+fi
+
+
+# --- Project continuity ------------------------------------------------------
+# Doctor answers "will this run survive a full window, and why not" for the
+# project it is run from. Only speaks when a brief is present in the cwd.
+#
+# The checkpoint format has ONE contract (packages/driver/src/checkpoint.ts).
+# This script is bash on purpose, so it cannot import that module; the copy
+# below is pinned to the export by packages/driver/test/checkpoint.test.ts,
+# which fails the build the moment doctor's wording drifts from the contract.
+CP_TITLE="# Leopold Checkpoint"
+CP_SECTIONS="In-Flight Item, Files and Code, Errors and Fixes, Decisions This Run, Learned Constraints, Current Work, Next Step"
+CP_MAX_BYTES=32768
+
+cp_parse_error() { # <file> -> the parse error on stdout; empty when the checkpoint is valid
+  local bytes
+  bytes="$(wc -c < "$1" 2>/dev/null | tr -d ' ')"
+  if [ "${bytes:-0}" -gt "$CP_MAX_BYTES" ] 2>/dev/null; then
+    echo "checkpoint is $bytes bytes, over the $CP_MAX_BYTES-byte cap — consolidate it (merge, drop stale facts)"
+    return
+  fi
+  awk -v title="$CP_TITLE" -v sections="$CP_SECTIONS" '
+    BEGIN { n = split(sections, S, /, /); for (i = 1; i <= n; i++) known[S[i]] = 1 }
+    {
+      line = $0; gsub(/^[ \t]+|[ \t]+$/, "", line)
+      if (line == title) { titles++; next }
+      if (match(line, /^##[ \t]+/)) {
+        name = substr(line, RSTART + RLENGTH); gsub(/[ \t]+$/, "", name)
+        if (!(name in known)) {
+          low = tolower(name)
+          if (low ~ /^(mission|charter|guardrails|plan)/) {
+            err = "checkpoint has a \"## " name "\" section — brief state (Mission/Charter/Guardrails/Plan) never lives in the checkpoint; the next window re-reads the brief itself"
+          } else {
+            err = "checkpoint has an unknown section \"## " name "\" — the contract is: " sections
+          }
+          exit
+        }
+        if (name in seen) { err = "checkpoint has \"## " name "\" twice — a nested prior checkpoint; merge, never nest"; exit }
+        seen[name] = 1; order[++k] = name
+      }
+    }
+    END {
+      if (err != "") { print err; exit }
+      if (titles > 1) { print "checkpoint contains " titles " \"" title "\" titles — a nested prior checkpoint; merge, never nest"; exit }
+      miss = ""
+      for (i = 1; i <= n; i++) if (!(S[i] in seen)) miss = miss (miss == "" ? "" : ", ") "\"" S[i] "\""
+      if (miss != "") { print "checkpoint is missing section(s): " miss; exit }
+      for (i = 1; i <= k; i++) if (order[i] != S[i]) {
+        print "checkpoint sections are out of order: found \"" order[i] "\" where \"" S[i] "\" belongs — the order is fixed"; exit
+      }
+    }' "$1"
+}
+
+PROJ="${LEOPOLD_PROJECT_DIR:-$PWD}/.leopold"
+if [ -f "$PROJ/MISSION.md" ] || [ -f "$PROJ/state.json" ]; then
+  echo
+  echo "project continuity ($PROJ)"
+
+  # The kill switch beats everything, including continuity: auto. Say so first.
+  [ -e "$PROJ/STOP" ] && note "kill switch present (.leopold/STOP) — nothing relaunches this run until it is removed"
+
+  # Checkpoint: present / absent / malformed. A malformed checkpoint is a named
+  # problem — the next window would refuse it, so doctor refuses it here first.
+  if [ -f "$PROJ/CHECKPOINT.md" ]; then
+    cp_err="$(cp_parse_error "$PROJ/CHECKPOINT.md")"
+    if [ -z "$cp_err" ]; then
+      pass "checkpoint OK ($(wc -c < "$PROJ/CHECKPOINT.md" | tr -d ' ') bytes) — the next window continues from it"
+    else
+      miss "checkpoint MALFORMED: $cp_err — a reseed cannot trust .leopold/CHECKPOINT.md; fix it or archive it"
+    fi
+  else
+    pass "no checkpoint (normal — a window roll writes .leopold/CHECKPOINT.md before the window closes)"
+  fi
+
+  # continuity: who reseeds a rolled window. GUARDRAILS line, default auto.
+  cont_line="$(grep -m1 -iE '^[[:space:]]*-?[[:space:]]*(\*\*)?continuity(\*\*)?[[:space:]]*:' "$PROJ/GUARDRAILS.md" 2>/dev/null || true)"
+  cont="$(printf '%s' "${cont_line#*:}" | awk '{print tolower($1)}')"
+  case "${cont:-auto}" in
+    auto)   pass "continuity auto — leopold watch relaunches a rolled window headless" ;;
+    manual) note "continuity manual — relaunch is OFF; resume a rolled window yourself with /leopold-run" ;;
+    *)      note "continuity '$cont' is not a setting (auto|manual) — treated as auto; fix the line in .leopold/GUARDRAILS.md" ;;
+  esac
+
+  # Windows vs the ceiling. Same resolution as the hook: state > GUARDRAILS > 10.
+  windows="$(jq -r '.windows // 1' "$PROJ/state.json" 2>/dev/null || echo 1)"
+  case "$windows" in (*[!0-9]*|"") windows=1 ;; esac
+  max_windows="$(jq -r '.max_windows // empty' "$PROJ/state.json" 2>/dev/null || true)"
+  if [ -z "$max_windows" ]; then
+    mw_line="$(grep -m1 -iE '^[[:space:]]*-?[[:space:]]*(\*\*)?max_windows(\*\*)?[[:space:]]*:' "$PROJ/GUARDRAILS.md" 2>/dev/null || true)"
+    max_windows="$(printf '%s' "${mw_line#*:}" | grep -oE '[0-9]+' 2>/dev/null | head -1)"
+  fi
+  case "$max_windows" in (*[!0-9]*|"") max_windows=10 ;; esac
+  if [ "$windows" -ge "$max_windows" ] 2>/dev/null; then
+    note "windows $windows/$max_windows — the ceiling is reached; the next roll stops the run (raise max_windows in .leopold/GUARDRAILS.md if it genuinely needs more)"
+  else
+    pass "windows $windows/$max_windows"
+  fi
+
+  # The last window's progress: what the most recent rolled window actually closed.
+  # Two consecutive zero-item windows end the run, so a fresh zero is a warning.
+  last_closed="$(jq -r '(.window_progress // []) | if length > 0 then .[-1] else "" end' "$PROJ/state.json" 2>/dev/null || true)"
+  if [ -n "$last_closed" ]; then
+    if [ "$last_closed" = "0" ]; then
+      note "last window closed ZERO plan items — one more zero-item window ends the run (no_progress_across_windows)"
+    else
+      pass "last window closed $last_closed plan item(s)"
+    fi
+  fi
 fi
 
 echo

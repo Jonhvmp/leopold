@@ -9,7 +9,15 @@ em `.leopold/`, secrets criptografados em disco, consentimento na CLI.
 
 A CLI do Claude Code já reporta `total_cost_usd` por sessão, então não existe mapa de
 preços de modelo: o driver acumula o custo real por item e para a run quando ele cruza
-o teto. Esse é o teto de dólares confiável para uma run autônoma.
+o teto.
+
+**Este é um teto opt-in, nunca o governador da run.** Na cobrança por assinatura o
+`total_cost_usd` não reflete a contabilidade real, então um contador em USD não pode
+governar uma run autônoma — esse papel é do progresso durável (itens do plano
+fechados) e dos tetos rígidos (`max_iterations`, `max_windows`, o gate de livelock —
+veja [Continuidade](concepts/continuity.md)). O `--budget-usd` continua existindo para
+usuários cobrados por API que querem um teto rígido em dólares; nunca é o padrão e
+nada mais depende dele.
 
 - `leopold-driver run --budget-usd 5` (ou `LEOPOLD_BUDGET_USD=5`) define um teto de $5.
 - `worker.ts` lê `total_cost_usd` do evento `result`; `loop.ts` acumula em

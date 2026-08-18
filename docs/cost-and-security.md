@@ -9,7 +9,14 @@ secrets encrypted on disk, consent at the CLI.
 
 The Claude Code CLI already reports `total_cost_usd` per session, so there is no model
 price map: the driver accumulates the real cost per item and stops the run when it
-crosses the cap. This is the dependable dollar ceiling for an autonomous run.
+crosses the cap.
+
+**This is an opt-in ceiling, never the run's governor.** On subscription billing
+`total_cost_usd` does not reflect real accounting, so a USD counter cannot be trusted
+to govern an autonomous run — that job belongs to durable progress (checked-off plan
+items) and the hard ceilings (`max_iterations`, `max_windows`, the livelock gate — see
+[Continuity](concepts/continuity.md)). `--budget-usd` remains for API-billed users who
+want a hard dollar cap; it is never the default and nothing else depends on it.
 
 - `leopold-driver run --budget-usd 5` (or `LEOPOLD_BUDGET_USD=5`) sets a $5 cap.
 - `worker.ts` reads `total_cost_usd` from the `result` event; `loop.ts` accumulates it
