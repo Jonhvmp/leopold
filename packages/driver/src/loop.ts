@@ -48,8 +48,9 @@ import {
 } from "./persona.js";
 import { rescueRepeatedFailure } from "./rescue.js";
 import { parseAmendments, applyAmendments, MAX_ADDED_ITEMS, type AmendProposal } from "./amend.js";
-import { readCheckpoint, writeCheckpoint, mergeCheckpoints, driverCheckpoint, checkpointLead } from "./checkpoint.js";
+import { readCheckpoint, writeCheckpoint, mergeCheckpoints, driverCheckpoint, checkpointLead, checkpointCapBytes } from "./checkpoint.js";
 import { runTournament, type RunAttempt } from "./tournament.js";
+import { digestOf } from "./recall.js";
 import { currentProvider } from "./sdk.js";
 import { HARNESSES } from "./provider.js";
 import type { Brief, DriverConfig, RunState, WorkerStatus } from "./types.js";
@@ -70,6 +71,15 @@ function diffStat(cwd: string): string {
  *  worktree off HEAD, already a clean start. */
 const FRESH_RESTART =
   "The previous attempt at this item FAILED. Treat its code as a dead end written by someone else: do NOT patch, extend, or try to salvage it. Where that approach went wrong, replace it wholesale with a genuinely different one instead of adjusting it in place — reworking a failed diff pulls back toward the same dead end. Start from the behavior the item needs, not from the code already sitting there.";
+
+/** Compose the run's FIRST lead: the checkpoint lead (this run's own continuation,
+ *  when a prior window left one) ahead of the past-run decision digest (the
+ *  project's history). Either part may be absent; with neither, there is no first
+ *  lead at all — byte-identical to a build with no memory. */
+export function firstLead(checkpointLead: string | undefined, digest: string): string | undefined {
+  if (!digest) return checkpointLead;
+  return checkpointLead ? `${checkpointLead}\n\n${digest}` : digest;
+}
 
 /** Combine the fresh-restart framing with the root-cause panel's lead (if any),
  *  plus the re-grounding sentence — a retry follows a window's worth of narration
@@ -801,6 +811,18 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     logEvent(brief.leoDir, { event: "checkpoint_error", phase: "read", error: String(err).slice(0, 300) });
     console.warn(`  ⚠ .leopold/CHECKPOINT.md exists but does not parse (${String(err).slice(0, 160)}) — resuming from the brief and PLAN.md alone.`);
   }
+  // Memory — the run starts knowing what this project already decided. digestOf()
+  // reads the project's OWN archive (.leopold/runs/, cwd-scoped by construction),
+  // bounded and framed as untrusted past-run data, and rides the same first-lead
+  // seam as the checkpoint: checkpoint first (this run's continuation), digest
+  // after (the project's history). No archive → empty digest → the first lead is
+  // byte-identical to a digest-less build.
+  const digest = digestOf(path.join(brief.leoDir, "runs"));
+  if (digest) {
+    resumeLead = firstLead(resumeLead, digest);
+    logEvent(brief.leoDir, { event: "digest_seeded", bytes: Buffer.byteLength(digest, "utf8") });
+    console.log("Seeded the run-start digest of past-run decisions (.leopold/runs/), treated as data.");
+  }
   /** Consumed by the first dispatch only — every later take returns undefined. */
   const takeResumeLead = (): string | undefined => {
     const lead = resumeLead;
@@ -874,7 +896,15 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
         logEvent(brief.leoDir, { event: "checkpoint_error", phase: "merge", error: String(err).slice(0, 300), kept });
         console.warn(`  ⚠ the existing .leopold/CHECKPOINT.md does not parse (${String(err).slice(0, 160)}) — kept at ${path.basename(kept)}; writing a fresh one.`);
       }
-      writeCheckpoint(cpPath, prior ? mergeCheckpoints(prior, next) : next);
+      // The same proportional cap the hook enforces: the window knob governs the
+      // checkpoint, and an explicit max_checkpoint_kb in GUARDRAILS wins outright.
+      const kbLine = brief.guardrails.match(/^\s*-?\s*(?:\*\*)?max_checkpoint_kb(?:\*\*)?\s*:\s*(\d+)/im);
+      const mbLine = brief.guardrails.match(/^\s*-?\s*(?:\*\*)?max_context_mb(?:\*\*)?\s*:\s*(\d+)/im);
+      const cap = checkpointCapBytes(
+        (state as { max_context_mb?: number }).max_context_mb ?? (mbLine ? parseInt(mbLine[1], 10) : 5),
+        kbLine ? parseInt(kbLine[1], 10) : undefined,
+      );
+      writeCheckpoint(cpPath, prior ? mergeCheckpoints(prior, next) : next, cap);
       logEvent(brief.leoDir, { event: "checkpoint_written", reason, merged: prior !== null });
     } catch (err) {
       logEvent(brief.leoDir, { event: "checkpoint_error", phase: "write", error: String(err).slice(0, 300) });

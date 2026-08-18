@@ -6,6 +6,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-08-18
+
+**The run remembers.** Every mission Leopold conducts leaves a decision trail behind —
+and until now, nothing could read it. This release makes that archive load-bearing:
+`leopold recall <query>` searches this project's own `.leopold/runs/` and returns the
+past decision with its Reversal attached, and every new run starts with a bounded
+digest of what the project already decided — on both engines, framed as untrusted
+past-run data, with a truncation line that names `leopold recall` for anything deeper.
+
+### Added
+- **`leopold recall <query>`** — ranked lexical search over the project's archived
+  runs (`.leopold/runs/*`), DECISIONS.md blocks first-class: each hit names the run,
+  the file, and any Reversal line. cwd-scoped by construction, TypeScript stdlib
+  only — zero network, zero dependencies, works offline. A project with no archive
+  says "no archived runs" instead of exiting empty.
+- **Run-start decision digest.** Both engines (SDK driver and in-session
+  `/leopold-run`) open a run with a bounded digest of the most recent past-run
+  decisions — persona, decision, Reversal — capped by count and bytes, oldest
+  dropped first, and honest about it: the truncation line advertises `leopold
+  recall` for the rest. A project with no archived runs starts byte-identically
+  to 0.18.x.
+- **ovmem flushes are run-aware.** When `.leopold/state.json` marks an active run,
+  the flush tags the OpenViking session with project, run, window, and engine — a
+  human browsing the memory base sees "leopold · myproj · run … · window 3 · claude"
+  instead of a bare UUID. No active run means the flush behaves exactly as before;
+  tags are extra metadata an old server ignores, and a dead server logs one line
+  and the run continues.
+- **SDK-worker hooks, verified live.** All four ovmem hooks fire per worker, each
+  with its own session_id (`docs/reference/sdk-worker-hooks.md`, en + pt-BR). From
+  that evidence: per-item worker flushes are suppressed (`LEOPOLD_SDK_WORKER=1`,
+  restored by `LEOPOLD_OVMEM_WORKER_FLUSH=1`) so a 30-item run does not dump 30
+  ephemeral sessions into the memory base — workers still rehydrate and recall,
+  they just do not write. Recorded in DECISIONS.md with its Reversal.
+- **The three memories, documented.** The continuity page now states the doctrine:
+  `CHECKPOINT.md` is this run's working state and dies with the run; `leopold
+  recall` is the project's own decision archive, git-versioned and greppable;
+  ovmem is distilled cross-run learning that survives everything.
+
+### Changed
+- The untrusted-content framing for past-run text now has one home per language
+  surface, and a drift test (`untrusted-framing.test.ts`) fails the build if any
+  injection site — digest, recall header, checkpoint lead — drops it.
+- New hermetic suites: `recall`, `recall-cmd`, `run-start-digest`, `worker-env`,
+  plus ovmem tag assertions against a stubbed server. All in `make test` and CI.
+
 ## [0.18.0] - 2026-08-18
 
 ### Added

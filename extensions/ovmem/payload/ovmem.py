@@ -25,6 +25,12 @@ Two things genuinely differ between the harnesses, and both are handled here:
      don't know"; the {"hookSpecificOutput":{...,"additionalContext":...}} form
      logged "Completed" and the model read the block. See emit_context.
 
+During an autonomous Leopold run the flush is run-aware: when <cwd>/.leopold/
+state.json proves an active (or just-rolled) run, the OV session is created with a
+title and metadata naming the project, the run's start stamp, the context window
+number and the engine (claude|codex) — see leopold_run_tag. No state file means the
+request body is byte-identical to what this hook has always sent.
+
 Golden rule: NEVER break the session. On any error -> exit 0 with no stdout.
 OpenViking does the reflection/distillation server-side on commit (the configured
 VLM), so the hook never spends an LLM call of its own.
@@ -40,6 +46,11 @@ Env controls:
   OVMEM_CHAR_BUDGET=2200 char cap on the injected block (default 2200)
   OVMEM_TIMEOUT=4        timeout (s) for calls on the critical path (default 4)
   LEOPOLD_OVMEM_DIR      data dir override (engine + state); see _resolve_ovmem_dir
+  LEOPOLD_SDK_WORKER=1   set by the Leopold driver on every SDK session it spawns
+                         (workers, reviewers, judges, hypotheses, routes); the
+                         write path (pre-compact / session-end flush) is suppressed
+                         there so a 30-item run does not create 30 OV sessions
+  LEOPOLD_OVMEM_WORKER_FLUSH=1  the reversal: keep per-item worker flushes anyway
 """
 import json
 import os
@@ -411,8 +422,14 @@ def ensure_server():
         log("ensure_server failed: %s" % e)
 
 
-def ensure_session(session_id):
-    api("POST", "/sessions", body={"session_id": session_id})
+def ensure_session(session_id, tag=None):
+    """Create/refresh the OV session. `tag` (from leopold_run_tag) adds run
+    identity — title + metadata — on top of the bare body; with no tag the body is
+    byte-identical to what every previous version sent."""
+    body = {"session_id": session_id}
+    if tag:
+        body.update(tag)
+    api("POST", "/sessions", body=body)
 
 
 def record_access(uris):
@@ -515,6 +532,76 @@ def handle_user_prompt(data):
     log("user-prompt recall=%s" % bool(recall))
 
 
+def leopold_run_tag(data):
+    """Run identity for this flush, read from <cwd>/.leopold/state.json — or None.
+
+    TAG, NEVER GUESS: a flush is run-aware only when the state file PROVES a run.
+    Two states qualify:
+
+      active: true                        a live window of an autonomous run
+      stopped_reason: "context_budget"    a rolled window — 0.18.0 marks the state
+                                          inactive at the roll boundary, and the
+                                          SessionEnd flush fires exactly in that gap
+                                          before the relaunch
+
+    Anything else — no file, unreadable JSON, a run that finished or died — returns
+    None and the flush body stays byte-identical to an untagged one. The tag is
+    extra fields on the POST /sessions body (title + metadata); an old OpenViking
+    server ignores unknown fields, so this is additive by construction. Never
+    raises: memory is enrichment, not a dependency.
+    """
+    cwd = data.get("cwd") or os.getcwd()
+    try:
+        with open(os.path.join(cwd, ".leopold", "state.json")) as f:
+            st = json.load(f)
+    except Exception:
+        return None
+    if not isinstance(st, dict):
+        return None
+    if st.get("active") is not True and st.get("stopped_reason") != "context_budget":
+        return None
+    # A rolled-but-abandoned run must not tag forever. The roll gap is minutes wide
+    # (SessionEnd fires, the watcher relaunches); a state.json still saying
+    # context_budget WEEKS later is a run nobody resumed, and tagging an ordinary
+    # interactive session with its window number is misattributed memory — the exact
+    # thing the tag exists to prevent. Same 10-minute staleness line the watcher's
+    # relaunch draws (CONTINUITY_FRESH_SECS) and the run skill draws for takeover:
+    # stale state is not an event, and it is not a tag either. A live run
+    # (active: true) is never staleness-checked — its own turns keep it current.
+    if st.get("active") is not True:
+        last = str(st.get("last_turn") or "")
+        try:
+            import calendar
+            age = time.time() - calendar.timegm(time.strptime(last, "%Y-%m-%dT%H:%M:%SZ"))
+        except Exception:
+            try:
+                age = time.time() - os.path.getmtime(os.path.join(cwd, ".leopold", "state.json"))
+            except OSError:
+                return None
+        if age > 600:
+            return None
+    project = os.path.basename(cwd.rstrip("/")) or "project"
+    started = str(st.get("started_at") or "")
+    stamp = started[:10].replace("-", "") or "unknown"
+    window = st.get("windows")
+    if not isinstance(window, int) or window < 1:
+        window = 1
+    maxw = st.get("max_windows")
+    win = "window %d" % window
+    if isinstance(maxw, int) and maxw >= window:
+        win += " of %d" % maxw
+    engine = harness_of(data)
+    return {
+        "title": "leopold · %s · run %s · %s · %s" % (project, stamp, win, engine),
+        "metadata": {"leopold": {
+            "project": project,
+            "run_started_at": started,
+            "window": window,
+            "engine": engine,
+        }},
+    }
+
+
 def detach_flush(data, why):
     """Run the flush in a detached child and return immediately. Returns True when
     the child was launched.
@@ -543,6 +630,23 @@ def detach_flush(data, why):
         return False
 
 
+def worker_flush_suppressed():
+    """True when this hook runs inside a Leopold-driver-spawned SDK session and
+    per-item flushes are suppressed (the default there).
+
+    The driver spawns ephemeral SDK sessions — one worker per plan item, plus review
+    lenses, tournament judges, hypotheses and route probes — each its own session
+    with its own session_id, all marked at the driver's one query seam (sdk.ts) —
+    verified live (docs/reference/sdk-worker-hooks.md): all four hooks fire per
+    session and inherit the driver's environment. Flushing each one would dump an
+    untagged OV session per spawn into the memory base; the conductor's session
+    carries the run, so driver spawns stay silent. Reversal: set
+    LEOPOLD_OVMEM_WORKER_FLUSH=1 on the driver to restore per-item flushes.
+    """
+    return (os.environ.get("LEOPOLD_SDK_WORKER") == "1"
+            and os.environ.get("LEOPOLD_OVMEM_WORKER_FLUSH") != "1")
+
+
 def flush_and_commit(data, why):
     session_id = data.get("session_id")
     if not session_id:
@@ -553,7 +657,10 @@ def flush_and_commit(data, why):
     if not msgs:
         log("%s: no delta (total=%d offset=%d)" % (why, total, st.get("lines", 0)))
         return
-    ensure_session(session_id)
+    tag = leopold_run_tag(data)
+    if tag:
+        log("%s: run-aware flush — %s" % (why, tag["title"]))
+    ensure_session(session_id, tag)
     # OpenViking accepts batches; send in chunks of 50
     for i in range(0, len(msgs), 50):
         chunk = msgs[i:i + 50]
@@ -612,8 +719,16 @@ def main():
         elif EVENT == "user-prompt":
             handle_user_prompt(data)
         elif EVENT == "pre-compact":
-            flush_and_commit(data, "pre-compact")
+            if worker_flush_suppressed():
+                log("pre-compact: sdk-worker flush suppressed "
+                    "(LEOPOLD_OVMEM_WORKER_FLUSH=1 restores per-item flushes)")
+            else:
+                flush_and_commit(data, "pre-compact")
         elif EVENT == "session-end":
+            if worker_flush_suppressed():
+                log("session-end: sdk-worker flush suppressed "
+                    "(LEOPOLD_OVMEM_WORKER_FLUSH=1 restores per-item flushes)")
+                return
             # Codex kills this hook at 3s; hand it off rather than get cut in half.
             if harness_of(data) != "codex" or not detach_flush(data, "session-end"):
                 flush_and_commit(data, "session-end")

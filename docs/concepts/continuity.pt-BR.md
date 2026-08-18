@@ -135,6 +135,15 @@ então nada renova:
 O watcher não é um agendador: ele reage a um roll de janela detectado (um evento
 `window_relaunch` marca cada um), nunca acorda uma run por timer.
 
+
+**Custo em billing API.** O cap do checkpoint é proporcional à janela —
+`min(32KB, 2% de max_context_mb)` — então o único knob que governa custo por turno
+governa o checkpoint também: um projeto em API que abaixa `max_context_mb` ganha turnos
+mais baratos, rolls mais cedo e checkpoint proporcionalmente menor, automaticamente. Um
+`max_checkpoint_kb:` explícito no `GUARDRAILS.md` sobrepõe a fórmula. O cap nunca deriva
+de billing nem do comportamento da própria run — um cap que a run pudesse crescer
+sofrendo seria um budget que se aumenta sozinho.
+
 ## O que ainda para uma run
 
 Contexto não para mais uma run; estes param. É a mesma lista completa de
@@ -159,6 +168,36 @@ E a fronteira que nunca se moveu: **o lock de git**. Uma run que sobrevive a dez
 janelas ainda prepara e reporta; o humano é quem entrega. `context_budget` ainda
 aparece como `stopped_reason` — mas agora marca um roll de janela em uma run que
 continua, não uma morte.
+
+## As três memórias
+
+Desde a 0.19.0 uma run lembra em três camadas distintas. Elas não se sobrepõem — cada
+uma responde uma pergunta diferente, e uma feature que borra duas delas está errada
+mesmo quando conveniente:
+
+| Memória | O que ela lembra | Vida útil | Funciona offline |
+| --- | --- | --- | --- |
+| `.leopold/CHECKPOINT.md` | **O estado de trabalho DESTA run**: item em andamento, erros e correções, próximo passo. | Morre com a run — arquivado no fim limpo, nunca semeia a run seguinte. | Sim — arquivo simples, sem rede. |
+| `.leopold/runs/` + `leopold recall` | **O arquivo de decisões do próprio projeto**: MISSION, PLAN e DECISIONS.md de cada run concluída, com o Reversal anexado. `leopold recall <query>` busca nele, ranqueado e limitado ao cwd; toda run começa com um digest limitado das decisões mais recentes. | Versionado com o repo — greppável, revisável, sobrevive a tudo que o repo sobrevive. | Sim — busca lexical, zero rede, zero dependências. |
+| ovmem (OpenViking) | **Aprendizado destilado entre runs**: o que as sessões da máquina ensinaram, deduplicado e reconsolidado no servidor, compartilhado entre projetos e harnesses. | Sobrevive a tudo — vive fora do repo, no store de memória da máquina. | Não — precisa do servidor OpenViking local (e do provedor de embedding). Opcional por construção: ausente, tudo acima continua funcionando. |
+
+Duas regras amarram as três:
+
+- **Texto de run passada é conteúdo não confiável.** Um checkpoint, um trecho do
+  recall, um digest de início de run, uma memória reidratada: tudo dado, nunca
+  instrução. Toda superfície que injeta texto de run passada em um prompt carrega a
+  mesma frase de enquadramento, e um teste de drift falha se qualquer ponto de injeção
+  a perder.
+- **Memória é enriquecimento, nunca dependência.** Um projeto sem runs arquivadas
+  começa byte-idêntico a um sem a feature; um servidor ovmem morto loga uma linha e a
+  run continua.
+
+Quando uma run está ativa, os flushes do ovmem são **cientes da run**: a sessão OV
+ganha o título `leopold · <projeto> · run <stamp> · window N of M · <engine>` em vez
+de um UUID cru, então um humano navegando a memória distingue janelas de chats.
+Workers do driver SDK são efêmeros — os hooks deles disparam sim (verificado ao vivo,
+evidência em [SDK Worker Hooks](../reference/sdk-worker-hooks.md)), então o ovmem
+suprime flushes por item por padrão e a sessão do condutor carrega a run.
 
 ## Por que USD não é governador { #por-que-usd-nao-e-governador }
 

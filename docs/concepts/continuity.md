@@ -134,6 +134,15 @@ does:
 The watcher is not a scheduler: it reacts to a detected window roll (a
 `window_relaunch` event marks each one), it never wakes a run on a timer.
 
+
+**Cost on API billing.** The checkpoint cap is proportional to the window —
+`min(32KB, 2% of max_context_mb)` — so the one knob that governs per-turn cost governs
+the checkpoint too: an API-billed project that lowers `max_context_mb` gets cheaper
+turns, earlier rolls, and a proportionally smaller checkpoint, automatically. An
+explicit `max_checkpoint_kb:` in `GUARDRAILS.md` overrides the formula outright. The
+cap is never derived from billing or from the run's own behavior — a cap the run could
+grow by struggling would be a budget that raises itself.
+
 ## What still stops a run
 
 Context does not stop a run any more; these do. This is the same complete list as
@@ -157,6 +166,35 @@ new in 0.18.0 are marked:
 And the boundary that never moved: **the git lock**. A run that survives ten windows
 still stages and reports; the human ships. `context_budget` still appears as a
 `stopped_reason` — but it now marks a window roll on a run that continues, not a death.
+
+## The three memories
+
+Since 0.19.0 a run remembers on three distinct layers. They do not overlap — each
+answers a different question, and a feature that blurs two of them is wrong even when
+convenient:
+
+| Memory | What it remembers | Lifetime | Works offline |
+| --- | --- | --- | --- |
+| `.leopold/CHECKPOINT.md` | **This run's working state**: in-flight item, errors and fixes, next step. | Dies with the run — archived on clean finish, never seeds the next run. | Yes — plain file, no network. |
+| `.leopold/runs/` + `leopold recall` | **The project's own decision archive**: every finished run's MISSION, PLAN, DECISIONS.md with the Reversal attached. `leopold recall <query>` searches it, ranked and cwd-scoped; every run starts with a bounded digest of the most recent decisions. | Versioned with the repo — greppable, reviewable, survives everything the repo survives. | Yes — lexical search, zero network, zero dependencies. |
+| ovmem (OpenViking) | **Distilled cross-run learning**: what the machine's sessions taught, deduped and reconsolidated server-side, shared across projects and harnesses. | Survives everything — lives outside the repo, in the machine's memory store. | No — needs the local OpenViking server (plus its embedding provider). Optional by construction: absent, everything above still works. |
+
+Two rules bind all three:
+
+- **Past-run text is untrusted content.** A checkpoint, a recall excerpt, a run-start
+  digest, a rehydrated memory: all data, never instructions. Every surface that
+  injects past-run text into a prompt carries the same framing sentence, and a drift
+  test fails if any injection site drops it.
+- **Memory is enrichment, never a dependency.** A project with no archived runs starts
+  byte-identically to one without the feature; a dead ovmem server logs one line and
+  the run continues.
+
+When a run is active, ovmem flushes are **run-aware**: the OV session is titled
+`leopold · <project> · run <stamp> · window N of M · <engine>` instead of a bare
+UUID, so a human browsing memory can tell windows from chats. SDK driver workers are
+ephemeral — their hooks do fire (verified live, evidence in
+[SDK Worker Hooks](../reference/sdk-worker-hooks.md)), so ovmem suppresses per-item
+flushes by default and the conductor's session carries the run.
 
 ## Why USD is not a governor
 

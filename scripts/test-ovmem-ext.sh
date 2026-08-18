@@ -211,7 +211,10 @@ JSONL
 engine() { # <event> <payload-json>
   printf '%s' "$2" | env -i PATH="$PATH" HOME="$TD/home" CLAUDE_HOME="$TD/claude" \
     CODEX_HOME="$TD/codex" LEOPOLD_OVMEM_DIR="$OVDIR" OVMEM_TIMEOUT=1 \
-    OVMEM_DEBUG="${OVMEM_DEBUG:-0}" python3 "$ENGINE" --event "$1" 2>&1
+    OVMEM_DEBUG="${OVMEM_DEBUG:-0}" \
+    LEOPOLD_SDK_WORKER="${LEOPOLD_SDK_WORKER:-}" \
+    LEOPOLD_OVMEM_WORKER_FLUSH="${LEOPOLD_OVMEM_WORKER_FLUSH:-}" \
+    python3 "$ENGINE" --event "$1" 2>&1
 }
 
 CODEX_SS="{\"session_id\":\"019fc9b9\",\"transcript_path\":\"$ROLL\",\"cwd\":\"$TD/proj\",\"hook_event_name\":\"SessionStart\",\"model\":\"gpt-5.6-sol\",\"permission_mode\":\"bypassPermissions\",\"source\":\"startup\"}"
@@ -315,7 +318,184 @@ log="$(cat "$OVDIR/ovmem.log" 2>/dev/null)"
 has   "Claude Code committed in-process"     "$log" "session-end: committed 2 msgs"
 hasnt "Claude Code did not detach anything"  "$log" "detached child"
 
+echo
+echo "ovmem extension — SDK workers do not flush per item"
+
+# The driver marks EVERY SDK session it spawns — workers, reviewers, judges,
+# hypotheses, routes — with LEOPOLD_SDK_WORKER=1 at its one query seam (sdk.ts), and
+# hooks inherit that environment (verified live: docs/reference/sdk-worker-hooks.md).
+# Policy: per-item flushes are suppressed — a 3-item run must create ZERO worker OV
+# sessions; the conductor's own session (no marker) still flushes exactly as before.
+rm -f "$OVDIR/ovmem.log" "$OVDIR/state"/*.json
+for w in w-1 w-2 w-3; do
+  WORKER_SE="{\"session_id\":\"$w\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/proj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+  out="$(OVMEM_DEBUG=1 LEOPOLD_SDK_WORKER=1 engine session-end "$WORKER_SE")"
+  check "worker $w SessionEnd exits 0" "$?" "0"
+done
+sleep 1
+log="$(cat "$OVDIR/ovmem.log" 2>/dev/null)"
+check "a 3-item run flushed zero worker sessions" "$(printf '%s' "$log" | grep -c 'committed')" "0"
+check "each of the 3 suppressions is logged, never silent" \
+  "$(printf '%s' "$log" | grep -c 'sdk-worker flush suppressed')" "3"
+has  "the log names the reversal env var" "$log" "LEOPOLD_OVMEM_WORKER_FLUSH=1"
+
+# Same policy on the Codex path: the worker marker wins before the detach handoff.
+WORKER_CODEX_SE="{\"session_id\":\"w-codex\",\"transcript_path\":\"$ROLL\",\"cwd\":\"$TD/proj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+rm -f "$OVDIR/ovmem.log"
+OVMEM_DEBUG=1 LEOPOLD_SDK_WORKER=1 engine session-end "$WORKER_CODEX_SE" >/dev/null
+sleep 1
+log="$(cat "$OVDIR/ovmem.log" 2>/dev/null)"
+has   "a Codex-shaped worker is suppressed too"  "$log" "sdk-worker flush suppressed"
+hasnt "and nothing was handed to a detached child" "$log" "detached child"
+
+# PreCompact inside a worker is the same write path — suppressed as well.
+rm -f "$OVDIR/ovmem.log"
+WORKER_PC="{\"session_id\":\"w-1\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/proj\",\"hook_event_name\":\"PreCompact\"}"
+OVMEM_DEBUG=1 LEOPOLD_SDK_WORKER=1 engine pre-compact "$WORKER_PC" >/dev/null
+log="$(cat "$OVDIR/ovmem.log" 2>/dev/null)"
+has   "worker pre-compact is suppressed"      "$log" "pre-compact: sdk-worker flush suppressed"
+hasnt "and nothing was committed"             "$log" "committed"
+
+# The reversal is one env var: LEOPOLD_OVMEM_WORKER_FLUSH=1 restores per-item flushes.
+rm -f "$OVDIR/ovmem.log" "$OVDIR/state"/*.json
+WORKER_SE="{\"session_id\":\"w-flush\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/proj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+OVMEM_DEBUG=1 LEOPOLD_SDK_WORKER=1 LEOPOLD_OVMEM_WORKER_FLUSH=1 engine session-end "$WORKER_SE" >/dev/null
+log="$(cat "$OVDIR/ovmem.log" 2>/dev/null)"
+has "LEOPOLD_OVMEM_WORKER_FLUSH=1 restores the flush" "$log" "session-end: committed 2 msgs"
+
 kill "$STUB_PID" 2>/dev/null; wait "$STUB_PID" 2>/dev/null
+
+echo
+echo "ovmem extension — run-aware flushes tag the OV session"
+
+# A recording stub: same stdlib shape as above, but it also appends every POST —
+# path + the RAW request body, byte for byte — to a jsonl file, so the assertions
+# below are about what actually went over the wire. Still zero real network.
+: > "$TD/stub.reqs"; rm -f "$TD/stub.port"
+python3 - "$TD/stub.port" "$TD/stub.reqs" <<'PY' &
+import json, sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+REQS = sys.argv[2]
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers()
+        self.wfile.write(json.dumps({"healthy": True}).encode())
+    def do_POST(self):
+        raw = self.rfile.read(int(self.headers.get("Content-Length") or 0)).decode()
+        with open(REQS, "a") as f:
+            f.write(json.dumps({"path": self.path, "raw": raw}) + "\n")
+        self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers()
+        self.wfile.write(json.dumps({"status": "ok"}).encode())
+srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+open(sys.argv[1], "w").write(str(srv.server_address[1]))
+srv.serve_forever()
+PY
+STUB_PID=$!
+for _ in $(seq 1 50); do [ -s "$TD/stub.port" ] && break; sleep 0.1; done
+PORT="$(cat "$TD/stub.port" 2>/dev/null)"
+cat > "$TD/home/.openviking/ov.conf" <<EOF
+{"server":{"host":"127.0.0.1","port":$PORT,"root_api_key":"test-key"}}
+EOF
+last_session_body() { jq -r 'select(.path | endswith("/sessions")) | .raw' "$TD/stub.reqs" | tail -1; }
+
+# A flush during window 3 of an active run: the exact state shape the 0.18.0 Stop
+# hook maintains, inside the project the hook payload's cwd names — never $PWD.
+mkdir -p "$TD/myproj/.leopold"
+cat > "$TD/myproj/.leopold/state.json" <<'EOF'
+{"active": true, "windows": 3, "max_windows": 4, "started_at": "2026-08-18T10:00:00.000Z", "iteration": 12}
+EOF
+rm -f "$OVDIR/ovmem.log" "$OVDIR/state"/*.json
+RUN_SE="{\"session_id\":\"r-1\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/myproj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+out="$(OVMEM_DEBUG=1 engine session-end "$RUN_SE")"
+check "run-aware SessionEnd exits 0" "$?" "0"
+sess="$(last_session_body)"
+has "the session title names the project"     "$sess" "myproj"
+has "the session title carries the run stamp" "$sess" "run 20260818"
+has "the session title says window 3 of 4"    "$sess" "window 3 of 4"
+check "metadata carries the structured run identity" \
+  "$(printf '%s' "$sess" | jq -r '.metadata.leopold | "\(.project)/\(.window)/\(.engine)"')" \
+  "myproj/3/claude"
+check "metadata carries the full run start stamp" \
+  "$(printf '%s' "$sess" | jq -r '.metadata.leopold.run_started_at')" "2026-08-18T10:00:00.000Z"
+has "the tag is logged, never silent" "$(cat "$OVDIR/ovmem.log" 2>/dev/null)" "run-aware flush"
+
+# A rolled window is still the run: 0.18.0 marks the state inactive at the roll
+# boundary (stopped_reason=context_budget) and the SessionEnd flush fires exactly in
+# that gap, before the relaunch.
+cat > "$TD/myproj/.leopold/state.json" <<'EOF'
+{"active": false, "stopped_reason": "context_budget", "windows": 3, "max_windows": 4, "started_at": "2026-08-18T10:00:00.000Z"}
+EOF
+rm -f "$OVDIR/state"/*.json
+RUN_SE2="{\"session_id\":\"r-2\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/myproj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+engine session-end "$RUN_SE2" >/dev/null
+has "a rolled window still tags the flush" "$(last_session_body)" "window 3 of 4"
+
+# ...but a rolled-and-ABANDONED run must not tag forever. The roll gap is minutes
+# wide; a state still saying context_budget weeks later is a run nobody resumed, and
+# tagging an ordinary interactive session with its window number is misattributed
+# memory. Same 10-minute staleness line the watcher's relaunch draws. mtime is the
+# fallback clock, so age the file itself too.
+cat > "$TD/myproj/.leopold/state.json" <<'EOF'
+{"active": false, "stopped_reason": "context_budget", "windows": 3, "max_windows": 4, "started_at": "2026-08-01T10:00:00.000Z", "last_turn": "2026-08-01T10:05:00Z"}
+EOF
+touch -d "2 hours ago" "$TD/myproj/.leopold/state.json" 2>/dev/null || touch -t 202608180800 "$TD/myproj/.leopold/state.json"
+rm -f "$OVDIR/state"/*.json
+STALE_SE="{\"session_id\":\"r-stale\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/myproj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+engine session-end "$STALE_SE" >/dev/null
+hasnt "a week-old roll does NOT tag an ordinary session" "$(last_session_body)" "window 3 of 4"
+
+# A LIVE run is never staleness-checked: its own turns keep it current, and a long
+# quiet stretch inside a window must not strip the tag.
+cat > "$TD/myproj/.leopold/state.json" <<'EOF'
+{"active": true, "windows": 2, "max_windows": 4, "started_at": "2026-08-18T10:00:00.000Z", "last_turn": "2026-08-18T10:05:00Z"}
+EOF
+touch -d "2 hours ago" "$TD/myproj/.leopold/state.json" 2>/dev/null || true
+rm -f "$OVDIR/state"/*.json
+LIVE_SE="{\"session_id\":\"r-live\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/myproj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+engine session-end "$LIVE_SE" >/dev/null
+has "an ACTIVE run tags regardless of quiet time" "$(last_session_body)" "window 2 of 4"
+
+# The same run identity rides the Codex path — through the detached SessionEnd child.
+rm -f "$OVDIR/state"/*.json
+cat > "$TD/myproj/.leopold/state.json" <<'EOF'
+{"active": true, "windows": 3, "max_windows": 4, "started_at": "2026-08-18T10:00:00.000Z"}
+EOF
+RUN_CX="{\"session_id\":\"r-cx\",\"transcript_path\":\"$ROLL\",\"cwd\":\"$TD/myproj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+engine session-end "$RUN_CX" >/dev/null
+sleep 1
+check "the Codex flush is tagged with its own engine" \
+  "$(last_session_body | jq -r '.metadata.leopold.engine // empty')" "codex"
+
+# A finished run is NOT the run any more: tag nothing.
+cat > "$TD/myproj/.leopold/state.json" <<'EOF'
+{"active": false, "stopped_reason": "plan_complete", "windows": 3, "started_at": "2026-08-18T10:00:00.000Z"}
+EOF
+rm -f "$OVDIR/state"/*.json
+DONE_SE="{\"session_id\":\"r-3\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/myproj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+engine session-end "$DONE_SE" >/dev/null
+check "a finished run's flush carries no tag" "$(last_session_body)" '{"session_id": "r-3"}'
+
+# No .leopold/state.json at all: the request body is BYTE-identical to what every
+# previous version sent — the backward-compatibility contract, asserted on the wire.
+rm -f "$OVDIR/state"/*.json
+NOSTATE_SE="{\"session_id\":\"r-4\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/proj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+engine session-end "$NOSTATE_SE" >/dev/null
+check "no state file -> the /sessions body is byte-identical to today" \
+  "$(last_session_body)" '{"session_id": "r-4"}'
+
+# OV server down mid-run: one log line per failed call, exit clean, session intact.
+kill "$STUB_PID" 2>/dev/null; wait "$STUB_PID" 2>/dev/null
+cat > "$TD/myproj/.leopold/state.json" <<'EOF'
+{"active": true, "windows": 3, "max_windows": 4, "started_at": "2026-08-18T10:00:00.000Z"}
+EOF
+rm -f "$OVDIR/ovmem.log" "$OVDIR/state"/*.json
+DOWN_SE="{\"session_id\":\"r-5\",\"transcript_path\":\"$CLAUDE_T\",\"cwd\":\"$TD/myproj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+out="$(OVMEM_DEBUG=1 engine session-end "$DOWN_SE")"
+check "server down: the hook still exits 0"     "$?" "0"
+check "server down: nothing leaks onto stdout"  "$out" ""
+check "server down: the failed tag logs exactly once" \
+  "$(grep -c 'api POST /sessions failed' "$OVDIR/ovmem.log" 2>/dev/null)" "1"
 
 echo
 echo "ovmem extension — remove unwires both harnesses"

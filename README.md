@@ -63,6 +63,7 @@ leopold run --provider codex # conduct the same brief on Codex instead (hybrid: 
 leopold workflow             # compile the brief into a dynamic workflow (--run: headless, exp.)
 leopold graph                # print + validate the plan's graph before trusting it (exit 1 if invalid)
 leopold insights             # summarize a run (effort mix, review pass-rate, spend)
+leopold recall "query"       # search this project's own run archive — decisions + Reversals, offline
 leopold doctor               # health check
 ```
 

@@ -62,6 +62,23 @@ export const CHECKPOINT_TITLE = "# Leopold Checkpoint";
 /** Size cap on the serialized document, in bytes. Oversize fails loud. */
 export const CHECKPOINT_MAX_BYTES = 32768;
 
+/** The EFFECTIVE checkpoint cap for a run: proportional to the window, never above the
+ *  absolute ceiling, never below a usable floor. `min(32768, max(8192, 2% of the
+ *  window))` — with the default 5MB window that is exactly 32768 (2% = ~105KB, capped),
+ *  so default behavior is byte-identical; a 1MB window (an API user keeping turns
+ *  cheap) gets ~21KB automatically, because the knob that governs cost
+ *  (`max_context_mb`) should govern the checkpoint too. An explicit
+ *  `max_checkpoint_kb:` in GUARDRAILS.md overrides the formula outright — a
+ *  deliberate, versioned choice. NEVER derived from billing or from the run's own
+ *  behavior: a cap the run can grow by struggling is a budget that raises itself.
+ *  hooks/stop-continuity.sh computes the same formula in bash; the pin tests on both
+ *  sides hold the two to the same numbers. */
+export function checkpointCapBytes(maxContextMb: number, overrideKb?: number): number {
+  if (overrideKb && overrideKb > 0) return Math.floor(overrideKb) * 1024;
+  const windowBytes = Math.max(0, Math.floor(maxContextMb)) * 1048576;
+  return Math.min(CHECKPOINT_MAX_BYTES, Math.max(8192, Math.floor(windowBytes * 0.02)));
+}
+
 /** Brief-state names that must never appear as a checkpoint heading. Held as data
  * so the rejection message can say why, and so tests can assert the exclusion. */
 export const BRIEF_STATE_NAMES = ["Mission", "Charter", "Guardrails", "Plan"] as const;
@@ -82,7 +99,7 @@ export function emptyCheckpoint(): Checkpoint {
  * ANY line that reads as a "## " heading — the same lines the parser treats as
  * section boundaries, so a document this function emits always parses back —
  * or when the document would exceed the cap. */
-export function serializeCheckpoint(cp: Checkpoint): string {
+export function serializeCheckpoint(cp: Checkpoint, capBytes: number = CHECKPOINT_MAX_BYTES): string {
   for (const section of CHECKPOINT_SECTIONS) {
     const body = cp[section] ?? "";
     for (const line of body.split("\n")) {
@@ -118,9 +135,9 @@ export function serializeCheckpoint(cp: Checkpoint): string {
   }
   const text = parts.join("\n").replace(/\n{3,}/g, "\n\n").replace(/\n*$/, "\n");
   const bytes = Buffer.byteLength(text, "utf8");
-  if (bytes > CHECKPOINT_MAX_BYTES) {
+  if (bytes > capBytes) {
     throw new Error(
-      `checkpoint is ${bytes} bytes, over the ${CHECKPOINT_MAX_BYTES}-byte cap — ` +
+      `checkpoint is ${bytes} bytes, over the ${capBytes}-byte cap — ` +
         `consolidate it (merge, drop stale facts); nothing was written`,
     );
   }
@@ -229,8 +246,8 @@ export function mergeCheckpoints(prior: Checkpoint, next: Checkpoint): Checkpoin
 /** Write a checkpoint atomically. Serialization (and with it the nest check and
  * the size cap) runs BEFORE anything touches disk: an oversized or nesting
  * checkpoint throws and the previous file, if any, is left exactly as it was. */
-export function writeCheckpoint(filePath: string, cp: Checkpoint): void {
-  const text = serializeCheckpoint(cp); // throws loud before any I/O
+export function writeCheckpoint(filePath: string, cp: Checkpoint, capBytes?: number): void {
+  const text = serializeCheckpoint(cp, capBytes); // throws loud before any I/O
   const tmp = path.join(
     path.dirname(filePath),
     `.${path.basename(filePath)}.tmp-${process.pid}`,

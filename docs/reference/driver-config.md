@@ -20,6 +20,7 @@ leopold workflow --run               # execute it headlessly (experimental runti
 leopold graph                        # print + validate the plan's graph (exit 1 if invalid)
 leopold graph --mermaid              # the same graph as a fenced mermaid diagram
 leopold insights                     # summarize the run's events.jsonl
+leopold recall "query"               # search this project's run archive (decisions + Reversals, offline)
 ```
 
 ## Graph pre-flight (`leopold graph`)
