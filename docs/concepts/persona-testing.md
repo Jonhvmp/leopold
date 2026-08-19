@@ -160,3 +160,7 @@ On-demand today — in-session (`/leopold-persona run <flow>`) or headless
 (`leopold persona run <flow>`, which writes the same run tree and re-synthesizes
 any run's report with `leopold persona report <run-dir>`); scheduled cadence
 rides a later release, after both harnesses' schedulers are verified live.
+
+---
+
+*Inspired by the persona work of [Daniel Mendes](https://github.com/DanielMendesSensei).*

@@ -167,3 +167,7 @@ Sob demanda hoje — na sessão (`/leopold-persona run <flow>`) ou headless
 relatório de qualquer run com `leopold persona report <run-dir>`); cadência
 agendada vem numa release futura, depois de verificar ao vivo os schedulers dos
 dois harnesses.
+
+---
+
+*Inspirado no trabalho de personas do [Daniel Mendes](https://github.com/DanielMendesSensei).*
