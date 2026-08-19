@@ -2219,7 +2219,9 @@ brief escrito no Claude Code roda no Codex e vice-versa.</p>
 <p>Essa última linha é a única diferença de comportamento de verdade, e o resto desta
 página é basicamente sobre ela.</p>
 <h2 id="os-hooks-sao-os-mesmos-scripts">Os hooks são os mesmos scripts<a class="headerlink" href="#os-hooks-sao-os-mesmos-scripts" title="Permanent link">&para;</a></h2>
-<p>O Leopold se apoia em exatamente dois hooks.</p>
+<p>O engine de run se apoia em exatamente dois hooks sempre ativos (um terceiro, o
+<a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a>, é armado apenas
+enquanto um persona run está ativo — o mesmo script nos dois harnesses também).</p>
 <p><strong><code>guard-irreversible.sh</code> (PreToolUse) — a trava do git.</strong> Nega <code>git commit</code> e
 <code>git push</code> enquanto um run está ativo, então o run deixa o trabalho staged e você
 publica. O Codex entrega o PreToolUse com as mesmas chaves do Claude Code —

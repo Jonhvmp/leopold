@@ -1995,6 +1995,10 @@
       roteamento inteligente opt-in</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>CI hardcore</strong> — smoke test de CLI do binário compilado, gate de
       shellcheck, matriz macOS + Ubuntu, npm provenance, Dependabot, CodeQL</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Teste com personas (0.20–0.21)</strong> — clientes sintéticos: skills de contrato
+      fundamentado em evidência, <code>/leopold-persona</code> e o harness conduzido pelo
+      driver (<code>leopold persona run</code> — diário antes da ação, limites em código,
+      hook persona-guard provado ao vivo nos dois harnesses)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Prompt enhancer (v0.11)</strong> — hook global de <code>UserPromptSubmit</code>: prompts
       fracos ganham uma interpretação estruturada e ciente do charter, gerada
       pelo Haiku na conta do próprio usuário (desligado por padrão, fail-open,
@@ -2003,6 +2007,8 @@
 </ul>
 <h2 id="proximos">Próximos<a class="headerlink" href="#proximos" title="Permanent link">&para;</a></h2>
 <ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Cadência agendada de personas (scheduled tasks do Claude Code + automations
+      do Codex), condicionada à verificação ao vivo dos dois schedulers</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Exercitar de ponta a ponta o shim de query experimental do
       <code>workflow --run</code> (um job de CI manual via <code>workflow_dispatch</code> com uma
       chave real — gasta tokens)</li>

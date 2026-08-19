@@ -1552,6 +1552,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#leopold-persona" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-persona
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#leopold-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2051,6 +2062,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#leopold-persona" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /leopold-persona
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#leopold-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2104,7 +2126,8 @@ As skills principais estão documentadas abaixo.</p>
     R --&gt; L["/leopold-learn&lt;br/&gt;&lt;small&gt;o charter aprende&lt;/small&gt;"]
     W --&gt; L
     T["/leopold-triage&lt;br/&gt;&lt;small&gt;backlog → plano&lt;/small&gt;"] --&gt; B
-    E["/leopold-enhance&lt;br/&gt;&lt;small&gt;prompt enhancer&lt;/small&gt;"]</code></pre>
+    E["/leopold-enhance&lt;br/&gt;&lt;small&gt;prompt enhancer&lt;/small&gt;"]
+    P["/leopold-persona&lt;br/&gt;&lt;small&gt;clientes sintéticos&lt;/small&gt;"]</code></pre>
 <h2 id="leopold-brief"><code>/leopold-brief</code><a class="headerlink" href="#leopold-brief" title="Permanent link">&para;</a></h2>
 <p>Fase 1. Um debate estruturado que captura a missão e o seu jeito de decidir,
 e então escreve o brief (<code>MISSION</code>, <code>CHARTER</code>, <code>GUARDRAILS</code>, <code>PLAN</code>) em <code>.leopold/</code>.</p>
@@ -2178,6 +2201,27 @@ que faz o Haiku (na sua própria conta) interpretar prompts fracos, ciente do ch
 <li><strong>Limite rígido:</strong> o <code>learn</code> nunca edita o <code>PROMPT-PROFILE.md</code> — o profile
   molda toda interpretação futura; você revisa e aplica.</li>
 <li>O <code>learn</code> requer Dynamic workflows habilitado.</li>
+</ul>
+<h2 id="leopold-persona"><code>/leopold-persona</code><a class="headerlink" href="#leopold-persona" title="Permanent link">&para;</a></h2>
+<p><a href="../../concepts/persona-testing/">Teste com clientes sintéticos</a>, conduzido: uma
+persona fundamentada em evidência percorre um fluxo declarado do produto —
+percebendo a interface real, reagindo em personagem, registrando cada turno no
+diário — e o run termina com um relatório estruturado de bugs, confusão,
+problemas de acessibilidade e fricção.</p>
+<ul>
+<li><strong><code>init</code></strong> — cria o namespace <code>.leopold/persona/</code> (personas / flows / runs) e o
+  template de fluxo.</li>
+<li><strong><code>build &lt;id&gt;</code></strong> — compila um contrato de persona via <code>persona-contract-builder</code>.</li>
+<li><strong><code>run &lt;flow&gt; [--persona &lt;id&gt;|all]</code></strong> — percorre o fluxo; o gêmeo headless é
+  <code>leopold persona run</code> (mesma árvore de run, conduzido pelo driver, limites
+  aplicados em código).</li>
+<li>Vem com duas skills de apoio, vendorizadas byte a byte e instaladas nos dois
+  harnesses: <strong><code>persona-contract-builder</code></strong> (compila um <code>persona-contract/1.0</code>
+  fundamentado em evidência — catálogo de claims, ledger de fontes, fronteiras
+  epistêmicas, gate de validação) e <strong><code>persona-contract-runtime</code></strong> (executa um
+  contrato um turno limitado por vez — protocolo de sinceridade, gate anti-drift,
+  resultados instrumentados). Elas são a semântica de persona; o
+  <code>/leopold-persona</code> conduz em volta delas e nunca redefine seus schemas.</li>
 </ul>
 <h2 id="leopold-status"><code>/leopold-status</code><a class="headerlink" href="#leopold-status" title="Permanent link">&para;</a></h2>
 <p>Dashboard somente leitura: ativa ou não, progresso do plano, decisões registradas,

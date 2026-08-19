@@ -2219,7 +2219,9 @@ reading it. A brief written in Claude Code runs on Codex and vice versa.</p>
 <p>That last row is the only real behavioral difference, and the rest of this page is
 mostly about it.</p>
 <h2 id="the-hooks-are-the-same-scripts">The hooks are the same scripts<a class="headerlink" href="#the-hooks-are-the-same-scripts" title="Permanent link">&para;</a></h2>
-<p>Leopold rides on exactly two hooks.</p>
+<p>The run engine rides on exactly two always-on hooks (a third,
+<a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a>, is armed only while a
+persona run is active — same script on both harnesses too).</p>
 <p><strong><code>guard-irreversible.sh</code> (PreToolUse) — the git lock.</strong> It denies <code>git commit</code> and
 <code>git push</code> while a run is active, so the run stages work and you ship it. Codex
 delivers PreToolUse with the same keys Claude Code does — <code>tool_name</code> (its shell tool

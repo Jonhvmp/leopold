@@ -2043,11 +2043,13 @@
 session, using two hooks and a set of skills. No external process, no API key, no
 new infrastructure.</p>
 <div class="admonition info">
-<p class="admonition-title">A third hook ships alongside the engine</p>
+<p class="admonition-title">Two more hooks ship alongside the engine</p>
 <p>The installer also wires the <a href="../../reference/enhance/">prompt enhancer</a> — a
-<code>UserPromptSubmit</code> hook that is independent of the run engine (it improves
-<em>your</em> everyday prompts, off by default). This page covers the two hooks that
-implement the autonomous run.</p>
+<code>UserPromptSubmit</code> hook independent of the run engine (it improves <em>your</em>
+everyday prompts, off by default) — and the repo carries
+<a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a>, armed only while a
+<a href="../../concepts/persona-testing/">persona run</a> is active. This page covers the
+two hooks that implement the autonomous run.</p>
 </div>
 <h2 id="the-two-hooks">The two hooks<a class="headerlink" href="#the-two-hooks" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TB

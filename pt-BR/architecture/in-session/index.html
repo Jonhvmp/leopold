@@ -2043,11 +2043,13 @@
 sessão do Claude Code, usando dois hooks e um conjunto de skills. Sem processo
 externo, sem chave de API, sem infraestrutura nova.</p>
 <div class="admonition info">
-<p class="admonition-title">Um terceiro hook vem junto com o engine</p>
+<p class="admonition-title">Mais dois hooks vêm junto com o engine</p>
 <p>O instalador também conecta o <a href="../../reference/enhance/">prompt enhancer</a> —
 um hook de <code>UserPromptSubmit</code> independente do engine de run (ele melhora os
-<em>seus</em> prompts do dia a dia, desligado por padrão). Esta página cobre os
-dois hooks que implementam a run autônoma.</p>
+<em>seus</em> prompts do dia a dia, desligado por padrão) — e o repositório traz o
+<a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a>, armado apenas
+enquanto um <a href="../../concepts/persona-testing/">persona run</a> está ativo. Esta
+página cobre os dois hooks que implementam a run autônoma.</p>
 </div>
 <h2 id="os-dois-hooks">Os dois hooks<a class="headerlink" href="#os-dois-hooks" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TB
