@@ -138,3 +138,5 @@ Dedup and obsolescence are handled natively by OpenViking on commit. Cold-memory
 accumulation is pruned by `ovmem-cleanup.py` (hotness = frequency × recency decay).
 Everything is local: the server binds `127.0.0.1` only. The lone outbound call is to the
 chosen provider (OpenAI or Bedrock, with the user's own credential) for embeddings/extraction.
+Credential-shaped strings a session happened to print are masked at ingest, so they never
+enter the memory base.

@@ -64,6 +64,7 @@ doctor: ## Diagnose the Leopold install (skills, hooks, wiring, gstack)
 hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@bash -n hooks/stop-continuity.sh
 	@bash -n hooks/guard-irreversible.sh
+	@bash -n hooks/persona-guard.sh
 	@bash -n install.sh
 	@bash -n scripts/install-codex.sh
 	@bash -n extensions/lib/harness.sh
@@ -115,6 +116,11 @@ gstack-test: ## Run the gstack extension tests (hermetic: temp homes, stubbed gi
 .PHONY: skills-test
 skills-test: ## Run the skill path tests (no SKILL.md may hardcode a harness home)
 	@bash scripts/test-skill-paths.sh
+
+.PHONY: persona-test
+persona-test: ## Run the persona module tests (vendored skills whole, conductor contracts pinned, guard red-teamed)
+	@bash scripts/test-persona-skill.sh
+	@bash scripts/test-persona-guard.sh
 
 .PHONY: menu-test
 menu-test: ## Run the toolchain-menu harness-switch tests (hermetic: temp homes, stubbed PATH)
@@ -178,7 +184,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

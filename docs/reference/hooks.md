@@ -153,6 +153,20 @@ enforced rather than instructed, deny them in the harness's own permission setti
 
 See the policy table in [Guardrails](../guardrails.md).
 
+## `persona-guard.sh` — the run-scoped persona PreToolUse hook
+
+The third hook in `hooks/` is **not** part of the always-on wiring above: the
+persona conductor wires it (matcher `mcp__.*|WebFetch`, its own
+`leopold-persona-guard` managed tag through the same shared writer) only while a
+persona run is active, and unwires it at run end. While wired, it checks every
+`url` in an MCP tool call or `WebFetch` against the active flow's domain
+allowlist and denies anything outside —
+before the MCP server receives the call, on both harnesses, verified live. The
+hook is additionally inert without an active `.leopold/persona/ACTIVE.json`, so
+a stale wire can never bound a normal session. Captured payloads, versions, and
+the full policy: [Persona Guard Hooks](persona-guard-hooks.md); red-team suite:
+`scripts/test-persona-guard.sh`.
+
 ## `enhance.py` — the UserPromptSubmit prompt enhancer
 
 Runs on every prompt you submit (the event takes no matcher, so all gating is

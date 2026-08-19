@@ -109,6 +109,31 @@ export function listSecretNames(leoDir: string): string[] {
   return Object.keys(readVault(leoDir)).sort();
 }
 
+// Credential-shaped strings never leave the run in report text: model-written
+// summaries can echo whatever a session printed, so everything notify() emits is
+// masked first. Same pattern set as the ovmem engine's ingest mask — prefix- or
+// context-anchored, so ordinary content (git SHAs, code, URLs) passes untouched.
+const MASK = "[redacted]";
+const CRED_PATTERNS: Array<{ re: RegExp; keepPrefix: boolean }> = [
+  { re: /\bsk-[A-Za-z0-9_-]{16,}/g, keepPrefix: false },
+  { re: /\bAKIA[A-Z0-9]{16}\b/g, keepPrefix: false },
+  { re: /\bgh[pousr]_[A-Za-z0-9]{20,}/g, keepPrefix: false },
+  { re: /\bgithub_pat_[A-Za-z0-9_]{20,}/g, keepPrefix: false },
+  { re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/g, keepPrefix: false },
+  { re: /\bAIza[A-Za-z0-9_-]{30,}/g, keepPrefix: false },
+  { re: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}/g, keepPrefix: false },
+  { re: /\b(bearer\s+)[A-Za-z0-9._~+/=-]{16,}/gi, keepPrefix: true },
+  { re: /\b((?:api[_-]?key|secret|token|passwd|password|credential|authorization)["']?\s*[:=]\s*["']?)[^\s"']{8,}/gi, keepPrefix: true },
+];
+
+export function maskCredentials(text: string): string {
+  let out = text;
+  for (const { re, keepPrefix } of CRED_PATTERNS) {
+    out = out.replace(re, (...m) => (keepPrefix ? `${m[1]}${MASK}` : MASK));
+  }
+  return out;
+}
+
 /** `leopold-driver secrets set NAME | list` — the value for `set` is read from
  *  stdin so it never appears in shell history. */
 export function runSecrets(argv: string[]): number {

@@ -158,6 +158,93 @@ else
   note "gstack not installed (optional) — 'make gstack-install' to enable planning"
 fi
 
+# --- persona module ----------------------------------------------------------
+# The synthetic-customer harness: three skills per harness, and a hook-level
+# navigation bound (hooks/persona-guard.sh) that the conductor wires ONLY while
+# a persona run is active. PreToolUse observes and denies MCP tool calls on
+# BOTH harnesses — verified live against claude 2.1.235 and codex-cli 0.147.0
+# (docs/reference/persona-guard-hooks.md). The wire alone does NOT prove a run
+# is active: the hook is inert without the project's
+# `.leopold/persona/ACTIVE.json`, and a crashed conductor can leave either one
+# behind without the other. Say exactly which pieces are present — wire, arming
+# file, or neither — per harness; a doctor line implying a bound that is not in
+# force would be the silent-degrade this tool exists to catch.
+persona_skills_in() { # <skills-dir>
+  [ -f "$1/leopold-persona/SKILL.md" ] && \
+  [ -f "$1/persona-contract-builder/SKILL.md" ] && \
+  [ -f "$1/persona-contract-runtime/SKILL.md" ]
+}
+persona_bound() { # <hooks file (settings.json or config.toml)>
+  local wired="" armed=""
+  [ -f "$1" ] && grep -q 'persona-guard\.sh' "$1" 2>/dev/null && wired=1
+  [ -f ".leopold/persona/ACTIVE.json" ] && armed=1
+  if [ -n "$wired" ] && [ -n "$armed" ]; then
+    echo "navigation bound: persona-guard hook wired + run active here (.leopold/persona/ACTIVE.json) + conductor checks"
+  elif [ -n "$wired" ]; then
+    echo "navigation bound: persona-guard hook wired but NO .leopold/persona/ACTIVE.json in this project — the hook is inert here (a crashed run may have left the wire; the skill's disarm step unwires it)"
+  elif [ -n "$armed" ]; then
+    echo "navigation bound: .leopold/persona/ACTIVE.json present but the persona-guard hook is NOT wired — conductor-level enforcement only (remove ACTIVE.json if no run is live)"
+  else
+    echo "navigation bound: conductor-level enforcement (persona-guard hook wires only while a run is active)"
+  fi
+}
+if [ "$HAVE_CLAUDE" = "1" ]; then
+  if persona_skills_in "$CLAUDE/skills"; then
+    pass "persona: Claude Code skills present (3/3) — $(persona_bound "$CLAUDE/settings.json")"
+  else
+    note "persona: skills not installed on Claude Code (optional) — run ./install.sh"
+  fi
+  # Browser capability, from the live captures in
+  # docs/reference/persona-guard-hooks.md (claude 2.1.235) — never assumed.
+  pass "persona: Claude Code browser capability: MCP browser tools + WebFetch enact headless; PreToolUse deny verified live upstream of the server (docs/reference/persona-guard-hooks.md)"
+fi
+if [ "$HAVE_CODEX" = "1" ]; then
+  if persona_skills_in "$CODEX/skills"; then
+    pass "persona: Codex skills present (3/3) — $(persona_bound "$CODEX/config.toml")"
+  else
+    note "persona: skills not installed on Codex (optional) — run ./install.sh --harness codex"
+  fi
+  # Honest asymmetry, from the same live captures (codex-cli 0.147.0): the deny
+  # path works, but Codex's own approval layer auto-cancels headless MCP calls
+  # on the ALLOW path unless approvals are bypassed.
+  note "persona: Codex browser capability: PreToolUse deny verified live, but headless MCP browsing is auto-cancelled by Codex's approval layer unless the run bypasses approvals (docs/reference/persona-guard-hooks.md)"
+fi
+
+# Per-project inventory, spoken only where a .leopold/ exists: contracts counted
+# by the SAME lexical gate the driver applies (contract-check.ts — line-anchored
+# `contract_status:`, quotes stripped; ready/draft/blocked is the builder's
+# vocabulary, anything else is invalid), and flows counted as flows/*.md. An
+# unused module is a normal answer, never an error.
+persona_contract_status() { # <contract.yaml> -> first line-anchored status, quotes stripped
+  sed -n 's/^[[:space:]]*contract_status[[:space:]]*:[[:space:]]*//p' "$1" 2>/dev/null \
+    | head -n 1 | tr -d '"'"'"'[:space:]'
+}
+PPROJ="${LEOPOLD_PROJECT_DIR:-$PWD}/.leopold"
+if [ -d "$PPROJ" ]; then
+  PDIR="$PPROJ/persona"
+  p_ready=0; p_draft=0; p_blocked=0; p_invalid=0; p_total=0
+  for c in "$PDIR"/personas/*/contract.yaml; do
+    [ -f "$c" ] || continue
+    p_total=$((p_total+1))
+    case "$(persona_contract_status "$c")" in
+      ready)   p_ready=$((p_ready+1)) ;;
+      draft)   p_draft=$((p_draft+1)) ;;
+      blocked) p_blocked=$((p_blocked+1)) ;;
+      *)       p_invalid=$((p_invalid+1)) ;;
+    esac
+  done
+  p_flows=0
+  for f in "$PDIR"/flows/*.md; do [ -f "$f" ] && p_flows=$((p_flows+1)); done
+  if [ "$p_total" -eq 0 ] && [ "$p_flows" -eq 0 ]; then
+    pass "persona: no contracts yet in this project — run /leopold-persona in a session to build the first"
+  else
+    p_line="persona: contracts $p_total ($p_ready ready · $p_draft draft · $p_blocked blocked"
+    [ "$p_invalid" -gt 0 ] && p_line="$p_line · $p_invalid INVALID"
+    p_line="$p_line) · flows $p_flows"
+    if [ "$p_invalid" -gt 0 ]; then note "$p_line — an invalid contract never enacts; leopold persona list names the reason"; else pass "$p_line"; fi
+  fi
+fi
+
 if command -v node >/dev/null 2>&1; then pass "node present ($(node -v 2>/dev/null)) — SDK driver usable"; else note "node missing — the SDK driver (optional) needs Node 18+"; fi
 if [ -f "$SRC/VERSION" ]; then
   pass "engine source at $SRC (v$(tr -d '[:space:]' < "$SRC/VERSION"))"

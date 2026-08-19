@@ -447,6 +447,50 @@ check "the real ~/.codex survived the Claude path"  "$(real_home_fingerprint)" "
 check "the real ~/.claude survived the Claude path" "$(real_claude_fingerprint)" "$REAL_CLAUDE_BEFORE"
 
 echo
+echo "harness.sh — persona guard wire/unwire (active-run wiring, both formats)"
+
+# The persona conductor wires the guard at run start and unwires it at run end.
+# What that pair must guarantee: idempotent wiring, complete removal, and no
+# collateral damage to the git-lock guard living in the same files.
+GTD="$TD/persona-guard"; mkdir -p "$GTD/claude" "$GTD/codex"
+( export CLAUDE_HOME="$GTD/claude" CODEX_HOME="$GTD/codex" LEOPOLD_HARNESS=all
+  leo_wire_hooks leopold "PreToolUse|Bash|bash /x/guard-irreversible.sh|5" >/dev/null 2>&1
+  for _ in 1 2 3; do leo_wire_persona_guard "/x/persona-guard.sh" >/dev/null 2>&1; done )
+GSET="$GTD/claude/settings.json"; GCFG="$GTD/codex/config.toml"
+check "claude: exactly one persona-guard entry after 3 wires" \
+  "$(jq '[.hooks.PreToolUse[].hooks[] | select(.command | test("persona-guard"))] | length' "$GSET")" "1"
+# The matcher must route BOTH navigation surfaces the hook judges — MCP tools
+# AND WebFetch. A matcher of bare "mcp__.*" here would mean the hook's WebFetch
+# branch is reachable by no production wiring: regression-pinned on both formats.
+check "claude: the persona matcher routes MCP tools AND WebFetch" \
+  "$(jq -r '.hooks.PreToolUse[] | select(.hooks[0].command | test("persona-guard")) | .matcher' "$GSET")" "mcp__.*|WebFetch"
+check "codex: the persona matcher routes MCP tools AND WebFetch" \
+  "$(grep -cF 'matcher = "mcp__.*|WebFetch"' "$GCFG")" "1"
+check "codex: exactly one persona-guard entry after 3 wires" \
+  "$(grep -c '^command = "bash /x/persona-guard.sh"$' "$GCFG")" "1"
+check "codex: the persona block is its own managed tag" \
+  "$(grep -c '^# >>> leopold:leopold-persona-guard (managed) >>>$' "$GCFG")" "1"
+check "codex: config still parses with both guards" "$(toml_ok "$GCFG" && echo yes || echo no)" "yes"
+( export CLAUDE_HOME="$GTD/claude" CODEX_HOME="$GTD/codex" LEOPOLD_HARNESS=all
+  leo_unwire_persona_guard >/dev/null 2>&1 )
+check "claude: unwire removes the persona guard" \
+  "$(jq '[.hooks.PreToolUse[]?.hooks[]? | select(.command | test("persona-guard"))] | length' "$GSET")" "0"
+check "claude: unwire leaves the git lock alone" \
+  "$(jq '[.hooks.PreToolUse[]?.hooks[]? | select(.command | test("guard-irreversible"))] | length' "$GSET")" "1"
+check "codex: unwire removes the persona block" \
+  "$(grep -c 'persona-guard' "$GCFG")" "0"
+check "codex: unwire leaves the git lock alone" \
+  "$(grep -c '^command = "bash /x/guard-irreversible.sh"$' "$GCFG")" "1"
+check "codex: config still parses after unwire" "$(toml_ok "$GCFG" && echo yes || echo no)" "yes"
+# The whole point: wire -> unwire -> wire must land in the same wired state.
+( export CLAUDE_HOME="$GTD/claude" CODEX_HOME="$GTD/codex" LEOPOLD_HARNESS=all
+  leo_wire_persona_guard "/x/persona-guard.sh" >/dev/null 2>&1 )
+check "re-wiring after unwire works (claude)" \
+  "$(jq '[.hooks.PreToolUse[].hooks[] | select(.command | test("persona-guard"))] | length' "$GSET")" "1"
+check "re-wiring after unwire works (codex)" \
+  "$(grep -c '^command = "bash /x/persona-guard.sh"$' "$GCFG")" "1"
+
+echo
 if [ "$FAIL" -eq 0 ]; then
   printf '\033[32m%s passed, 0 failed\033[0m\n' "$PASS"
 else

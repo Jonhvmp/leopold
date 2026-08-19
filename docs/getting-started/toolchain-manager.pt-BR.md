@@ -123,7 +123,9 @@ O instalador traz o **perfil OpenAI**:
 Tudo é **local e privado**: o servidor OpenViking faz bind em `127.0.0.1` (loopback) no
 dispositivo do próprio usuário — ele não fica exposto à rede, e nada aponta pra um servidor
 central. O único tráfego de saída vai pra OpenAI (com a chave do próprio usuário), pra embeddings e
-extração. Um perfil totalmente local com Ollama/GGUF (sem chave) está no roadmap.
+extração. Strings com formato de credencial que uma sessão tenha impresso são mascaradas
+antes de chegar à base de memória. Um perfil totalmente local com Ollama/GGUF (sem chave)
+está no roadmap.
 
 Suportado em Linux e macOS. No Windows nativo, rode dentro do WSL.
 

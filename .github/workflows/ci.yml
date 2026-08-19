@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Syntax-check hooks, installer, scripts, and extensions
-        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh install.sh scripts/*.sh extensions/*/*.sh
+        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh hooks/persona-guard.sh install.sh scripts/*.sh extensions/*/*.sh
       - name: Shellcheck every shell entrypoint (warning level)
         run: shellcheck -S warning hooks/*.sh install.sh scripts/*.sh extensions/*/*.sh
       - name: Byte-compile Python scripts (dashboard, extension engines)
@@ -43,6 +43,10 @@ jobs:
         run: bash scripts/test-codex-install.sh
       - name: Skill path tests (no SKILL.md may hardcode a harness home)
         run: bash scripts/test-skill-paths.sh
+      - name: Persona module tests (vendored skills whole, conductor contracts pinned)
+        run: bash scripts/test-persona-skill.sh
+      - name: "Persona guard red-team tests (hook-level allowlist, hermetic homes)"
+        run: bash scripts/test-persona-guard.sh
       - name: "Toolchain menu harness switch (hermetic: temp homes, stubbed PATH)"
         run: bash scripts/test-menu-harness.sh
       - name: "Serena extension per harness (hermetic: temp homes, stubbed CLIs)"

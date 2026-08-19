@@ -73,6 +73,10 @@ leopold serena install       # manage an extension directly (also: gstack, ovmem
 leopold doctor               # run every extension's doctor
 leopold update               # reinstall from this package
 leopold run [--dry-run]      # conduct the .leopold run (the SDK driver below)
+leopold persona list         # personas (contract status) + flows in .leopold/persona/
+leopold persona run <flow> [--persona <id>|all] [--parallel N] [--provider claude|codex]
+                             # conduct a synthetic-customer persona run end to end
+leopold persona report <dir> # re-synthesize REPORT.md from a run's journals alone
 ```
 
 `watch` reads the current project's `.leopold/` and shows run status, cost meters, the
@@ -87,6 +91,7 @@ event feed, decisions, and a Stop button. `run` needs a `.leopold/` brief (from
 | `LEOPOLD_WORKER_MODEL` | your Claude Code default | the worker's model |
 | `LEOPOLD_MAX_TURNS_PER_ITEM` | `40` | worker turn budget per item |
 | `LEOPOLD_WEBHOOK` | none | URL for JSON POST notifications (Slack/Discord/etc.) |
+| `LEOPOLD_APP_VERSION` | the flow's "App version pin" | build identity pinned into persona run journals |
 | `ANTHROPIC_API_KEY` | none | only for headless environments without Claude Code auth |
 
 Stop conditions (plan complete, kill switch via `.leopold/STOP`, repeated

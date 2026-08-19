@@ -54,6 +54,7 @@ Env controls:
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -207,6 +208,32 @@ def extract_text(content):
     return ""
 
 
+# ---------- credential masking ----------
+# Credential-shaped strings never enter the memory base: whatever a session happened
+# to print must not become a permanently recallable memory. Masking runs at ingest,
+# on the one seam every reader's messages flow through. Patterns are prefix- or
+# context-anchored so ordinary content (git SHAs, code, URLs) passes untouched.
+_MASK = "[redacted]"
+_CRED_PATTERNS = [
+    re.compile(r"\bsk-[A-Za-z0-9_-]{16,}"),                # OpenAI-style (incl. sk-proj-/sk-ant-)
+    re.compile(r"\bAKIA[A-Z0-9]{16}\b"),                   # AWS access key id
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}"),           # GitHub tokens
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),
+    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}"),         # Slack
+    re.compile(r"\bAIza[A-Za-z0-9_-]{30,}"),               # Google API key
+    re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}"),  # JWT
+    re.compile(r"(?i)\b(bearer\s+)[A-Za-z0-9._~+/=-]{16,}"),
+    re.compile(r"(?i)\b((?:api[_-]?key|secret|token|passwd|password|credential|authorization)"
+               r"[\"']?\s*[:=]\s*[\"']?)[^\s\"']{8,}"),
+]
+
+
+def mask_credentials(text):
+    for pat in _CRED_PATTERNS:
+        text = pat.sub(lambda m: (m.group(1) + _MASK) if m.groups() else _MASK, text)
+    return text
+
+
 def _msg_claude(obj):
     """One Claude Code transcript line -> {role, content}, or None.
 
@@ -288,6 +315,7 @@ def parse_transcript_delta(transcript_path, start_line):
             continue
         m = _msg_claude(obj) or _msg_codex(obj)
         if m:
+            m["content"] = mask_credentials(m["content"])
             msgs.append(m)
     return msgs, total
 

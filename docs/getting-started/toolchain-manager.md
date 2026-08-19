@@ -123,7 +123,8 @@ The installer ships the **OpenAI profile**:
 Everything is **local and private**: the OpenViking server binds to `127.0.0.1` (loopback) on
 the user's own device — it is not exposed to the network, and nothing points to a central
 server. The only outbound traffic is to OpenAI (with the user's own key) for embeddings and
-extraction. A fully-local Ollama/GGUF profile (no key) is on the roadmap.
+extraction. Credential-shaped strings a session happened to print are masked before they
+reach the memory base. A fully-local Ollama/GGUF profile (no key) is on the roadmap.
 
 Supported on Linux and macOS. On native Windows, run it inside WSL.
 

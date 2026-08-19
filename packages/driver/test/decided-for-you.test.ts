@@ -169,6 +169,16 @@ test("the notification carries the summary — every run ends through notify()",
   assert.match(got, /Reversal: flip the flag back/);
 });
 
+test("notify masks credential-shaped strings — a summary echo never leaves the run", async () => {
+  const leo = tmpLeo();
+  await notify(leo, undefined, "Leopold finished",
+    "Worker noted the key sk-proj-AAAAABBBBBCCCCCDDDDD1234 while fixing commit 4c1a2b3d4e5f60718293a4b5c6d7e8f901234567.");
+  const got = notifiedBody(leo);
+  assert.ok(!got.includes("sk-proj-AAAAABBBBB"), `credential leaked into the notification: ${got}`);
+  assert.match(got, /\[redacted\]/);
+  assert.match(got, /4c1a2b3d4e5f60718293a4b5c6d7e8f901234567/, "the git SHA must survive the mask");
+});
+
 test("renderDecidedForYou of nothing is the empty string", () => {
   assert.equal(renderDecidedForYou([]), "");
 });

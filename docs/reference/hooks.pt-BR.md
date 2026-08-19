@@ -155,6 +155,20 @@ o `guard-irreversible.sh` nunca as afrouxa, ele só acrescenta as duas negaçõe
 
 Veja a tabela de política em [Guardrails](../guardrails.md).
 
+## `persona-guard.sh` — o hook PreToolUse de persona, escopado ao run
+
+O terceiro hook em `hooks/` **não** faz parte da fiação sempre-ativa acima: o
+maestro de persona o pluga (matcher `mcp__.*|WebFetch`, tag gerenciada própria
+`leopold-persona-guard` pelo mesmo writer compartilhado) apenas enquanto um run
+de persona está ativo, e o despluga no fim do run. Enquanto plugado, ele confere
+cada `url` de uma chamada de ferramenta MCP ou `WebFetch` contra a allowlist de
+domínios do flow ativo e nega qualquer coisa fora — antes de o servidor MCP receber a
+chamada, nos dois harnesses, verificado ao vivo. O hook também é inerte sem um
+`.leopold/persona/ACTIVE.json` ativo, então uma fiação órfã nunca limita uma
+sessão normal. Payloads capturados, versões e a política completa:
+[Hooks do Persona Guard](persona-guard-hooks.md); suíte red-team:
+`scripts/test-persona-guard.sh`.
+
 ## `enhance.py` — o prompt enhancer de UserPromptSubmit
 
 Roda a cada prompt que você envia (o evento não aceita matcher, então todo o gating é

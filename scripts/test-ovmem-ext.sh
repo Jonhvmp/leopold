@@ -484,6 +484,32 @@ engine session-end "$NOSTATE_SE" >/dev/null
 check "no state file -> the /sessions body is byte-identical to today" \
   "$(last_session_body)" '{"session_id": "r-4"}'
 
+echo
+echo "ovmem extension — credential-shaped strings never reach the memory base"
+
+# A transcript that happened to print credentials: what goes over the wire must be
+# masked, and ordinary content — including a full git SHA — must arrive untouched.
+CRED_T="$TD/claude/projects/p/cred.jsonl"
+cat > "$CRED_T" <<'JSONL'
+{"type":"user","message":{"role":"user","content":"my key is sk-proj-AAAAABBBBBCCCCCDDDDD1234 and commit 4c1a2b3d4e5f60718293a4b5c6d7e8f901234567 fixed it"}}
+{"type":"assistant","message":{"role":"assistant","content":"Saw Authorization: Bearer abcdef1234567890ABCDEF and a JWT eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9P"}}
+{"type":"user","message":{"role":"user","content":"config had api_key = 'ghp_AbCdEfGhIjKlMnOpQrStUvWx123456' and password: hunter2secret99"}}
+JSONL
+rm -f "$OVDIR/state"/*.json "$TD/stub.reqs"; : > "$TD/stub.reqs"
+CRED_SE="{\"session_id\":\"r-cred\",\"transcript_path\":\"$CRED_T\",\"cwd\":\"$TD/proj\",\"hook_event_name\":\"SessionEnd\",\"reason\":\"other\"}"
+engine session-end "$CRED_SE" >/dev/null
+check "credential flush exits 0" "$?" "0"
+batch="$(jq -r 'select(.path | contains("/messages/batch")) | .raw' "$TD/stub.reqs" | tail -1)"
+hasnt "the OpenAI-style key never goes over the wire"   "$batch" "sk-proj-AAAAABBBBB"
+hasnt "the bearer token never goes over the wire"       "$batch" "abcdef1234567890ABCDEF"
+hasnt "the JWT never goes over the wire"                "$batch" "eyJhbGciOiJIUzI1NiJ9"
+hasnt "the GitHub token never goes over the wire"       "$batch" "ghp_AbCdEfGh"
+hasnt "the password value never goes over the wire"     "$batch" "hunter2secret99"
+has   "masked content is marked, not dropped"           "$batch" "\[redacted\]"
+has   "the surrounding sentence survives"               "$batch" "and commit"
+has   "a full git SHA passes untouched"                 "$batch" "4c1a2b3d4e5f60718293a4b5c6d7e8f901234567"
+has   "clean prose passes untouched"                    "$batch" "fixed it"
+
 # OV server down mid-run: one log line per failed call, exit clean, session intact.
 kill "$STUB_PID" 2>/dev/null; wait "$STUB_PID" 2>/dev/null
 cat > "$TD/myproj/.leopold/state.json" <<'EOF'

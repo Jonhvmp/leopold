@@ -13,6 +13,7 @@ import { runInsights } from "./insights.js";
 import { runGraphCommand } from "./graph-cmd.js";
 import { runRecallCommand } from "./recall-cmd.js";
 import { runWorkflowCommand } from "./workflow-cmd.js";
+import { runPersonaCommand } from "./persona-testing/persona-cmd.js";
 import { setProvider, setRoleProviders, currentProvider } from "./sdk.js";
 import {
   HARNESSES, describeHarness, installedHarnesses, leopoldHome, resolveProvider, resolveRoleProviders,
@@ -58,6 +59,12 @@ Usage:
   leopold-driver workflow [--print] [--run] [--provider claude|codex|hybrid]
                                             compile the brief into a dynamic workflow
                                             (emit by default; --run executes it, experimental)
+  leopold-driver persona run <flow> [--persona <id>|all] [--parallel N]
+                                            conduct a synthetic-customer persona run headless —
+                                            the same .leopold/persona/runs/ tree the
+                                            /leopold-persona skill writes
+  leopold-driver persona report <run-dir>   re-synthesize REPORT.md from the run's journals
+  leopold-driver persona list               personas (contract status) and flows here
   leopold-driver secrets set|list [NAME]    manage the run's encrypted secret vault
 
 'graph' is the pre-flight: it prints the plan as a graph (node kinds, dependency edges,
@@ -80,11 +87,22 @@ already decided" block a run starts with — the exact bytes the SDK driver seed
 same builder, so the in-session engine reads the same memory; with no archived decisions
 stdout is empty (the driver seeds nothing) and stderr says so.
 
+'persona' is the synthetic-customer harness over .leopold/persona/ (built in a session by
+/leopold-persona). 'persona run <flow>' conducts one supervised worker per persona through
+flows/<flow>.md — journal contract, domain allowlist and irreversibility bounds enforced by
+the driver, window continuity from JOURNEY.jsonl — then writes the deterministic REPORT.md.
+--persona <id> runs one persona (default: all), --parallel N fans the cast out. 'persona
+report <run-dir>' rewrites REPORT.md from the journals alone, byte-identical outside the
+executive-summary marker. 'persona list' answers what is here: each persona with its
+contract status (ready / draft / blocked / error) and each flow with its parse verdict —
+exit 0 always, including the "nothing to run" answer. LEOPOLD_APP_VERSION pins the build
+identity journaled per run (fallback: the flow's own "App version pin" section).
+
 Most commands run the bundled harness — no repo clone, no make. 'watch' needs Python 3.
 Newer version: npm i -g leopold-driver@latest.
 
-Every command that reaches a model takes --provider claude|codex — 'run' AND 'workflow
---run'. With both CLIs installed and no flag, Leopold picks the harness whose session it
+Every command that reaches a model takes --provider claude|codex — 'run', 'workflow
+--run' AND 'persona run'. With both CLIs installed and no flag, Leopold picks the harness whose session it
 was launched from (Codex exports CODEX_THREAD_ID, Claude Code exports CLAUDECODE); only
 when that is unknowable does it fall back to Claude. LEOPOLD_PROVIDER also works.
 
@@ -188,6 +206,12 @@ switch (sub) {
   case "workflow":
     runWorkflowCommand(process.cwd(), rest).then((c) => process.exit(c)).catch((err: unknown) => {
       console.error("leopold-driver workflow error:", err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    });
+    break;
+  case "persona":
+    runPersonaCommand(process.cwd(), rest).then((c) => process.exit(c)).catch((err: unknown) => {
+      console.error("leopold-driver persona error:", err instanceof Error ? err.message : String(err));
       process.exit(1);
     });
     break;

@@ -64,6 +64,7 @@ leopold workflow             # compile the brief into a dynamic workflow (--run:
 leopold graph                # print + validate the plan's graph before trusting it (exit 1 if invalid)
 leopold insights             # summarize a run (effort mix, review pass-rate, spend)
 leopold recall "query"       # search this project's own run archive — decisions + Reversals, offline
+leopold persona run <flow>   # synthetic-customer run, headless: supervised workers, enforced bounds
 leopold doctor               # health check
 ```
 
@@ -88,6 +89,8 @@ Then, in any project:
 /leopold-learn    # mine your decisions + sessions → proposed charter amendments
 /leopold-enhance  # global prompt enhancer: status, on/off, preview, learn
 /leopold-triage   # triage a backlog (quarantined classifiers, dedupe, fix plans)
+/leopold-persona  # synthetic customers walk a product flow and report bugs + friction
+                  #   (headless twin: leopold persona run — same run tree, driver-conducted)
 /leopold-watch    # live web dashboard: cost meters, events, decisions, Stop
 /leopold-status   # see where it is (terminal)
 /leopold-stop     # take the seat back

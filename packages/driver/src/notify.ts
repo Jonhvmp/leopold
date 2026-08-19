@@ -9,6 +9,7 @@
 // it was before personas existed.
 
 import { logEvent } from "./log.js";
+import { maskCredentials } from "./secrets.js";
 import { decidedForYou } from "./summary.js";
 
 export async function notify(
@@ -17,7 +18,7 @@ export async function notify(
   title: string,
   body: string,
 ): Promise<void> {
-  const full = body + decidedForYou(leoDir);
+  const full = maskCredentials(body + decidedForYou(leoDir));
   process.stdout.write(`\x07\n=== ${title} ===\n${full}\n\n`);
   logEvent(leoDir, { event: "notify", title, body: full });
   if (!webhookUrl) return;
