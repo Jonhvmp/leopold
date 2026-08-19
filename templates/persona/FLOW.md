@@ -18,8 +18,8 @@ dashboard shows the active subscription".>
 
 ## Domain allowlist (hard boundary)
 
-- <staging.example.com>
-- <accounts.example.com>
+- staging.example.com
+- accounts.example.com
 
 The persona never navigates outside these. Point flows at staging, not production.
 

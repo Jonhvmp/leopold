@@ -111,7 +111,20 @@ function splitSections(text: string): { title: string; sections: Map<Section["la
     // First heading wins: a duplicated section never silently overwrites.
     if (current !== undefined && !sections.has(current)) sections.set(current, body.join("\n").trim());
   };
+  // Heading detection is fence-aware: a `#` line inside a ``` / ~~~ block is
+  // section CONTENT (a shell comment, a fenced example), never a heading — so a
+  // CLI flow's fenced entry-point commands survive verbatim.
+  let inFence = false;
   for (const line of lines) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      if (current !== undefined) body.push(line);
+      continue;
+    }
+    if (inFence) {
+      if (current !== undefined) body.push(line);
+      continue;
+    }
     const h1 = /^#\s+(.*)$/.exec(line);
     if (h1 !== null && !line.startsWith("##")) {
       if (title === "") title = h1[1].replace(/^flow\s*[—–-]\s*/i, "").trim();
@@ -179,6 +192,25 @@ export function parseFlow(text: string): FlowParseResult {
       if (!Number.isInteger(value) || value <= 0)
         return { status: "malformed", reason: `max_turns must be a positive integer, got "${m[1]}"` };
       maxTurns = value;
+    } else if (/max_turns/i.test(budgetBody)) {
+      // A near-miss (wrong case, trailing words) must never silently fall back
+      // to the default: the author budgeted something and the run must not guess.
+      return {
+        status: "malformed",
+        reason: "a max_turns line is present but not in the form `max_turns: <positive integer>` — fix it or remove it",
+      };
+    }
+  }
+
+  // An entry that is not a bare hostname (a scheme, a path, the template's
+  // placeholder brackets) could never match any URL — every navigation would be
+  // rejected with no diagnostic pointing here. Name the entry instead.
+  for (const entry of allowlist) {
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.?$/i.test(entry)) {
+      return {
+        status: "malformed",
+        reason: `allowlist entry "${entry}" is not a bare hostname — no scheme, path, port or placeholder brackets; write it like staging.example.com`,
+      };
     }
   }
 

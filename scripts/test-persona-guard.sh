@@ -68,6 +68,10 @@ ck_deny 'unparseable url fails closed'          "$(run_url mcp__browser__navigat
 ck_deny 'empty url fails closed'                "$(run_url mcp__browser__navigate '')"
 ck_deny 'ipv6 literal is never a flow hostname' "$(run_url mcp__browser__navigate 'https://[::1]:8080/')"
 ck_deny 'nested url key (batch payloads)'       "$(run_raw "$(jq -cn --arg cwd "$TMP" '{tool_name:"mcp__browser__batch",cwd:$cwd,tool_input:{ops:[{kind:"nav",url:"https://prod.example.org/x"}]}}')")"
+ck_deny 'url as an ARRAY of urls (non-string fails closed)' \
+                                                "$(run_raw "$(jq -cn --arg cwd "$TMP" '{tool_name:"mcp__browser__open_tabs",cwd:$cwd,tool_input:{url:["https://evil.io/x","https://staging.example.com/"]}}')")"
+ck_deny 'url as an object (non-string fails closed)' \
+                                                "$(run_raw "$(jq -cn --arg cwd "$TMP" '{tool_name:"mcp__browser__navigate",cwd:$cwd,tool_input:{url:{href:"https://evil.io/x"}}}')")"
 ck_deny 'one good + one bad url still denies'   "$(run_raw "$(jq -cn --arg cwd "$TMP" '{tool_name:"mcp__browser__batch",cwd:$cwd,tool_input:{a:{url:"https://staging.example.com/ok"},b:{url:"https://prod.example.org/x"}}}')")"
 ck_deny 'WebFetch outside the allowlist'        "$(run_url WebFetch 'https://prod.example.org/doc')"
 ck_deny 'any mcp server name is in scope'       "$(run_url mcp__claude-in-chrome__navigate 'https://prod.example.org/')"

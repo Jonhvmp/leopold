@@ -76,6 +76,14 @@ flowchart LR
 
     [:octicons-arrow-right-24: Prompt Enhancer](reference/enhance.md)
 
+-   :material-account-search:{ .lg .middle } __Synthetic customers__
+
+    ---
+
+    Evidence-grounded personas walk your product's flows and report bugs, confusion and friction — bounds enforced in code.
+
+    [:octicons-arrow-right-24: Persona Testing](concepts/persona-testing.md)
+
 </div>
 
 ## The problem it solves

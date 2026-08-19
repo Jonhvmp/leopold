@@ -167,3 +167,47 @@ test("a malformed max_turns is a named error, never guessed around", () => {
     if (result.status === "malformed") assert.match(result.reason, /max_turns/);
   }
 });
+
+// A near-miss max_turns line must never silently fall back to the default —
+// the author budgeted something, and the run must not guess.
+test("a max_turns near-miss (wrong case, trailing words) is malformed, never a silent default", () => {
+  for (const budget of ["Max_turns: 12", "max_turns: 12 steps"]) {
+    const r = parseFlow(filledFlow({ budget }));
+    assert.equal(r.status, "malformed", budget);
+    if (r.status === "malformed") assert.match(r.reason, /max_turns/);
+  }
+});
+
+// An allowlist entry that can never match any URL is a flow that silently
+// blocks ALL navigation — name the entry at parse time instead.
+test("an allowlist entry with a scheme or placeholder brackets is malformed, naming the entry", () => {
+  for (const entry of ["https://staging.example.com", "<staging.example.com>", "staging.example.com/store"]) {
+    const text = filledFlow().replace("- staging.example.com", `- ${entry}`);
+    const r = parseFlow(text);
+    assert.equal(r.status, "malformed", entry);
+    if (r.status === "malformed") assert.ok(r.reason.includes(entry), `reason must name "${entry}": ${r.reason}`);
+  }
+});
+
+// Heading detection is fence-aware: `#` lines inside a code fence are content.
+test("a fenced code block with # lines stays inside its section verbatim", () => {
+  const text = filledFlow().replace(
+    "https://staging.example.com/store",
+    [
+      "Run the CLI:",
+      "```bash",
+      "# start the server first",
+      "## then open the store",
+      "leopold-store serve",
+      "```",
+    ].join("\n"),
+  );
+  const r = parseFlow(text);
+  assert.equal(r.status, "ok");
+  if (r.status === "ok") {
+    assert.match(r.flow.entryPoint, /# start the server first/);
+    assert.match(r.flow.entryPoint, /## then open the store/);
+    assert.match(r.flow.entryPoint, /leopold-store serve/);
+    assert.equal(r.flow.successCriteria.includes("active subscription"), true, "later sections still split correctly");
+  }
+});

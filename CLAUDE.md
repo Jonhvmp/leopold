@@ -60,7 +60,7 @@ never add a `Co-Authored-By` trailer for a model. Confident tone, no hedging.
   framework, bundler, CDN, web font, or build step. If it cannot run offline with no
   supply chain, it is not Leopold.
 - **Both harnesses or neither.** A capability that works on Claude Code and silently
-  degrades on Codex (or the reverse) is half-shipped. The two hooks are the same
+  degrades on Codex (or the reverse) is half-shipped. The hooks are the same
   unmodified scripts on both; keep it that way.
 - **One writer per surface.** JSON and TOML hook wiring lives in
   `extensions/lib/harness.sh` alone. Copy-pasting it into an extension is how the two
@@ -81,7 +81,7 @@ a doc. A `strings` dump or a doc page is a hypothesis; a live session is a fact.
 ## Layout
 
 ```
-hooks/            the two hooks: guard-irreversible.sh (git lock), stop-continuity.sh (continuity)
+hooks/            guard-irreversible.sh (git lock) · stop-continuity.sh (continuity) · persona-guard.sh (persona allowlist, armed per run)
 skills/           the /leopold-* skills, installed into each harness's skills dir
 extensions/       serena · gstack · ovmem · enhance, + lib/harness.sh (the shared writer)
 packages/driver/  the TypeScript SDK driver (provider seam in sdk.ts → providers/)

@@ -14,6 +14,7 @@ flowchart LR
     W --> L
     T["/leopold-triage<br/><small>backlog → plano</small>"] --> B
     E["/leopold-enhance<br/><small>prompt enhancer</small>"]
+    P["/leopold-persona<br/><small>clientes sintéticos</small>"]
 ```
 
 ## `/leopold-brief`
@@ -95,6 +96,28 @@ que faz o Haiku (na sua própria conta) interpretar prompts fracos, ciente do ch
 - **Limite rígido:** o `learn` nunca edita o `PROMPT-PROFILE.md` — o profile
   molda toda interpretação futura; você revisa e aplica.
 - O `learn` requer Dynamic workflows habilitado.
+
+## `/leopold-persona`
+
+[Teste com clientes sintéticos](../concepts/persona-testing.md), conduzido: uma
+persona fundamentada em evidência percorre um fluxo declarado do produto —
+percebendo a interface real, reagindo em personagem, registrando cada turno no
+diário — e o run termina com um relatório estruturado de bugs, confusão,
+problemas de acessibilidade e fricção.
+
+- **`init`** — cria o namespace `.leopold/persona/` (personas / flows / runs) e o
+  template de fluxo.
+- **`build <id>`** — compila um contrato de persona via `persona-contract-builder`.
+- **`run <flow> [--persona <id>|all]`** — percorre o fluxo; o gêmeo headless é
+  `leopold persona run` (mesma árvore de run, conduzido pelo driver, limites
+  aplicados em código).
+- Vem com duas skills de apoio, vendorizadas byte a byte e instaladas nos dois
+  harnesses: **`persona-contract-builder`** (compila um `persona-contract/1.0`
+  fundamentado em evidência — catálogo de claims, ledger de fontes, fronteiras
+  epistêmicas, gate de validação) e **`persona-contract-runtime`** (executa um
+  contrato um turno limitado por vez — protocolo de sinceridade, gate anti-drift,
+  resultados instrumentados). Elas são a semântica de persona; o
+  `/leopold-persona` conduz em volta delas e nunca redefine seus schemas.
 
 ## `/leopold-status`
 

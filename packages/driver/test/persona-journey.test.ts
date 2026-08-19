@@ -10,6 +10,7 @@ import {
   RESEED_TAIL_TURNS,
   createJourney,
   appendTurn,
+  appendStop,
   readJourney,
   parseJourney,
   headerLine,
@@ -205,4 +206,25 @@ test("a journey survives write → read → reseed with zero loss", () => {
   if (state.status !== "ok") return;
   // The reseed block carries exactly the state the next turn chains from.
   assert.ok(reseedBlock(read.journey).includes(JSON.stringify(state.state)));
+});
+
+// The append path must be open-rejects, never check-then-write: a journal moved
+// or archived between a stale existence check and the write must NOT be
+// recreated headerless. The mock simulates exactly that race.
+test("appendTurn never recreates a missing journal, even when a stale check says it exists", (t) => {
+  const file = tmpJournal(); // path only — the file is never created
+  t.mock.method(fs, "existsSync", () => true); // the stale answer of the race
+  const r = appendTurn(file, turn(1));
+  t.mock.restoreAll();
+  assert.equal(r.status, "rejected");
+  assert.equal(fs.existsSync(file), false, "a headerless journal must never come into existence");
+});
+
+test("appendStop never recreates a missing journal either", (t) => {
+  const file = tmpJournal();
+  t.mock.method(fs, "existsSync", () => true);
+  const r = appendStop(file, "allowlist", "navigation to evil.io");
+  t.mock.restoreAll();
+  assert.equal(r.status, "rejected");
+  assert.equal(fs.existsSync(file), false);
 });

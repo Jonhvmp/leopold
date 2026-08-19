@@ -47,7 +47,8 @@ meada.
 | `guard.ts` | o lock de git como callback de `canUseTool` |
 | `config.ts` | carrega o brief e a config da run (CLI/env > GUARDRAILS > padrões) |
 | `budget.ts` / `secrets.ts` / `reaper.ts` | hard-stop em USD, cofre criptografado, reaper de runs órfãs |
-| `insights.ts` | `events.jsonl` → relatório pós-run |
+| `insights.ts` | `events.jsonl` → relatório pós-run (incl. persona runs) |
+| `persona-testing/` | o [harness de persona](../concepts/persona-testing.md): diário de jornada, parser de fluxo, gate de contrato, relatório determinístico, condução do elenco (`leopold persona`) |
 | `log.ts` | `DECISIONS.md`, `events.jsonl`, contabilidade do plano |
 | `notify.ts` | notificações de conclusão / escalação |
 

@@ -76,6 +76,14 @@ flowchart LR
 
     [:octicons-arrow-right-24: Prompt Enhancer](reference/enhance.md)
 
+-   :material-account-search:{ .lg .middle } __Clientes sintéticos__
+
+    ---
+
+    Personas fundamentadas em evidência percorrem os fluxos do seu produto e reportam bugs, confusão e fricção — limites aplicados em código.
+
+    [:octicons-arrow-right-24: Teste com Personas](concepts/persona-testing.md)
+
 </div>
 
 ## O problema que ele resolve

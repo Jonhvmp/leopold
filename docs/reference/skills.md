@@ -14,6 +14,7 @@ flowchart LR
     W --> L
     T["/leopold-triage<br/><small>backlog → plan</small>"] --> B
     E["/leopold-enhance<br/><small>prompt enhancer</small>"]
+    P["/leopold-persona<br/><small>synthetic customers</small>"]
 ```
 
 ## `/leopold-brief`
@@ -95,6 +96,26 @@ hook that has Haiku (your own account) interpret weak prompts, charter-aware.
 - **Hard boundary:** `learn` never edits `PROMPT-PROFILE.md` itself — the profile
   shapes every future interpretation; you review and apply.
 - `learn` requires Dynamic workflows enabled.
+
+## `/leopold-persona`
+
+[Synthetic-customer testing](../concepts/persona-testing.md), conducted: an
+evidence-grounded persona walks a declared product flow — perceiving the real
+interface, reacting in character, journaling every turn — and the run ends with a
+structured report of bugs, confusion, accessibility problems and friction.
+
+- **`init`** — scaffolds the `.leopold/persona/` namespace (personas / flows / runs)
+  and the flow template.
+- **`build <id>`** — compiles a persona contract through `persona-contract-builder`.
+- **`run <flow> [--persona <id>|all]`** — walks the flow; the headless twin is
+  `leopold persona run` (same run tree, driver-conducted, bounds enforced in code).
+- Ships with two support skills, vendored verbatim and installed on both harnesses:
+  **`persona-contract-builder`** (compiles an evidence-grounded
+  `persona-contract/1.0` — claim catalog, source ledger, epistemic boundaries,
+  validation gate) and **`persona-contract-runtime`** (enacts a contract one bounded
+  turn at a time — sincerity protocol, anti-drift gate, instrumented results). They
+  are the persona semantics; `/leopold-persona` conducts around them and never
+  redefines their schemas.
 
 ## `/leopold-status`
 

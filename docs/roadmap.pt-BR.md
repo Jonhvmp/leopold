@@ -42,6 +42,10 @@ flowchart LR
       roteamento inteligente opt-in
 - [x] **CI hardcore** — smoke test de CLI do binário compilado, gate de
       shellcheck, matriz macOS + Ubuntu, npm provenance, Dependabot, CodeQL
+- [x] **Teste com personas (0.20–0.21)** — clientes sintéticos: skills de contrato
+      fundamentado em evidência, `/leopold-persona` e o harness conduzido pelo
+      driver (`leopold persona run` — diário antes da ação, limites em código,
+      hook persona-guard provado ao vivo nos dois harnesses)
 - [x] **Prompt enhancer (v0.11)** — hook global de `UserPromptSubmit`: prompts
       fracos ganham uma interpretação estruturada e ciente do charter, gerada
       pelo Haiku na conta do próprio usuário (desligado por padrão, fail-open,
@@ -50,6 +54,8 @@ flowchart LR
 
 ## Próximos
 
+- [ ] Cadência agendada de personas (scheduled tasks do Claude Code + automations
+      do Codex), condicionada à verificação ao vivo dos dois schedulers
 - [ ] Exercitar de ponta a ponta o shim de query experimental do
       `workflow --run` (um job de CI manual via `workflow_dispatch` com uma
       chave real — gasta tokens)

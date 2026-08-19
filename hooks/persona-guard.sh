@@ -11,7 +11,8 @@
 # verified live, docs/reference/persona-guard-hooks.md) plus WebFetch. Every
 # string under a `url` key in tool_input must parse as http(s) and land on an
 # allowlisted host (exact or dot-boundary subdomain, same semantics as
-# `hostAllowed` in packages/driver/src/persona-testing/flow.ts). Anything else
+# `hostAllowed` in packages/driver/src/persona-testing/flow.ts); a `url` value
+# that is not a string (an array of URLs, an object) fails closed. Anything else
 # is denied with a reason that names the flow. Unknown is outside: a malformed
 # ACTIVE.json, an unreadable flow, an empty allowlist, an unparseable URL all
 # fail CLOSED. The out-of-bounds rule (payments, deletions) is semantic and
@@ -129,9 +130,11 @@ verdict="$(printf '%s' "$input" | jq -r --argjson allow "$allow_json" '
   def allowed($h):
     ($allow | map(ascii_downcase | until(endswith(".") | not; .[:length-1])) | map(select(. != ""))) as $a
     | any($a[]; . as $e | ($h == $e) or ($h | endswith("." + $e)));
-  [ .tool_input // {} | .. | objects | .url? // empty | strings ]
+  ([ .tool_input // {} | .. | objects | (.url? // empty) | select(type != "string") ] | length) as $nonstring
+  | [ .tool_input // {} | .. | objects | .url? // empty | strings ]
   | [ .[] | (hostof) as $h | select(($h == null) or ($h == "") or (allowed($h) | not)) | ($h // "") ]
-  | if length == 0 then "ok"
+  | if $nonstring > 0 then "unparseable"
+    elif length == 0 then "ok"
     elif .[0] == "" then "unparseable"
     else "outside " + .[0]
     end
