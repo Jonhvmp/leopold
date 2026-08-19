@@ -6,6 +6,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-08-18
+
+**The persona harness.** 0.20.0 gave the synthetic customer a script; this release
+gives it a stage crew. Persona runs are now conducted by the driver — supervised
+worker per persona, the journey journal as load-bearing state, window rolls that
+provably resume mid-flow, a cast that fans out in parallel — and the hard bounds
+stopped being prose: the domain allowlist is enforced by a hook upstream of the
+tool call on both harnesses, decided from live evidence.
+
+### Added
+- **The persona guard hook** (`hooks/persona-guard.sh`): the flow's domain allowlist
+  is now enforced *upstream of the tool call*, on both harnesses. Decided from live
+  evidence, not reasoning — PreToolUse observes and denies MCP tool calls
+  (`mcp__<server>__<tool>`) **and WebFetch** — the wired matcher is
+  `mcp__.*|WebFetch`, the exact alternation the live deny probe ran with, so both
+  navigation surfaces the hook judges are routed to it (the shared writer's spec
+  format learned to carry `|` inside a matcher for this, additively — plain
+  4-field specs parse unchanged) — on Claude Code 2.1.235 **and** codex-cli
+  0.147.0, with the denial landing before the MCP server receives the call;
+  captured payloads and versions in `docs/reference/persona-guard-hooks.md`
+  (en + pt-BR). The conductor wires it only while a persona run is active: the
+  `/leopold-persona` run lifecycle arms it at preflight (wire + `ACTIVE.json`) and
+  disarms it on every exit path — both steps pinned by `scripts/test-persona-skill.sh`
+  (`leo_wire_persona_guard` / `leo_unwire_persona_guard` in the one shared writer,
+  own managed tag, never touching the git lock), the hook is inert without an
+  active `.leopold/persona/ACTIVE.json`, denials name the flow and are journaled
+  to `.leopold/persona/events.jsonl` as `persona_guard_block` (host only, never
+  the full URL), and unknown fails closed: malformed ACTIVE.json, missing flow,
+  empty allowlist, unparseable URL all deny. `leopold doctor` now states, per
+  harness, whether the hook or conductor-level enforcement is the bound in force —
+  and never infers "run active" from the wire alone: it reads the project's
+  `ACTIVE.json` too, so a wire left by a crashed conductor reports as exactly
+  that (wired but inert here), never as a live run.
+  Red-teamed by `scripts/test-persona-guard.sh` (in `make persona-test` and CI):
+  lookalike hosts, suffix and userinfo tricks in both directions — the hook judges
+  URLs by their WHATWG host, treating `\` as an authority terminator exactly like
+  the browser stack, so `https://evil.io\@allowed-host/` is denied as `evil.io` —
+  nested `url` keys, batch payloads — verified by mutation, with the same two
+  backslash verdicts pinned on the driver's `hostAllowed`. Found on the way, documented honestly: headless
+  `codex exec` auto-cancels *allowed* MCP calls unless approvals are bypassed —
+  a Codex conduction fact, stated in the doc, that never weakens the deny path.
+- **`leopold persona run|report|list`** — the headless persona engine now has
+  its CLI face. `persona run <flow> [--persona <id>|all] [--parallel N]`
+  conducts a cast through the driver's conductor
+  (`persona-testing/conduct.ts`): same `.leopold/persona/runs/` tree, same
+  journals, same report sections as an in-session `/leopold-persona` run — the
+  parity the skill documents, now backed by a reachable command
+  (`scripts/test-persona-skill.sh` pins the whole chain: the claim in the
+  skill, the dispatch in `index.ts`, the command module reaching `conductCast`
+  and `reportFromRunDir`). The journal's app-version pin resolves
+  `LEOPOLD_APP_VERSION`, then the flow's own "App version pin" section, and is
+  stated as "unpinned" otherwise — never invented. `persona report <run-dir>`
+  re-synthesizes `REPORT.md` from the journals alone (byte-deterministic) and
+  re-splices the existing report's executive summary — the one sanctioned
+  non-deterministic region — so re-running it rewrites the file byte-identical
+  outside the summary marker. `persona list` answers with per-persona contract
+  status and per-flow validity from the same gates the conductor enforces; an
+  empty module is an answer, never a failure. Exit codes are the contract (0
+  answered/conducted, 1 impossible, 2 usage), pinned with the argv parsing and
+  a stubbed-seam conduction in `test/persona-cmd.test.ts`. The driver-side
+  git-lock denials journal as `persona_git_block`, a name distinct from the
+  hook's navigation-denial `persona_guard_block` on purpose — one event name
+  per meaning.
+
 ## [0.20.0] - 2026-08-18
 
 **The persona walks.** Real customers find what builders cannot — bugs on the unhappy

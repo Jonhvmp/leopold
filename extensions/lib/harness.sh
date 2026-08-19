@@ -21,8 +21,11 @@
 #   leo_wire_hooks leopold-enhance "UserPromptSubmit||python3 $DIR/enhance.py --event user-prompt|30"
 #
 # A hook spec is a single pipe-delimited string:  EVENT|MATCHER|COMMAND|TIMEOUT
-# MATCHER and TIMEOUT may be empty. COMMAND must not contain a literal "|"
-# (hook commands are an interpreter plus a path plus flags — they never do).
+# MATCHER and TIMEOUT may be empty. EVENT, COMMAND and TIMEOUT must not contain a
+# literal "|" (hook commands are an interpreter plus a path plus flags — they
+# never do). MATCHER MAY contain "|" — both harnesses read matchers as regex, so
+# alternation ("mcp__.*|WebFetch") is a legitimate matcher; the parser anchors
+# EVENT at the front and COMMAND|TIMEOUT at the back and gives MATCHER the rest.
 
 # ---- homes ------------------------------------------------------------------
 
@@ -170,8 +173,17 @@ leo_wire_hooks() {
 
 # ---- internals --------------------------------------------------------------
 
-_leo_spec_field() { # <spec> <1-based index>
-  printf '%s' "$1" | awk -F'|' -v i="$2" '{printf "%s", $i}'
+# Field extraction honoring the format comment up top: EVENT is everything before
+# the first "|", COMMAND and TIMEOUT are the last two fields, and MATCHER is the
+# whole middle rejoined — so a regex-alternation matcher ("mcp__.*|WebFetch")
+# survives the pipe delimiter. A plain 4-field spec parses exactly as before.
+_leo_spec_field() { # <spec> <1-based index: 1 EVENT, 2 MATCHER, 3 COMMAND, 4 TIMEOUT>
+  printf '%s' "$1" | awk -F'|' -v i="$2" '{
+    if (i == 1)      printf "%s", $1
+    else if (i == 3) printf "%s", $(NF-1)
+    else if (i == 4) printf "%s", $NF
+    else { m = ""; for (f = 2; f <= NF-2; f++) m = m (f > 2 ? "|" : "") $f; printf "%s", m }
+  }'
 }
 
 _leo_say()  { printf '   %s\n' "$*"; }
@@ -606,6 +618,45 @@ leo_unwire_hooks_toml() {
   fi
   mv "$tmp" "$file"
   _leo_say "hooks removed from $file (backup at $bak)"
+}
+
+# ---- persona guard ----------------------------------------------------------
+#
+# The persona module's hook-level navigation bound (hooks/persona-guard.sh):
+# while a persona run is active, MCP navigation is checked against the active
+# flow's domain allowlist AT THE HOOK, on both harnesses — verified live against
+# claude 2.1.235 and codex-cli 0.147.0 (docs/reference/persona-guard-hooks.md:
+# PreToolUse fires for `mcp__<server>__<tool>` calls with the same payload and
+# deny contract on both). The conductor wires this at persona-run start and
+# unwires it at run end, so the hook exists in a harness config ONLY while a
+# run is active; the hook itself additionally no-ops without an active
+# `.leopold/persona/ACTIVE.json`, so a stale wire can never bound a normal
+# session. Spelled here, next to the other writers, because the wire/unwire
+# pair IS format knowledge — an extension or the driver calling anything more
+# specific than these two functions is how the harnesses drift.
+
+LEO_PERSONA_GUARD_TAG="leopold-persona-guard"
+
+# The matcher routes BOTH navigation surfaces the hook judges: MCP tool calls
+# (`mcp__<server>__<tool>`) and the built-in WebFetch — the alternation was part
+# of the live verification (docs/reference/persona-guard-hooks.md, the deny
+# probe ran with `mcp__.*|WebFetch`). A matcher that names only `mcp__.*` would
+# leave the hook's WebFetch branch reachable by no production wiring: an
+# off-allowlist WebFetch during an active run would sail past the hook layer.
+leo_wire_persona_guard() { # <absolute path to persona-guard.sh>
+  local hook="${1:?leo_wire_persona_guard: hook path}"
+  leo_wire_hooks "$LEO_PERSONA_GUARD_TAG" "PreToolUse|mcp__.*|WebFetch|bash $hook|5"
+}
+
+leo_unwire_persona_guard() {
+  local rc=0 h
+  for h in $(leo_harness_targets); do
+    case "$h" in
+      claude) leo_unwire_hooks_json "$(leo_settings_file)" "$LEO_PERSONA_GUARD_TAG" 'persona-guard\.sh' || rc=1 ;;
+      codex)  leo_unwire_hooks_toml "$(leo_config_file)"   "$LEO_PERSONA_GUARD_TAG" || rc=1 ;;
+    esac
+  done
+  return $rc
 }
 
 # ---- MCP servers ------------------------------------------------------------

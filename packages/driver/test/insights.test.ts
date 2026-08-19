@@ -45,6 +45,50 @@ test("summarize tolerates blank and malformed lines", () => {
   assert.equal(r.events, 1); // only the one valid line counts
 });
 
+// A persona cast's event stream, exactly as conduct.ts logs it through log.ts:
+// 3 personas fanned out, 5 turns total, 1 abandonment, findings per persona.
+const PERSONA_EVENTS = [
+  '{"ts":"2026-08-18T09:00:00Z","event":"persona_run_start","flow":"checkout","personas":["casual","rushed","skeptic"],"run_dir":"runs/x"}',
+  '{"ts":"2026-08-18T09:00:01Z","event":"persona_turn","persona":"casual","turn_id":"turn-1"}',
+  '{"ts":"2026-08-18T09:00:02Z","event":"persona_turn","persona":"casual","turn_id":"turn-2"}',
+  '{"ts":"2026-08-18T09:00:03Z","event":"persona_turn","persona":"rushed","turn_id":"turn-1"}',
+  '{"ts":"2026-08-18T09:00:04Z","event":"persona_turn","persona":"skeptic","turn_id":"turn-1"}',
+  '{"ts":"2026-08-18T09:00:05Z","event":"persona_turn","persona":"skeptic","turn_id":"turn-2"}',
+  '{"ts":"2026-08-18T09:00:06Z","event":"persona_violation","persona":"rushed","rule":"allowlist","detail":"prod.example.org"}',
+  '{"ts":"2026-08-18T09:00:07Z","event":"persona_stall","persona":"rushed","reason":"no valid turn after one retry"}',
+  '{"ts":"2026-08-18T09:00:08Z","event":"persona_outcome","persona":"casual","outcome":"succeeded"}',
+  '{"ts":"2026-08-18T09:00:09Z","event":"persona_outcome","persona":"skeptic","outcome":"abandoned"}',
+  '{"ts":"2026-08-18T09:00:10Z","event":"persona_findings","persona":"casual","count":1}',
+  '{"ts":"2026-08-18T09:00:11Z","event":"persona_findings","persona":"rushed","count":2}',
+  '{"ts":"2026-08-18T09:00:12Z","event":"persona_findings","persona":"skeptic","count":2}',
+];
+
+test("summarize recognizes persona runs: cast size, turns, findings, abandonment", () => {
+  const r = summarize(PERSONA_EVENTS);
+  assert.equal(r.persona.casts, 1);
+  assert.equal(r.persona.castSize, 3);
+  assert.equal(r.persona.turns, 5);
+  assert.equal(r.persona.findings, 5);
+  assert.deepEqual(r.persona.outcomes, { succeeded: 1, abandoned: 1 });
+  assert.equal(r.persona.abandoned, 1);
+  assert.equal(r.persona.stalls, 1);
+  assert.equal(r.persona.violations, 1);
+});
+
+test("renderInsights shows the persona section with the abandonment rate", () => {
+  const out = renderInsights(summarize(PERSONA_EVENTS));
+  assert.match(out, /Persona casts\s+1 run · 3 personas · 5 turns · 5 findings/);
+  // 1 abandoned of a 3-persona cast: 33% — an abandonment is data, never hidden.
+  assert.match(out, /1 abandoned/);
+  assert.match(out, /\(33% abandonment\)/);
+  assert.match(out, /1 stall · 1 bound violation/);
+});
+
+test("renderInsights stays silent about personas when no cast ran", () => {
+  const out = renderInsights(summarize(EVENTS));
+  assert.doesNotMatch(out, /Persona casts/);
+});
+
 test("renderInsights produces a readable, non-empty report", () => {
   const out = renderInsights(summarize(EVENTS, { stopped_reason: "plan_complete" }));
   assert.match(out, /Leopold insights/);

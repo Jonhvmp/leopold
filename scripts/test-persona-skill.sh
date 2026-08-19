@@ -4,8 +4,11 @@
 # The module is three skills and a template; these tests pin the contracts that make
 # it conductable: the vendored skills are whole (a truncated vendor file was a real
 # failure mode the day they arrived), the conductor names the namespace, the journal
-# chain, the continuity re-seed and the hard bounds, and the flow template declares
-# the boundaries the conductor enforces. Hermetic: reads the checkout, writes nothing.
+# chain, the continuity re-seed and the hard bounds, the flow template declares
+# the boundaries the conductor enforces, and the in-session skill writes the SAME
+# artifact the headless driver writes (header fields, run layout and REPORT
+# sections derived from journey.ts/report.ts — never a hardcoded twin list).
+# Hermetic: reads the checkout, writes nothing.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fail=0
@@ -71,12 +74,128 @@ has "$CONDUCT" "domain allowlist"                                  "conductor: a
 has "$CONDUCT" "never executed"                                    "conductor: irreversible actions are never executed"
 has "$CONDUCT" "never write a secret"                              "conductor: journals and reports carry no secrets"
 
+# --- the hook-level bound is armed and disarmed by the run lifecycle ----------
+# The docs claim "the conductor wires it only while a persona run is active";
+# these pins are what keep that claim true (a lifecycle without the wire step is
+# the silent degrade the project forbids).
+has "$CONDUCT" "leo_wire_persona_guard"                            "conductor: run start arms the persona-guard hook (shared writer)"
+has "$CONDUCT" ".leopold/persona/ACTIVE.json"                      "conductor: arming state is .leopold/persona/ACTIVE.json"
+has "$CONDUCT" "leo_unwire_persona_guard"                          "conductor: run end unwires the persona-guard hook"
+has "$CONDUCT" "however the run ended"                             "conductor: disarm is unconditional (every exit path)"
+
 # --- the flow template declares what the conductor enforces -------------------
 [ -f "$FLOW" ] && pass "templates/persona/FLOW.md exists" || bad "templates/persona/FLOW.md missing"
 has "$FLOW" "Domain allowlist (hard boundary)"                     "flow template: declares the allowlist"
 has "$FLOW" "Out of bounds"                                        "flow template: declares out-of-bounds actions"
 has "$FLOW" "App version pin"                                      "flow template: pins the build under test"
 has "$CONDUCT" "templates/persona/FLOW.md"                         "conductor: init copies the shipped flow template"
+
+# --- in-session ↔ headless parity: one artifact, two engines ------------------
+# The session engine (this skill) and the driver (`leopold persona run`) must be
+# indistinguishable on disk. Every pin below is DERIVED from the driver's own
+# source, so renaming a header field in journey.ts or a section in report.ts
+# fails here, naming it, until the skill is updated to match.
+JOURNEY_TS="$HERE/packages/driver/src/persona-testing/journey.ts"
+REPORT_TS="$HERE/packages/driver/src/persona-testing/report.ts"
+if [ -f "$JOURNEY_TS" ] && [ -f "$REPORT_TS" ]; then
+  pass "parity: driver journey.ts + report.ts present"
+
+  # Journal header: every field JourneyHeader serializes, in its byte order.
+  header_fields="$(awk '/^export interface JourneyHeader {/,/^}/' "$JOURNEY_TS" \
+    | sed -n 's/^ *\([a-z_][a-z_]*\):.*/\1/p')"
+  field_count="$(printf '%s\n' "$header_fields" | grep -c . || true)"
+  if [ "$field_count" -ge 5 ]; then
+    pass "parity: $field_count header fields extracted from journey.ts"
+  else
+    bad "parity: extracted only $field_count header fields — JourneyHeader moved; fix this test's extraction, not the skill"
+  fi
+  for f in $header_fields; do
+    grep -qF "\"$f\"" "$CONDUCT" \
+      && pass "parity: skill spells header field \"$f\"" \
+      || bad  "parity: journey.ts writes header field \"$f\" but the skill does not spell it"
+  done
+  order_re="$(printf '%s\n' $header_fields | awk '{printf "%s\"%s\"", s, $0; s=".*"}')"
+  printf '%s' "$flat_conduct" | grep -qE "$order_re" \
+    && pass "parity: skill spells the header fields in the driver's serialized order" \
+    || bad  "parity: skill header-field order differs from journey.ts headerLine()"
+
+  # The journal's filename and schema, from the driver's own constants.
+  journey_file="$(sed -n 's/^export const JOURNEY_FILE = "\(.*\)";$/\1/p' "$JOURNEY_TS")"
+  journey_schema="$(sed -n 's/^export const JOURNEY_SCHEMA = "\(.*\)";$/\1/p' "$JOURNEY_TS")"
+  if [ -n "$journey_file" ]; then
+    has "$CONDUCT" "$journey_file" "parity: skill names the journal file journey.ts defines ($journey_file)"
+  else
+    bad "parity: could not extract JOURNEY_FILE from journey.ts"
+  fi
+  if [ -n "$journey_schema" ]; then
+    has "$CONDUCT" "$journey_schema" "parity: skill names the journal schema journey.ts pins ($journey_schema)"
+  else
+    bad "parity: could not extract JOURNEY_SCHEMA from journey.ts"
+  fi
+
+  # Run layout: the conductor's runs/<UTCstamp>-<flow>/<persona-id>/ tree, with
+  # the journal inside the persona dir (report.ts reads exactly that shape).
+  has "$CONDUCT" 'runs/<UTCstamp>-<flow>/<persona-id>/' "parity: skill spells the conductor's run-dir pattern"
+  printf '%s' "$flat_conduct" | grep -qE "runs/<UTCstamp>-<flow>/.*<persona-id>/.*${journey_file:-JOURNEY.jsonl}" \
+    && pass "parity: the journal lives under runs/<UTCstamp>-<flow>/<persona-id>/" \
+    || bad  "parity: skill does not place ${journey_file:-JOURNEY.jsonl} under runs/<UTCstamp>-<flow>/<persona-id>/"
+
+  # REPORT sections, from renderReport() itself.
+  report_title="$(sed -n 's/.*lines\.push(`\(# [^`$]*[^ `$]\).*/\1/p' "$REPORT_TS" | head -1)"
+  if [ -n "$report_title" ]; then
+    has "$CONDUCT" "$report_title" "parity: skill spells the report title prefix (\"$report_title\")"
+  else
+    bad "parity: could not extract the report title from report.ts"
+  fi
+  report_sections="$(grep -ao 'lines\.push("## [^"]*")' "$REPORT_TS" | sed 's/^lines\.push("//; s/")$//')"
+  section_count="$(printf '%s\n' "$report_sections" | grep -c . || true)"
+  if [ "$section_count" -ge 3 ]; then
+    pass "parity: $section_count REPORT sections extracted from report.ts"
+  else
+    bad "parity: extracted only $section_count REPORT sections — renderReport moved; fix this test's extraction, not the skill"
+  fi
+  while IFS= read -r section; do
+    [ -n "$section" ] || continue
+    grep -qF "$section" "$CONDUCT" \
+      && pass "parity: skill spells REPORT section \"$section\"" \
+      || bad  "parity: report.ts renders section \"$section\" but the skill does not spell it"
+  done <<EOF
+$report_sections
+EOF
+
+  # The one non-deterministic region: the summary markers, both of them.
+  summary_open="$(sed -n 's/^export const SUMMARY_OPEN = "\(.*\)";$/\1/p' "$REPORT_TS")"
+  summary_close="$(sed -n 's/^export const SUMMARY_CLOSE = "\(.*\)";$/\1/p' "$REPORT_TS")"
+  for marker in "$summary_open" "$summary_close"; do
+    if [ -n "$marker" ]; then
+      has "$CONDUCT" "$marker" "parity: skill carries the summary marker $marker"
+    else
+      bad "parity: could not extract a summary marker from report.ts"
+    fi
+  done
+else
+  bad "parity: packages/driver/src/persona-testing/{journey,report}.ts missing — the headless engine has no source to assert against"
+fi
+
+# --- the CLI the skill promises actually exists -------------------------------
+# The skill names `leopold persona run` and `leopold persona report <run-dir>`.
+# A documented command with no dispatch case is dead code wearing a doc: pin the
+# whole chain — the claim in the skill, the case in index.ts, and the command
+# module reaching both engine entry points.
+INDEX_TS="$HERE/packages/driver/src/index.ts"
+PERSONA_CMD_TS="$HERE/packages/driver/src/persona-testing/persona-cmd.ts"
+has "$CONDUCT" "leopold persona run"                  "CLI claim: skill names the headless run command"
+has "$CONDUCT" "leopold persona report <run-dir>"     "CLI claim: skill names the report command"
+if [ -f "$INDEX_TS" ] && grep -q 'case "persona":' "$INDEX_TS"; then
+  pass "CLI: index.ts dispatches the persona subcommand the skill promises"
+else
+  bad "CLI: the skill promises \`leopold persona\` but src/index.ts has no persona dispatch — the headless engine is unreachable"
+fi
+if [ -f "$PERSONA_CMD_TS" ] && grep -q 'conductCast' "$PERSONA_CMD_TS" && grep -q 'reportFromRunDir' "$PERSONA_CMD_TS"; then
+  pass "CLI: persona-cmd.ts reaches both engine entry points (conductCast, reportFromRunDir)"
+else
+  bad "CLI: src/persona-cmd.ts missing or not wired to conductCast/reportFromRunDir"
+fi
 
 # --- the installer ships all three (glob, not a list to forget) ---------------
 grep -q 'skills/\*/' "$HERE/install.sh" \

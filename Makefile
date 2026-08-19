@@ -64,6 +64,7 @@ doctor: ## Diagnose the Leopold install (skills, hooks, wiring, gstack)
 hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@bash -n hooks/stop-continuity.sh
 	@bash -n hooks/guard-irreversible.sh
+	@bash -n hooks/persona-guard.sh
 	@bash -n install.sh
 	@bash -n scripts/install-codex.sh
 	@bash -n extensions/lib/harness.sh
@@ -117,8 +118,9 @@ skills-test: ## Run the skill path tests (no SKILL.md may hardcode a harness hom
 	@bash scripts/test-skill-paths.sh
 
 .PHONY: persona-test
-persona-test: ## Run the persona module tests (vendored skills whole, conductor contracts pinned)
+persona-test: ## Run the persona module tests (vendored skills whole, conductor contracts pinned, guard red-teamed)
 	@bash scripts/test-persona-skill.sh
+	@bash scripts/test-persona-guard.sh
 
 .PHONY: menu-test
 menu-test: ## Run the toolchain-menu harness-switch tests (hermetic: temp homes, stubbed PATH)

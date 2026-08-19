@@ -75,13 +75,78 @@ continuidade, evidência, relatório.
 ## Limites que não se movem
 
 - **A allowlist é fronteira dura** — a persona nunca navega fora dos domínios que o
-  fluxo declara. Aponte fluxos pra staging.
+  fluxo declara. Aponte fluxos pra staging. O ciclo de run do `/leopold-persona`
+  arma essa fronteira no preflight e desarma no fim do run, então com um run ativo
+  ela também é imposta *antes da chamada da ferramenta*: um hook `PreToolUse` nega
+  navegação MCP fora da allowlist em toda sessão que inicia sob o run ativo, nos
+  dois harnesses, verificado ao vivo — a checagem do próprio condutor no loop vale
+  sempre. [Hooks do Persona Guard](../reference/persona-guard-hooks.md).
 - **Ação irreversível nunca é executada.** Pagamento, deleção, submit destrutivo: o
   condutor registra a intenção como achado em vez de agir — a mesma filosofia do
   [lock de git](../guardrails.md). O run observa e prepara; um humano executa efeitos
   colaterais.
 - **Nenhum segredo em diário ou relatório.** Credencial de teste vem do ambiente
   (o vault de secrets); texto gravado e reportado passa pela máscara de credencial.
+
+## O segundo motor: o driver
+
+`/leopold-persona` é uma skill dizendo a uma sessão o que fazer. `leopold persona
+run` é um harness fazendo: o [driver SDK](../architecture/driver.md) conduz os
+mesmos artefatos de `.leopold/persona/` de forma headless, com a profundidade do
+motor de run. É o mesmo [padrão de duas fases](two-phases.md) de `/leopold-run`
+vs `leopold run` — um layout de artefato, dois motores sobre ele, e um teste
+garante a paridade: um run iniciado na sessão e um run headless escrevem o mesmo
+cabeçalho de diário e a mesma árvore de run, então quem lê o relatório nunca sabe
+qual motor percorreu o fluxo.
+
+O que o driver acrescenta é que tudo que a skill *pede*, o driver *faz*:
+
+- **O loop de condução, do driver.** Uma sessão worker supervisionada por
+  persona. O worker percebe a tela, executa o turno pela skill de runtime
+  vendorizada e devolve o turno `persona-runtime-result/1.0` num bloco cercado —
+  mas **quem escreve o diário é o driver**, não o worker. Todo turno é validado
+  antes de ser anexado; turno malformado é rejeitado em voz alta e re-pedido com
+  a razão nomeada. Não existe reparo silencioso: uma linha de diário é válida ou
+  não existe.
+- **Supervisão, não esperança.** Uma sessão que termina sem turno válido nem
+  desfecho declarado é continuidade de janela ou um travamento — o condutor
+  decide, registra o travamento com razão nomeada e limita os relançamentos,
+  então uma persona travada termina como uma linha honesta de `stall` em vez de
+  loop infinito.
+- **Continuidade com prova.** O diário é o único estado: o driver encadeia o
+  `state_delta` de cada turno no estado anterior do próximo e reconstrói um bloco
+  de re-seed do rabo do diário a qualquer momento. O teste de regressão mata a
+  janela depois do turno N e relança — a próxima linha do diário é o turno N+1,
+  nenhum passo perdido, nenhum repetido.
+- **Limites impostos em código.** O condutor checa toda ação registrada no diário
+  contra a allowlist de domínios do fluxo e a regra de irreversibilidade *antes*
+  da ação executar. Violação anexa uma linha de parada nomeada e encerra o run
+  daquela persona — o prompt reafirma os limites, o código os impõe. Os
+  [hooks do persona guard](../reference/persona-guard-hooks.md) somam o mesmo
+  limite antes da chamada da ferramenta, com a evidência ao vivo por harness
+  naquela página.
+- **Fan-out.** `--persona all --parallel N` roda o elenco em paralelo, cada
+  persona no seu próprio subdiretório de run — sem worktree, personas escrevem
+  artefatos, não código.
+- **Relatório determinístico.** O `REPORT.md` é sintetizado só dos diários, byte
+  a byte estável: achados ranqueados por severidade × quantas personas bateram na
+  mesma parede, versão do app pinada, evidência linkada, resumo de jornada por
+  persona. `leopold persona report <run-dir>` re-sintetiza os mesmos bytes dos
+  mesmos diários, a qualquer hora.
+
+## Qual motor quando
+
+| | `/leopold-persona` (na sessão) | `leopold persona run` (driver) |
+| --- | --- | --- |
+| Onde roda | dentro da sua sessão Claude Code / Codex | headless, de qualquer terminal |
+| Melhor pra | construir elenco e fluxos, ver uma persona ao vivo, iterar num contrato | runs do elenco inteiro, fluxos longos, runs de prova perto de CI |
+| Contrato do diário | a skill segue | o driver valida e escreve |
+| Travamento e janela | a continuidade da própria sessão | supervisionado: detecção de travamento, relançamentos limitados, retomada provada pelo diário |
+| Limites | armados pelos guard hooks, reafirmados em prosa | impostos em código em toda ação registrada, além dos guard hooks |
+| Fan-out | uma persona por vez | `--persona all --parallel N` |
+| Saída | a mesma árvore `.leopold/persona/runs/` | a mesma árvore, mais o `REPORT.md` determinístico entre personas |
+
+Regra de bolso: construa e depure na sessão; meça com o driver.
 
 ## Os dois harnesses, com honestidade
 
@@ -91,5 +156,14 @@ precisa de controle de browser na sessão que o executa. Quando essa capacidade 
 existe, o run reporta e para — um run de persona que "imaginasse" a interface em
 silêncio seria pior que nenhum run.
 
-Sob demanda hoje (`/leopold-persona run <flow>`); cadência agendada vem numa release
-futura, depois de verificar ao vivo os schedulers dos dois harnesses.
+`leopold doctor` reporta o módulo de persona por harness — skills presentes,
+contratos encontrados, guard hook instalado, capacidade de browser dita com
+honestidade — então uma capacidade ausente é uma linha nomeada, nunca um zero que
+parece sucesso. Flags do driver e ambiente vivem em
+[Configuração do Driver](../reference/driver-config.md#persona-runs-leopold-persona).
+
+Sob demanda hoje — na sessão (`/leopold-persona run <flow>`) ou headless
+(`leopold persona run <flow>`, que escreve a mesma árvore de run e re-sintetiza o
+relatório de qualquer run com `leopold persona report <run-dir>`); cadência
+agendada vem numa release futura, depois de verificar ao vivo os schedulers dos
+dois harnesses.

@@ -125,6 +125,7 @@ plugins:
             Plan Grammar: Gramática do plano
             Driver Config: Config do driver
             SDK Worker Hooks: Hooks do worker SDK
+            Persona Guard Hooks: Hooks do persona guard
             Comparisons: Comparações
             Contributing: Como contribuir
 
@@ -174,6 +175,7 @@ nav:
       - Driver Config: reference/driver-config.md
       - Asset Home: reference/leopold-home.md
       - SDK Worker Hooks: reference/sdk-worker-hooks.md
+      - Persona Guard Hooks: reference/persona-guard-hooks.md
   - Comparisons:
       - Leopold vs Ralph: comparisons/ralph.md
   - Roadmap: roadmap.md

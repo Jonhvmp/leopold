@@ -26,6 +26,18 @@ export interface InsightsReport {
    *  what they refused. Both stay 0 for a run with no feedback node. */
   amendments: { applied: number; refused: number };
   learnProposed?: number;
+  /** Persona casts (conduct.ts events). All zero for a run with no persona
+   *  activity — and the rendered report stays silent about personas then. */
+  persona: {
+    casts: number;
+    castSize: number;
+    turns: number;
+    findings: number;
+    outcomes: Record<string, number>;
+    abandoned: number;
+    stalls: number;
+    violations: number;
+  };
   guardBlocks: number;
   escalations: number;
   decisions: number;
@@ -42,6 +54,7 @@ export function summarize(lines: string[], state: Record<string, unknown> = {}):
     reviews: { total: 0, blocked: 0, clean: 0, sensitive: 0, panel: 0 },
     hypotheses: { runs: 0, survivors: 0 },
     amendments: { applied: 0, refused: 0 },
+    persona: { casts: 0, castSize: 0, turns: 0, findings: 0, outcomes: {}, abandoned: 0, stalls: 0, violations: 0 },
     guardBlocks: 0, escalations: 0, decisions: 0, costUsd: 0,
   };
   for (const line of lines) {
@@ -77,6 +90,20 @@ export function summarize(lines: string[], state: Record<string, unknown> = {}):
       case "learn":
         r.learnProposed = num(e.proposed);
         break;
+      case "persona_run_start":
+        r.persona.casts += 1;
+        r.persona.castSize += Array.isArray(e.personas) ? e.personas.length : 0;
+        break;
+      case "persona_turn": r.persona.turns += 1; break;
+      case "persona_findings": r.persona.findings += num(e.count); break;
+      case "persona_outcome":
+        if (typeof e.outcome === "string") {
+          r.persona.outcomes[e.outcome] = (r.persona.outcomes[e.outcome] ?? 0) + 1;
+          if (e.outcome === "abandoned") r.persona.abandoned += 1;
+        }
+        break;
+      case "persona_stall": r.persona.stalls += 1; break;
+      case "persona_violation": r.persona.violations += 1; break;
       case "amendment": r.amendments.applied += 1; break;
       case "amendment_refused": r.amendments.refused += 1; break;
       case "guard_block": r.guardBlocks += 1; break;
@@ -108,6 +135,19 @@ function bar(n: number, max: number, width = 18): string {
   return "█".repeat(filled) + "·".repeat(Math.max(0, width - filled));
 }
 
+/** The persona section, silent unless a cast actually ran. Abandonment is a
+ *  rate over the cast — an abandonment is data, never smoothed away. */
+function personaLines(p: InsightsReport["persona"]): string[] {
+  if (p.casts === 0) return [];
+  const rate = p.castSize > 0 ? Math.round((p.abandoned / p.castSize) * 100) : 0;
+  const outcomes = Object.keys(p.outcomes).sort().map((k) => `${p.outcomes[k]} ${k}`).join(" · ") || "none declared";
+  return [
+    `Persona casts    ${p.casts} run · ${p.castSize} persona${p.castSize === 1 ? "" : "s"} · ${p.turns} turns · ${p.findings} finding${p.findings === 1 ? "" : "s"}`,
+    `                 outcomes: ${outcomes}  (${rate}% abandonment)` +
+      (p.stalls || p.violations ? `  ·  ${p.stalls} stall${p.stalls === 1 ? "" : "s"} · ${p.violations} bound violation${p.violations === 1 ? "" : "s"}` : ""),
+  ];
+}
+
 export function renderInsights(r: InsightsReport): string {
   const dur = r.firstTs && r.lastTs
     ? `${Math.max(0, Math.round((Date.parse(r.lastTs) - Date.parse(r.firstTs)) / 1000))}s` : "—";
@@ -135,6 +175,7 @@ export function renderInsights(r: InsightsReport): string {
     ...(r.amendments.applied || r.amendments.refused
       ? [`Plan amendments  ${r.amendments.applied} applied · ${r.amendments.refused} refused by a bound (@feedback)`]
       : []),
+    ...personaLines(r.persona),
     `Decisions logged ${r.decisions}     Escalations ${r.escalations}     Guard blocks ${r.guardBlocks}`,
   ].join("\n");
 }

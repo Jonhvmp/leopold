@@ -21,6 +21,9 @@ leopold graph                        # print + validate the plan's graph (exit 1
 leopold graph --mermaid              # the same graph as a fenced mermaid diagram
 leopold insights                     # summarize the run's events.jsonl
 leopold recall "query"               # search this project's run archive (decisions + Reversals, offline)
+leopold persona run <flow>           # conduct a synthetic-customer run headless (driver engine)
+leopold persona report <run-dir>     # re-synthesize REPORT.md from the run's journals alone
+leopold persona list                 # personas (contract status) and flows in this project
 ```
 
 ## Graph pre-flight (`leopold graph`)
@@ -57,6 +60,41 @@ A plan that uses none of the graph grammar can never fail this check: `(after:)`
 edges only ever point at an earlier item, so they cannot cycle, dangle or strand
 anything.
 
+## Persona runs (`leopold persona`) { #persona-runs-leopold-persona }
+
+The headless engine over the
+[persona testing](../concepts/persona-testing.md) module. It conducts the
+`.leopold/persona/` artifacts a session built with `/leopold-persona` — one
+supervised worker per persona through `flows/<flow>.md`, the journal contract,
+domain allowlist and irreversibility bounds enforced by the driver, window
+continuity from `JOURNEY.jsonl` — and writes the deterministic cross-persona
+`REPORT.md`. Same run tree as the in-session skill, byte-compatible.
+
+```bash
+leopold persona run checkout                     # the whole cast, serial
+leopold persona run checkout --persona maria     # one persona
+leopold persona run checkout --persona all --parallel 3   # fan the cast out
+leopold persona run checkout --provider codex    # conduct on Codex instead
+leopold persona report .leopold/persona/runs/<run-dir>    # report from journals alone
+leopold persona list                             # contract status + flow parse verdicts
+```
+
+| Flag | Default | Purpose |
+| --- | --- | --- |
+| `--persona <id>\|all` | `all` | run one persona or the whole cast |
+| `--parallel N` | `1` | run up to N personas concurrently, each in its own run subdirectory (no worktrees — personas write artifacts, not code) |
+| `--provider claude\|codex` | resolved as [above](#choosing-a-harness) | which harness runs the persona workers |
+
+`persona report <run-dir>` rewrites `REPORT.md` from the journals alone —
+byte-identical outside the executive-summary marker — so a report is always
+reproducible from its run. `persona list` exits 0 always, including the honest
+"nothing to run" answer.
+
+| Var | Default | Purpose |
+| --- | --- | --- |
+| `LEOPOLD_APP_VERSION` | the flow's "App version pin" section | the build identity pinned in every journal header and report |
+| `LEOPOLD_WEBHOOK` | none | same masked JSON notifications as `leopold run` |
+
 ## Auth
 
 Uses your existing harness login — Claude Code or Codex — for the worker, the
@@ -65,8 +103,8 @@ needed in a headless environment with no Claude Code auth.
 
 ## Choosing a harness
 
-Every command that reaches a model takes `--provider claude|codex` — `run` **and**
-`workflow --run`. Resolution order:
+Every command that reaches a model takes `--provider claude|codex` — `run`,
+`workflow --run` **and** `persona run`. Resolution order:
 
 1. `--provider claude|codex`
 2. `LEOPOLD_PROVIDER`
