@@ -1,30 +1,30 @@
 
 <!doctype html>
-<html lang="pt" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.">
+        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
       
       
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/guardrails/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/reference/persona-guard-hooks/">
       
       
-        <link rel="prev" href="../decision-protocol/">
+        <link rel="prev" href="../sdk-worker-hooks/">
       
       
-        <link rel="next" href="../cost-and-security/">
+        <link rel="next" href="../../comparisons/ralph/">
       
       
         
-          <link rel="alternate" href="../../guardrails/" hreflang="en">
+          <link rel="alternate" href="./" hreflang="en">
         
-          <link rel="alternate" href="./" hreflang="pt-BR">
+          <link rel="alternate" href="../../pt-BR/reference/persona-guard-hooks/" hreflang="pt-BR">
         
       
       
@@ -33,7 +33,7 @@
     
     
       
-        <title>Guardrails - Leopold</title>
+        <title>Persona Guard Hooks - Leopold</title>
       
     
     
@@ -84,8 +84,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#guardrails" class="md-skip">
-          Pular para conteúdo
+        <a href="#persona-guard-hooks-live-verification" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -99,8 +99,8 @@
   
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
-    <a href="../" title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Guardrails
+              Persona Guard Hooks
             
           </span>
         </div>
@@ -160,20 +160,20 @@
       <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Selecione o idioma">
+    <button class="md-header__button md-icon" aria-label="Select language">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="../../guardrails/" hreflang="en" class="md-select__link">
+            <a href="./" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="./" hreflang="pt-BR" class="md-select__link">
+            <a href="../../pt-BR/reference/persona-guard-hooks/" hreflang="pt-BR" class="md-select__link">
               Português (Brasil)
             </a>
           </li>
@@ -194,21 +194,21 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Buscar" placeholder="Buscar" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Pesquisar">
+      <nav class="md-search__options" aria-label="Search">
         
-          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Compartilhar" aria-label="Compartilhar" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
             
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
           </a>
         
-        <button type="reset" class="md-search__icon md-icon" title="Limpar" aria-label="Limpar" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -221,7 +221,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Inicializando busca
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -233,7 +233,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+        <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -248,7 +248,7 @@
   
     
       
-<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -258,13 +258,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../" class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
     
   
-  Início
+  Home
 
       </a>
     </li>
@@ -279,13 +279,57 @@
     
     
       <li class="md-tabs__item">
-        <a href="../getting-started/install/" class="md-tabs__link">
+        <a href="../../getting-started/install/" class="md-tabs__link">
           
   
   
     
   
-  Primeiros passos
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../concepts/harness/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
 
         </a>
       </li>
@@ -303,13 +347,13 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../concepts/harness/" class="md-tabs__link">
+        <a href="../skills/" class="md-tabs__link">
           
   
   
     
   
-  Conceitos
+  Reference
 
         </a>
       </li>
@@ -325,57 +369,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
+        <a href="../../comparisons/ralph/" class="md-tabs__link">
           
   
   
     
   
-  Arquitetura
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../reference/skills/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Referência
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../comparisons/ralph/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Comparações
+  Comparisons
 
         </a>
       </li>
@@ -389,7 +389,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../roadmap/" class="md-tabs__link">
+      <a href="../../roadmap/" class="md-tabs__link">
         
   
   
@@ -408,13 +408,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../contributing/" class="md-tabs__link">
+      <a href="../../contributing/" class="md-tabs__link">
         
   
   
     
   
-  Como contribuir
+  Contributing
 
       </a>
     </li>
@@ -447,9 +447,9 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navegação" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../" title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href="../.." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -459,7 +459,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
+      <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -479,14 +479,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Início
+    Home
   
 
     
@@ -539,7 +539,7 @@
   <span class="md-ellipsis">
     
   
-    Primeiros passos
+    Getting Started
   
 
     
@@ -555,7 +555,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Primeiros passos
+    Getting Started
   
 
           </label>
@@ -568,14 +568,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/install/" class="md-nav__link">
+      <a href="../../getting-started/install/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Instalação
+    Install
   
 
     
@@ -596,14 +596,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/quickstart/" class="md-nav__link">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Início rápido
+    Quickstart
   
 
     
@@ -624,14 +624,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/first-run/" class="md-nav__link">
+      <a href="../../getting-started/first-run/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Sua primeira run
+    Your First Run
   
 
     
@@ -652,14 +652,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../getting-started/toolchain-manager/" class="md-nav__link">
+      <a href="../../getting-started/toolchain-manager/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Gerenciador de toolchain
+    Toolchain Manager
   
 
     
@@ -684,10 +684,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -723,29 +721,26 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Conceitos
+    Concepts
   
 
     
@@ -756,12 +751,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Conceitos
+    Concepts
   
 
           </label>
@@ -774,14 +769,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/harness/" class="md-nav__link">
+      <a href="../../concepts/harness/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    O que é um harness
+    What Is a Harness
   
 
     
@@ -802,14 +797,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/harnesses/" class="md-nav__link">
+      <a href="../../concepts/harnesses/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Claude Code e Codex
+    Claude Code and Codex
   
 
     
@@ -830,14 +825,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/two-phases/" class="md-nav__link">
+      <a href="../../concepts/two-phases/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    As duas fases
+    The Two Phases
   
 
     
@@ -858,14 +853,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/dynamic-workflows/" class="md-nav__link">
+      <a href="../../concepts/dynamic-workflows/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Workflows dinâmicos
+    Dynamic Workflows
   
 
     
@@ -886,7 +881,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/personas/" class="md-nav__link">
+      <a href="../../concepts/personas/" class="md-nav__link">
         
   
   
@@ -914,7 +909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/persona-testing/" class="md-nav__link">
+      <a href="../../concepts/persona-testing/" class="md-nav__link">
         
   
   
@@ -942,14 +937,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../concepts/continuity/" class="md-nav__link">
+      <a href="../../concepts/continuity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Continuidade
+    Continuity
   
 
     
@@ -970,14 +965,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../canvas/" class="md-nav__link">
+      <a href="../../canvas/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    O Canvas
+    The Canvas
   
 
     
@@ -998,14 +993,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../quality-and-orchestration/" class="md-nav__link">
+      <a href="../../quality-and-orchestration/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Qualidade e orquestração
+    Quality & Orchestration
   
 
     
@@ -1026,14 +1021,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../decision-protocol/" class="md-nav__link">
+      <a href="../../decision-protocol/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Protocolo de decisão
+    Decision Protocol
   
 
     
@@ -1051,37 +1046,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Guardrails
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../guardrails/" class="md-nav__link">
         
   
   
@@ -1097,198 +1065,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Índice
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#classes-de-acao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Classes de ação
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Classes de ação">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#autonomas-decide-e-faz" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Autônomas (decide e faz)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#com-gate-exigem-um-token-de-opt-in-explicito-por-run" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Com gate (exigem um token de opt-in explícito por run)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#custo-o-eixo-caro" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custo — o eixo caro
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Custo — o eixo caro">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#acompanhando-uma-run-dashboard-ao-vivo" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acompanhando uma run (dashboard ao vivo)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#condicoes-de-parada" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Condições de parada
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#o-kill-switch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        O kill switch
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optando-por-liberar-o-git-quando-voce-realmente-quer-commits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optando por liberar o git (quando você realmente quer commits)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#padroes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Padrões
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#higiene-de-run-e-runs-paralelas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Higiene de run e runs paralelas
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Higiene de run e runs paralelas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#o-que-e-limpo-quando-uma-run-para" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        O que é limpo quando uma run para
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#on_finish-keep-ou-archive" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        on_finish: keep ou archive
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#uma-run-por-checkout" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Uma run por checkout
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rodando-em-paralelo-use-worktrees" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rodando em paralelo — use worktrees
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1301,14 +1077,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../cost-and-security/" class="md-nav__link">
+      <a href="../../cost-and-security/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Custo e segurança
+    Cost & Security
   
 
     
@@ -1329,14 +1105,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../run-isolation/" class="md-nav__link">
+      <a href="../../run-isolation/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Isolamento da run
+    Run Isolation
   
 
     
@@ -1357,14 +1133,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../gstack-playbook/" class="md-nav__link">
+      <a href="../../gstack-playbook/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Playbook do gstack
+    gstack Playbook
   
 
     
@@ -1425,7 +1201,7 @@
   <span class="md-ellipsis">
     
   
-    Arquitetura
+    Architecture
   
 
     
@@ -1441,7 +1217,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Arquitetura
+    Architecture
   
 
           </label>
@@ -1454,14 +1230,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Visão geral
+    Overview
   
 
     
@@ -1482,14 +1258,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/in-session/" class="md-nav__link">
+      <a href="../../architecture/in-session/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Engine in-session
+    In-Session Engine
   
 
     
@@ -1510,14 +1286,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/driver/" class="md-nav__link">
+      <a href="../../architecture/driver/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Driver SDK
+    SDK Driver
   
 
     
@@ -1538,14 +1314,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/protocol/" class="md-nav__link">
+      <a href="../../architecture/protocol/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Protocolo maestro–worker
+    Conductor & Worker Protocol
   
 
     
@@ -1570,8 +1346,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1597,26 +1375,29 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Referência
+    Reference
   
 
     
@@ -1627,12 +1408,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência
+    Reference
   
 
           </label>
@@ -1645,7 +1426,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/skills/" class="md-nav__link">
+      <a href="../skills/" class="md-nav__link">
         
   
   
@@ -1673,7 +1454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/hooks/" class="md-nav__link">
+      <a href="../hooks/" class="md-nav__link">
         
   
   
@@ -1701,7 +1482,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/enhance/" class="md-nav__link">
+      <a href="../enhance/" class="md-nav__link">
         
   
   
@@ -1729,14 +1510,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/artifacts/" class="md-nav__link">
+      <a href="../artifacts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Artefatos do brief
+    Brief Artifacts
   
 
     
@@ -1757,14 +1538,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/plan-grammar/" class="md-nav__link">
+      <a href="../plan-grammar/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Gramática do plano
+    Plan Grammar
   
 
     
@@ -1785,14 +1566,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/driver-config/" class="md-nav__link">
+      <a href="../driver-config/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Config do driver
+    Driver Config
   
 
     
@@ -1813,7 +1594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/leopold-home/" class="md-nav__link">
+      <a href="../leopold-home/" class="md-nav__link">
         
   
   
@@ -1841,14 +1622,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/sdk-worker-hooks/" class="md-nav__link">
+      <a href="../sdk-worker-hooks/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Hooks do worker SDK
+    SDK Worker Hooks
   
 
     
@@ -1866,17 +1647,44 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../reference/persona-guard-hooks/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Guard Hooks
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    Hooks do persona guard
+    Persona Guard Hooks
   
 
     
@@ -1885,6 +1693,114 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method-hermetic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method (hermetic)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence-claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence — Claude Code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence-codex-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence — Codex CLI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence-the-production-stack-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence — the production stack, end to end
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Findings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-policy-this-evidence-decided" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The policy this evidence decided
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hermeticity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hermeticity
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1931,7 +1847,7 @@
   <span class="md-ellipsis">
     
   
-    Comparações
+    Comparisons
   
 
     
@@ -1947,7 +1863,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Comparações
+    Comparisons
   
 
           </label>
@@ -1960,7 +1876,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../comparisons/ralph/" class="md-nav__link">
+      <a href="../../comparisons/ralph/" class="md-nav__link">
         
   
   
@@ -1995,7 +1911,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../roadmap/" class="md-nav__link">
+      <a href="../../roadmap/" class="md-nav__link">
         
   
   
@@ -2022,14 +1938,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Como contribuir
+    Contributing
   
 
     
@@ -2055,7 +1971,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -2064,82 +1980,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Índice
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#classes-de-acao" class="md-nav__link">
+  <a href="#versions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classes de ação
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Classes de ação">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#autonomas-decide-e-faz" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Autônomas (decide e faz)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#com-gate-exigem-um-token-de-opt-in-explicito-por-run" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Com gate (exigem um token de opt-in explícito por run)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#custo-o-eixo-caro" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custo — o eixo caro
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Custo — o eixo caro">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#acompanhando-uma-run-dashboard-ao-vivo" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Acompanhando uma run (dashboard ao vivo)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#condicoes-de-parada" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Condições de parada
+        Versions
       
     </span>
   </a>
@@ -2147,10 +1996,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#o-kill-switch" class="md-nav__link">
+  <a href="#method-hermetic" class="md-nav__link">
     <span class="md-ellipsis">
       
-        O kill switch
+        Method (hermetic)
       
     </span>
   </a>
@@ -2158,10 +2007,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optando-por-liberar-o-git-quando-voce-realmente-quer-commits" class="md-nav__link">
+  <a href="#evidence-claude-code" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optando por liberar o git (quando você realmente quer commits)
+        Evidence — Claude Code
       
     </span>
   </a>
@@ -2169,10 +2018,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#padroes" class="md-nav__link">
+  <a href="#evidence-codex-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Padrões
+        Evidence — Codex CLI
       
     </span>
   </a>
@@ -2180,63 +2029,46 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#higiene-de-run-e-runs-paralelas" class="md-nav__link">
+  <a href="#evidence-the-production-stack-end-to-end" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Higiene de run e runs paralelas
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Higiene de run e runs paralelas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#o-que-e-limpo-quando-uma-run-para" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        O que é limpo quando uma run para
+        Evidence — the production stack, end to end
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#on_finish-keep-ou-archive" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#findings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        on_finish: keep ou archive
+        Findings
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#uma-run-por-checkout" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#the-policy-this-evidence-decided" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uma run por checkout
+        The policy this evidence decided
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#rodando-em-paralelo-use-worktrees" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#hermeticity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rodando em paralelo — use worktrees
+        Hermeticity
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2260,240 +2092,198 @@
   
 
 
-<h1 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h1>
-<p>Autonomia é segura quando a única ação que você nunca quer que aconteça por
-acidente — código saindo da máquina ou entrando no histórico sem você — não pode
-acontecer sozinha. Esse é todo o trabalho do lock do Leopold: <strong>uma run pode fazer
-qualquer coisa, exceto <code>git commit</code> e <code>git push</code>.</strong> Ela deixa o trabalho em stage;
-o commit e o push são seus.</p>
-<p>Os guardrails são aplicados de duas formas:
-- <strong>Por hook</strong> (impossível de contornar com racionalização): o gate <code>PreToolUse</code>
-  (<code>guard-irreversible.sh</code>) nega <code>git commit</code> / <code>git push</code> na camada de chamada de tool.
-- <strong>Por protocolo</strong> (a disciplina do próprio agente): o protocolo de decisão e as
-  condições de parada mantêm a run concluindo trabalho em vez de empacar.</p>
-<p>O hook é o lock de verdade. O protocolo é a direção.</p>
-<p>O match de git é blindado contra evasão — opções globais (<code>git -c x=y commit</code>),
-paths absolutos (<code>/usr/bin/git</code>), <code>env git</code> e truques de espaço/tab, tudo resolve
-para o subcomando real — e é coberto por uma suíte de red team (<code>make test-guard</code>).</p>
-<hr />
-<pre class="mermaid"><code>flowchart TD
-    Cmd["chamada de tool durante uma run ativa"] --&gt; Type{git commit / push?}
-    Type -- "não" --&gt; Allow([permite])
-    Type -- "commit / push" --&gt; Token{token de opt-in?}
-    Token -- "sim" --&gt; Allow
-    Token -- "não" --&gt; Deny["nega · loga guard_block"]
-    Type -- "force-push" --&gt; Deny
-    classDef deny fill:#e63946,stroke:#9d0208,color:#fff;
-    class Deny deny;</code></pre>
-<h2 id="classes-de-acao">Classes de ação<a class="headerlink" href="#classes-de-acao" title="Permanent link">&para;</a></h2>
-<h3 id="autonomas-decide-e-faz">Autônomas (decide e faz)<a class="headerlink" href="#autonomas-decide-e-faz" title="Permanent link">&para;</a></h3>
-<p>Tudo que não é uma operação de git com gate. A run tem autoridade total sobre o trabalho:</p>
-<ul>
-<li>Ler, buscar, analisar, criar, editar e deletar arquivos.</li>
-<li>Rodar builds, linters, type checkers, formatadores e suítes de teste.</li>
-<li>Rodar qualquer skill do gstack que não faça commit ou push por conta própria.</li>
-<li>Rodar comandos de shell, inclusive destrutivos (<code>rm -rf</code>, <code>reset --hard</code>) — a
-  decisão é da run. Isole com <code>--worktree</code> se quiser uma fronteira de filesystem.</li>
-<li>Colocar mudanças em stage (<code>git add</code>).</li>
-<li>Criar subagents conforme o trabalho pedir.</li>
-</ul>
-<h3 id="com-gate-exigem-um-token-de-opt-in-explicito-por-run">Com gate (exigem um token de opt-in explícito por run)<a class="headerlink" href="#com-gate-exigem-um-token-de-opt-in-explicito-por-run" title="Permanent link">&para;</a></h3>
-<p>Só duas, bloqueadas pelo hook a menos que o token correspondente (que só o humano
-cria) esteja presente:</p>
-<ul>
-<li><code>git commit</code> — desbloqueia com <code>.leopold/ALLOW_GIT</code></li>
-<li><code>git push</code> — desbloqueia com <code>.leopold/ALLOW_PUSH</code></li>
-</ul>
-<p>Force-push (<code>--force</code> / <code>--force-with-lease</code> / <code>-f</code>) é negado mesmo com
-<code>ALLOW_PUSH</code>. A regra permanente do usuário — <em>nunca fazer commit ou push sem
-confirmação explícita</em> — está codificada aqui e é aplicada até em modo totalmente
-autônomo. Nada mais tem gate: criar PR, publicar e fazer deploy são decisões da
-própria run.</p>
-<hr />
-<h2 id="custo-o-eixo-caro">Custo — o eixo caro<a class="headerlink" href="#custo-o-eixo-caro" title="Permanent link">&para;</a></h2>
-<p>O custo em uma run autônoma longa explode porque a sessão principal cresce a cada
-turno: em um modelo de contexto grande ela nunca auto-compacta, então cada turno
-recobra o transcript inteiro acumulado. As defesas que importam:</p>
-<ul>
-<li><strong>O governador é o progresso, não USD.</strong> <code>total_cost_usd</code> não reflete a
-  contabilidade real na cobrança por assinatura, então um contador de custo
-  deliberadamente <strong>não</strong> é o governador padrão de uma run autônoma. A run é
-  governada por progresso durável — itens do plano fechados — via o
-  <a href="../concepts/continuity/">gate de livelock</a>, mais os tetos rígidos abaixo. Usuários
-  cobrados por API que querem um teto rígido podem optar pelo <code>--budget &lt;usd&gt;</code> do
-  driver: a run para no momento em que o gasto acumulado (do <code>total_cost_usd</code> da
-  CLI) cruza o valor, com o trabalho em stage para revisão. É um teto opt-in, nunca
-  o padrão, e nada mais depende dele.</li>
-<li><strong>Runs limitadas e retomáveis.</strong> Uma run termina em <code>max_iterations</code> (padrão 50 —
-  o teto <strong>da run</strong>, carregado através das janelas de contexto) e em <code>max_windows</code>
-  (padrão 10), então não gira para sempre; o brief persiste, então um <code>/leopold-run</code>
-  novo retoma do <code>PLAN.md</code> com contexto limpo. Desde a 0.18.0 uma janela de contexto
-  cheia é um <strong>roll de janela, não uma parada</strong>: a run faz checkpoint e continua em
-  uma janela nova — veja <a href="../concepts/continuity/">Continuidade</a>.</li>
-<li><strong>Orquestrador enxuto.</strong> O protocolo delega trabalho de saída volumosa (redigir
-  conteúdo, gerar arquivos) a um subagent que <strong>escreve em arquivo</strong>, então a saída
-  nunca se acumula no contexto do orquestrador.</li>
-</ul>
-<p>Cinto e suspensório: configure um <strong>spending cap da Anthropic</strong> na sua conta antes
-de runs autônomas longas em projetos grandes.</p>
-<h3 id="acompanhando-uma-run-dashboard-ao-vivo">Acompanhando uma run (dashboard ao vivo)<a class="headerlink" href="#acompanhando-uma-run-dashboard-ao-vivo" title="Permanent link">&para;</a></h3>
-<p><code>/leopold-watch</code> (ou <code>make watch</code>, ou <code>leopold watch</code> da CLI npm) sobe um dashboard <strong>local</strong>
-em <code>http://127.0.0.1:4179</code> que atualiza ao vivo via SSE. O destaque é o <strong>gasto estimado
-real</strong>, extraído do transcript da sessão do Claude Code: dólares, o breakdown de tokens
-(input / output / cache-write / cache-read), % de cache hit, por modelo e principal vs
-subagent. Abaixo: o feed de eventos ao vivo (turnos, bloqueios do guard, paradas), o log de
-decisões e um botão <strong>Stop</strong> que usa o kill switch. O número de custo é uma estimativa a
-partir de um mapa de preços embutido, <strong>configurável</strong> via a env var <code>LEOPOLD_PRICES</code> (um
-arquivo JSON) ou um <code>.leopold/prices.json</code> no projeto — sobrescreva qualquer modelo ou
-família, ex.: <code>{"opus": {"in": 15, "out": 75, "cache_write": 18.75, "cache_read": 1.5}}</code>
-(as taxas de cache têm padrão 1.25× / 0.1× do input). É zero-dependência (stdlib do
-Python), somente leitura exceto por aquele botão, e faz bind no loopback — nada sai da
-máquina.</p>
-<hr />
-<h2 id="condicoes-de-parada">Condições de parada<a class="headerlink" href="#condicoes-de-parada" title="Permanent link">&para;</a></h2>
-<p>A run termina, e o Stop hook permite que a sessão pare, quando qualquer uma destas
-é verdadeira:</p>
-<ol>
-<li><strong>Plano completo</strong> — nenhum item desmarcado resta no <code>PLAN.md</code>.</li>
-<li><strong>Kill switch</strong> — <code>.leopold/STOP</code> existe (<code>/leopold-stop</code> ou <code>touch</code>).</li>
-<li><strong>Falha repetida</strong> — o mesmo tipo de falha por N turnos consecutivos (padrão 3),
-   <em>depois</em> da única mudança de abordagem conduzida por uma persona que a run ganha ao
-   bater no teto pela primeira vez. O teto em si nunca se move.</li>
-<li><strong>Budget de iterações</strong> — o contador de iterações atingiu <code>max_iterations</code> (padrão 50).
-   O contador atravessa as janelas de contexto: é o teto da run, nunca zerado por um
-   roll de janela.</li>
-<li><strong>Budget em USD</strong> — o gasto acumulado cruzou <code>--budget</code>, se você optou por ele
-   (só no driver; nunca o governador padrão).</li>
-<li><strong>Livelock entre janelas</strong> — duas janelas de contexto consecutivas fecharam zero
-   itens do plano (<code>no_progress_across_windows</code>). Rolar é de graça; produzir é
-   obrigatório.</li>
-<li><strong>Teto de janelas</strong> — a run consumiu <code>max_windows</code> janelas de contexto (padrão 10).</li>
-<li><strong>Escalação</strong> — uma bifurcação que nem um papel sintetizado conseguiu resolver (uma
-   resposta inutilizável, um erro do harness). Uma bifurcação que ele <em>consegue</em> resolver
-   é decidida e registrada, não escalada.</li>
-</ol>
-<p><strong>Uma janela de contexto cheia deliberadamente não está mais nesta lista.</strong> Desde a
-0.18.0 ela é um roll de janela: a run escreve o <code>.leopold/CHECKPOINT.md</code> e a próxima
-janela continua o plano (relançada pelo <code>leopold watch</code> com <code>continuity: auto</code>). Veja
-<a href="../concepts/continuity/">Continuidade</a>.</p>
-<p>Toda parada escreve um resumo final na saída da run e um evento <code>stop</code> em
-<code>events.jsonl</code>, dizendo qual condição disparou. A lista completa — incluindo
-<code>context_budget</code>, <code>no_progress</code> e <code>routed_complete</code>, e se um papel sintetizado pode afetar
-cada uma — está em
-<a href="../concepts/personas/#o-que-ainda-para-a-run">O que ainda para a run</a>.</p>
-<p><strong><code>awaiting_human</code> não está nessa lista sob a postura padrão.</strong> Um nó <code>@human</code> é decidido
-por um papel que o Leopold sintetiza para ele, nos dois engines; configure
-<a href="../reference/plan-grammar/#autonomy"><code>autonomy: ask</code></a> no <code>GUARDRAILS.md</code> (ou
-<code>LEOPOLD_AUTONOMY=ask</code>, ou a flag <code>--ask</code> do driver) para que ele pare e espere por você.
-Uma persona decide; ela nunca publica — o git continua travado nas duas posturas, e
-nenhuma persona pode aumentar um budget, limpar o kill switch ou editar o <code>GUARDRAILS.md</code>.</p>
-<hr />
-<h2 id="o-kill-switch">O kill switch<a class="headerlink" href="#o-kill-switch" title="Permanent link">&para;</a></h2>
-<p>Duas formas de parar uma run na próxima fronteira de turno:</p>
-<ul>
-<li><code>/leopold-stop</code> — o jeito limpo; vira o <code>state.json</code> para inativo e escreve um
-  resumo.</li>
-<li><code>touch .leopold/STOP</code> — o jeito bruto; o Stop hook vê o arquivo e para.</li>
-</ul>
-<p>Nenhuma das duas interrompe o trabalho no meio do turno; ambas fazem efeito quando
-o turno atual termina, então nada fica pela metade.</p>
-<hr />
-<h2 id="optando-por-liberar-o-git-quando-voce-realmente-quer-commits">Optando por liberar o git (quando você realmente quer commits)<a class="headerlink" href="#optando-por-liberar-o-git-quando-voce-realmente-quer-commits" title="Permanent link">&para;</a></h2>
-<p>Se você quer que uma run faça commit ou push sozinha, o opt-in é explícito e por run:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>touch<span class="w"> </span>.leopold/ALLOW_GIT<span class="w">      </span><span class="c1"># allow commit</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>touch<span class="w"> </span>.leopold/ALLOW_PUSH<span class="w">     </span><span class="c1"># allow push (force-push stays denied)</span>
-</span></code></pre></div>
-<p>A postura padrão, e a recomendada, é: o Leopold deixa em stage e reporta, você faz
-commit e push.</p>
-<hr />
-<h2 id="padroes">Padrões<a class="headerlink" href="#padroes" title="Permanent link">&para;</a></h2>
+<h1 id="persona-guard-hooks-live-verification">Persona Guard Hooks — Live Verification<a class="headerlink" href="#persona-guard-hooks-live-verification" title="Permanent link">&para;</a></h1>
+<p><strong>The question:</strong> a persona run's domain allowlist must be enforced, not requested.
+The conductor checks every journaled action in code, but can the bound also live
+<em>upstream of the tool call</em> — can a <code>PreToolUse</code> hook observe and deny browser/MCP
+tool calls, with a matcher on MCP tool names, on Claude Code? And what does the
+Codex CLI equivalent see? This page is the captured evidence from live runs on
+both harnesses, and the policy those captures decided.</p>
+<p><strong>The answer: both.</strong> On Claude Code <em>and</em> Codex CLI, a <code>PreToolUse</code> hook with an
+<code>mcp__.*</code> matcher fires for MCP tool calls, sees the full <code>tool_input</code> (the URL
+included), and a <code>permissionDecision: "deny"</code> blocks the call <strong>before the MCP
+server ever receives it</strong>. The persona guard is therefore wired on both harnesses
+— <code>hook_bound=both</code>.</p>
+<h2 id="versions">Versions<a class="headerlink" href="#versions" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Configuração</th>
-<th>Padrão</th>
-<th>Onde mudar</th>
+<th>Component</th>
+<th>Version</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Commit</td>
-<td>travado</td>
-<td><code>touch .leopold/ALLOW_GIT</code></td>
+<td>Claude Code CLI (<code>claude</code>)</td>
+<td>2.1.235</td>
 </tr>
 <tr>
-<td>Push</td>
-<td>travado</td>
-<td><code>touch .leopold/ALLOW_PUSH</code></td>
+<td>Codex CLI (<code>codex</code>)</td>
+<td>codex-cli 0.147.0</td>
 </tr>
 <tr>
-<td>Force-push</td>
-<td>nunca</td>
-<td>não configurável</td>
+<td>Node.js</td>
+<td>v22.22.0</td>
 </tr>
 <tr>
-<td>Autonomy</td>
-<td><code>full</code></td>
-<td><code>GUARDRAILS.md</code> (<code>autonomy: ask</code>)</td>
+<td>jq</td>
+<td>1.7.1</td>
 </tr>
 <tr>
-<td>Máx. de falhas consecutivas</td>
-<td>3</td>
-<td><code>GUARDRAILS.md</code></td>
+<td>Leopold</td>
+<td>0.20.x working tree (<code>hooks/persona-guard.sh</code>, <code>extensions/lib/harness.sh</code>)</td>
 </tr>
 <tr>
-<td>Máx. de iterações</td>
-<td>50 (por run, através das janelas)</td>
-<td><code>GUARDRAILS.md</code></td>
-</tr>
-<tr>
-<td>Continuidade</td>
-<td><code>auto</code></td>
-<td><code>GUARDRAILS.md</code> (<code>continuity: manual</code>)</td>
-</tr>
-<tr>
-<td>Máx. de janelas</td>
-<td>10</td>
-<td><code>GUARDRAILS.md</code> (<code>max_windows:</code>)</td>
-</tr>
-<tr>
-<td>Budget em USD</td>
-<td>nenhum (opt-in)</td>
-<td><code>--budget</code> no driver</td>
+<td>Date</td>
+<td>2026-08-18</td>
 </tr>
 </tbody>
 </table>
-<h2 id="higiene-de-run-e-runs-paralelas">Higiene de run e runs paralelas<a class="headerlink" href="#higiene-de-run-e-runs-paralelas" title="Permanent link">&para;</a></h2>
-<h3 id="o-que-e-limpo-quando-uma-run-para">O que é limpo quando uma run para<a class="headerlink" href="#o-que-e-limpo-quando-uma-run-para" title="Permanent link">&para;</a></h3>
-<p>Em toda parada, o Leopold limpa o kill switch (<code>STOP</code>) e os tokens de opt-in de git
-(<code>ALLOW_GIT</code> / <code>ALLOW_PUSH</code>). Isso é uma propriedade de segurança: a próxima run
-começa com o git <strong>travado de novo</strong> e não é interrompida por um <code>STOP</code> velho. O
-registro durável (o brief, <code>DECISIONS.md</code>, <code>events.jsonl</code>) nunca é deletado.</p>
-<h3 id="on_finish-keep-ou-archive">on_finish: keep ou archive<a class="headerlink" href="#on_finish-keep-ou-archive" title="Permanent link">&para;</a></h3>
-<p>Definido em <code>GUARDRAILS.md</code>:</p>
+<h2 id="method-hermetic">Method (hermetic)<a class="headerlink" href="#method-hermetic" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><code>keep</code></strong> (padrão) — o brief, as decisões e os eventos ficam em <code>.leopold/</code>.</li>
-<li><strong><code>archive</code></strong> — em um término limpo (plano completo), <code>DECISIONS.md</code> e
-  <code>events.jsonl</code> vão para <code>.leopold/runs/&lt;timestamp&gt;/</code>, então a próxima run começa
-  com log limpo enquanto o histórico completo fica preservado.</li>
+<li>A throwaway probe root under <code>mktemp -d</code> (<code>/tmp/leopold-persona-hookprobe.*</code>).</li>
+<li>A <strong>stub MCP server</strong> (<code>mcp-stub.js</code>, Node stdlib, newline-delimited JSON-RPC)
+  exposing two browser-shaped tools, <code>navigate(url)</code> and <code>click(label)</code>. The stub
+  appends every <code>tools/call</code> it actually <em>receives</em> to its own log — so a
+  hook-level denial is provable by the call's <strong>absence</strong> from that log, not by
+  reasoning.</li>
+<li>A probe hook that appends its full stdin payload verbatim to a marker log, and
+  in deny mode answers with the standard
+  <code>hookSpecificOutput.permissionDecision: "deny"</code> object.</li>
+<li><strong>Claude Code:</strong> a temp <code>git init</code>-ed project; the hook wired in the project's
+  own <code>.claude/settings.json</code> with matcher <code>mcp__personastub__.*</code>; the stub
+  registered per run via <code>--mcp-config</code> + <code>--strict-mcp-config</code>; runs through
+  <code>claude -p</code> (authenticated user config is only <em>read</em>, exactly like run 2 of
+  <a href="../sdk-worker-hooks/">SDK Worker Hooks</a>).</li>
+<li><strong>Codex CLI:</strong> a temp <code>CODEX_HOME</code> holding <code>config.toml</code> (stub server + hook
+  block) and a copy of the auth file, deleted after the runs; runs through
+  <code>codex exec --json --skip-git-repo-check … --dangerously-bypass-hook-trust</code>
+  with stdin closed.</li>
+<li>Finally, the <strong>production stack</strong>: the shipped <code>hooks/persona-guard.sh</code>, wired
+  by the shipped writer (<code>leo_wire_persona_guard</code> in <code>extensions/lib/harness.sh</code>),
+  a real flow file and <code>ACTIVE.json</code>, one live run per harness.</li>
 </ul>
-<p>Auto-delete nunca é padrão; se você quer começar do zero, remova <code>.leopold/</code> você
-mesmo.</p>
-<h3 id="uma-run-por-checkout">Uma run por checkout<a class="headerlink" href="#uma-run-por-checkout" title="Permanent link">&para;</a></h3>
-<p>Um projeto suporta <strong>uma run ativa do Leopold por vez</strong>. Runs paralelas no mesmo
-checkout compartilham <code>.leopold/</code> (um <code>state.json</code>, um <code>PLAN.md</code>) e a mesma working
-tree, então uma sobrescreveria o estado e o código da outra. <code>/leopold-run</code> se
-recusa a iniciar uma segunda run enquanto outra está ativa (uma run ociosa por 10+
-minutos é tratada como abandonada e pode ser assumida).</p>
-<h3 id="rodando-em-paralelo-use-worktrees">Rodando em paralelo — use worktrees<a class="headerlink" href="#rodando-em-paralelo-use-worktrees" title="Permanent link">&para;</a></h3>
-<p>Paralelismo de verdade vem de isolamento, não de threads: dois agentes editando os
-mesmos arquivos conflitam por mais concorrente que o orquestrador seja. Para rodar
-o Leopold em paralelo, dê a cada run seu próprio worktree do git:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>worktree<span class="w"> </span>add<span class="w"> </span>../proj-leopold-2<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../proj-leopold-2
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># now /leopold-brief + /leopold-run here, fully isolated from the first run</span>
+<h2 id="evidence-claude-code">Evidence — Claude Code<a class="headerlink" href="#evidence-claude-code" title="Permanent link">&para;</a></h2>
+<p><strong>Observe.</strong> Matcher <code>mcp__personastub__.*</code>, hook logs and allows. The payload the
+hook received on stdin, verbatim:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{"session_id":"7513b65a-e4e8-4381-85cf-6fd4b2879bdc","transcript_path":"…/7513b65a-….jsonl","cwd":"/tmp/leopold-persona-hookprobe.rC1NUS/project","prompt_id":"134124b4-…","permission_mode":"default","hook_event_name":"PreToolUse","tool_name":"mcp__personastub__navigate","tool_input":{"url":"https://staging.example.com/welcome"},"tool_use_id":"toolu_01K8JEdUY6diBv1TdY4Ces1Z"}
 </span></code></pre></div>
-<p>Cada worktree tem seu próprio checkout e seu próprio <code>.leopold/</code>, então N runs
-avançam concorrentemente sem colisão.</p>
+<p>The stub's own log shows the allowed call arriving:
+<code>{"ts":"2026-08-19T00:06:12.573Z","name":"navigate","args":{"url":"https://staging.example.com/welcome"}}</code>.</p>
+<p><strong>Deny.</strong> Same wiring in deny mode; the model was asked to navigate off-allowlist.
+The hook fired with the full URL in <code>tool_input</code>, answered deny — and the stub log
+gained <strong>no new line</strong>: the MCP server never received the call. The model's final
+reply, verbatim:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>BLOCKED persona guard (probe): navigation outside the domain allowlist of flow "checkout" — denied
+</span></code></pre></div>
+<h2 id="evidence-codex-cli">Evidence — Codex CLI<a class="headerlink" href="#evidence-codex-cli" title="Permanent link">&para;</a></h2>
+<p><strong>Observe.</strong> A matcherless <code>[[hooks.PreToolUse]]</code> block first, to see everything.
+Codex fires the same event with the same keys and the <strong>same <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>
+spelling</strong>, plus its own extras (<code>turn_id</code>, <code>model</code>, <code>permission_mode</code>). Verbatim:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>{"session_id":"01a0175d-536f-7780-a81c-ec4dc582b609","turn_id":"01a0175d-551f-…","transcript_path":"…/codex-home/sessions/2026/08/18/rollout-….jsonl","cwd":"…/codex-project","hook_event_name":"PreToolUse","model":"gpt-5.6-sol","permission_mode":"bypassPermissions","tool_name":"mcp__personastub__navigate","tool_input":{"url":"https://staging.example.com/welcome"},"tool_use_id":"exec-a1428c1d-…"}
+</span></code></pre></div>
+<p><strong>Deny.</strong> With the hook answering deny (and matcher <code>mcp__.*|WebFetch</code> in a second
+run — Codex honors the same regex matcher syntax), the call was blocked before the
+server; the stub log stayed empty and the model's final reply carried the reason:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>BLOCKED Tool call blocked by PreToolUse hook: persona guard (probe): navigation outside the domain allowlist of flow "checkout" — denied. Tool: mcp__personastub__navigate
+</span></code></pre></div>
+<p><strong>Allow control.</strong> Same wiring, hook silent: the call executed and the stub log
+received it (<code>status":"completed"</code> in the <code>--json</code> stream). So the deny above was
+the hook, not something else in the pipeline.</p>
+<p><strong>The approval layer, found on the way (honest asymmetry):</strong> in non-interactive
+<code>codex exec</code>, MCP tool calls were <strong>auto-cancelled by Codex's own approval
+mechanic</strong> — <code>"error":{"message":"user cancelled MCP tool call"}</code> — under
+<code>--sandbox read-only</code>, <code>--sandbox workspace-write</code>, and even
+<code>-c approval_policy=never</code>, with or without hooks. The only tested mode in which
+an <em>allowed</em> MCP call actually executes headless is
+<code>--dangerously-bypass-approvals-and-sandbox</code>. The hook fires and denies in every
+one of those modes (it sits upstream), but a headless Codex persona worker that
+needs to <em>browse</em> needs that flag — and, as already verified for the git lock,
+config-declared hooks stay inert in headless runs without
+<code>--dangerously-bypass-hook-trust</code>. Both facts belong to the Codex conduction
+seam, and <code>leopold doctor</code> states which bound is in force rather than implying
+a hook that is not wired.</p>
+<h2 id="evidence-the-production-stack-end-to-end">Evidence — the production stack, end to end<a class="headerlink" href="#evidence-the-production-stack-end-to-end" title="Permanent link">&para;</a></h2>
+<p>The shipped hook (<code>hooks/persona-guard.sh</code>) wired by the shipped writer
+(<code>leo_wire_persona_guard</code>), a real <code>flows/checkout.md</code> whose allowlist is
+<code>staging.example.com</code> + <code>accounts.example.com</code>, and a real
+<code>.leopold/persona/ACTIVE.json</code>. One live run per harness, each asked to navigate
+once inside and once outside the allowlist.</p>
+<p>Claude Code final reply, verbatim:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>OK
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>BLOCKED — Leopold persona guard: navigation to host "prod-dashboard.example.org" is outside the domain allowlist of flow "checkout"
+</span></code></pre></div>
+<p>Codex CLI final reply, verbatim:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>OK
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>BLOCKED Tool call blocked by PreToolUse hook: Leopold persona guard: navigation to host "prod-dashboard.example.org" is outside the domain allowlist of flow "checkout" — the persona stays inside the flow's bounds; journal the wall as a finding instead of retrying.. Tool: mcp__personastub__navigate
+</span></code></pre></div>
+<p>On both harnesses the stub log carries <strong>only</strong> the allowed navigation, and the
+project's <code>.leopold/persona/events.jsonl</code> carries one <code>persona_guard_block</code> event
+per denial — host and flow, never the full URL:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>{"ts":"2026-08-19T00:28:06Z","event":"persona_guard_block","tool":"mcp__personastub__navigate","host":"prod-dashboard.example.org","flow":"checkout"}
+</span></code></pre></div>
+<h2 id="findings">Findings<a class="headerlink" href="#findings" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>PreToolUse sees MCP tool calls on both harnesses</strong>, as
+   <code>tool_name: "mcp__&lt;server&gt;__&lt;tool&gt;"</code> with the full <code>tool_input</code>. A matcher on
+   MCP tool names (<code>mcp__.*</code>) works on both — Codex reimplemented the same
+   matcher semantics it already honors for <code>Bash</code>.</li>
+<li><strong>Deny is enforced upstream of the server on both.</strong> A denied call never
+   reaches the MCP server (proven by the stub's receive log), and the model gets
+   the <code>permissionDecisionReason</code> verbatim — on Codex prefixed with
+   <code>Tool call blocked by PreToolUse hook:</code>.</li>
+<li><strong>Codex's approval layer is a separate, additional gate</strong> for MCP calls in
+   headless <code>exec</code> runs (auto-cancel unless approvals are bypassed). It gates the
+   <em>allow</em> path, never weakens the <em>deny</em> path.</li>
+<li><strong>Hook processes see the session <code>cwd</code> in the payload</strong> on both harnesses,
+   which is what lets one project-relative guard (<code>.leopold/persona/ACTIVE.json</code>)
+   scope itself without any per-run rewiring of the script.</li>
+</ol>
+<h2 id="the-policy-this-evidence-decided">The policy this evidence decided<a class="headerlink" href="#the-policy-this-evidence-decided" title="Permanent link">&para;</a></h2>
+<p><code>hooks/persona-guard.sh</code> is the hook-level half of the persona bounds, wired on
+<strong>both</strong> harnesses through the one shared writer:</p>
+<ul>
+<li><strong>Wired only while a persona run is active.</strong> The conductor calls
+  <code>leo_wire_persona_guard &lt;path&gt;</code> at run start and <code>leo_unwire_persona_guard</code> at
+  run end (<code>extensions/lib/harness.sh</code> — its own managed tag,
+  <code>leopold-persona-guard</code>, so wiring and unwiring never touch the git lock). On
+  top of that, the hook no-ops unless <code>.leopold/persona/ACTIVE.json</code> exists and
+  is active, so a stale wire left by a crashed conductor can never bound a
+  normal session.</li>
+<li><strong>The allowlist is read from the active flow file</strong> named by <code>ACTIVE.json</code>,
+  with the exact semantics of the driver's flow parser (<code>hostAllowed</code> in
+  <code>packages/driver/src/persona-testing/flow.ts</code>): http(s) only, hostname
+  lowercased, trailing dots stripped, exact host or dot-boundary subdomain,
+  never a substring. The authority ends at <code>/</code>, <code>\</code>, <code>?</code> or <code>#</code>, exactly as
+  WHATWG URL parsers (Chromium, Node's <code>new URL</code> — the stack that actually
+  navigates) treat it — so <code>https://evil.io\@staging.example.com/</code> is judged as
+  host <code>evil.io</code> and denied, never as <code>staging.example.com</code> behind a fake
+  userinfo.</li>
+<li><strong>Unknown is outside.</strong> A malformed <code>ACTIVE.json</code>, a missing flow, an empty
+  allowlist, an unparseable URL: all deny, each with a named reason. Denials name
+  the flow and are journaled to <code>.leopold/persona/events.jsonl</code> as
+  <code>persona_guard_block</code> — host only, never the full URL, so a credential-bearing
+  URL can never land in recorded text.</li>
+<li><strong>Scope: the wired matcher is <code>mcp__.*|WebFetch</code></strong> — the same alternation the
+  deny probe above ran with. It routes both navigation surfaces the script
+  judges: the persona's MCP browser tools and the built-in <code>WebFetch</code> (same
+  <code>url</code> shape). Everything semantic (payments, deletions — the irreversibility
+  rule) remains the <strong>conductor's</strong> enforcement: a hook cannot judge intent.
+  The hook is depth, the conductor is the bound.</li>
+<li>Every denial has a red-team case in <code>scripts/test-persona-guard.sh</code> (bypass
+  attempts included: lookalike hosts, suffix tricks, userinfo tricks in both
+  directions — backslash-authority forms included, judged by their WHATWG host —
+  nested <code>url</code> keys, batch payloads), the wire/unwire pair is asserted
+  idempotent in <code>scripts/test-harness-lib.sh</code>, and <code>leopold doctor</code> names the
+  bound actually in force per harness.</li>
+</ul>
+<h2 id="hermeticity">Hermeticity<a class="headerlink" href="#hermeticity" title="Permanent link">&para;</a></h2>
+<p>Every write landed under the <code>mktemp -d</code> probe root (plus the harnesses' own
+transcript dirs for the temp project). This repository's <code>.leopold/</code> was never
+touched, no real browser and no real target site was involved — the only network
+was each harness talking to its own model API. The temp <code>CODEX_HOME</code>'s copied
+auth file was deleted after the runs.</p>
+<!-- @emit hook_bound=both -->
 
 
 
@@ -2519,7 +2309,7 @@ avançam concorrentemente sem colisão.</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Voltar para o topo
+  Back to top
 </button>
         
       </main>
@@ -2528,33 +2318,33 @@ avançam concorrentemente sem colisão.</p>
   
     
       
-      <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../decision-protocol/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Protocolo de decisão">
+          <a href="../sdk-worker-hooks/" class="md-footer__link md-footer__link--prev" aria-label="Previous: SDK Worker Hooks">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Anterior
+                Previous
               </span>
               <div class="md-ellipsis">
-                Protocolo de decisão
+                SDK Worker Hooks
               </div>
             </div>
           </a>
         
         
           
-          <a href="../cost-and-security/" class="md-footer__link md-footer__link--next" aria-label="Próximo: Custo e segurança">
+          <a href="../../comparisons/ralph/" class="md-footer__link md-footer__link--next" aria-label="Next: Leopold vs Ralph">
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Próximo
+                Next
               </span>
               <div class="md-ellipsis">
-                Custo e segurança
+                Leopold vs Ralph
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2606,7 +2396,7 @@ avançam concorrentemente sem colisão.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>

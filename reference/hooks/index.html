@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -887,6 +889,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/persona-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Testing
   
 
     
@@ -1339,6 +1369,8 @@
       
         
       
+        
+      
     
     
     
@@ -1562,6 +1594,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persona-guardsh-the-run-scoped-persona-pretooluse-hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        persona-guard.sh — the run-scoped persona PreToolUse hook
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1790,6 +1833,34 @@
     
   
     SDK Worker Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persona-guard-hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Guard Hooks
   
 
     
@@ -2066,6 +2137,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persona-guardsh-the-run-scoped-persona-pretooluse-hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        persona-guard.sh — the run-scoped persona PreToolUse hook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#enhancepy-the-userpromptsubmit-prompt-enhancer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2309,6 +2391,18 @@ every synthesized role exactly that, in those words: a role that believes a hook
 enforced rather than instructed, deny them in the harness's own permission settings —
 <code>guard-irreversible.sh</code> never loosens those, it only adds the two git denials.</p>
 <p>See the policy table in <a href="../../guardrails/">Guardrails</a>.</p>
+<h2 id="persona-guardsh-the-run-scoped-persona-pretooluse-hook"><code>persona-guard.sh</code> — the run-scoped persona PreToolUse hook<a class="headerlink" href="#persona-guardsh-the-run-scoped-persona-pretooluse-hook" title="Permanent link">&para;</a></h2>
+<p>The third hook in <code>hooks/</code> is <strong>not</strong> part of the always-on wiring above: the
+persona conductor wires it (matcher <code>mcp__.*|WebFetch</code>, its own
+<code>leopold-persona-guard</code> managed tag through the same shared writer) only while a
+persona run is active, and unwires it at run end. While wired, it checks every
+<code>url</code> in an MCP tool call or <code>WebFetch</code> against the active flow's domain
+allowlist and denies anything outside —
+before the MCP server receives the call, on both harnesses, verified live. The
+hook is additionally inert without an active <code>.leopold/persona/ACTIVE.json</code>, so
+a stale wire can never bound a normal session. Captured payloads, versions, and
+the full policy: <a href="../persona-guard-hooks/">Persona Guard Hooks</a>; red-team suite:
+<code>scripts/test-persona-guard.sh</code>.</p>
 <h2 id="enhancepy-the-userpromptsubmit-prompt-enhancer"><code>enhance.py</code> — the UserPromptSubmit prompt enhancer<a class="headerlink" href="#enhancepy-the-userpromptsubmit-prompt-enhancer" title="Permanent link">&para;</a></h2>
 <p>Runs on every prompt you submit (the event takes no matcher, so all gating is
 internal). Contract: read the hook JSON on stdin; plain text on stdout is injected

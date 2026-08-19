@@ -850,6 +850,8 @@
       
         
       
+        
+      
     
     
     
@@ -1022,6 +1024,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/persona-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Testing
   
 
     
@@ -1472,6 +1502,8 @@
       
         
       
+        
+      
     
     
     
@@ -1728,6 +1760,34 @@
     
   
     SDK Worker Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/persona-guard-hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Guard Hooks
   
 
     
@@ -2126,7 +2186,8 @@ still missing its wiring.</p>
 <p>Everything is <strong>local and private</strong>: the OpenViking server binds to <code>127.0.0.1</code> (loopback) on
 the user's own device — it is not exposed to the network, and nothing points to a central
 server. The only outbound traffic is to OpenAI (with the user's own key) for embeddings and
-extraction. A fully-local Ollama/GGUF profile (no key) is on the roadmap.</p>
+extraction. Credential-shaped strings a session happened to print are masked before they
+reach the memory base. A fully-local Ollama/GGUF profile (no key) is on the roadmap.</p>
 <p>Supported on Linux and macOS. On native Windows, run it inside WSL.</p>
 <h3 id="enhance">enhance<a class="headerlink" href="#enhance" title="Permanent link">&para;</a></h3>
 <p>The <a href="../../reference/enhance/">global prompt enhancer</a>: one <code>UserPromptSubmit</code> hook that has

@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -887,6 +889,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/persona-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Testing
   
 
     
@@ -1339,6 +1369,8 @@
       
         
       
+        
+      
     
     
     
@@ -1562,6 +1594,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persona-guardsh-o-hook-pretooluse-de-persona-escopado-ao-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        persona-guard.sh — o hook PreToolUse de persona, escopado ao run
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1790,6 +1833,34 @@
     
   
     Hooks do worker SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persona-guard-hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks do persona guard
   
 
     
@@ -2066,6 +2137,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persona-guardsh-o-hook-pretooluse-de-persona-escopado-ao-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        persona-guard.sh — o hook PreToolUse de persona, escopado ao run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#enhancepy-o-prompt-enhancer-de-userpromptsubmit" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2311,6 +2393,18 @@ um hook vai barrar o <code>npm publish</code> não tem motivo para se segurar, e
 você precisa disso garantido em vez de instruído, negue nas permissões do próprio harness —
 o <code>guard-irreversible.sh</code> nunca as afrouxa, ele só acrescenta as duas negações de git.</p>
 <p>Veja a tabela de política em <a href="../../guardrails/">Guardrails</a>.</p>
+<h2 id="persona-guardsh-o-hook-pretooluse-de-persona-escopado-ao-run"><code>persona-guard.sh</code> — o hook PreToolUse de persona, escopado ao run<a class="headerlink" href="#persona-guardsh-o-hook-pretooluse-de-persona-escopado-ao-run" title="Permanent link">&para;</a></h2>
+<p>O terceiro hook em <code>hooks/</code> <strong>não</strong> faz parte da fiação sempre-ativa acima: o
+maestro de persona o pluga (matcher <code>mcp__.*|WebFetch</code>, tag gerenciada própria
+<code>leopold-persona-guard</code> pelo mesmo writer compartilhado) apenas enquanto um run
+de persona está ativo, e o despluga no fim do run. Enquanto plugado, ele confere
+cada <code>url</code> de uma chamada de ferramenta MCP ou <code>WebFetch</code> contra a allowlist de
+domínios do flow ativo e nega qualquer coisa fora — antes de o servidor MCP receber a
+chamada, nos dois harnesses, verificado ao vivo. O hook também é inerte sem um
+<code>.leopold/persona/ACTIVE.json</code> ativo, então uma fiação órfã nunca limita uma
+sessão normal. Payloads capturados, versões e a política completa:
+<a href="../persona-guard-hooks/">Hooks do Persona Guard</a>; suíte red-team:
+<code>scripts/test-persona-guard.sh</code>.</p>
 <h2 id="enhancepy-o-prompt-enhancer-de-userpromptsubmit"><code>enhance.py</code> — o prompt enhancer de UserPromptSubmit<a class="headerlink" href="#enhancepy-o-prompt-enhancer-de-userpromptsubmit" title="Permanent link">&para;</a></h2>
 <p>Roda a cada prompt que você envia (o evento não aceita matcher, então todo o gating é
 interno). Contrato: lê o JSON do hook no stdin; texto puro no stdout é injetado como

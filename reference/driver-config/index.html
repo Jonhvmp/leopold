@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -887,6 +889,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/persona-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Testing
   
 
     
@@ -1339,6 +1369,8 @@
       
         
       
+        
+      
     
     
     
@@ -1616,6 +1648,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persona-runs-leopold-persona" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persona runs (leopold persona)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#auth" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1778,6 +1821,34 @@
     
   
     SDK Worker Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persona-guard-hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Guard Hooks
   
 
     
@@ -1992,6 +2063,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persona-runs-leopold-persona" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persona runs (leopold persona)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#auth" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2141,6 +2223,9 @@
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>leopold<span class="w"> </span>graph<span class="w"> </span>--mermaid<span class="w">              </span><span class="c1"># the same graph as a fenced mermaid diagram</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>leopold<span class="w"> </span>insights<span class="w">                     </span><span class="c1"># summarize the run's events.jsonl</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>leopold<span class="w"> </span>recall<span class="w"> </span><span class="s2">"query"</span><span class="w">               </span><span class="c1"># search this project's run archive (decisions + Reversals, offline)</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>&lt;flow&gt;<span class="w">           </span><span class="c1"># conduct a synthetic-customer run headless (driver engine)</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>leopold<span class="w"> </span>persona<span class="w"> </span>report<span class="w"> </span>&lt;run-dir&gt;<span class="w">     </span><span class="c1"># re-synthesize REPORT.md from the run's journals alone</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>leopold<span class="w"> </span>persona<span class="w"> </span>list<span class="w">                 </span><span class="c1"># personas (contract status) and flows in this project</span>
 </span></code></pre></div>
 <h2 id="graph-pre-flight-leopold-graph">Graph pre-flight (<code>leopold graph</code>)<a class="headerlink" href="#graph-pre-flight-leopold-graph" title="Permanent link">&para;</a></h2>
 <p>The command to run before you trust a plan. It parses <code>.leopold/PLAN.md</code> into the
@@ -2190,13 +2275,79 @@ first agent runs</strong>, with the offending items named:</p>
 <p>A plan that uses none of the graph grammar can never fail this check: <code>(after:)</code>
 edges only ever point at an earlier item, so they cannot cycle, dangle or strand
 anything.</p>
+<h2 id="persona-runs-leopold-persona">Persona runs (<code>leopold persona</code>)<a class="headerlink" href="#persona-runs-leopold-persona" title="Permanent link">&para;</a></h2>
+<p>The headless engine over the
+<a href="../../concepts/persona-testing/">persona testing</a> module. It conducts the
+<code>.leopold/persona/</code> artifacts a session built with <code>/leopold-persona</code> — one
+supervised worker per persona through <code>flows/&lt;flow&gt;.md</code>, the journal contract,
+domain allowlist and irreversibility bounds enforced by the driver, window
+continuity from <code>JOURNEY.jsonl</code> — and writes the deterministic cross-persona
+<code>REPORT.md</code>. Same run tree as the in-session skill, byte-compatible.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w">                     </span><span class="c1"># the whole cast, serial</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w"> </span>--persona<span class="w"> </span>maria<span class="w">     </span><span class="c1"># one persona</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w"> </span>--persona<span class="w"> </span>all<span class="w"> </span>--parallel<span class="w"> </span><span class="m">3</span><span class="w">   </span><span class="c1"># fan the cast out</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w"> </span>--provider<span class="w"> </span>codex<span class="w">    </span><span class="c1"># conduct on Codex instead</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>leopold<span class="w"> </span>persona<span class="w"> </span>report<span class="w"> </span>.leopold/persona/runs/&lt;run-dir&gt;<span class="w">    </span><span class="c1"># report from journals alone</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>leopold<span class="w"> </span>persona<span class="w"> </span>list<span class="w">                             </span><span class="c1"># contract status + flow parse verdicts</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--persona &lt;id&gt;\|all</code></td>
+<td><code>all</code></td>
+<td>run one persona or the whole cast</td>
+</tr>
+<tr>
+<td><code>--parallel N</code></td>
+<td><code>1</code></td>
+<td>run up to N personas concurrently, each in its own run subdirectory (no worktrees — personas write artifacts, not code)</td>
+</tr>
+<tr>
+<td><code>--provider claude\|codex</code></td>
+<td>resolved as <a href="#choosing-a-harness">above</a></td>
+<td>which harness runs the persona workers</td>
+</tr>
+</tbody>
+</table>
+<p><code>persona report &lt;run-dir&gt;</code> rewrites <code>REPORT.md</code> from the journals alone —
+byte-identical outside the executive-summary marker — so a report is always
+reproducible from its run. <code>persona list</code> exits 0 always, including the honest
+"nothing to run" answer.</p>
+<table>
+<thead>
+<tr>
+<th>Var</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LEOPOLD_APP_VERSION</code></td>
+<td>the flow's "App version pin" section</td>
+<td>the build identity pinned in every journal header and report</td>
+</tr>
+<tr>
+<td><code>LEOPOLD_WEBHOOK</code></td>
+<td>none</td>
+<td>same masked JSON notifications as <code>leopold run</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="auth">Auth<a class="headerlink" href="#auth" title="Permanent link">&para;</a></h2>
 <p>Uses your existing harness login — Claude Code or Codex — for the worker, the
 conductor, and every panel agent. <strong>No API key required.</strong> <code>ANTHROPIC_API_KEY</code> is only
 needed in a headless environment with no Claude Code auth.</p>
 <h2 id="choosing-a-harness">Choosing a harness<a class="headerlink" href="#choosing-a-harness" title="Permanent link">&para;</a></h2>
-<p>Every command that reaches a model takes <code>--provider claude|codex</code> — <code>run</code> <strong>and</strong>
-<code>workflow --run</code>. Resolution order:</p>
+<p>Every command that reaches a model takes <code>--provider claude|codex</code> — <code>run</code>,
+<code>workflow --run</code> <strong>and</strong> <code>persona run</code>. Resolution order:</p>
 <ol>
 <li><code>--provider claude|codex</code></li>
 <li><code>LEOPOLD_PROVIDER</code></li>
@@ -2209,15 +2360,15 @@ environment — Codex exports <code>CODEX_THREAD_ID</code> (and <code>CODEX_CI</
 <code>CLAUDECODE</code> / <code>CLAUDE_CODE_SESSION_ID</code> — so a run launched from a Codex session
 belongs to Codex instead of falling through to the tie-break. With no marker at all,
 the Claude fallback is unchanged.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>codex
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>codex
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run
 </span></code></pre></div>
 <h3 id="hybrid-a-harness-per-role">Hybrid: a harness per role<a class="headerlink" href="#hybrid-a-harness-per-role" title="Permanent link">&para;</a></h3>
 <p>One run can execute on one harness and review on the other:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
 </span></code></pre></div>
 <table>
 <thead>
@@ -2441,18 +2592,18 @@ single-provider run byte-for-byte unchanged.</p>
 <h2 id="toggles-in-the-brief-guardrailsmd">Toggles in the brief (GUARDRAILS.md)<a class="headerlink" href="#toggles-in-the-brief-guardrailsmd" title="Permanent link">&para;</a></h2>
 <p>The orchestration posture can live with the brief instead of the command line.
 <code>GUARDRAILS.md</code> may set any of these as <code>key: on|off</code>:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gu">## Judgment posture</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">-</span><span class="w"> </span>autonomy: full             # full | ask
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">-</span><span class="w"> </span>review: on
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">-</span><span class="w"> </span>conformance: on
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gu">## Judgment posture</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">-</span><span class="w"> </span>autonomy: full             # full | ask
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">-</span><span class="w"> </span>review: on
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">-</span><span class="w"> </span>conformance: on
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
 </span></code></pre></div>
 <p>Precedence: <strong>explicit CLI flag / env var → GUARDRAILS.md → built-in default.</strong></p>
 <h3 id="autonomy"><code>autonomy: full | ask</code><a class="headerlink" href="#autonomy" title="Permanent link">&para;</a></h3>
@@ -2495,7 +2646,7 @@ whether a persona can affect it — is
 <h2 id="notifications">Notifications<a class="headerlink" href="#notifications" title="Permanent link">&para;</a></h2>
 <p>On completion or escalation, the driver writes to the terminal and <code>events.jsonl</code>,
 and POSTs JSON to <code>LEOPOLD_WEBHOOK</code> if set:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leopold finished"</span><span class="p">,</span><span class="w"> </span><span class="nt">"body"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plan complete; everything staged."</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leopold"</span><span class="w"> </span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leopold finished"</span><span class="p">,</span><span class="w"> </span><span class="nt">"body"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plan complete; everything staged."</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leopold"</span><span class="w"> </span><span class="p">}</span>
 </span></code></pre></div>
 <p>When <code>learn_on_finish</code> is on, the completion notice also lists any proposed
 charter amendments (written to <code>.leopold/CHARTER-amendments.md</code>; the charter

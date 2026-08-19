@@ -715,6 +715,8 @@
       
         
       
+        
+      
     
     
     
@@ -887,6 +889,34 @@
     
   
     Personas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/persona-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persona Testing
   
 
     
@@ -1339,6 +1369,8 @@
       
         
       
+        
+      
     
     
     
@@ -1616,6 +1648,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persona-runs-leopold-persona" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs de persona (leopold persona)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#autenticacao" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1778,6 +1821,34 @@
     
   
     Hooks do worker SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persona-guard-hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks do persona guard
   
 
     
@@ -1992,6 +2063,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#persona-runs-leopold-persona" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs de persona (leopold persona)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#autenticacao" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2141,6 +2223,9 @@
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>leopold<span class="w"> </span>graph<span class="w"> </span>--mermaid<span class="w">              </span><span class="c1"># the same graph as a fenced mermaid diagram</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>leopold<span class="w"> </span>insights<span class="w">                     </span><span class="c1"># summarize the run's events.jsonl</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>leopold<span class="w"> </span>recall<span class="w"> </span><span class="s2">"consulta"</span><span class="w">            </span><span class="c1"># busca no arquivo de runs do projeto (decisões + Reversals, offline)</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>&lt;flow&gt;<span class="w">           </span><span class="c1"># conduz um run de cliente sintético headless (motor do driver)</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>leopold<span class="w"> </span>persona<span class="w"> </span>report<span class="w"> </span>&lt;run-dir&gt;<span class="w">     </span><span class="c1"># re-sintetiza o REPORT.md só dos diários do run</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>leopold<span class="w"> </span>persona<span class="w"> </span>list<span class="w">                 </span><span class="c1"># personas (status de contrato) e fluxos do projeto</span>
 </span></code></pre></div>
 <h2 id="pre-voo-do-grafo-leopold-graph">Pré-voo do grafo (<code>leopold graph</code>)<a class="headerlink" href="#pre-voo-do-grafo-leopold-graph" title="Permanent link">&para;</a></h2>
 <p>O comando que você roda antes de confiar em um plano. Ele lê o <code>.leopold/PLAN.md</code> e
@@ -2190,13 +2275,80 @@ havia plano para ler. Então um gate é só:</p>
 <p>Um plano que não usa nada da gramática de grafo nunca falha nessa checagem: arestas
 <code>(after:)</code> só apontam para itens anteriores, então não podem ciclar, apontar para o
 vazio nem isolar nada.</p>
+<h2 id="persona-runs-leopold-persona">Runs de persona (<code>leopold persona</code>)<a class="headerlink" href="#persona-runs-leopold-persona" title="Permanent link">&para;</a></h2>
+<p>O motor headless sobre o módulo de
+<a href="../../concepts/persona-testing/">teste com personas</a>. Ele conduz os artefatos de
+<code>.leopold/persona/</code> que uma sessão construiu com <code>/leopold-persona</code> — um worker
+supervisionado por persona através de <code>flows/&lt;flow&gt;.md</code>, o contrato do diário, a
+allowlist de domínios e o limite de irreversibilidade impostos pelo driver,
+continuidade de janela a partir do <code>JOURNEY.jsonl</code> — e escreve o <code>REPORT.md</code>
+determinístico entre personas. Mesma árvore de run da skill na sessão,
+byte-compatível.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w">                     </span><span class="c1"># o elenco inteiro, serial</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w"> </span>--persona<span class="w"> </span>maria<span class="w">     </span><span class="c1"># uma persona</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w"> </span>--persona<span class="w"> </span>all<span class="w"> </span>--parallel<span class="w"> </span><span class="m">3</span><span class="w">   </span><span class="c1"># fan-out do elenco</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>leopold<span class="w"> </span>persona<span class="w"> </span>run<span class="w"> </span>checkout<span class="w"> </span>--provider<span class="w"> </span>codex<span class="w">    </span><span class="c1"># conduz no Codex</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>leopold<span class="w"> </span>persona<span class="w"> </span>report<span class="w"> </span>.leopold/persona/runs/&lt;run-dir&gt;<span class="w">    </span><span class="c1"># relatório só dos diários</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>leopold<span class="w"> </span>persona<span class="w"> </span>list<span class="w">                             </span><span class="c1"># status de contrato + veredito de parse dos fluxos</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Padrão</th>
+<th>Propósito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--persona &lt;id&gt;\|all</code></td>
+<td><code>all</code></td>
+<td>roda uma persona ou o elenco inteiro</td>
+</tr>
+<tr>
+<td><code>--parallel N</code></td>
+<td><code>1</code></td>
+<td>roda até N personas ao mesmo tempo, cada uma no seu subdiretório de run (sem worktree — personas escrevem artefatos, não código)</td>
+</tr>
+<tr>
+<td><code>--provider claude\|codex</code></td>
+<td>resolvido como <a href="#escolhendo-o-harness">acima</a></td>
+<td>qual harness roda os workers de persona</td>
+</tr>
+</tbody>
+</table>
+<p><code>persona report &lt;run-dir&gt;</code> reescreve o <code>REPORT.md</code> só dos diários — byte a byte
+idêntico fora do marcador de sumário executivo — então um relatório é sempre
+reproduzível a partir do seu run. <code>persona list</code> sai com 0 sempre, incluindo a
+resposta honesta de "nada pra rodar".</p>
+<table>
+<thead>
+<tr>
+<th>Var</th>
+<th>Padrão</th>
+<th>Propósito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LEOPOLD_APP_VERSION</code></td>
+<td>a seção "App version pin" do fluxo</td>
+<td>a identidade do build pinada em todo cabeçalho de diário e relatório</td>
+</tr>
+<tr>
+<td><code>LEOPOLD_WEBHOOK</code></td>
+<td>nenhum</td>
+<td>as mesmas notificações JSON mascaradas do <code>leopold run</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="autenticacao">Autenticação<a class="headerlink" href="#autenticacao" title="Permanent link">&para;</a></h2>
 <p>Usa o seu login existente do harness — Claude Code ou Codex — para o worker, o maestro
 e cada agente de painel. <strong>Nenhuma API key é necessária.</strong> <code>ANTHROPIC_API_KEY</code> só entra
 em um ambiente headless sem autenticação do Claude Code.</p>
 <h2 id="escolhendo-o-harness">Escolhendo o harness<a class="headerlink" href="#escolhendo-o-harness" title="Permanent link">&para;</a></h2>
-<p>Todo comando que fala com um modelo aceita <code>--provider claude|codex</code> — o <code>run</code> <strong>e</strong> o
-<code>workflow --run</code>. Ordem de resolução:</p>
+<p>Todo comando que fala com um modelo aceita <code>--provider claude|codex</code> — o <code>run</code>, o
+<code>workflow --run</code> <strong>e</strong> o <code>persona run</code>. Ordem de resolução:</p>
 <ol>
 <li><code>--provider claude|codex</code></li>
 <li><code>LEOPOLD_PROVIDER</code></li>
@@ -2208,15 +2360,15 @@ em um ambiente headless sem autenticação do Claude Code.</p>
 — o Codex exporta <code>CODEX_THREAD_ID</code> (e <code>CODEX_CI</code>), o Claude Code exporta <code>CLAUDECODE</code> /
 <code>CLAUDE_CODE_SESSION_ID</code> — então um run lançado de uma sessão Codex pertence ao Codex em
 vez de cair no desempate. Sem marcador nenhum, o fallback para Claude é o de sempre.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>codex
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>codex
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run
 </span></code></pre></div>
 <h3 id="hibrido-um-harness-por-papel">Híbrido: um harness por papel<a class="headerlink" href="#hibrido-um-harness-por-papel" title="Permanent link">&para;</a></h3>
 <p>Um mesmo run pode executar num harness e revisar no outro:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
 </span></code></pre></div>
 <table>
 <thead>
@@ -2440,18 +2592,18 @@ run single-provider byte-idêntico.</p>
 <h2 id="toggles-no-brief-guardrailsmd">Toggles no brief (GUARDRAILS.md)<a class="headerlink" href="#toggles-no-brief-guardrailsmd" title="Permanent link">&para;</a></h2>
 <p>A postura de orquestração pode viver junto com o brief em vez da linha de comando.
 O <code>GUARDRAILS.md</code> pode definir qualquer um destes como <code>key: on|off</code>:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gu">## Judgment posture</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">-</span><span class="w"> </span>autonomy: full             # full | ask
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">-</span><span class="w"> </span>review: on
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">-</span><span class="w"> </span>conformance: on
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gu">## Judgment posture</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">-</span><span class="w"> </span>autonomy: full             # full | ask
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="gu">## Quality &amp; orchestration (SDK driver)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">-</span><span class="w"> </span>review: on
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">-</span><span class="w"> </span>conformance: on
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">-</span><span class="w"> </span>hypotheses: on
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="k">-</span><span class="w"> </span>literal_reset: on
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">-</span><span class="w"> </span>best_of_k: 1
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="k">-</span><span class="w"> </span>smart_routing: off
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="k">-</span><span class="w"> </span>slice_scope: off
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="k">-</span><span class="w"> </span>learn_on_finish: off
 </span></code></pre></div>
 <p>Precedência: <strong>flag de CLI / env var explícita → GUARDRAILS.md → padrão embutido.</strong></p>
 <h3 id="autonomy"><code>autonomy: full | ask</code><a class="headerlink" href="#autonomy" title="Permanent link">&para;</a></h3>
@@ -2495,7 +2647,7 @@ uma, se uma persona pode afetá-la — está em
 <h2 id="notificacoes">Notificações<a class="headerlink" href="#notificacoes" title="Permanent link">&para;</a></h2>
 <p>Ao concluir ou escalar, o driver escreve no terminal e no <code>events.jsonl</code>,
 e faz POST de JSON para <code>LEOPOLD_WEBHOOK</code> se estiver definido:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leopold finished"</span><span class="p">,</span><span class="w"> </span><span class="nt">"body"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plan complete; everything staged."</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leopold"</span><span class="w"> </span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leopold finished"</span><span class="p">,</span><span class="w"> </span><span class="nt">"body"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Plan complete; everything staged."</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"leopold"</span><span class="w"> </span><span class="p">}</span>
 </span></code></pre></div>
 <p>Quando <code>learn_on_finish</code> está ligado, o aviso de conclusão também lista as emendas
 propostas ao charter (escritas em <code>.leopold/CHARTER-amendments.md</code>; o charter
