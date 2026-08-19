@@ -72,6 +72,37 @@ never add a `Co-Authored-By` trailer for a model. Confident tone, no hedging.
   and in `leopold doctor`. A zero, an empty panel, or a no-op that reads as success is
   worse than an error.
 
+## The module contract — how a capability enters Leopold
+
+The persona module set the shape, and every new feature or extension follows it.
+This is culture, not a suggestion: a capability that arrives as loose files, prose
+promises, or a single-engine special case is not done.
+
+- **One namespace, structured.** A capability owns ONE directory per layer, with
+  subdirectories inside it — `packages/driver/src/<capability>/` for driver code,
+  `extensions/<name>/` (`payload/`, `install.sh`, `manage.sh`) for extensions,
+  `.leopold/<capability>/` for project artifacts — and deliverables are named so a
+  human can file them (area + UTC stamp in run-dir names). Nothing loose at a root.
+- **AI-native contracts, not prose.** Behavior an agent must follow ships as a
+  machine-interpretable contract: a versioned schema (`persona-contract/1.0`
+  style), typed states and results, explicit failure outputs — never a silent
+  no-op — and provenance for anything claimed from evidence. Semantic variables
+  over worked examples. Model-facing text stays model-facing: the driver gates it
+  lexically and never re-parses its semantics.
+- **Autonomous by design.** Durable state lives outside the transcript (a journal,
+  a checkpoint) so a run survives a window roll and resumes from its own record;
+  anything self-written that re-enters a prompt carries the untrusted-data framing
+  imported from its one home; bounds are enforced in code — a rule that lives only
+  in a prompt is a wish.
+- **Two engines, one artifact.** The in-session skill and the headless driver read
+  and write the same files, and parity is DERIVED by test from the driver's source
+  — never asserted in two places that can drift.
+- **Loud on missing substrate.** No contract, no browser, no server → the feature
+  says so and stops; `leopold doctor` states the capability per harness.
+
+The persona module (`skills/leopold-persona/`, `packages/driver/src/persona-testing/`,
+`.leopold/persona/`) is the reference implementation of this contract.
+
 ## Verify, do not assume
 
 Every claim about how Claude Code or Codex behaves is checked against the local binary —
