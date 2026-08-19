@@ -21,7 +21,7 @@
 
 Leopold is an autonomous orchestration harness for [Claude Code](https://claude.com/claude-code) and [Codex CLI](https://github.com/openai/codex). You debate the work with it — goals, constraints, taste, what "done" means — and that becomes a durable brief. Then it takes the seat and drives your agent continuously, deciding the way you would instead of stopping at every fork, until the plan is done or a stop condition fires — **with your git locked the whole time.**
 
-It is the same product on either agent: the same skills, the same two hooks (unmodified scripts — Codex reimplemented Claude Code's hook contract nearly field for field), the same four extensions, the same dashboard, the same driver.
+It is the same product on either agent: the same skills, the same hooks (unmodified scripts — Codex reimplemented Claude Code's hook contract nearly field for field), the same four extensions, the same dashboard, the same driver.
 
 > The name nods to Bugs Bunny: in *Long-Haired Hare* (1949) he seizes the podium as the conductor **Leopold** and runs the orchestra with a wave of the baton. You are the composer, Leopold the conductor, Claude Code the orchestra.
 

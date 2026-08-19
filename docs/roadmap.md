@@ -37,6 +37,10 @@ flowchart LR
       hypothesis panel on retries, opt-in smart routing
 - [x] **Hardcore CI** — CLI smoke of the built binary, shellcheck gate,
       macOS + Ubuntu matrix, npm provenance, Dependabot, CodeQL
+- [x] **Persona testing (0.20–0.21)** — synthetic customers: evidence-grounded
+      contract skills, `/leopold-persona`, and the driver-conducted harness
+      (`leopold persona run` — journal-before-act, in-code bounds, the
+      persona-guard hook proven live on both harnesses)
 - [x] **Prompt enhancer (v0.11)** — global `UserPromptSubmit` hook: weak prompts
       get a charter-aware structured interpretation from Haiku on the user's own
       account (off by default, fail-open, anchor veto), `/leopold-enhance` with a
@@ -44,6 +48,8 @@ flowchart LR
 
 ## Next
 
+- [ ] Scheduled persona cadence (Claude Code scheduled tasks + Codex automations),
+      gated on live verification of both schedulers
 - [ ] End-to-end exercise of the experimental `workflow --run` query shim (a
       manual `workflow_dispatch` CI job with a real key — it spends tokens)
 - [ ] Worker watchdog for turns that end without a status block

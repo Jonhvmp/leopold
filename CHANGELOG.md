@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-08-19
+
+### Fixed
+- **Persona journal appends are open-rejects, never check-then-write**: a journal
+  moved or archived between a stale existence check and the write can no longer be
+  recreated headerless (`O_APPEND` open without `O_CREAT`; race covered by test).
+- **A `max_turns` near-miss is a named error**: a wrong-case or trailing-words line
+  no longer falls back silently to the default budget.
+- **Allowlist entries are validated as bare hostnames at parse time**: an entry
+  with a scheme, path or placeholder brackets — which could never match any URL and
+  silently blocked all navigation — is now a malformed-flow error naming the entry.
+  The shipped flow template's placeholder brackets are fixed accordingly.
+- **Flow sections are fence-aware**: `#` lines inside a code fence are section
+  content, so a CLI flow's fenced commands survive verbatim.
+- **The persona-guard hook fails closed on non-string `url` values**: an array or
+  object under a `url` key is denied instead of slipping past the string filter
+  (red-team suite extended to 47 cases).
+
+### Docs
+- The skills reference documents `/leopold-persona` and the two vendored contract
+  skills; hook-count wording reflects the third, per-run-armed hook; the driver
+  architecture lists the `persona-testing/` module; home and roadmap carry the
+  feature — en + pt-BR throughout, plus the inspiration credit on the concept page.
+
 ## [0.21.0] - 2026-08-18
 
 **The persona harness.** 0.20.0 gave the synthetic customer a script; this release

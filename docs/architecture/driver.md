@@ -46,7 +46,8 @@ both worlds — fresh context per task, plus a conductor holding the thread.
 | `guard.ts` | the git lock as a `canUseTool` callback |
 | `config.ts` | loads the brief and run config (CLI/env > GUARDRAILS > defaults) |
 | `budget.ts` / `secrets.ts` / `reaper.ts` | USD hard-stop, encrypted vault, orphan-run reaper |
-| `insights.ts` | `events.jsonl` → post-run report |
+| `insights.ts` | `events.jsonl` → post-run report (incl. persona runs) |
+| `persona-testing/` | the [persona harness](../concepts/persona-testing.md): journey journal, flow parser, contract gate, deterministic report, cast conduction (`leopold persona`) |
 | `log.ts` | `DECISIONS.md`, `events.jsonl`, plan bookkeeping |
 | `notify.ts` | completion / escalation notifications |
 

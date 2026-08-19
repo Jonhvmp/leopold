@@ -249,9 +249,27 @@ export function appendTurn(
 ): { status: "appended" } | { status: "rejected"; reason: string } {
   const check = checkTurn(turn);
   if (!check.ok) return { status: "rejected", reason: check.reason };
-  if (!fs.existsSync(filePath))
+  return appendLine(filePath, turnLine(turn));
+}
+
+/** One O_APPEND write to an EXISTING journal. The open itself rejects a missing
+ *  file (no O_CREAT) — never a check-then-write, so no window in which a moved
+ *  or archived journal could be recreated headerless. */
+function appendLine(
+  filePath: string,
+  line: string,
+): { status: "appended" } | { status: "rejected"; reason: string } {
+  let fd: number;
+  try {
+    fd = fs.openSync(filePath, fs.constants.O_WRONLY | fs.constants.O_APPEND);
+  } catch {
     return { status: "rejected", reason: `no journal at ${filePath} — create it with its header first` };
-  fs.appendFileSync(filePath, turnLine(turn) + "\n", "utf8");
+  }
+  try {
+    fs.writeSync(fd, line + "\n");
+  } finally {
+    fs.closeSync(fd);
+  }
   return { status: "appended" };
 }
 
@@ -264,10 +282,7 @@ export function appendStop(
   detail: string,
 ): { status: "appended" } | { status: "rejected"; reason: string } {
   if (reason.length === 0) return { status: "rejected", reason: "a stop record needs a non-empty reason" };
-  if (!fs.existsSync(filePath))
-    return { status: "rejected", reason: `no journal at ${filePath} — create it with its header first` };
-  fs.appendFileSync(filePath, stopLine(reason, detail) + "\n", "utf8");
-  return { status: "appended" };
+  return appendLine(filePath, stopLine(reason, detail));
 }
 
 // -- Continuity (pure over a parsed journey) --------------------------------

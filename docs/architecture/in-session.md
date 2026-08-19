@@ -4,11 +4,13 @@ The in-session engine is the v0.1 tier: it runs entirely inside one Claude Code
 session, using two hooks and a set of skills. No external process, no API key, no
 new infrastructure.
 
-!!! info "A third hook ships alongside the engine"
+!!! info "Two more hooks ship alongside the engine"
     The installer also wires the [prompt enhancer](../reference/enhance.md) — a
-    `UserPromptSubmit` hook that is independent of the run engine (it improves
-    *your* everyday prompts, off by default). This page covers the two hooks that
-    implement the autonomous run.
+    `UserPromptSubmit` hook independent of the run engine (it improves *your*
+    everyday prompts, off by default) — and the repo carries
+    [`persona-guard.sh`](../reference/persona-guard-hooks.md), armed only while a
+    [persona run](../concepts/persona-testing.md) is active. This page covers the
+    two hooks that implement the autonomous run.
 
 ## The two hooks
 

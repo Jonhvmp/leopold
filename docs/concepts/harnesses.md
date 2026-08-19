@@ -44,7 +44,9 @@ mostly about it.
 
 ## The hooks are the same scripts
 
-Leopold rides on exactly two hooks.
+The run engine rides on exactly two always-on hooks (a third,
+[`persona-guard.sh`](../reference/persona-guard-hooks.md), is armed only while a
+persona run is active — same script on both harnesses too).
 
 **`guard-irreversible.sh` (PreToolUse) — the git lock.** It denies `git commit` and
 `git push` while a run is active, so the run stages work and you ship it. Codex

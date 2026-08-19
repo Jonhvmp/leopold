@@ -44,7 +44,9 @@ página é basicamente sobre ela.
 
 ## Os hooks são os mesmos scripts
 
-O Leopold se apoia em exatamente dois hooks.
+O engine de run se apoia em exatamente dois hooks sempre ativos (um terceiro, o
+[`persona-guard.sh`](../reference/persona-guard-hooks.md), é armado apenas
+enquanto um persona run está ativo — o mesmo script nos dois harnesses também).
 
 **`guard-irreversible.sh` (PreToolUse) — a trava do git.** Nega `git commit` e
 `git push` enquanto um run está ativo, então o run deixa o trabalho staged e você
