@@ -1526,6 +1526,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#como-uma-parada-permitida-chega-ate-voce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Como uma parada permitida chega até você
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#o-roll-da-janela-de-contexto" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2065,6 +2076,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#como-uma-parada-permitida-chega-ate-voce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Como uma parada permitida chega até você
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#o-roll-da-janela-de-contexto" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2259,6 +2281,23 @@ campo, então não existe camada de portabilidade pra dar errado. Veja
     Human -- não --&gt; Block["incrementa iteração ·&lt;br/&gt;bloqueia · reinjeta continue"]</code></pre>
 <p>Fail-open: qualquer erro inesperado permite a parada. A continuidade é melhor esforço;
 parar é sempre seguro.</p>
+<h3 id="como-uma-parada-permitida-chega-ate-voce">Como uma parada permitida chega até você<a class="headerlink" href="#como-uma-parada-permitida-chega-ate-voce" title="Permanent link">&para;</a></h3>
+<p>Um hook de Stop tem dois canais de saída, e eles não são intercambiáveis. No caminho
+de <strong>bloqueio</strong> (<code>{"decision":"block","reason":…}</code> no stdout) o motivo vai para o
+modelo. No caminho de <strong>permissão</strong> — <code>exit 0</code>, que é toda parada acima — o stderr é
+descartado: o harness expõe o stderr de um hook no exit 2, não no exit 0.</p>
+<p>Por isso toda parada permitida sobre a qual uma pessoa precisa agir carrega seu aviso
+como <code>systemMessage</code> no stdout, que o harness renderiza como um aviso <code>Stop says: …</code>.
+Isso cobre o roll da janela, o teto <code>max_windows</code>, o veredito de livelock, a pausa
+<code>awaiting_human</code> e o fail-safe <code>state_invalid</code>. O mesmo texto continua indo para o
+stderr, para quem roda o hook na mão.</p>
+<p>Isso importa mais do que parece: o aviso de roll era escrito só no
+stderr no caminho de permissão, então uma run que rolava a janela parecia, de fora,
+que o <code>/leopold-run</code> tinha desistido sozinho depois de um item do plano. Nada estava
+quebrado — mas ninguém era avisado.</p>
+<p>Os dois harnesses carregam o campo no mesmo fio: o Claude Code documenta
+<code>systemMessage</code> para todos os hooks, e o Codex desserializa <code>reason</code> / <code>stopReason</code> /
+<code>suppressOutput</code> / <code>systemMessage</code> no seu <code>StopCommandOutputWire</code>.</p>
 <h3 id="o-roll-da-janela-de-contexto">O roll da janela de contexto<a class="headerlink" href="#o-roll-da-janela-de-contexto" title="Permanent link">&para;</a></h3>
 <p>Desde a 0.18.0 o budget de contexto é <strong>um evento de manutenção, não uma morte</strong> — a
 mudança de comportamento é explícita, não implícita. O hook mede o transcript contra
@@ -2270,6 +2309,16 @@ mudança de comportamento é explícita, não implícita. O hook mede o transcri
   merge-sem-aninhar, teto de 32768 bytes que falha alto) — e então continuar o plano.
   A instrução é reinjetada a cada turno na faixa; o merge é idempotente. Um evento
   <code>checkpoint_instruction</code> é logado.</li>
+<li><strong>Em 100% e ainda sem checkpoint, a janela ganha um turno para escrever um.</strong> A
+  faixa de 80% só é alcançada por uma janela que subiu por ela; uma run ativada dentro
+  de uma sessão <em>já</em> acima do budget cai direto no roll e nunca seria avisada uma vez
+  sequer para fazer checkpoint — justamente a janela cujo estado de trabalho é o mais
+  caro de perder. Então o turno é bloqueado com a instrução de checkpoint em vez de
+  rolar, e um evento <code>checkpoint_grace</code> é logado. O limite mora no código, não no
+  prompt: <code>checkpoint_grace_window</code> registra a janela que o gastou, então uma janela
+  adia no máximo uma vez e o turno seguinte rola de todo jeito. Esse turno não gasta o
+  resgate de falha da run — ele existe para preservar estado, não para tentar o item
+  de novo.</li>
 <li><strong>Em 100%</strong> a parada acontece com o motivo de sempre —
   <code>stopped_reason: context_budget</code>, consumidores o leem — mas o estado diz roll:
   <code>windows</code> é incrementado, o vetor de checkboxes do plano é fotografado, e
@@ -2486,8 +2535,9 @@ reporta em que estado cada harness está.</p>
 <h2 id="log-de-eventos">Log de eventos<a class="headerlink" href="#log-de-eventos" title="Permanent link">&para;</a></h2>
 <p>Os dois hooks do engine anexam eventos estruturados em <code>.leopold/events.jsonl</code>
 (<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>, e os eventos de continuidade
-<code>checkpoint_instruction</code>, <code>window_roll</code>, <code>no_progress_across_windows</code>,
-<code>max_windows</code>; o watcher adiciona <code>window_relaunch</code> / <code>window_relaunch_refused</code>),
+<code>checkpoint_instruction</code>, <code>checkpoint_grace</code>, <code>window_roll</code>,
+<code>no_progress_across_windows</code>, <code>max_windows</code>; o watcher adiciona <code>window_relaunch</code> /
+<code>window_relaunch_refused</code>),
 que o <code>/leopold-status</code> lê. O enhancer, por sua
 vez, registra no próprio ledger global — <code>~/.claude/enhance/enhancements.jsonl</code>, uma
 linha por injeção ou tentativa falha — que o <code>/leopold-enhance learn</code> minera.</p>

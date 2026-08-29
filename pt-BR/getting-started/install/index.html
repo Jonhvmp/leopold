@@ -2251,13 +2251,31 @@ Codex não fica com nada apontando pra um caminho do Claude. Veja
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>leopold-driver
 </span></code></pre></div>
 <h2 id="atualizando">Atualizando<a class="headerlink" href="#atualizando" title="Permanent link">&para;</a></h2>
+<p>O toolchain tem <strong>duas superfícies de versão</strong>: os assets (hooks, skills, scripts — que
+carregam o <code>VERSION</code>) e o binário <code>leopold-driver</code> no PATH. Eles são instalados por
+mecanismos diferentes, então podem divergir, e uma divergência é invisível olhando só
+para um dos dois. Uma atualização move os dois.</p>
 <ul>
 <li><strong>Engine (curl / <code>install.sh</code>):</strong> <code>make update</code>, ou <code>/leopold-update</code> de dentro
-  do Claude Code. Pra ativar atualizações automáticas, <code>touch ~/.leopold/auto-update</code> — o
-  brief então checa e atualiza sozinho (caso contrário, só notifica).</li>
+  do Claude Code. Isso puxa o source, re-roda o installer <strong>e</strong> leva o driver npm para a
+  mesma versão — ou diz em voz alta qual metade não conseguiu mover. Pra ativar
+  atualizações automáticas, <code>touch ~/.leopold/auto-update</code> — o brief então checa e
+  atualiza sozinho (caso contrário, só notifica).</li>
 <li><strong>Plugin:</strong> <code>claude plugin update leopold</code>.</li>
-<li><strong>Driver npm:</strong> <code>npm i -g leopold-driver@latest</code>.</li>
+<li><strong>Driver npm sozinho:</strong> <code>npm i -g leopold-driver@latest</code>.</li>
 </ul>
+<p>O <code>leopold doctor</code> imprime o par numa linha só — <code>toolchain: driver X · assets X — both
+surfaces agree</code> — e falha alto quando eles divergem.</p>
+<div class="admonition warning">
+<p class="admonition-title">Um driver mais novo pode ser sombreado por um mais velho</p>
+<p>O <code>npm i -g</code> instala no prefixo <em>dele</em>. Se um <code>leopold-driver</code> mais velho estiver
+antes no seu PATH (um segundo prefixo npm, por exemplo), ele continua ganhando: o npm
+reporta sucesso e você segue rodando o binário antigo. O <code>leopold-driver update</code>
+também não escapa disso — quem executa esse comando é o binário velho.</p>
+<p>A atualização e o <code>leopold doctor</code> olham o PATH inteiro e listam cada instalação, a
+que de fato roda primeiro. Remova a obsoleta (e a árvore para onde ela aponta) e
+confira de novo com <code>leopold-driver --version</code>.</p>
+</div>
 
 
 

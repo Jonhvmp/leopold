@@ -2249,13 +2249,31 @@ gets nothing pointing at a Claude path. See
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>leopold-driver
 </span></code></pre></div>
 <h2 id="updating">Updating<a class="headerlink" href="#updating" title="Permanent link">&para;</a></h2>
+<p>The toolchain has <strong>two version surfaces</strong>: the assets (hooks, skills, scripts —
+carrying <code>VERSION</code>) and the <code>leopold-driver</code> binary on PATH. They are installed by
+different mechanisms, so they can drift, and a drift is invisible from either one
+alone. One update moves both.</p>
 <ul>
 <li><strong>Engine (curl / <code>install.sh</code>):</strong> <code>make update</code>, or <code>/leopold-update</code> from inside
-  Claude Code. Opt into automatic updates with <code>touch ~/.leopold/auto-update</code> — the
-  brief then checks and updates on its own (notify-only otherwise).</li>
+  Claude Code. This pulls the source, re-runs the installer, <strong>and</strong> brings the npm
+  driver to the same version — or says out loud which half it could not move. Opt into
+  automatic updates with <code>touch ~/.leopold/auto-update</code> — the brief then checks and
+  updates on its own (notify-only otherwise).</li>
 <li><strong>Plugin:</strong> <code>claude plugin update leopold</code>.</li>
-<li><strong>npm driver:</strong> <code>npm i -g leopold-driver@latest</code>.</li>
+<li><strong>npm driver on its own:</strong> <code>npm i -g leopold-driver@latest</code>.</li>
 </ul>
+<p><code>leopold doctor</code> prints the pair on one line — <code>toolchain: driver X · assets X — both
+surfaces agree</code> — and fails loudly when they diverge.</p>
+<div class="admonition warning">
+<p class="admonition-title">A newer driver can be shadowed by an older one</p>
+<p><code>npm i -g</code> installs into <em>its</em> prefix. If an older <code>leopold-driver</code> sits earlier in
+your PATH (a second npm prefix, say), it keeps winning: npm reports success and you
+keep running the old binary. <code>leopold-driver update</code> cannot escape this either —
+that command is executed by the stale binary.</p>
+<p>The update and <code>leopold doctor</code> both look at the whole PATH and list every install,
+the one that actually runs first. Remove the stale one (and the tree it points
+into), then re-check with <code>leopold-driver --version</code>.</p>
+</div>
 
 
 

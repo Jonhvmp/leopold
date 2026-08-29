@@ -1526,6 +1526,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#how-an-allowed-stop-reaches-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How an allowed stop reaches you
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-context-window-roll" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2065,6 +2076,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#how-an-allowed-stop-reaches-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How an allowed stop reaches you
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-context-window-roll" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2258,6 +2280,23 @@ layer exists to go wrong. See <a href="../../concepts/harnesses/">Claude Code an
     Human -- no --&gt; Block["increment iteration ·&lt;br/&gt;block · re-inject continue"]</code></pre>
 <p>Fail-open: any unexpected error allows the stop. Continuity is best-effort;
 halting is always safe.</p>
+<h3 id="how-an-allowed-stop-reaches-you">How an allowed stop reaches you<a class="headerlink" href="#how-an-allowed-stop-reaches-you" title="Permanent link">&para;</a></h3>
+<p>A Stop hook has two output channels, and they are not interchangeable. On the
+<strong>block</strong> path (<code>{"decision":"block","reason":…}</code> on stdout) the reason goes to the
+model. On the <strong>allow</strong> path — <code>exit 0</code>, which is every stop above — stderr is
+discarded: the harness surfaces a hook's stderr on exit 2, not exit 0.</p>
+<p>So every allowed stop that a person has to act on carries its notice as
+<code>systemMessage</code> on stdout, which the harness renders as a <code>Stop says: …</code> notice.
+That covers the window roll, the <code>max_windows</code> ceiling, the livelock verdict, the
+<code>awaiting_human</code> pause, and the <code>state_invalid</code> fail-safe. The same text still goes
+to stderr, for anyone running the hook by hand.</p>
+<p>This matters more than it sounds: the roll notice used to be written only to
+stderr on the allow path, so a run that rolled its window looked, from the outside,
+like <code>/leopold-run</code> had quit on its own after one plan item. Nothing was broken —
+but nobody was told.</p>
+<p>Both harnesses carry the field on the same wire: Claude Code documents
+<code>systemMessage</code> for all hooks, and Codex deserializes <code>reason</code> / <code>stopReason</code> /
+<code>suppressOutput</code> / <code>systemMessage</code> on its <code>StopCommandOutputWire</code>.</p>
 <h3 id="the-context-window-roll">The context window roll<a class="headerlink" href="#the-context-window-roll" title="Permanent link">&para;</a></h3>
 <p>Since 0.18.0 the context budget is <strong>a maintenance event, not a death</strong> — the
 behavior change is explicit, not implied. The hook measures the transcript against
@@ -2269,6 +2308,16 @@ behavior change is explicit, not implied. The hook measures the transcript again
   merge-don't-nest, 32768-byte cap that fails loud) — then continue the plan. The
   instruction re-injects every turn in the band; merging is idempotent. A
   <code>checkpoint_instruction</code> event is logged.</li>
+<li><strong>At 100% with no checkpoint yet, the window gets one turn to write one.</strong> The 80%
+  band is only ever reached by a window that climbed through it; a run activated
+  inside a session <em>already</em> past the budget lands straight on the roll and would
+  never once be told to checkpoint — exactly the window whose working state is most
+  expensive to lose. So the turn is blocked with the checkpoint instruction instead
+  of rolling, and a <code>checkpoint_grace</code> event is logged. The bound lives in code, not
+  in the prompt: <code>checkpoint_grace_window</code> records the window that spent it, so a
+  window defers at most once and the next turn rolls regardless. That turn does not
+  spend the run's one failure rescue — it exists to preserve state, not to re-attempt
+  the item.</li>
 <li><strong>At 100%</strong> the stop happens with the reason it always had —
   <code>stopped_reason: context_budget</code>, consumers read it — but the state says roll:
   <code>windows</code> is incremented, the plan's checkbox vector is snapshotted, and
@@ -2316,7 +2365,7 @@ of them — <strong><code>@human</code></strong> — and what it does with one d
   itself, and it is told plainly that no hook will stop it. See
   <a href="#what-the-guard-enforces">what the guard does and does not enforce</a>.</li>
 <li><strong><code>autonomy: ask</code>.</strong> The hook allows the stop with <code>stopped_reason: awaiting_human</code>,
-  names the item on stderr and logs an <code>awaiting_human</code> event. Answer it, mark the item
+  names the item in the stop notice (and on stderr) and logs an <code>awaiting_human</code> event. Answer it, mark the item
   <code>[x]</code>, and <code>/leopold-run</code> resumes.</li>
 </ul>
 <p>Either way it matches the driver, which resolves the same node the same way from the same
@@ -2483,8 +2532,9 @@ arm their own git lock. <code>leopold doctor</code> reports which state each har
 <h2 id="event-log">Event log<a class="headerlink" href="#event-log" title="Permanent link">&para;</a></h2>
 <p>The two engine hooks append structured events to <code>.leopold/events.jsonl</code>
 (<code>turn_start</code>, <code>stop</code>, <code>guard_block</code>, and the continuity events
-<code>checkpoint_instruction</code>, <code>window_roll</code>, <code>no_progress_across_windows</code>,
-<code>max_windows</code>; the watcher adds <code>window_relaunch</code> / <code>window_relaunch_refused</code>),
+<code>checkpoint_instruction</code>, <code>checkpoint_grace</code>, <code>window_roll</code>,
+<code>no_progress_across_windows</code>, <code>max_windows</code>; the watcher adds <code>window_relaunch</code> /
+<code>window_relaunch_refused</code>),
 which <code>/leopold-status</code> reads. The enhancer
 logs to its own global ledger instead — <code>~/.claude/enhance/enhancements.jsonl</code>,
 one line per injection or failed attempt — which <code>/leopold-enhance learn</code> mines.</p>
