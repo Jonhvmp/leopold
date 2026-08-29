@@ -142,7 +142,7 @@ assert "and it is not framed as a last attempt any more" "0" \
 # more stop conditions come after that decision; if one fires, the rescue must survive
 # unspent and no `failure_rescue` event may claim an attempt that never ran.
 rm -f "$T/.leopold/events.jsonl"
-echo '{"active":true,"iteration":1,"max_iterations":50,"consecutive_failures":3,"max_failures":3,"max_context_mb":1}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_iterations":50,"consecutive_failures":3,"max_failures":3,"max_context_mb":1,"checkpoint_grace_window":1}' > "$T/.leopold/state.json"
 printf '# Plan\n- [ ] stuck item\n' > "$T/.leopold/PLAN.md"
 big="$T/big-transcript.jsonl"; head -c 1300000 /dev/zero | tr '\0' 'x' > "$big"
 out="$(printf '{"cwd":"%s","transcript_path":"%s"}' "$T" "$big" | bash "$HOOKS/stop-continuity.sh")"
@@ -174,7 +174,7 @@ printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "malformed state.json stops the run" "state_invalid" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
 
 # --- Context budget (transcript over max_context_mb) ---
-echo '{"active":true,"iteration":1,"max_context_mb":1}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":1}' > "$T/.leopold/state.json"
 printf '# Plan\n- [ ] open\n' > "$T/.leopold/PLAN.md"
 head -c 1200000 /dev/zero | tr '\0' a > "$T/transcript.jsonl"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
@@ -250,7 +250,7 @@ rm -rf "$T/.leopold/runs"
 # garbage file (no title line) claiming "the next window continues from it" points the
 # relaunch at a lie.
 rm -f "$T/.leopold/events.jsonl"
-echo '{"active":true,"iteration":1,"max_context_mb":1}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":1}' > "$T/.leopold/state.json"
 printf '# Plan\n- [ ] open item\n' > "$T/.leopold/PLAN.md"
 printf 'not a checkpoint at all\n' > "$T/.leopold/CHECKPOINT.md"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
@@ -297,25 +297,116 @@ printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "
 assert "a later roll increments the carried windows counter (3 -> 4)" "4" \
   "$(jq -r '.windows // ""' "$T/.leopold/state.json" 2>/dev/null)"
 
-# 100% with NO checkpoint (the agent never wrote one): the stop still happens, and the
-# message says the checkpoint is missing — loud, never silent.
+# 100% with NO checkpoint: the window that was never told to checkpoint gets ONE turn to
+# write one, and the turn AFTER it rolls whether or not it did.
+#
+# @scenario the reported one: /leopold-run activated inside a session already far past the
+# budget (21.3 MB against 5 MB). It never passes through the 80% band, so before this it
+# rolled on its very first evaluation having never once been told to checkpoint — twice in
+# a row, both `checkpoint_written: false`. The grace turn is what that run never got.
 rm -f "$T/.leopold/events.jsonl" "$T/.leopold/CHECKPOINT.md"
 echo '{"active":true,"iteration":1,"max_context_mb":1}' > "$T/.leopold/state.json"
+out="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "a full window never told to checkpoint is BLOCKED, not rolled" "block" "$(dec "$out")"
+assert "...and the run is not stopped" "" "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
+assert "...windows is NOT incremented by the deferral" "" \
+  "$(jq -r 'if has("windows") then (.windows|tostring) else "" end' "$T/.leopold/state.json" 2>/dev/null)"
+assert "...the turn carries the checkpoint instruction" "1" \
+  "$(printf '%s' "$out" | jq -r '.reason' 2>/dev/null | grep -c 'write or merge .leopold/CHECKPOINT.md')"
+assert "...and says this is the last turn of the window" "1" \
+  "$(printf '%s' "$out" | jq -r '.reason' 2>/dev/null | grep -c 'THIS IS THE LAST TURN OF WINDOW 1')"
+assert "...the grace is recorded on the event stream" "1" \
+  "$(grep -c '"event":"checkpoint_grace"' "$T/.leopold/events.jsonl" 2>/dev/null | head -1)"
+assert "...and the window that spent it is marked in state" "1" \
+  "$(jq -r '.checkpoint_grace_window // ""' "$T/.leopold/state.json" 2>/dev/null)"
+
+# The grace is ONCE per window — the bound is in code, not in the prompt. The very next
+# evaluation rolls, still with no checkpoint, and says so loudly.
 err="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>&1 >/dev/null)"
-assert "a full window with no checkpoint still stops" "context_budget" \
+assert "the turn after the grace rolls, checkpoint or not" "context_budget" \
   "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
 assert "...checkpoint_written is false" "false" \
   "$(jq -r 'if has("checkpoint_written") then (.checkpoint_written|tostring) else "" end' "$T/.leopold/state.json" 2>/dev/null)"
 assert "...the missing checkpoint is called out loudly" "1" \
   "$(printf '%s' "$err" | grep -c 'no .leopold/CHECKPOINT.md was written')"
 assert "...and the resume path is still named" "1" "$(printf '%s' "$err" | grep -c '/leopold-run')"
+assert "...exactly one grace was granted for that window (no second deferral)" "1" \
+  "$(grep -c '"event":"checkpoint_grace"' "$T/.leopold/events.jsonl" 2>/dev/null | head -1)"
+
+# A window that DID write the checkpoint never spends a grace: it rolls on the spot.
+rm -f "$T/.leopold/events.jsonl"
+echo '{"active":true,"iteration":1,"max_context_mb":1}' > "$T/.leopold/state.json"
+printf '# Leopold Checkpoint\n\n## Next Step\ncontinue\n' > "$T/.leopold/CHECKPOINT.md"
+printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
+assert "a window WITH a checkpoint rolls without spending a grace" "context_budget" \
+  "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
+assert "...and no grace event is logged" "0" \
+  "$(grep -c '"event":"checkpoint_grace"' "$T/.leopold/events.jsonl" 2>/dev/null | head -1)"
+
+# The grace turn preserves state; it is not another attempt at the item. A rescue decided
+# at the failure ceiling therefore survives it unspent.
+rm -f "$T/.leopold/events.jsonl" "$T/.leopold/CHECKPOINT.md"
+echo '{"active":true,"iteration":1,"max_iterations":50,"consecutive_failures":3,"max_failures":3,"max_context_mb":1}' > "$T/.leopold/state.json"
+out="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "the grace turn does not burn the failure rescue" "false" \
+  "$(jq -r '.failure_rescue_used // false' "$T/.leopold/state.json" 2>/dev/null)"
+assert "...and no failure_rescue event claims that attempt" "0" \
+  "$(grep -c '"event":"failure_rescue"' "$T/.leopold/events.jsonl" 2>/dev/null | head -1)"
+assert "...the turn is the checkpoint turn, not a last-attempt turn" "0" \
+  "$(printf '%s' "$out" | jq -r '.reason' 2>/dev/null | grep -c 'LAST ATTEMPT ON THIS ITEM')"
+rm -f "$T/.leopold/CHECKPOINT.md" "$T/transcript.jsonl"
+
+# --- The stop notice reaches a PERSON, not just stderr ---
+# Verified against Claude Code 2.1.251 before it was coded against: a Stop hook that
+# exits 0 has its stderr discarded (stderr reaches the model on exit 2, the block path),
+# so the roll notice was being written into a void and the operator read the run as
+# having quit on its own. `systemMessage` on stdout is the channel that survives the
+# allow path — it surfaces as system/informational "Stop says: ..." — and Codex carries
+# the same field on its StopCommandOutputWire. Every allowed stop that has something a
+# person must act on now says it there, and STILL says it on stderr.
+sysmsg() { printf '%s' "$1" | jq -r '.systemMessage // ""' 2>/dev/null || echo ""; }
+
+rm -f "$T/.leopold/events.jsonl"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":1}' > "$T/.leopold/state.json"
+printf '# Plan\n- [ ] open item\n' > "$T/.leopold/PLAN.md"
+head -c 1200000 /dev/zero | tr '\0' a > "$T/transcript.jsonl"
+out="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "the roll notice reaches the user on the allow path" "1" \
+  "$(sysmsg "$out" | grep -c 'window roll, not a death')"
+assert "...it names the resume path there" "1" "$(sysmsg "$out" | grep -c '/leopold-run')"
+assert "...and the allow path is still an ALLOW (no decision field)" "none" "$(dec "$out")"
+
+# max_windows and the livelock verdict are the two stops with no resume pointer — the two
+# a person most needs to see. Same channel.
+rm -f "$T/.leopold/events.jsonl"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":4,"windows":4,"max_windows":4,"window_plan_vector":"oo"}' > "$T/.leopold/state.json"
+out="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "the max_windows stop reaches the user" "1" "$(sysmsg "$out" | grep -c 'window ceiling is reached')"
+
+rm -f "$T/.leopold/events.jsonl"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":3,"windows":3,"window_plan_vector":"oo","window_zero_streak":1}' > "$T/.leopold/state.json"
+out="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "the livelock verdict reaches the user" "1" "$(sysmsg "$out" | grep -c 'closed ZERO plan items')"
+assert "...naming the stuck item" "1" "$(sysmsg "$out" | grep -c 'Stuck on: open item')"
+
+# A fail-safe nobody is told about reads as the run quitting for no reason.
+printf 'not json {' > "$T/.leopold/state.json"
+out="$(printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "the state_invalid fail-safe reaches the user" "1" "$(sysmsg "$out" | grep -c 'state.json is invalid')"
+
+# A stop with nothing for a person to do stays silent: no notice, no stdout at all.
+echo '{"active":true,"iteration":1}' > "$T/.leopold/state.json"
+printf '# Plan\n- [x] done\n' > "$T/.leopold/PLAN.md"
+out="$(printf '{"cwd":"%s"}' "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "a plain finish prints nothing at all" "" "$out"
 rm -f "$T/transcript.jsonl"
+printf '# Plan\n- [ ] open\n' > "$T/.leopold/PLAN.md"
 
 # --- The livelock gate: rolling is free, producing is mandatory ---
 # @scenario window closes >=1 item -> progress recorded, roll proceeds. The state also
 # carries a prior zero window (streak 1): a producing window must RESET the streak.
 rm -f "$T/.leopold/events.jsonl" "$T/.leopold/CHECKPOINT.md"
-echo '{"active":true,"iteration":1,"max_context_mb":1,"windows":2,"window_plan_vector":"oo","window_zero_streak":1}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":2,"windows":2,"window_plan_vector":"oo","window_zero_streak":1}' > "$T/.leopold/state.json"
 printf '# Plan\n- [x] closed this window\n- [ ] open\n' > "$T/.leopold/PLAN.md"
 head -c 1200000 /dev/zero | tr '\0' a > "$T/transcript.jsonl"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
@@ -333,7 +424,7 @@ assert "...the window_roll event counts the closed items" "1|0" \
 # @scenario the FIRST zero window: recorded and streak 1, but the roll still proceeds —
 # one unproductive window is a bad day, not a livelock.
 rm -f "$T/.leopold/events.jsonl"
-echo '{"active":true,"iteration":1,"max_context_mb":1,"windows":2,"window_plan_vector":"xo","window_zero_streak":0}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":2,"windows":2,"window_plan_vector":"xo","window_zero_streak":0}' > "$T/.leopold/state.json"
 printf '# Plan\n- [x] shipped earlier\n- [ ] stuck item\n' > "$T/.leopold/PLAN.md"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "the first zero window still rolls" "context_budget" \
@@ -347,7 +438,7 @@ assert "...and the zero streak stands at 1" "1" \
 # no_progress_across_windows, naming both windows and the stuck item, and NO resume
 # pointer is written: windows is not incremented and no fresh snapshot is taken.
 rm -f "$T/.leopold/events.jsonl"
-echo '{"active":true,"iteration":1,"max_context_mb":1,"windows":3,"window_plan_vector":"xo","window_zero_streak":1}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":3,"windows":3,"window_plan_vector":"xo","window_zero_streak":1}' > "$T/.leopold/state.json"
 err="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>&1 >/dev/null)"
 assert "two zero windows stop the run with the honest reason" "no_progress_across_windows" \
   "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
@@ -367,7 +458,7 @@ assert "...the event stream carries the gate" "[2,3]|stuck item" \
 # @scenario `windows` reaching `max_windows` -> the run stops naming the ceiling, even
 # when the ending window produced.
 rm -f "$T/.leopold/events.jsonl"
-echo '{"active":true,"iteration":1,"max_context_mb":1,"windows":4,"max_windows":4,"window_plan_vector":"oo","window_zero_streak":0}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":4,"windows":4,"max_windows":4,"window_plan_vector":"oo","window_zero_streak":0}' > "$T/.leopold/state.json"
 printf '# Plan\n- [x] closed this window\n- [ ] open\n' > "$T/.leopold/PLAN.md"
 err="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>&1 >/dev/null)"
 assert "the window ceiling stops the run" "max_windows" \
@@ -380,17 +471,17 @@ assert "...a max_windows event is logged" "4|4" \
 
 # ...the ceiling also reads from GUARDRAILS.md when state.json does not carry it
 # (state > GUARDRAILS > default 10), and the default holds when neither says anything.
-echo '{"active":true,"iteration":1,"max_context_mb":1,"windows":2,"window_plan_vector":"oo"}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":2,"windows":2,"window_plan_vector":"oo"}' > "$T/.leopold/state.json"
 printf -- '- max_windows: 2\n' > "$T/.leopold/GUARDRAILS.md"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "max_windows is read from GUARDRAILS.md when state lacks it" "max_windows" \
   "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
 rm -f "$T/.leopold/GUARDRAILS.md"
-echo '{"active":true,"iteration":1,"max_context_mb":1,"windows":9,"window_plan_vector":"oo"}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":9,"windows":9,"window_plan_vector":"oo"}' > "$T/.leopold/state.json"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "under the default ceiling (10) window 9 still rolls" "context_budget" \
   "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
-echo '{"active":true,"iteration":1,"max_context_mb":1,"windows":10,"window_plan_vector":"oo"}' > "$T/.leopold/state.json"
+echo '{"active":true,"iteration":1,"max_context_mb":1,"checkpoint_grace_window":10,"windows":10,"window_plan_vector":"oo"}' > "$T/.leopold/state.json"
 printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1
 assert "at the default ceiling (10) the run stops" "max_windows" \
   "$(jq -r '.stopped_reason // ""' "$T/.leopold/state.json" 2>/dev/null)"
@@ -560,7 +651,9 @@ human_run() { # $1 = plan text, $2 = LEOPOLD_AUTONOMY value ("" = unset)
   local d
   # LEOPOLD_AUTONOMY is always passed explicitly, so an ambient one cannot flip the suite.
   HUMAN_OUT="$(printf '{"cwd":"%s"}' "$T" | LEOPOLD_AUTONOMY="${2-}" bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
-  d="$(dec "$HUMAN_OUT")"; [ -n "$d" ] || d="allow"   # no stdout = the hook allowed the stop
+  # The allow path is the ABSENCE of a `decision`, not the absence of stdout: an allowed
+  # stop that carries an operator notice now prints {"systemMessage":...} there.
+  d="$(dec "$HUMAN_OUT")"; case "$d" in none|"") d="allow" ;; esac
   HUMAN_RESULT="$d/$(jq -r '.stopped_reason // "-"' "$T/.leopold/state.json" 2>/dev/null)"
   printf '%s' "$HUMAN_RESULT"
 }

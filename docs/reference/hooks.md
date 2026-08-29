@@ -37,6 +37,28 @@ flowchart TD
 Fail-open: any unexpected error allows the stop. Continuity is best-effort;
 halting is always safe.
 
+### How an allowed stop reaches you
+
+A Stop hook has two output channels, and they are not interchangeable. On the
+**block** path (`{"decision":"block","reason":…}` on stdout) the reason goes to the
+model. On the **allow** path — `exit 0`, which is every stop above — stderr is
+discarded: the harness surfaces a hook's stderr on exit 2, not exit 0.
+
+So every allowed stop that a person has to act on carries its notice as
+`systemMessage` on stdout, which the harness renders as a `Stop says: …` notice.
+That covers the window roll, the `max_windows` ceiling, the livelock verdict, the
+`awaiting_human` pause, and the `state_invalid` fail-safe. The same text still goes
+to stderr, for anyone running the hook by hand.
+
+This matters more than it sounds: the roll notice used to be written only to
+stderr on the allow path, so a run that rolled its window looked, from the outside,
+like `/leopold-run` had quit on its own after one plan item. Nothing was broken —
+but nobody was told.
+
+Both harnesses carry the field on the same wire: Claude Code documents
+`systemMessage` for all hooks, and Codex deserializes `reason` / `stopReason` /
+`suppressOutput` / `systemMessage` on its `StopCommandOutputWire`.
+
 ### The context window roll
 
 Since 0.18.0 the context budget is **a maintenance event, not a death** — the
@@ -49,6 +71,16 @@ behavior change is explicit, not implied. The hook measures the transcript again
   merge-don't-nest, 32768-byte cap that fails loud) — then continue the plan. The
   instruction re-injects every turn in the band; merging is idempotent. A
   `checkpoint_instruction` event is logged.
+- **At 100% with no checkpoint yet, the window gets one turn to write one.** The 80%
+  band is only ever reached by a window that climbed through it; a run activated
+  inside a session *already* past the budget lands straight on the roll and would
+  never once be told to checkpoint — exactly the window whose working state is most
+  expensive to lose. So the turn is blocked with the checkpoint instruction instead
+  of rolling, and a `checkpoint_grace` event is logged. The bound lives in code, not
+  in the prompt: `checkpoint_grace_window` records the window that spent it, so a
+  window defers at most once and the next turn rolls regardless. That turn does not
+  spend the run's one failure rescue — it exists to preserve state, not to re-attempt
+  the item.
 - **At 100%** the stop happens with the reason it always had —
   `stopped_reason: context_budget`, consumers read it — but the state says roll:
   `windows` is incremented, the plan's checkbox vector is snapshotted, and
@@ -99,7 +131,7 @@ of them — **`@human`** — and what it does with one depends on the judgment p
   itself, and it is told plainly that no hook will stop it. See
   [what the guard does and does not enforce](#what-the-guard-enforces).
 - **`autonomy: ask`.** The hook allows the stop with `stopped_reason: awaiting_human`,
-  names the item on stderr and logs an `awaiting_human` event. Answer it, mark the item
+  names the item in the stop notice (and on stderr) and logs an `awaiting_human` event. Answer it, mark the item
   `[x]`, and `/leopold-run` resumes.
 
 Either way it matches the driver, which resolves the same node the same way from the same
@@ -263,8 +295,9 @@ cannot drift.
 
 The two engine hooks append structured events to `.leopold/events.jsonl`
 (`turn_start`, `stop`, `guard_block`, and the continuity events
-`checkpoint_instruction`, `window_roll`, `no_progress_across_windows`,
-`max_windows`; the watcher adds `window_relaunch` / `window_relaunch_refused`),
+`checkpoint_instruction`, `checkpoint_grace`, `window_roll`,
+`no_progress_across_windows`, `max_windows`; the watcher adds `window_relaunch` /
+`window_relaunch_refused`),
 which `/leopold-status` reads. The enhancer
 logs to its own global ledger instead — `~/.claude/enhance/enhancements.jsonl`,
 one line per injection or failed attempt — which `/leopold-enhance learn` mines.

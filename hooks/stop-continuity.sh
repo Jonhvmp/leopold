@@ -32,7 +32,11 @@ now="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo '')"
 # blindly or die in silence.
 state_invalid() {
   printf '{"ts":"%s","event":"state_invalid","reason":"%s"}\n' "$now" "$1" >> "$LEO/events.jsonl" 2>/dev/null || true
-  echo "Leopold: .leopold/state.json is invalid ($1) -- stopping the run (fail-safe). Fix the file or re-run /leopold-brief." >&2
+  si_msg="Leopold: .leopold/state.json is invalid ($1) -- stopping the run (fail-safe). Fix the file or re-run /leopold-brief."
+  # Same allow-path channel as allow_stop: a fail-safe nobody is told about reads as the
+  # run quitting for no reason, which is the whole complaint this fix answers.
+  jq -cn --arg m "$si_msg" '{systemMessage:$m}' 2>/dev/null
+  echo "$si_msg" >&2
   printf '{"active":false,"stopped_reason":"state_invalid"}\n' > "$STATE" 2>/dev/null || true
   exit 0
 }
@@ -54,8 +58,23 @@ done
 
 log_event() { printf '%s\n' "$1" >> "$LEO/events.jsonl" 2>/dev/null || true; }
 
+# allow_stop <reason> [operator notice]
+#
+# The notice is the part a PERSON has to read, and stderr is not where they read it.
+# Verified against Claude Code 2.1.251, not assumed: a Stop hook that exits 0 has its
+# stderr dropped on the floor (stderr reaches the model on exit 2, the block path, and
+# stdout only in transcript mode), while `systemMessage` on stdout surfaces as
+# {"type":"system","subtype":"informational","content":"Stop says: ..."} — the probe put
+# the message on screen and found ZERO occurrences of the stderr text anywhere in the
+# session stream. Codex carries the same field on the same wire (its StopCommandOutputWire
+# deserializes reason / stopReason / suppressOutput / systemMessage), so one emission
+# serves both harnesses.
+#
+# stderr is KEPT alongside it: it costs nothing, it is what someone piping this hook by
+# hand sees, and the suites read the stop messages there.
 allow_stop() {
-  local r="$1" tmp
+  local r="$1" n="${2:-}" tmp
+  [ -n "$n" ] && jq -cn --arg m "$n" '{systemMessage:$m}' 2>/dev/null
   tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
   jq --arg r "$r" '.active=false | .stopped_reason=$r' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
   log_event "{\"ts\":\"$now\",\"event\":\"stop\",\"reason\":\"$r\"}"
@@ -166,6 +185,16 @@ cp_cap() { # $1 = max_context_mb -> cap in bytes
   [ "$w" -gt 32768 ] && w=32768
   echo "$w"
 }
+# The checkpoint instruction, assembled from ONE copy of the contract wording.
+# Two situations ask for it — the proactive band at 80%, and the last turn of a window
+# that reached 100% having never been in that band — and they differ ONLY in how urgent
+# the opening sentence is. The contract body below is the single copy on the bash
+# surface: packages/driver/test/checkpoint.test.ts asserts the hook carries the exported
+# section list, title and cap, and a second transcription is how those drift apart.
+cp_note() { # $1 = the urgency preamble (ends with its own space)
+  printf '%sBefore anything else this turn, write or merge .leopold/CHECKPOINT.md so the next window can continue this run when this one fills. The format is fixed: the title line `# Leopold Checkpoint`, then exactly these seven `##` sections, in this order: %s. It carries RUN state only -- never restate MISSION, CHARTER, GUARDRAILS or the plan; the next window re-reads those files itself. If the file already exists, MERGE into ONE flat document: In-Flight Item, Current Work and Next Step are replaced by the current view; in the other sections keep still-true lines, append new ones, drop stale ones -- never paste a prior checkpoint (its title or any duplicate heading) inside the new one. Keep the whole file under %s bytes; if it will not fit, consolidate harder -- never truncate. Then continue the plan as normal. ' \
+    "$1" "$CHECKPOINT_SECTIONS" "$(cp_cap "$max_ctx_mb")"
+}
 max_ctx_mb="$(jq -r '.max_context_mb // 5' "$STATE" 2>/dev/null || echo 5)"
 case "$max_ctx_mb" in (*[!0-9]*|"") max_ctx_mb=5 ;; esac
 ctx_mb=0
@@ -189,20 +218,48 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
   # no_progress verdict on a run that just finished. Falling through reaches the
   # plan_complete check below, the one place that owns the completion path.
   roll_open="$(grep -cE '^[[:space:]]*- \[ \]' "$LEO/PLAN.md" 2>/dev/null || true)"
-  if [ "$ctx_pct" -ge 100 ] 2>/dev/null && [ "${roll_open:-0}" -gt 0 ] 2>/dev/null; then
+  # `checkpoint_written` means what it says: the file must LOOK like the contract this
+  # hook describes (title line + under the 32768-byte cap), not merely exist — a
+  # leftover or garbage file claiming "the next window continues from it" points the
+  # relaunch at a lie. Resolved BEFORE the chain below, because the grace branch and the
+  # roll branch both decide on it.
+  checkpoint_written=false
+  if [ -s "$LEO/CHECKPOINT.md" ] \
+     && head -1 "$LEO/CHECKPOINT.md" 2>/dev/null | grep -q '^# Leopold Checkpoint' \
+     && [ "$(wc -c < "$LEO/CHECKPOINT.md" 2>/dev/null || echo 999999)" -le "$(cp_cap "$max_ctx_mb")" ] 2>/dev/null; then
+    checkpoint_written=true
+  fi
+  # The window that was never told to checkpoint gets ONE turn to write one.
+  #
+  # The proactive band is the `elif` at the bottom of this chain, so it is only ever
+  # reached by a window that passed through 80% on its way up. A run activated inside a
+  # session ALREADY past 100% — /leopold-run invoked partway through a working session,
+  # the reported case started at 21.3 MB against a 5 MB budget — lands on the roll on its
+  # very first evaluation and rolls without once being told to checkpoint. That is
+  # precisely the window whose working state is most expensive to lose.
+  #
+  # So: full window + open items + no checkpoint + this window has not spent its grace
+  # -> block the turn with the instruction instead of rolling. The bound lives in CODE,
+  # not in the prompt: `checkpoint_grace_window` records the window that spent it, so a
+  # window grants it at most once and the deferral cannot livelock. The next evaluation
+  # rolls whether or not the checkpoint got written, exactly as it always did.
+  cp_grace_w="$(jq -r '.checkpoint_grace_window // empty' "$STATE" 2>/dev/null || true)"
+  if [ "$ctx_pct" -ge 100 ] 2>/dev/null && [ "${roll_open:-0}" -gt 0 ] 2>/dev/null \
+     && [ "$checkpoint_written" != "true" ] && [ "$cp_grace_w" != "$windows" ]; then
+    tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
+    jq --argjson w "$windows" '.checkpoint_grace_window=$w' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+    log_event "$(jq -cn --arg ts "$now" --argjson w "$windows" --argjson cm "${ctx_mb:-0}" --argjson p "${ctx_pct:-0}" \
+      '{ts:$ts,event:"checkpoint_grace",window:$w,context_mb:$cm,context_pct:$p}' 2>/dev/null || echo '{}')"
+    CHECKPOINT_NOTE="$(cp_note "THE CONTEXT WINDOW IS FULL (${ctx_mb} of ${max_ctx_mb} MB, ${ctx_pct}% of budget) AND THIS IS THE LAST TURN OF WINDOW ${windows} -- the next turn rolls it, checkpoint or no checkpoint. ")"
+    # This turn exists to PRESERVE state, not to attack the item again. A rescue decided
+    # at the failure ceiling is therefore left unspent: burning the run's one extra
+    # attempt on a turn whose whole job is writing a checkpoint would spend it on work
+    # the rescue was never for. It stays available to the window that resumes.
+    RESCUE_GRANT=0
+    RESCUE_NOTE=""
+  elif [ "$ctx_pct" -ge 100 ] 2>/dev/null && [ "${roll_open:-0}" -gt 0 ] 2>/dev/null; then
     # The window is full: roll it. Same bytes threshold as ever (bytes >= max*1MiB), same
     # stopped_reason — the new semantics ride NEW state fields only.
-    #
-    # `checkpoint_written` means what it says: the file must LOOK like the contract this
-    # hook just described (title line + under the 32768-byte cap), not merely exist — a
-    # leftover or garbage file claiming "the next window continues from it" points the
-    # relaunch at a lie.
-    checkpoint_written=false
-    if [ -s "$LEO/CHECKPOINT.md" ] \
-       && head -1 "$LEO/CHECKPOINT.md" 2>/dev/null | grep -q '^# Leopold Checkpoint' \
-       && [ "$(wc -c < "$LEO/CHECKPOINT.md" 2>/dev/null || echo 999999)" -le "$(cp_cap "$max_ctx_mb")" ] 2>/dev/null; then
-      checkpoint_written=true
-    fi
     # Current checkbox vector (one char per checkbox, file order: x=closed, o=open).
     plan_vec="$(grep -E '^[[:space:]]*- \[( |x|X)\]' "$LEO/PLAN.md" 2>/dev/null \
       | sed -E 's/^[[:space:]]*- \[[xX]\].*/x/; s/^[[:space:]]*- \[ \].*/o/' | tr -d '\n')"
@@ -242,12 +299,13 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
         --arg s "${stuck:-}" \
         '{ts:$ts,event:"no_progress_across_windows",windows:[$a,$b],stuck_item:$s}' \
         2>/dev/null || echo '{}')"
-      {
+      notice="$(
         echo "Leopold: windows $((windows - 1)) and $windows both closed ZERO plan items -- the run stopped producing, so it stops running (no_progress_across_windows)."
         [ -n "${stuck:-}" ] && echo "Stuck on: $stuck"
         echo "No resume pointer was written and nothing relaunches this run. A person should look at the stuck item; when it is unblocked, /leopold-run starts a deliberate new attempt."
-      } >&2
-      allow_stop "no_progress_across_windows"
+      )"
+      printf '%s\n' "$notice" >&2
+      allow_stop "no_progress_across_windows" "$notice"
     fi
 
     # ---- max_windows: the ceiling on total context windows for one RUN ---------------
@@ -256,11 +314,12 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
     if [ "$windows" -ge "$max_windows" ] 2>/dev/null; then
       log_event "$(jq -cn --arg ts "$now" --argjson w "$windows" --argjson m "$max_windows" \
         '{ts:$ts,event:"max_windows",window:$w,max_windows:$m}' 2>/dev/null || echo '{}')"
-      {
+      notice="$(
         echo "Leopold: window $windows is the last this run allows (max_windows: $max_windows) -- the window ceiling is reached, so the run stops here."
         echo "No resume pointer was written and nothing relaunches this run. Raise max_windows in .leopold/GUARDRAILS.md if the run genuinely needs more windows, then /leopold-run."
-      } >&2
-      allow_stop "max_windows"
+      )"
+      printf '%s\n' "$notice" >&2
+      allow_stop "max_windows" "$notice"
     fi
 
     # The window produced (or the streak is still under the gate) and the ceiling holds:
@@ -275,7 +334,7 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
       --arg vec "$plan_vec" --argjson cm "${ctx_mb:-0}" --argjson ic "$closed" --argjson z "$zstreak" \
       '{ts:$ts,event:"window_roll",window:$w,checkpoint_written:$cw,plan_vector:$vec,context_mb:$cm,items_closed:$ic,zero_streak:$z}' \
       2>/dev/null || echo '{}')"
-    {
+    notice="$(
       echo "Leopold: the context window is full (${ctx_mb} MB, budget ${max_ctx_mb} MB) -- window $windows closed. This is a window roll, not a death: the run's state and brief persist."
       if [ "$checkpoint_written" = "true" ]; then
         echo "Checkpoint: .leopold/CHECKPOINT.md is written; the next window continues from it."
@@ -283,8 +342,9 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
         echo "WARNING: no .leopold/CHECKPOINT.md was written before the window filled -- the next window resumes from the brief and PLAN.md alone, without this window's working state."
       fi
       echo "Resume: run /leopold-run in this project (under continuity: auto, leopold watch relaunches it automatically)."
-    } >&2
-    allow_stop "context_budget"
+    )"
+    printf '%s\n' "$notice" >&2
+    allow_stop "context_budget" "$notice"
   elif [ "$ctx_pct" -ge 80 ] 2>/dev/null; then
     # Proactive maintenance: checkpoint BEFORE the window dies, while there is still
     # context to write it from. Re-injected every turn in the band so the checkpoint
@@ -292,7 +352,7 @@ if [ -n "$tpath" ] && [ -f "$tpath" ]; then
     # The `checkpoint_instruction` event is logged at the bottom, once the turn is
     # certain — the same decided-here-spent-there split the rescue uses, so the event
     # stream never claims an instruction a stop condition swallowed.
-    CHECKPOINT_NOTE="CONTEXT WINDOW AT ${ctx_pct}% OF BUDGET (${ctx_mb} of ${max_ctx_mb} MB). Before anything else this turn, write or merge .leopold/CHECKPOINT.md so the next window can continue this run when this one fills. The format is fixed: the title line \`# Leopold Checkpoint\`, then exactly these seven \`##\` sections, in this order: ${CHECKPOINT_SECTIONS}. It carries RUN state only -- never restate MISSION, CHARTER, GUARDRAILS or the plan; the next window re-reads those files itself. If the file already exists, MERGE into ONE flat document: In-Flight Item, Current Work and Next Step are replaced by the current view; in the other sections keep still-true lines, append new ones, drop stale ones -- never paste a prior checkpoint (its title or any duplicate heading) inside the new one. Keep the whole file under $(cp_cap "$max_ctx_mb") bytes; if it will not fit, consolidate harder -- never truncate. Then continue the plan as normal. "
+    CHECKPOINT_NOTE="$(cp_note "CONTEXT WINDOW AT ${ctx_pct}% OF BUDGET (${ctx_mb} of ${max_ctx_mb} MB). ")"
   fi
 fi
 
@@ -465,12 +525,13 @@ if [ "$FIRST_OPEN_KIND" = "human" ]; then
   if [ "$AUTONOMY" = "ask" ]; then
     log_event "$(jq -cn --arg ts "$now" --argjson i "$FIRST_OPEN_INDEX" --arg t "$FIRST_OPEN_TEXT" \
       '{ts:$ts,event:"awaiting_human",item:$i,text:$t}' 2>/dev/null || echo '{}')"
-    {
+    notice="$(
       echo "Leopold: plan item $FIRST_OPEN_INDEX is a @human node -- a person decides it (autonomy: ask)."
       [ -n "$FIRST_OPEN_TEXT" ] && echo "  $FIRST_OPEN_TEXT"
       echo "The run is paused (awaiting_human). Answer it, mark the item [x] in .leopold/PLAN.md, then /leopold-run to resume."
-    } >&2
-    allow_stop "awaiting_human"
+    )"
+    printf '%s\n' "$notice" >&2
+    allow_stop "awaiting_human" "$notice"
   fi
   # ONCE per node, not once per turn. This branch is re-entered every turn the @human item
   # stays open, so a node that takes five turns wrote five identical `persona` records --
