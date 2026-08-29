@@ -67,6 +67,7 @@ hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@bash -n hooks/persona-guard.sh
 	@bash -n install.sh
 	@bash -n scripts/install-codex.sh
+	@bash -n scripts/lib/toolchain.sh
 	@bash -n extensions/lib/harness.sh
 	@bash -n extensions/serena/manage.sh
 	@bash -n extensions/enhance/install.sh
@@ -79,7 +80,7 @@ hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@# green too. A machine without shellcheck says so out loud instead of skipping into a
 	@# local-passes-CI-fails surprise — that already happened once (SC2034, PR #58).
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck -S warning hooks/*.sh install.sh scripts/*.sh extensions/*/*.sh && echo "shellcheck: clean"; \
+		shellcheck -S warning hooks/*.sh install.sh scripts/*.sh scripts/lib/*.sh extensions/*/*.sh && echo "shellcheck: clean"; \
 	else \
 		echo "WARNING: shellcheck not installed — CI lints with it and this machine cannot."; \
 		echo "         install: https://github.com/koalaman/shellcheck#installing (static binary works in ~/.local/bin)"; \
@@ -88,6 +89,10 @@ hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 
 hooks-test: ## Run the hook behavior tests
 	@bash scripts/test-hooks.sh
+
+.PHONY: toolchain-test
+toolchain-test: ## Run the toolchain tests (driver x assets, shadowed installs; hermetic: stubbed PATH, no network)
+	@bash scripts/test-toolchain.sh
 
 .PHONY: doctor-test
 doctor-test: ## Run the doctor project-continuity tests (hermetic: temp homes + temp project)
@@ -184,7 +189,7 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: hooks-check hooks-test toolchain-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

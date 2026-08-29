@@ -169,8 +169,29 @@ leopold-driver
 
 ## Updating
 
+The toolchain has **two version surfaces**: the assets (hooks, skills, scripts —
+carrying `VERSION`) and the `leopold-driver` binary on PATH. They are installed by
+different mechanisms, so they can drift, and a drift is invisible from either one
+alone. One update moves both.
+
 - **Engine (curl / `install.sh`):** `make update`, or `/leopold-update` from inside
-  Claude Code. Opt into automatic updates with `touch ~/.leopold/auto-update` — the
-  brief then checks and updates on its own (notify-only otherwise).
+  Claude Code. This pulls the source, re-runs the installer, **and** brings the npm
+  driver to the same version — or says out loud which half it could not move. Opt into
+  automatic updates with `touch ~/.leopold/auto-update` — the brief then checks and
+  updates on its own (notify-only otherwise).
 - **Plugin:** `claude plugin update leopold`.
-- **npm driver:** `npm i -g leopold-driver@latest`.
+- **npm driver on its own:** `npm i -g leopold-driver@latest`.
+
+`leopold doctor` prints the pair on one line — `toolchain: driver X · assets X — both
+surfaces agree` — and fails loudly when they diverge.
+
+!!! warning "A newer driver can be shadowed by an older one"
+
+    `npm i -g` installs into *its* prefix. If an older `leopold-driver` sits earlier in
+    your PATH (a second npm prefix, say), it keeps winning: npm reports success and you
+    keep running the old binary. `leopold-driver update` cannot escape this either —
+    that command is executed by the stale binary.
+
+    The update and `leopold doctor` both look at the whole PATH and list every install,
+    the one that actually runs first. Remove the stale one (and the tree it points
+    into), then re-check with `leopold-driver --version`.
