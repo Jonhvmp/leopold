@@ -63,8 +63,11 @@ function hookSays(plan: string, autonomy: Autonomy = "full"): string {
       env: { ...process.env, LEOPOLD_AUTONOMY: "" },
     });
     assert.equal(r.status, 0, `hook exited ${r.status}: ${r.stderr}`);
+    // Block is signalled by the `decision` field, not by stdout being non-empty: an
+    // allowed stop carrying an operator notice prints {"systemMessage":...} there too.
     const out = (r.stdout ?? "").trim();
-    if (out) return String((JSON.parse(out) as { decision?: string }).decision ?? "");
+    const d = out ? (JSON.parse(out) as { decision?: string }).decision : undefined;
+    if (d) return String(d);
     const state = JSON.parse(fs.readFileSync(path.join(leo, "state.json"), "utf8")) as {
       stopped_reason?: string;
     };
@@ -267,8 +270,20 @@ test("autonomy ask: a @human node names the item it is waiting on", { skip: MISS
       env: { ...process.env, LEOPOLD_AUTONOMY: "" },
     });
     assert.equal(r.status, 0);
-    assert.equal(r.stdout.trim(), "", "the hook must allow the stop, not re-inject");
-    // The human is told which item, in the terminal...
+    // Allowing the stop means emitting no `decision` — NOT emitting nothing. An allowed
+    // stop that a person has to act on carries the notice as {"systemMessage":...} on
+    // stdout, because a Stop hook's stderr is discarded on the exit-0 path.
+    assert.equal(
+      (JSON.parse(r.stdout.trim() || "{}") as { decision?: string }).decision ?? "",
+      "",
+      "the hook must allow the stop, not re-inject",
+    );
+    // The human is told which item — in the notice a person actually sees...
+    assert.match(
+      String((JSON.parse(r.stdout.trim() || "{}") as { systemMessage?: string }).systemMessage ?? ""),
+      /item 2 is a @human node/,
+    );
+    // ...and on stderr, which is kept for anyone running the hook by hand.
     assert.match(r.stderr, /item 2 is a @human node/);
     assert.match(r.stderr, /Ask the team about pricing/);
     // ...and the run records it, so the dashboard and the driver see the same thing.
@@ -295,7 +310,9 @@ test("the hook resolves the posture from the same places the driver does", { ski
   // all mean ask, and anything else means "not stated" -- never "halt".
   const decision = (g?: string, env?: string): string => {
     const r = runHook(HUMAN_PLAN, g, env === undefined ? {} : { LEOPOLD_AUTONOMY: env });
-    return r.stdout ? String((JSON.parse(r.stdout) as { decision: string }).decision) : String(r.state.stopped_reason);
+    // Same rule as runHook's caller above: the `decision` field decides, not stdout.
+    const d = r.stdout ? (JSON.parse(r.stdout) as { decision?: string }).decision : undefined;
+    return d ? String(d) : String(r.state.stopped_reason);
   };
   assert.equal(decision(), "block", "no guardrails at all: full");
   assert.equal(decision("# Guardrails\n- max_iterations: 50\n"), "block", "guardrails without the key: full");
