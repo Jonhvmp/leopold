@@ -181,7 +181,7 @@ echo
 echo "serena extension — status reports EVERY harness, not just Claude's"
 
 both="$(run all status)"
-check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$both" | wc -l)" "1"
+check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$both" | wc -l | tr -d " ")" "1"
 has "status reports Claude Code"   "$both" "Claude Code:"
 has "status reports Codex CLI"     "$both" "Codex CLI:"
 has "status shows the Codex hooks" "$both" "hooks 4/4"

@@ -245,7 +245,7 @@ check "its engine payload shipped too" "$( [ -f "$LEO/extensions/ovmem/payload/o
 ext ovmem detect >/dev/null 2>&1
 check "detect reports it as not installed" "$?" "1"
 o_status="$(ext ovmem status)"
-check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$o_status" | wc -l)" "1"
+check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$o_status" | wc -l | tr -d " ")" "1"
 o_doc="$(ext ovmem doctor)"
 has   "doctor names the harness"                 "$o_doc" "Codex CLI:"
 has   "doctor states 0/4 hooks rather than nothing" "$o_doc" "hooks:   0/4"
@@ -260,7 +260,7 @@ check "the extension shipped into the Codex asset home" \
 ext gstack detect >/dev/null 2>&1
 check "detect reports no checkout" "$?" "1"
 g_status="$(ext gstack status)"
-check "status is one line" "$(printf '%s\n' "$g_status" | wc -l)" "1"
+check "status is one line" "$(printf '%s\n' "$g_status" | wc -l | tr -d " ")" "1"
 has   "status names the harness" "$g_status" "Codex CLI"
 g_doc="$(ext gstack doctor)"
 has   "doctor names the harness"                    "$g_doc" "Codex CLI:"
