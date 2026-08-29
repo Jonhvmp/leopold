@@ -39,7 +39,10 @@ CODEX_BEFORE="$(real_fp "$HOME/.codex")"
 GSTACK_BEFORE="$(real_fp "$HOME/.gstack")"
 REAL_HOME="$HOME"
 
-TD="$(mktemp -d)"
+# Physical path: macOS hands out /var/... while anything that resolves the dir (the
+# symlinks this suite reads back) reports /private/var/..., and the two never match.
+# `pwd -P` is a no-op on Linux, so one form serves both.
+TD="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$TD"' EXIT
 STUB="$TD/bin"; FIX="$TD/fixture"
 mkdir -p "$STUB" "$FIX"

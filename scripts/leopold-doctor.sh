@@ -248,10 +248,54 @@ fi
 if command -v node >/dev/null 2>&1; then pass "node present ($(node -v 2>/dev/null)) — SDK driver usable"; else note "node missing — the SDK driver (optional) needs Node 18+"; fi
 if [ -f "$SRC/VERSION" ]; then
   pass "engine source at $SRC (v$(tr -d '[:space:]' < "$SRC/VERSION"))"
-  up="$(bash "$SRC/scripts/leopold-update-check.sh" 2>/dev/null || true)"
-  [ -n "$up" ] && note "$up — run: make update"
 else
   note "no source clone at $SRC (plugin install? update via 'claude plugin update')"
+fi
+
+# --- The toolchain, both surfaces on one line --------------------------------
+# The assets and the npm driver are updated by different mechanisms, so they drift, and
+# a drift is invisible from either one alone: `leopold-driver --version` says nothing
+# about the assets, and VERSION says nothing about the binary. Doctor exists for exactly
+# this, so it prints the PAIR and names a mismatch out loud.
+LIBT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/toolchain.sh"
+if [ -f "$LIBT" ]; then
+  # shellcheck source=lib/toolchain.sh
+  . "$LIBT"
+  t_assets="$(leo_asset_version "$SRC")"
+  [ -n "$t_assets" ] || t_assets="$(leo_asset_version "$LEO_HOME")"
+  if command -v leopold-driver >/dev/null 2>&1; then
+    t_drv="$(leo_driver_version)"
+    if [ -z "$t_assets" ]; then
+      note "toolchain: driver ${t_drv:-unknown} · assets unknown (no VERSION found to compare against)"
+    elif [ "$t_drv" = "$t_assets" ]; then
+      pass "toolchain: driver $t_drv · assets $t_assets — both surfaces agree"
+    else
+      miss "toolchain SPLIT: driver ${t_drv:-unknown} · assets $t_assets — one update moved only half of it. Run: npm i -g leopold-driver@$t_assets"
+    fi
+    # The failure that hides itself: npm installs into its own prefix while an older
+    # install earlier in PATH keeps winning, so the update reports success and the stale
+    # binary keeps running. `leopold-driver update` cannot escape it either — the stale
+    # binary is what executes it. Only a PATH-wide look sees this.
+    t_conf="$(leo_driver_conflicts || true)"
+    if [ -n "$t_conf" ]; then
+      t_win="$(printf '%s' "$t_conf" | head -1)"
+      miss "multiple leopold-driver installs on PATH with different versions — PATH runs ${t_win% *} (${t_win##* })"
+      printf '%s\n' "$t_conf" | while IFS=' ' read -r t_p t_v; do
+        [ -n "$t_p" ] && echo "         $t_p  ($t_v)"
+      done
+      echo "         Remove the stale one (and the tree it points into), then: leopold-driver --version"
+    fi
+  else
+    note "driver not installed (optional — the in-session engine needs no Node). Install: npm i -g leopold-driver@${t_assets:-latest}"
+  fi
+fi
+
+if [ -f "$SRC/VERSION" ]; then
+  up="$(bash "$SRC/scripts/leopold-update-check.sh" 2>/dev/null || true)"
+  # The driver lines are already reported above, in more detail; only the release check
+  # is news here.
+  up="$(printf '%s\n' "$up" | grep '^UPDATE_AVAILABLE' || true)"
+  [ -n "$up" ] && note "$up — run: make update"
 fi
 
 

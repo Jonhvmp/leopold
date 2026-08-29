@@ -121,7 +121,7 @@ hasnt "doctor finds every vendored file" \
   "$(printf '%s\n' "$doc" | grep -E '^(engine|cleanup|dashboard):')" "missing"
 
 st="$(run codex status)"
-check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$st" | wc -l)" "1"
+check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$st" | wc -l | tr -d " ")" "1"
 has   "status reports the Codex hooks" "$st" "Codex CLI: hooks 4/4"
 
 echo
@@ -308,7 +308,7 @@ check "and returns inside Codex's 3s cap"  "$( [ $(( $(date +%s) - start )) -lt 
 sleep 1
 has "the detached child did the commit" "$(cat "$OVDIR/ovmem.log" 2>/dev/null)" "committed 2 msgs"
 check "the detached child cleaned up its payload file" \
-  "$(ls "$OVDIR/state"/flush-*.json 2>/dev/null | wc -l)" "0"
+  "$(ls "$OVDIR/state"/flush-*.json 2>/dev/null | wc -l | tr -d " ")" "0"
 
 # Claude Code keeps running the flush in-process — no behavior change there.
 rm -f "$OVDIR/ovmem.log" "$OVDIR/state"/*.json

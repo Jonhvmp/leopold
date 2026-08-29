@@ -171,8 +171,29 @@ leopold-driver
 
 ## Atualizando
 
+O toolchain tem **duas superfícies de versão**: os assets (hooks, skills, scripts — que
+carregam o `VERSION`) e o binário `leopold-driver` no PATH. Eles são instalados por
+mecanismos diferentes, então podem divergir, e uma divergência é invisível olhando só
+para um dos dois. Uma atualização move os dois.
+
 - **Engine (curl / `install.sh`):** `make update`, ou `/leopold-update` de dentro
-  do Claude Code. Pra ativar atualizações automáticas, `touch ~/.leopold/auto-update` — o
-  brief então checa e atualiza sozinho (caso contrário, só notifica).
+  do Claude Code. Isso puxa o source, re-roda o installer **e** leva o driver npm para a
+  mesma versão — ou diz em voz alta qual metade não conseguiu mover. Pra ativar
+  atualizações automáticas, `touch ~/.leopold/auto-update` — o brief então checa e
+  atualiza sozinho (caso contrário, só notifica).
 - **Plugin:** `claude plugin update leopold`.
-- **Driver npm:** `npm i -g leopold-driver@latest`.
+- **Driver npm sozinho:** `npm i -g leopold-driver@latest`.
+
+O `leopold doctor` imprime o par numa linha só — `toolchain: driver X · assets X — both
+surfaces agree` — e falha alto quando eles divergem.
+
+!!! warning "Um driver mais novo pode ser sombreado por um mais velho"
+
+    O `npm i -g` instala no prefixo *dele*. Se um `leopold-driver` mais velho estiver
+    antes no seu PATH (um segundo prefixo npm, por exemplo), ele continua ganhando: o npm
+    reporta sucesso e você segue rodando o binário antigo. O `leopold-driver update`
+    também não escapa disso — quem executa esse comando é o binário velho.
+
+    A atualização e o `leopold doctor` olham o PATH inteiro e listam cada instalação, a
+    que de fato roda primeiro. Remova a obsoleta (e a árvore para onde ela aponta) e
+    confira de novo com `leopold-driver --version`.

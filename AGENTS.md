@@ -4,7 +4,7 @@
 anything.** This file exists because Codex CLI loads `AGENTS.md` and Claude Code loads
 `CLAUDE.md`; Leopold ships on both, so its own repo speaks to both.
 
-The three rules that are violated most often, inlined so a session that never opens the
+The four rules that are violated most often, inlined so a session that never opens the
 other file still gets them right:
 
 1. **English for anything that lands in the repo or on GitHub** — code, comments, commit
@@ -15,6 +15,13 @@ other file still gets them right:
    commit, PR, release or changelog, and never add a `Co-Authored-By` trailer for a model.
 3. **Never push, tag, publish, merge, or open an external PR on your own.** Commit when
    the work is verified, then report readiness. Those actions are the maintainer's.
+
+4. **New capabilities follow the module contract** (full text in `CLAUDE.md`): one
+   structured namespace per layer (dir + subdirs, never loose files), AI-native
+   contracts (versioned schemas, typed states, explicit failure outputs) instead of
+   prose promises, autonomous by design (durable state outside the transcript,
+   bounds enforced in code), two engines over one artifact with parity derived by
+   test, and loud on missing substrate. The persona module is the reference.
 
 And the bar: `make test` is the gate, a regression test is verified **by mutation**
 (reintroduce the bug, watch it fail), and nothing that writes into a harness home is

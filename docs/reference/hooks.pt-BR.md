@@ -38,6 +38,28 @@ flowchart TD
 Fail-open: qualquer erro inesperado permite a parada. A continuidade é melhor esforço;
 parar é sempre seguro.
 
+### Como uma parada permitida chega até você
+
+Um hook de Stop tem dois canais de saída, e eles não são intercambiáveis. No caminho
+de **bloqueio** (`{"decision":"block","reason":…}` no stdout) o motivo vai para o
+modelo. No caminho de **permissão** — `exit 0`, que é toda parada acima — o stderr é
+descartado: o harness expõe o stderr de um hook no exit 2, não no exit 0.
+
+Por isso toda parada permitida sobre a qual uma pessoa precisa agir carrega seu aviso
+como `systemMessage` no stdout, que o harness renderiza como um aviso `Stop says: …`.
+Isso cobre o roll da janela, o teto `max_windows`, o veredito de livelock, a pausa
+`awaiting_human` e o fail-safe `state_invalid`. O mesmo texto continua indo para o
+stderr, para quem roda o hook na mão.
+
+Isso importa mais do que parece: o aviso de roll era escrito só no
+stderr no caminho de permissão, então uma run que rolava a janela parecia, de fora,
+que o `/leopold-run` tinha desistido sozinho depois de um item do plano. Nada estava
+quebrado — mas ninguém era avisado.
+
+Os dois harnesses carregam o campo no mesmo fio: o Claude Code documenta
+`systemMessage` para todos os hooks, e o Codex desserializa `reason` / `stopReason` /
+`suppressOutput` / `systemMessage` no seu `StopCommandOutputWire`.
+
 ### O roll da janela de contexto
 
 Desde a 0.18.0 o budget de contexto é **um evento de manutenção, não uma morte** — a
@@ -50,6 +72,16 @@ mudança de comportamento é explícita, não implícita. O hook mede o transcri
   merge-sem-aninhar, teto de 32768 bytes que falha alto) — e então continuar o plano.
   A instrução é reinjetada a cada turno na faixa; o merge é idempotente. Um evento
   `checkpoint_instruction` é logado.
+- **Em 100% e ainda sem checkpoint, a janela ganha um turno para escrever um.** A
+  faixa de 80% só é alcançada por uma janela que subiu por ela; uma run ativada dentro
+  de uma sessão *já* acima do budget cai direto no roll e nunca seria avisada uma vez
+  sequer para fazer checkpoint — justamente a janela cujo estado de trabalho é o mais
+  caro de perder. Então o turno é bloqueado com a instrução de checkpoint em vez de
+  rolar, e um evento `checkpoint_grace` é logado. O limite mora no código, não no
+  prompt: `checkpoint_grace_window` registra a janela que o gastou, então uma janela
+  adia no máximo uma vez e o turno seguinte rola de todo jeito. Esse turno não gasta o
+  resgate de falha da run — ele existe para preservar estado, não para tentar o item
+  de novo.
 - **Em 100%** a parada acontece com o motivo de sempre —
   `stopped_reason: context_budget`, consumidores o leem — mas o estado diz roll:
   `windows` é incrementado, o vetor de checkboxes do plano é fotografado, e
@@ -266,8 +298,9 @@ não têm como divergir.
 
 Os dois hooks do engine anexam eventos estruturados em `.leopold/events.jsonl`
 (`turn_start`, `stop`, `guard_block`, e os eventos de continuidade
-`checkpoint_instruction`, `window_roll`, `no_progress_across_windows`,
-`max_windows`; o watcher adiciona `window_relaunch` / `window_relaunch_refused`),
+`checkpoint_instruction`, `checkpoint_grace`, `window_roll`,
+`no_progress_across_windows`, `max_windows`; o watcher adiciona `window_relaunch` /
+`window_relaunch_refused`),
 que o `/leopold-status` lê. O enhancer, por sua
 vez, registra no próprio ledger global — `~/.claude/enhance/enhancements.jsonl`, uma
 linha por injeção ou tentativa falha — que o `/leopold-enhance learn` minera.

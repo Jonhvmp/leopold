@@ -24,13 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Syntax-check hooks, installer, scripts, and extensions
-        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh hooks/persona-guard.sh install.sh scripts/*.sh extensions/*/*.sh
+        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh hooks/persona-guard.sh install.sh scripts/*.sh scripts/lib/*.sh extensions/*/*.sh
       - name: Shellcheck every shell entrypoint (warning level)
-        run: shellcheck -S warning hooks/*.sh install.sh scripts/*.sh extensions/*/*.sh
+        run: shellcheck -S warning hooks/*.sh install.sh scripts/*.sh scripts/lib/*.sh extensions/*/*.sh
       - name: Byte-compile Python scripts (dashboard, extension engines)
         run: python3 -m py_compile scripts/*.py extensions/*/payload/*.py
       - name: Hook behavior tests
         run: bash scripts/test-hooks.sh
+      - name: "Toolchain tests (driver x assets, shadowed installs; hermetic: stubbed PATH, no network)"
+        run: bash scripts/test-toolchain.sh
       - name: Doctor project-continuity tests
         run: bash scripts/test-doctor-continuity.sh
       - name: Guard red-team tests (bypass attempts must stay blocked)
