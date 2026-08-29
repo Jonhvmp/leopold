@@ -189,7 +189,7 @@ has "toggled off from Claude Code, Codex sees it off" "$(run "$BOTH" codex "$MAN
 st="$(run "$BOTH" all "$MANAGE" status)"
 has "status reports both harnesses" "$st" "Claude Code: hook wired"
 has "and the Codex one too"         "$st" "Codex CLI: hook wired"
-check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$st" | wc -l)" "1"
+check "status is one line (the menu renders it inline)" "$(printf '%s\n' "$st" | wc -l | tr -d " ")" "1"
 
 run "$BOTH" all "$MANAGE" remove >/dev/null
 check "remove unwired Claude Code"  "$(grep -c 'enhance.py --event' "$SET")" "0"
