@@ -6,6 +6,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **One session conducts a run.** The Stop hook now continues and counts only the
+  session recorded as the run's `owner` in `state.json`; any other session that stops
+  in the checkout is allowed to stop, told who owns the run (`systemMessage`), and
+  logged as `foreign_stop` — never charged an iteration, never counted as thrash, never
+  the transcript the context budget measures. Before this, a second window opened for an
+  unrelated question was conscripted, took nine of a run's seventeen iterations and
+  ended a producing run with `no_progress`. A state older than the record is scoped by
+  its legacy top-level `session_id`; one with neither continues as before and logs
+  `owner_unknown` once.
+- **The driver's own workers are no longer conscripted.** `initState` writes an owner of
+  engine `driver`, and a session carrying `LEOPOLD_SDK_WORKER=1` stops silently. In
+  default (non-worktree) runs the hook used to block every worker after its status block
+  and tell it to pick the next plan item (reproduced with a real `runItem`).
+- **`state.json` has one writer at a time.** Counted stops take a `mkdir` lock; four
+  concurrent stops now count four turns instead of one. A stale lock is reaped, and a
+  lock held over about five seconds is bypassed with a `lock_timeout` event.
+- **Activation, stop and status are owner-aware.** `/leopold-run` refuses to start beside
+  a live owner and takes over a stale one (`--takeover` forces; `owner_takeover` is
+  logged); `/leopold-stop` refuses to end another live session's run without `--force`;
+  `/leopold-status`, `leopold doctor` and `leopold watch` name the owner, its liveness,
+  and the foreign stops turned away. One reader, `scripts/leopold-owner.sh`, serves all
+  of them, and its staleness check works on macOS (the old inline `date -d` never did).
+- **The git-lock denial names the owning run**; the prompt enhancer skips only the
+  owning session instead of every session in a project with an active run; doctor warns
+  when the Stop hook is wired twice (it ran twice per stop) and when `state.json` is
+  tracked by git. The run skill names the hook-owned counters as read-only for the model.
+
+### Docs
+- Hooks: the session-ownership decision table and the identity fields verified live on
+  Claude Code 2.1.258 and Codex CLI 0.150.1; continuity and guardrails: one owner per
+  run; SDK worker hooks: the conscription addendum; skills: `--takeover` and `--force`.
+
 ## [0.21.1] - 2026-08-19
 
 ### Fixed

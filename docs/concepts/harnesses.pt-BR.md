@@ -62,11 +62,23 @@ publica. O Codex entrega o PreToolUse com as mesmas chaves do Claude Code —
 **`stop-continuity.sh` (Stop) — o motor autônomo.** Quando o agente termina um turno,
 ele lê `state.json` e `PLAN.md`; se ainda há trabalho e nenhuma condição de parada
 bateu, bloqueia o encerramento e reinjeta a próxima instrução. O Codex entrega o Stop
-com `cwd`, `transcript_path` e `stop_hook_active`, e honra a mesma resposta:
+com `session_id`, `turn_id`, `cwd`, `transcript_path` e `stop_hook_active` (verificado
+no codex-cli 0.150.1; o Claude Code 2.1.258 envia `session_id`, `prompt_id`, `cwd`,
+`transcript_path`, `stop_hook_active` e `last_assistant_message`), e honra a mesma
+resposta:
 
 ```json
 {"decision":"block","reason":"…"}
 ```
+
+O `session_id` é o que vincula um run à única sessão que o conduz: é igual ao
+`CODEX_THREAD_ID` na shell tool do Codex e ao `CLAUDE_CODE_SESSION_ID` no Claude Code, e
+o hook continua só a sessão que bate com o `owner` do run
+([Hooks](../reference/hooks.pt-BR.md)). Uma diferença importa para quem escreve hooks:
+um processo de hook do Codex não herda nenhuma variável `CODEX_*` (o do Claude Code herda
+`CLAUDE_CODE_SESSION_ID`, `CLAUDE_PID` e `CLAUDE_PROJECT_DIR`), então no Codex o payload
+é a única identidade que um hook tem — por isso a checagem de owner lê o payload, nunca o
+ambiente.
 
 Ou seja: autonomia não é exclusividade do Claude. O `/leopold-run` mantém uma sessão
 Codex andando do mesmo jeito que mantém uma sessão do Claude Code — mesmos orçamentos,

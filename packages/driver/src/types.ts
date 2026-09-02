@@ -63,6 +63,34 @@ export interface Brief {
   worktreeRoot?: string;
 }
 
+/** Who conducts a run. ONE shape for both engines, so the Stop hook, the owner reader
+ *  (scripts/leopold-owner.sh), doctor and the dashboard read one record whoever wrote
+ *  it. Two writers exist and only two: /leopold-run Step 1 (engine "skill", session_id
+ *  from CLAUDE_CODE_SESSION_ID / CODEX_THREAD_ID) and `initState` below (engine
+ *  "driver", session_id empty -- no interactive session ever matches a driver run, so
+ *  the in-session hook continues nobody and the driver's own workers stop freely).
+ *  test/owner-parity.test.ts derives the skill's keys from the skill's source and fails
+ *  the build the moment the two writers disagree on the shape. */
+export interface RunOwner {
+  /** The conducting session's id; empty for a driver-conducted run. */
+  session_id: string;
+  /** "claude" | "codex" (which harness the owner runs on); empty when unknown. */
+  harness: string;
+  /** "skill" (in-session /leopold-run) or "driver" (leopold run). */
+  engine: "skill" | "driver";
+  /** ISO-8601 UTC, when the seat was taken. */
+  claimed_at: string;
+  /** The harness process (Claude Code exports CLAUDE_PID) or the driver process; a
+   *  liveness signal for the owner reader. Number from the driver, string from bash. */
+  pid: number | string;
+  /** The owner's transcript file when known -- a second liveness signal, modified on
+   *  every tool call, so a long single-turn executor still reads as alive. */
+  transcript_path: string;
+}
+
+/** The owner record's keys, in one place: the parity test compares both writers to it. */
+export const OWNER_KEYS = ["session_id", "harness", "engine", "claimed_at", "pid", "transcript_path"] as const;
+
 /** Mutable run state mirrored to .leopold/state.json.
  *  NOTE: the on-disk state.json is a superset of this — the bash skill/Stop-hook
  *  write extra fields (session_id, max_subagents, …). `writeState` merges rather
@@ -77,6 +105,9 @@ export interface RunState {
   stopped_reason?: string;
   /** PID of the orchestrator process, for the orphan reaper's liveness probe. */
   orchestrator_pid?: number;
+  /** Who conducts this run (see RunOwner). Written at activation by whichever engine
+   *  activated it; the Stop hook continues only a session that matches it. */
+  owner?: RunOwner;
   /** Isolated worktree for this run (absolute path) and its throwaway branch. */
   worktree_path?: string;
   worktree_branch?: string;

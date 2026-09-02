@@ -241,12 +241,26 @@ def is_ack(prompt):
     return all(w.lower().strip(",.:;!?)") in ACKS for w in words)
 
 
-def leopold_run_active(cwd):
+def leopold_run_active(cwd, session_id=None):
+    """True when THIS session is conducting an active Leopold run in cwd.
+
+    The run records its owner (`owner.session_id`, or the legacy top-level
+    `session_id`); a run with no owner counts as everyone's. A second window opened
+    in the same checkout for an unrelated question is not the executor, so its prompts
+    keep getting enhanced -- before the owner check the mere presence of a run silently
+    switched the enhancer off for every session in the project."""
     try:
         with open(os.path.join(cwd, ".leopold", "state.json")) as f:
-            return json.load(f).get("active") is True
+            st = json.load(f)
     except Exception:
         return False
+    if st.get("active") is not True:
+        return False
+    owner = st.get("owner") if isinstance(st.get("owner"), dict) else {}
+    owner_sid = owner.get("session_id") or st.get("session_id") or ""
+    if owner_sid and session_id and owner_sid != session_id:
+        return False
+    return True
 
 
 # ---------- cooldown ----------
@@ -532,7 +546,7 @@ def skip_reason(prompt, data, st):
             return "command", prompt
     if MARKER in prompt:
         return "marker", text  # anti-loop, defense in depth
-    if leopold_run_active(data.get("cwd") or os.getcwd()):
+    if leopold_run_active(data.get("cwd") or os.getcwd(), data.get("session_id")):
         return "leopold_run", text  # autonomous run - its prompts are machine-generated
     if "```" in text or text.count("\n") > 8:
         return "pasted_content", text  # logs/code carry their own context

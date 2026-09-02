@@ -167,6 +167,23 @@ And the boundary that never moved: **the git lock**. A run that survives ten win
 still stages and reports; the human ships. `context_budget` still appears as a
 `stopped_reason` — but it now marks a window roll on a run that continues, not a death.
 
+## One owner per run
+
+A run is conducted by one session, recorded as `owner` in `state.json` when it is
+activated. The Stop hook continues and counts that session only; any other session that
+stops inside the checkout — a second window opened for an unrelated question, a headless
+`claude -p`, the driver's own workers — is allowed to stop and told who owns the run
+([Hooks: session ownership](../reference/hooks.md)).
+
+Ownership and the roll fit together. A roll ends the run's active state, so the next
+window's `/leopold-run` — the watcher's headless relaunch or yours — claims the seat
+without waiting; a session keeps its id across `--resume`, so a window that compacts or
+resumes keeps conducting. What a new session cannot do is start beside a live owner:
+`/leopold-run` refuses while the owner shows a sign of life within ten minutes (a live
+harness pid, a counted turn, a transcript write) and takes over a stale one, recording
+`owner_takeover`; `--takeover` forces it and is recorded as forced. `/leopold-stop`
+refuses to end another live session's run without `--force`.
+
 ## The three memories
 
 Since 0.19.0 a run remembers on three distinct layers. They do not overlap — each

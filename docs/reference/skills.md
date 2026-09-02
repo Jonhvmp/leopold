@@ -33,6 +33,10 @@ the turn loop. The Stop hook carries it forward; the guard hook locks git.
 - **Preflight** aborts if the brief is missing — run `/leopold-brief` first.
 - **Behavior** adopts spawned-session mode so gstack skills auto-decide.
 
+One owner per run: `/leopold-run` refuses to activate beside a **live** owner (another
+session conducting this run, seen within the last ten minutes) and takes over a stale
+one; `/leopold-run --takeover` forces the seat and is recorded as forced.
+
 ## `/leopold-workflow`
 
 Phase 2, the workflow way. Compiles the same brief into a
@@ -120,12 +124,18 @@ structured report of bugs, confusion, accessibility problems and friction.
 ## `/leopold-status`
 
 Read-only dashboard: active or not, plan progress, decisions logged, recent
-events. Never mutates anything.
+events. Never mutates anything. It also names the run's **owner** — the session
+conducting it, its harness and engine, whether it shows a sign of life and when it was
+last seen — and how many stops from other sessions the hook turned away (a non-zero
+count means a second window is open in this checkout).
 
 ## `/leopold-stop`
 
 Clean shutdown. Flips the run inactive so the Stop hook allows the session to
 halt at the next turn boundary. The blunt alternative is `touch .leopold/STOP`.
+A run is conducted by one session: stopping it from that session, or a run whose owner
+shows no sign of life, is a plain stop; stopping a run that another **live** session (or
+a live `leopold run`) is conducting is refused unless invoked as `/leopold-stop --force`.
 
 !!! note "Frontmatter shape"
     Each skill declares `name`, `version`, `description`, `allowed-tools`, and

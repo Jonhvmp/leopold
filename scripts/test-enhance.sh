@@ -201,5 +201,18 @@ case "$out" in
 esac
 assert "preview never writes the ledger" "$before" "$(ledger_lines)"
 
+# --- the active-run skip is scoped to the session CONDUCTING the run -----------------
+# A second window opened in the same checkout for an unrelated question is not the
+# executor: its prompts keep being read. (Last, because the non-owner case is a real
+# injection and writes a ledger line the counts above must not see.)
+printf '{"active":true,"owner":{"session_id":"s-owner","engine":"skill"}}' > "$T/proj-run/.leopold/state.json"
+assert "the owning session is skipped" "" "$(hook s-owner 'fix login' "$T/proj-run")"
+case "$(hook s-other 'fix login' "$T/proj-run")" in
+  *"[leopold-enhance"*) echo "  ok: another session beside the run is NOT skipped" ;;
+  *) echo "  FAIL: another session beside the run was silently skipped"; fail=1 ;;
+esac
+printf '{"active":true,"session_id":"s-legacy"}' > "$T/proj-run/.leopold/state.json"
+assert "a legacy top-level session_id scopes the skip too" "" "$(hook s-legacy 'fix login' "$T/proj-run")"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "all enhance behavior tests passed"; else echo "ENHANCE TESTS FAILED"; exit 1; fi

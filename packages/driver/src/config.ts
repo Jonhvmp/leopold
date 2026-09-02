@@ -108,15 +108,30 @@ export function readAmendmentsAdded(leoDir: string): number {
   } catch { return 0; }
 }
 
-export function initState(brief: Brief): RunState {
+export function initState(brief: Brief, opts: { harness?: string } = {}): RunState {
+  const startedAt = new Date().toISOString();
   const state: RunState = {
     active: true,
     iteration: 0,
     max_iterations: intFrom(brief.guardrails, "max_iterations", 50),
     consecutive_failures: 0,
     max_failures: intFrom(brief.guardrails, "max_failures", 3),
-    started_at: new Date().toISOString(),
+    started_at: startedAt,
     orchestrator_pid: process.pid,
+    // The run's owner. A driver run is conducted by THIS process, not by any session:
+    // session_id stays empty so no interactive window ever matches it, and the Stop
+    // hook -- which fires inside every worker, reviewer and judge the driver spawns in
+    // the project's cwd -- continues nobody. Before this record existed the hook blocked
+    // each worker after its status block and told it to pick the next PLAN item
+    // (reproduced live with a real runItem; docs/reference/sdk-worker-hooks.md).
+    owner: {
+      session_id: "",
+      harness: opts.harness ?? "",
+      engine: "driver",
+      claimed_at: startedAt,
+      pid: process.pid,
+      transcript_path: "",
+    },
     // The repeated-failure rescue (rescue.ts) is spent PER RUN, and it is written here
     // explicitly because `writeState` merges forward: a `true` left on disk by the last
     // run would otherwise deny this one its single change of approach forever. It pairs

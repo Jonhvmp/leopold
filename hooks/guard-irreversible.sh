@@ -30,6 +30,18 @@ else
 fi
 [ "$active" = "true" ] || exit 0
 
+# The lock is project-wide on purpose -- the checkout shares one index, so a commit from
+# ANY session here would sweep up the run's staged work -- but the denial names the run
+# that holds it, so a second window knows whose run it is walking into. Same owner
+# record the Stop hook reads (`owner`, else the legacy top-level `session_id`; a state
+# with an orchestrator pid and no session id is a driver run).
+owner_note=""
+o_sid="$(jq -r '.owner.session_id // .session_id // ""' "$STATE" 2>/dev/null || true)"
+o_eng="$(jq -r '.owner.engine // (if .orchestrator_pid then "driver" else "skill" end)' "$STATE" 2>/dev/null || true)"
+if [ -n "$o_sid" ]; then owner_note=" This run is conducted by session ${o_sid:0:8} (${o_eng:-skill})."
+elif [ "$o_eng" = "driver" ]; then owner_note=" This run is conducted by leopold run (driver)."
+fi
+
 tool="$(printf '%s' "$input" | jq -r '.tool_name // empty' 2>/dev/null || true)"
 
 # git commit/push are the only guarded tools, so anything but Bash is allowed.
@@ -76,12 +88,12 @@ norm="$(printf '%s' "$cmd" | tr '\n\t' '  ' | tr -s ' ')"
 case "$(git_subcmd "$norm")" in
   push)
     matches "$norm" '(--force|--force-with-lease|(^|[[:space:]])-f([[:space:]]|$))' && \
-      deny "Leopold guard: force-push is forbidden in autonomous mode."
+      deny "Leopold guard: force-push is forbidden in autonomous mode.${owner_note}"
     has_token ALLOW_PUSH || \
-      deny "Leopold guard: git push is locked. Pushing is the user's call; report readiness instead. To allow this run: touch .leopold/ALLOW_PUSH" ;;
+      deny "Leopold guard: git push is locked. Pushing is the user's call; report readiness instead. To allow this run: touch .leopold/ALLOW_PUSH${owner_note}" ;;
   commit)
     has_token ALLOW_GIT || \
-      deny "Leopold guard: git commit is locked. Stage the work (git add) and report instead. To allow this run: touch .leopold/ALLOW_GIT" ;;
+      deny "Leopold guard: git commit is locked. Stage the work (git add) and report instead. To allow this run: touch .leopold/ALLOW_GIT${owner_note}" ;;
 esac
 
 exit 0

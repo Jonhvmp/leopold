@@ -117,4 +117,20 @@ empty before and after, and a `sha1sum` over a tar of `.leopold/` was identical
 before and after both runs (`3a59fc63914dda7f8bb1cb65c5924293bfb2db2e`). All writes
 landed under the `mktemp -d` root.
 
+## Addendum (2026-09-02) — the Stop hook fired *into* the workers
+
+The finding above had a consequence nobody drew at the time: because a worker runs in
+the project's cwd with the user's hooks loaded, Leopold's own `stop-continuity.sh` fires
+inside every driver worker — and during a driver run `state.json` is active. Reproduced
+with a real `runItem` from `dist/worker.js` on Claude Code 2.1.258: the hook blocked the
+worker's stop after its status block, the worker announced "I'll read the plan and get
+started on the next item", the conductor received a spurious second `onTurn` (kind
+`blocked`), and the item took twice as long. `--worktree` runs escaped only because
+`.leopold/` is gitignored and the worktree has no `state.json`.
+
+The fix is the owner record: the driver's `initState` writes `owner.engine: "driver"`
+with no session id, and the hook allows every stop from a session carrying
+`LEOPOLD_SDK_WORKER=1` silently. `scripts/test-hooks.sh` holds the case ("a driver
+worker stops silently"), and [Hooks](hooks.md) documents the full decision table.
+
 <!-- @emit hooks_fire=true -->

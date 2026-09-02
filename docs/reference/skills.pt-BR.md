@@ -33,6 +33,10 @@ de turnos. O hook de Stop a leva adiante; o hook de guarda tranca o git.
 - **Preflight** aborta se o brief não existir — rode `/leopold-brief` antes.
 - **Comportamento** adota o modo spawned-session para que as skills do gstack decidam sozinhas.
 
+Um dono por run: `/leopold-run` se recusa a ativar ao lado de um dono **vivo** (outra
+sessão conduzindo este run, vista nos últimos dez minutos) e assume um abandonado;
+`/leopold-run --takeover` força o assento e fica registrado como forçado.
+
 ## `/leopold-workflow`
 
 Fase 2, do jeito workflow. Compila o mesmo brief em um
@@ -122,12 +126,18 @@ problemas de acessibilidade e fricção.
 ## `/leopold-status`
 
 Dashboard somente leitura: ativa ou não, progresso do plano, decisões registradas,
-eventos recentes. Nunca altera nada.
+eventos recentes. Nunca altera nada. Também nomeia o **dono** do run — a sessão que o
+conduz, seu harness e engine, se mostra sinal de vida e quando foi vista pela última vez
+— e quantas paradas de outras sessões o hook recusou (uma contagem diferente de zero
+significa que há uma segunda janela aberta neste checkout).
 
 ## `/leopold-stop`
 
 Encerramento limpo. Marca a run como inativa para que o hook de Stop permita a sessão
 parar no próximo limite de turno. A alternativa bruta é `touch .leopold/STOP`.
+Um run é conduzido por uma sessão: pará-lo a partir dessa sessão, ou um run cujo dono não
+mostra sinal de vida, é uma parada comum; parar um run que outra sessão **viva** (ou um
+`leopold run` vivo) conduz é recusado, a menos que invocado como `/leopold-stop --force`.
 
 !!! note "Formato do frontmatter"
     Cada skill declara `name`, `version`, `description`, `allowed-tools` e

@@ -220,6 +220,18 @@ tree, então uma sobrescreveria o estado e o código da outra. `/leopold-run` se
 recusa a iniciar uma segunda run enquanto outra está ativa (uma run ociosa por 10+
 minutos é tratada como abandonada e pode ser assumida).
 
+### Um dono por run
+
+O run é conduzido por **uma sessão**, registrada como `owner` no `state.json` na
+ativação. O hook de Stop continua e conta só essa sessão; toda outra sessão que pare
+neste checkout é avisada de quem é o dono e pode parar, e suas paradas são registradas
+como `foreign_stop` — nunca cobradas do run. `/leopold-run` se recusa a iniciar ao lado
+de um dono vivo e assume um abandonado (sem sinal de vida por dez minutos; `--takeover`
+força); `/leopold-stop` se recusa a encerrar o run de outra sessão viva sem `--force`.
+`/leopold-status` e `leopold doctor` nomeiam o dono e dizem se está vivo. A trava do
+git continua valendo para o projeto inteiro — o checkout compartilha um único index — e
+a negação nomeia o run dono.
+
 ### Rodando em paralelo — use worktrees
 
 Paralelismo de verdade vem de isolamento, não de threads: dois agentes editando os

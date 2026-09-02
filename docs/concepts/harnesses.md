@@ -62,11 +62,23 @@ same reply:
 **`stop-continuity.sh` (Stop) — the autonomous engine.** When the agent finishes a
 turn it reads `state.json` and `PLAN.md`, and if work remains with no stop condition
 met it blocks the halt and re-injects the next instruction. Codex delivers Stop with
-`cwd`, `transcript_path` and `stop_hook_active`, and honors the same reply:
+`session_id`, `turn_id`, `cwd`, `transcript_path` and `stop_hook_active` (verified on
+codex-cli 0.150.1; Claude Code 2.1.258 sends `session_id`, `prompt_id`, `cwd`,
+`transcript_path`, `stop_hook_active` and `last_assistant_message`), and honors the same
+reply:
 
 ```json
 {"decision":"block","reason":"…"}
 ```
+
+The `session_id` is what binds a run to the one session conducting it: it equals
+`CODEX_THREAD_ID` in the shell tool on Codex and `CLAUDE_CODE_SESSION_ID` on Claude
+Code, and the hook continues only the session that matches the run's `owner`
+([Hooks](../reference/hooks.md)). One difference matters to hook authors: a Codex hook
+process inherits no `CODEX_*` environment (Claude Code's inherits
+`CLAUDE_CODE_SESSION_ID`, `CLAUDE_PID` and `CLAUDE_PROJECT_DIR`), so on Codex the
+payload is the only identity a hook has — which is why the owner check reads the
+payload, never the environment.
 
 So autonomy is not a Claude-only feature. `/leopold-run` keeps a Codex session going
 the same way it keeps a Claude Code session going, with the same budgets, the same

@@ -42,6 +42,11 @@ if [ "$HAVE_CLAUDE" = "1" ]; then
 
   if [ -f "$CLAUDE/settings.json" ] && grep -q 'leopold/hooks' "$CLAUDE/settings.json" 2>/dev/null; then
     pass "Claude Code: hooks wired in settings.json"
+    # Wired twice means run twice per stop: two counted turns and a lost update on every
+    # counter. The plugin and settings.json each wire the same script; keep one.
+    sc="$(grep -o 'stop-continuity\.sh' "$CLAUDE/settings.json" 2>/dev/null | wc -l | tr -d ' ')"
+    [ "${sc:-0}" -gt 1 ] && note "Claude Code: the Stop hook is wired $sc times in settings.json — every stop runs it $sc times (double-counted turns); keep one entry"
+    ls -d "$CLAUDE"/plugins/cache/*/leopold* >/dev/null 2>&1 && note "Claude Code: hooks wired in settings.json AND via the plugin — every stop runs the hook twice; remove one wiring"
   elif ls -d "$CLAUDE"/plugins/cache/*/leopold* >/dev/null 2>&1; then
     pass "Claude Code: hooks wired via plugin"
   else
@@ -58,6 +63,8 @@ if [ "$HAVE_CODEX" = "1" ]; then
 
   if grep -q 'leopold (managed)' "$CODEX/config.toml" 2>/dev/null; then
     pass "Codex: hooks wired in config.toml"
+    xc="$(grep -o 'stop-continuity\.sh' "$CODEX/config.toml" 2>/dev/null | wc -l | tr -d ' ')"
+    [ "${xc:-0}" -gt 1 ] && note "Codex: the Stop hook is wired $xc times in config.toml — every stop runs it $xc times (double-counted turns); keep one entry"
     if grep -q 'trusted_hash' "$CODEX/config.toml" 2>/dev/null; then
       pass "Codex: hook trust entries present (open Codex once if the hooks still look inert)"
     else
@@ -357,6 +364,41 @@ if [ -f "$PROJ/MISSION.md" ] || [ -f "$PROJ/state.json" ]; then
 
   # The kill switch beats everything, including continuity: auto. Say so first.
   [ -e "$PROJ/STOP" ] && note "kill switch present (.leopold/STOP) — nothing relaunches this run until it is removed"
+
+  # Who conducts the run, and is that session alive. ONE reader (scripts/leopold-owner.sh,
+  # the same one /leopold-run, /leopold-stop and /leopold-status use), so doctor cannot
+  # disagree with the skills about who owns a run. Only spoken while a run is active.
+  OWNER_SH="$(dirname "$0")/leopold-owner.sh"
+  if [ -f "$PROJ/state.json" ] && [ "$(jq -r '.active // false' "$PROJ/state.json" 2>/dev/null)" = "true" ]; then
+    if [ -f "$OWNER_SH" ]; then
+      ost="$(bash "$OWNER_SH" status "${LEOPOLD_PROJECT_DIR:-$PWD}" 2>/dev/null)"
+      o_sid="$(printf '%s' "$ost" | jq -r '.owner_short // ""' 2>/dev/null)"
+      o_eng="$(printf '%s' "$ost" | jq -r '.engine // ""' 2>/dev/null)"
+      o_har="$(printf '%s' "$ost" | jq -r '.harness // ""' 2>/dev/null)"
+      o_alive="$(printf '%s' "$ost" | jq -r '.alive // false' 2>/dev/null)"
+      o_age="$(printf '%s' "$ost" | jq -r '.age_s // "?"' 2>/dev/null)"
+      o_pid="$(printf '%s' "$ost" | jq -r '.pid // ""' 2>/dev/null)"
+      o_for="$(printf '%s' "$ost" | jq -r '.foreign_stops // 0' 2>/dev/null)"
+      if [ "$o_eng" = "driver" ]; then
+        if [ "$o_alive" = "true" ]; then pass "run owner: leopold run (driver, pid ${o_pid:-?}) — alive, last seen ${o_age}s ago"
+        else note "run owner: leopold run (driver, pid ${o_pid:-?}) — no sign of life for ${o_age}s; the next leopold run reaps it, or /leopold-run takes over"; fi
+      elif [ -z "$o_sid" ]; then
+        note "run active with NO session owner — every session that stops in this checkout is continued and counted; re-activate with /leopold-run to bind the run to one session"
+      elif [ "$o_alive" = "true" ]; then
+        pass "run owner: session $o_sid (${o_eng:-skill}${o_har:+, $o_har}) — alive, last seen ${o_age}s ago"
+      else
+        note "run owner: session $o_sid (${o_eng:-skill}${o_har:+, $o_har}) — no sign of life for ${o_age}s; /leopold-run in a new session takes it over"
+      fi
+      [ "${o_for:-0}" -gt 0 ] 2>/dev/null && note "$o_for stop(s) from other sessions were turned away (foreign_stop) — a second window is open in this checkout; it is not counted, but it shares the working tree"
+    else
+      note "run active but scripts/leopold-owner.sh is missing beside this doctor — ownership cannot be reported; re-run ./install.sh"
+    fi
+  fi
+
+  # A tracked state.json makes every clone and worktree inherit an active run.
+  if git -C "${LEOPOLD_PROJECT_DIR:-$PWD}" ls-files --error-unmatch .leopold/state.json >/dev/null 2>&1; then
+    miss "state.json is TRACKED by git — every worktree and clone inherits this run's state (and its git lock); add .leopold/ to .gitignore and untrack it"
+  fi
 
   # Checkpoint: present / absent / malformed. A malformed checkpoint is a named
   # problem — the next window would refuse it, so doctor refuses it here first.

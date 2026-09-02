@@ -289,7 +289,7 @@ assert "...the checkbox vector is snapshotted for the progress gate" "xo" \
 assert "...a window_roll event is logged" "1|true" \
   "$(jq -r 'select(.event=="window_roll") | "\(.window)|\(.checkpoint_written)"' "$T/.leopold/events.jsonl" 2>/dev/null | tail -1)"
 assert "...the stop message says roll, not death" "1" "$(printf '%s' "$err" | grep -c 'window roll, not a death')"
-assert "...and names the resume path" "1" "$(printf '%s' "$err" | grep -c '/leopold-run')"
+assert "...and names the resume path" "1" "$(printf '%s' "$err" | grep -c 'Resume: run /leopold-run')"
 
 # ...and a roll on an already-rolled run keeps counting: budgets survive, never refresh.
 echo '{"active":true,"iteration":7,"max_context_mb":1,"windows":3}' > "$T/.leopold/state.json"
@@ -329,7 +329,7 @@ assert "...checkpoint_written is false" "false" \
   "$(jq -r 'if has("checkpoint_written") then (.checkpoint_written|tostring) else "" end' "$T/.leopold/state.json" 2>/dev/null)"
 assert "...the missing checkpoint is called out loudly" "1" \
   "$(printf '%s' "$err" | grep -c 'no .leopold/CHECKPOINT.md was written')"
-assert "...and the resume path is still named" "1" "$(printf '%s' "$err" | grep -c '/leopold-run')"
+assert "...and the resume path is still named" "1" "$(printf '%s' "$err" | grep -c 'Resume: run /leopold-run')"
 assert "...exactly one grace was granted for that window (no second deferral)" "1" \
   "$(grep -c '"event":"checkpoint_grace"' "$T/.leopold/events.jsonl" 2>/dev/null | head -1)"
 
@@ -373,7 +373,7 @@ head -c 1200000 /dev/zero | tr '\0' a > "$T/transcript.jsonl"
 out="$(printf '{"cwd":"%s","transcript_path":"%s/transcript.jsonl"}' "$T" "$T" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
 assert "the roll notice reaches the user on the allow path" "1" \
   "$(sysmsg "$out" | grep -c 'window roll, not a death')"
-assert "...it names the resume path there" "1" "$(sysmsg "$out" | grep -c '/leopold-run')"
+assert "...it names the resume path there" "1" "$(sysmsg "$out" | grep -c 'Resume: run /leopold-run')"
 assert "...and the allow path is still an ALLOW (no decision field)" "none" "$(dec "$out")"
 
 # max_windows and the livelock verdict are the two stops with no resume pointer — the two
@@ -511,9 +511,12 @@ step1() { ( cd "$1" && CLAUDE_CODE_SESSION_ID="" CODEX_THREAD_ID="" bash "$STEP1
 # byte-level against the template (timestamps and nothing else excluded).
 R="$T/reseed-fresh"; mkdir -p "$R"
 step1 "$R"
-TEMPLATE_CANON='{"active":true,"consecutive_failures":0,"forks_spawned":0,"iteration":0,"max_context_mb":5,"max_failures":3,"max_forks":0,"max_iterations":50,"max_no_progress":6,"max_subagents":8,"session_id":"","subagents_spawned":0}'
+# The owner record is the one addition since the template was pinned: session_id and
+# harness come from the env (empty here), engine is the in-session engine, and the three
+# per-activation values (claimed_at, pid, transcript_path) are dropped like the timestamps.
+TEMPLATE_CANON='{"active":true,"consecutive_failures":0,"forks_spawned":0,"iteration":0,"max_context_mb":5,"max_failures":3,"max_forks":0,"max_iterations":50,"max_no_progress":6,"max_subagents":8,"owner":{"engine":"skill","harness":"","session_id":""},"session_id":"","subagents_spawned":0}'
 assert "no checkpoint: the state template is byte-identical to today's" "$TEMPLATE_CANON" \
-  "$(jq -cS 'del(.started_at,.last_turn)' "$R/.leopold/state.json" 2>/dev/null)"
+  "$(jq -cS 'del(.started_at,.last_turn,.owner.claimed_at,.owner.pid,.owner.transcript_path)' "$R/.leopold/state.json" 2>/dev/null)"
 
 # ...and a plain resume (no checkpoint) still carries ONLY the spent one-shots:
 # iteration resets as it always did, and no window field rides along (0.17.x behavior).
@@ -735,6 +738,155 @@ assert "a plan with no kinds is unchanged" "block/-" \
 - [ ] plain item
 - [ ] (after: 1) another
 ')"
+
+# --- Session ownership: only the session that conducts the run is continued ---
+# The incident this answers (2026-09-02): a second window opened in a checkout for an
+# unrelated question was blocked by this hook, charged nine of the run's seventeen
+# iterations, and ended a producing run with no_progress -- the executor never stopped
+# once. Identity is the payload's session_id (Claude Code and Codex both send it); the
+# owner is state.json's owner.session_id, else the legacy top-level session_id.
+O="$T/owner"; mkdir -p "$O/.leopold"
+ostate() { printf '%s' "$1" > "$O/.leopold/state.json"; }
+ostop()  { printf '{"cwd":"%s","session_id":"%s","transcript_path":"%s/t.jsonl"}' "$O" "$1" "$O" | bash "$HOOKS/stop-continuity.sh" 2>"$O/err"; }
+printf '# Plan\n- [ ] open item\n' > "$O/.leopold/PLAN.md"
+printf 'tiny' > "$O/t.jsonl"
+rm -f "$O/.leopold/events.jsonl"
+
+ostate '{"active":true,"iteration":3,"max_iterations":50,"owner":{"session_id":"AAAA-1111-owner","harness":"claude","engine":"skill"}}'
+cp "$O/.leopold/state.json" "$O/before.json"
+out="$(ostop BBBB-2222-other)"
+assert "a foreign session is allowed to stop" "none" "$(dec "$out")"
+assert "...and state.json is byte-identical (no iteration, no no_progress, no transcript_path)" "same" \
+  "$(cmp -s "$O/before.json" "$O/.leopold/state.json" && echo same || echo changed)"
+assert "...the notice reaches the person as systemMessage and names the owner" "1" \
+  "$(sysmsg "$out" | grep -c 'conducted by session AAAA-111')"
+assert "...and names the adoption path" "1" "$(sysmsg "$out" | grep -c '/leopold-run')"
+assert "...a foreign_stop event names both sessions" "BBBB-222|AAAA-111" \
+  "$(jq -r 'select(.event=="foreign_stop") | "\(.session)|\(.owner)"' "$O/.leopold/events.jsonl" | tail -1)"
+assert "...and no turn_start was written for it" "0" "$(grep -c turn_start "$O/.leopold/events.jsonl")"
+assert "...no lock is left behind" "released" "$([ -d "$O/.leopold/.state.lock" ] && echo held || echo released)"
+
+out="$(ostop AAAA-1111-owner)"
+assert "the owner is continued as before" "block" "$(dec "$out")"
+assert "...and counted (iteration 3 -> 4)" "4" "$(jq -r .iteration "$O/.leopold/state.json")"
+assert "...the turn_start event names the session" "AAAA-111" \
+  "$(jq -r 'select(.event=="turn_start") | .session' "$O/.leopold/events.jsonl" | tail -1)"
+assert "...and the owner's transcript is the one measured" "$O/t.jsonl" "$(jq -r .transcript_path "$O/.leopold/state.json")"
+
+# The legacy top-level session_id (what /leopold-run wrote before the owner record) scopes too.
+ostate '{"active":true,"iteration":0,"max_iterations":50,"session_id":"OLD-OWNER"}'
+assert "a legacy top-level session_id is the owner" "none" "$(dec "$(ostop INTRUDER)")"
+assert "...and that legacy owner is still continued" "block" "$(dec "$(ostop OLD-OWNER)")"
+
+# No owner at all: today's behavior, said once.
+rm -f "$O/.leopold/events.jsonl"
+ostate '{"active":true,"iteration":0,"max_iterations":50,"session_id":""}'
+out="$(ostop X-1)"; err1="$(cat "$O/err")"
+assert "no owner: every session is still continued (today's behavior)" "block" "$(dec "$out")"
+assert "...and it is said on stderr" "1" "$(printf '%s' "$err1" | grep -c 'no session owner')"
+ostop X-1 >/dev/null; ostop Y-2 >/dev/null
+assert "...owner_unknown is logged ONCE, not per turn" "1" "$(grep -c '"event":"owner_unknown"' "$O/.leopold/events.jsonl")"
+assert "...with the reason" "no_owner_in_state" \
+  "$(jq -r 'select(.event=="owner_unknown") | .reason' "$O/.leopold/events.jsonl" | head -1)"
+
+# Owner known, payload without a session_id: cannot scope -> continue, say so.
+rm -f "$O/.leopold/events.jsonl"
+ostate '{"active":true,"iteration":0,"max_iterations":50,"owner":{"session_id":"AAAA","engine":"skill"}}'
+out="$(printf '{"cwd":"%s"}' "$O" | bash "$HOOKS/stop-continuity.sh" 2>/dev/null)"
+assert "a payload with no session_id is continued (unscopable: fail-open for continuity)" "block" "$(dec "$out")"
+assert "...and owner_unknown names why" "no_session_in_payload" \
+  "$(jq -r 'select(.event=="owner_unknown") | .reason' "$O/.leopold/events.jsonl" | head -1)"
+
+# A driver-conducted run: the in-session engine conducts nobody.
+rm -f "$O/.leopold/events.jsonl"
+ostate '{"active":true,"iteration":0,"max_iterations":50,"orchestrator_pid":4242,"owner":{"session_id":"","harness":"claude","engine":"driver","pid":4242}}'
+out="$(printf '{"cwd":"%s","session_id":"worker-1"}' "$O" | LEOPOLD_SDK_WORKER=1 bash "$HOOKS/stop-continuity.sh" 2>&1)"
+assert "a driver worker stops silently (not blocked, no notice)" "" "$out"
+assert "...and is not counted" "0" "$(jq -r .iteration "$O/.leopold/state.json")"
+assert "...and logs nothing" "0" "$( { [ -f "$O/.leopold/events.jsonl" ] && wc -l < "$O/.leopold/events.jsonl" || echo 0; } | tr -d ' ')"
+out="$(ostop human-2)"
+assert "a session beside a driver run is allowed to stop" "none" "$(dec "$out")"
+assert "...and told which run holds the project" "1" "$(sysmsg "$out" | grep -c 'driver-conducted run.*pid 4242')"
+assert "...with a foreign_stop naming the driver" "driver" \
+  "$(jq -r 'select(.event=="foreign_stop") | .owner' "$O/.leopold/events.jsonl" | tail -1)"
+ostate '{"active":true,"iteration":0,"max_iterations":50,"orchestrator_pid":4242}'
+out="$(printf '{"cwd":"%s","session_id":"worker-3"}' "$O" | LEOPOLD_SDK_WORKER=1 bash "$HOOKS/stop-continuity.sh" 2>&1)"
+assert "a state an OLDER driver wrote (pid, no session) is a driver run too" "" "$out"
+
+# A stop names its session and releases the owner with the run.
+rm -f "$O/.leopold/events.jsonl"
+ostate '{"active":true,"iteration":49,"max_iterations":50,"owner":{"session_id":"AAAA","engine":"skill"}}'
+ostop AAAA >/dev/null; ostop AAAA >/dev/null
+assert "the stop event names the session" "AAAA" "$(jq -r 'select(.event=="stop") | .session' "$O/.leopold/events.jsonl" | tail -1)"
+assert "...and the owner is released with the run" "yes" \
+  "$([ -n "$(jq -r '.owner.released_at // ""' "$O/.leopold/state.json")" ] && echo yes || echo no)"
+
+# --- One writer at a time: concurrent stops do not lose updates ---
+# Before the lock, four concurrent hooks left iteration=1 with four turn_start events
+# all claiming turn 1 (two sessions stopping in the same second, or the hook wired twice).
+ostate '{"active":true,"iteration":0,"max_iterations":50,"owner":{"session_id":"S","engine":"skill"}}'
+rm -f "$O/.leopold/events.jsonl"
+for i in 1 2 3 4; do (printf '{"cwd":"%s","session_id":"S"}' "$O" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1) & done; wait
+assert "four concurrent owner stops count four turns (mkdir lock)" "4" "$(jq -r .iteration "$O/.leopold/state.json")"
+assert "...with four distinct turn_start iterations" "4" \
+  "$(jq -r 'select(.event=="turn_start") | .iteration' "$O/.leopold/events.jsonl" | sort -u | wc -l | tr -d ' ')"
+assert "...and the lock released" "released" "$([ -d "$O/.leopold/.state.lock" ] && echo held || echo released)"
+mkdir -p "$O/.leopold/.state.lock"; touch -t 202001010000 "$O/.leopold/.state.lock"
+out="$(ostop S)"
+assert "a stale lock (a hook that died holding it) is reaped, not waited on" "block" "$(dec "$out")"
+assert "...and the stop is counted" "5" "$(jq -r .iteration "$O/.leopold/state.json")"
+
+# --- Step 1 writes the owner record from the harness env ---
+step1_as() { ( cd "$1" && shift && env "$@" bash "$STEP1" ) >/dev/null 2>&1; }
+R="$T/owner-claim"; mkdir -p "$R"
+step1_as "$R" CLAUDE_CODE_SESSION_ID=sess-claude-1 CODEX_THREAD_ID= CLAUDE_PID=777
+assert "Step 1 records this session as the owner" "sess-claude-1|claude|skill|777" \
+  "$(jq -r '"\(.owner.session_id)|\(.owner.harness)|\(.owner.engine)|\(.owner.pid)"' "$R/.leopold/state.json")"
+assert "...and keeps the legacy top-level session_id in step" "sess-claude-1" "$(jq -r .session_id "$R/.leopold/state.json")"
+assert "...a fresh activation records no takeover" "0" "$(grep -c owner_takeover "$R/.leopold/events.jsonl")"
+step1_as "$R" CLAUDE_CODE_SESSION_ID= CODEX_THREAD_ID=thread-codex-9 CLAUDE_PID=
+assert "on Codex the owner is the thread id, harness codex" "thread-codex-9|codex" \
+  "$(jq -r '"\(.owner.session_id)|\(.owner.harness)"' "$R/.leopold/state.json")"
+assert "...taking the seat from another live owner is on the record" "thread-c|sess-cla|false" \
+  "$(jq -r 'select(.event=="owner_takeover") | "\(.session)|\(.previous)|\(.forced)"' "$R/.leopold/events.jsonl" | tail -1)"
+step1_as "$R" CLAUDE_CODE_SESSION_ID=sess-claude-2 CODEX_THREAD_ID= LEOPOLD_TAKEOVER=1
+assert "...and a forced takeover says forced" "true" \
+  "$(jq -r 'select(.event=="owner_takeover") | .forced' "$R/.leopold/events.jsonl" | tail -1)"
+step1_as "$R" CLAUDE_CODE_SESSION_ID=sess-claude-2 CODEX_THREAD_ID=
+assert "...resuming one's own run is not a takeover" "2" "$(grep -c owner_takeover "$R/.leopold/events.jsonl")"
+
+# --- The owner reader: the one word /leopold-run and /leopold-stop act on ---
+OWNER="$ROOT/scripts/leopold-owner.sh"
+ocheck() { ( cd "$O" && env "$@" bash "$OWNER" check "$O" ) 2>/dev/null | cut -d: -f1; }
+ostate '{"active":false}'
+assert "owner check: no active run -> FREE" "FREE" "$(ocheck CLAUDE_CODE_SESSION_ID=me)"
+fresh="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+ostate "{\"active\":true,\"last_turn\":\"$fresh\",\"owner\":{\"session_id\":\"me\",\"engine\":\"skill\",\"harness\":\"claude\"}}"
+assert "owner check: my own run -> MINE" "MINE" "$(ocheck CLAUDE_CODE_SESSION_ID=me)"
+assert "owner check: another session's live run -> BLOCKED" "BLOCKED" "$(ocheck CLAUDE_CODE_SESSION_ID=other)"
+assert "owner check: --takeover turns BLOCKED into TAKEOVER" "TAKEOVER" \
+  "$( ( cd "$O" && CLAUDE_CODE_SESSION_ID=other bash "$OWNER" check "$O" --takeover ) 2>/dev/null | cut -d: -f1)"
+ostate '{"active":true,"last_turn":"2020-01-01T00:00:00Z","owner":{"session_id":"me","engine":"skill","harness":"claude"}}'
+assert "owner check: an owner with no sign of life -> STALE" "STALE" "$(ocheck CLAUDE_CODE_SESSION_ID=other)"
+ostate "{\"active\":true,\"last_turn\":\"2020-01-01T00:00:00Z\",\"owner\":{\"session_id\":\"me\",\"engine\":\"skill\",\"pid\":$$}}"
+assert "owner check: a live harness pid keeps an old last_turn alive -> BLOCKED" "BLOCKED" "$(ocheck CLAUDE_CODE_SESSION_ID=other)"
+printf 'x' > "$O/fresh.jsonl"
+ostate "{\"active\":true,\"last_turn\":\"2020-01-01T00:00:00Z\",\"owner\":{\"session_id\":\"me\",\"engine\":\"skill\",\"transcript_path\":\"$O/fresh.jsonl\"}}"
+assert "owner check: a freshly written transcript keeps a long single turn alive -> BLOCKED" "BLOCKED" "$(ocheck CLAUDE_CODE_SESSION_ID=other)"
+ostate "{\"active\":true,\"orchestrator_pid\":$$}"
+assert "owner check: a live driver run -> BLOCKED" "BLOCKED" "$(ocheck CLAUDE_CODE_SESSION_ID=other)"
+ostate '{"active":true,"orchestrator_pid":4000000,"last_turn":"2020-01-01T00:00:00Z"}'
+assert "owner check: a dead driver run -> STALE" "STALE" "$(ocheck CLAUDE_CODE_SESSION_ID=other)"
+ostate "{\"active\":true,\"last_turn\":\"$fresh\",\"session_id\":\"legacy-me\"}"
+assert "owner check: a legacy top-level session_id is the owner (MINE)" "MINE" "$(ocheck CLAUDE_CODE_SESSION_ID=legacy-me)"
+assert "owner check: ...and BLOCKED for anyone else" "BLOCKED" "$(ocheck CLAUDE_CODE_SESSION_ID=other)"
+printf '{"event":"foreign_stop"}\n{"event":"foreign_stop"}\n{"event":"turn_start"}\n' > "$O/.leopold/events.jsonl"
+assert "owner status counts the foreign stops the run turned away" "2|legacy-m|true" \
+  "$( ( cd "$O" && CLAUDE_CODE_SESSION_ID=legacy-me bash "$OWNER" status "$O" ) 2>/dev/null | jq -r '"\(.foreign_stops)|\(.owner_short)|\(.mine)"')"
+assert "the run skill asks the owner reader before activating" "yes" \
+  "$(grep -q 'leopold-owner.sh" check' "$SKILL" && echo yes || echo no)"
+assert "the stop skill asks it before ending someone else's run" "yes" \
+  "$(grep -q 'leopold-owner.sh" check' "$ROOT/skills/leopold-stop/SKILL.md" && echo yes || echo no)"
 
 echo
 if [ "$fail" -eq 0 ]; then echo "all hook behavior tests passed"; else echo "HOOK TESTS FAILED"; exit 1; fi
