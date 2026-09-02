@@ -826,7 +826,7 @@ assert "...and the owner is released with the run" "yes" \
 # all claiming turn 1 (two sessions stopping in the same second, or the hook wired twice).
 ostate '{"active":true,"iteration":0,"max_iterations":50,"owner":{"session_id":"S","engine":"skill"}}'
 rm -f "$O/.leopold/events.jsonl"
-for i in 1 2 3 4; do (printf '{"cwd":"%s","session_id":"S"}' "$O" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1) & done; wait
+for _ in 1 2 3 4; do (printf '{"cwd":"%s","session_id":"S"}' "$O" | bash "$HOOKS/stop-continuity.sh" >/dev/null 2>&1) & done; wait
 assert "four concurrent owner stops count four turns (mkdir lock)" "4" "$(jq -r .iteration "$O/.leopold/state.json")"
 assert "...with four distinct turn_start iterations" "4" \
   "$(jq -r 'select(.event=="turn_start") | .iteration' "$O/.leopold/events.jsonl" | sort -u | wc -l | tr -d ' ')"
