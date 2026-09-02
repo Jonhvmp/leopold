@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-02
+
 ### Fixed
 - **One session conducts a run.** The Stop hook now continues and counts only the
   session recorded as the run's `owner` in `state.json`; any other session that stops
