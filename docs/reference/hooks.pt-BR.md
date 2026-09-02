@@ -23,7 +23,9 @@ Roda quando o agente termina um turno. Contrato: lê JSON no stdin; imprime
 flowchart TD
     In["Evento Stop (JSON no stdin)"] --> Active{run ativa?}
     Active -- não --> Allow([exit 0 · permite parar])
-    Active -- sim --> Kill{arquivo STOP?}
+    Active -- sim --> Owner{"a sessão que parou<br/>é a dona do run?"}
+    Owner -- não --> Foreign(["exit 0 · permite parar ·<br/>foreign_stop + aviso"])
+    Owner -- sim --> Kill{arquivo STOP?}
     Kill -- sim --> Allow
     Kill -- não --> Budget{budget / falhas atingidos?}
     Budget -- sim --> Allow
@@ -59,6 +61,67 @@ quebrado — mas ninguém era avisado.
 Os dois harnesses carregam o campo no mesmo fio: o Claude Code documenta
 `systemMessage` para todos os hooks, e o Codex desserializa `reason` / `stopReason` /
 `suppressOutput` / `systemMessage` no seu `StopCommandOutputWire`.
+
+### Propriedade da sessão — uma sessão conduz um run
+
+Um run é conduzido por **uma sessão**. O `state.json` a registra como `owner`
+(`session_id`, `harness`, `engine`, `claimed_at`, `pid`, `transcript_path`), escrito uma
+vez pelo engine que ativou o run: o Step 1 do `/leopold-run` (engine `skill`; o id da
+sessão é o que o harness exporta para todo shell que executa — `CLAUDE_CODE_SESSION_ID`
+no Claude Code, `CODEX_THREAD_ID` no Codex) ou o `initState` do driver (engine `driver`,
+sem id de sessão). Todo payload de Stop nomeia a sessão que parou como `session_id` — a
+mesma string — então o hook faz uma comparação antes de contar qualquer coisa:
+
+| Owner no `state.json` | Sessão que parou | O hook |
+| --- | --- | --- |
+| igual ao `session_id` do payload | a dona | continua e conta, exatamente como antes |
+| outra sessão | não é a dona | **permite a parada**, não escreve nada no `state.json`, registra um evento `foreign_stop` nomeando as duas sessões e avisa a pessoa via `systemMessage` quem é a dona e como assumir o assento (`/leopold-run`) |
+| engine `driver` | uma sessão que o driver criou (`LEOPOLD_SDK_WORKER=1` no ambiente) | permite a parada em silêncio — o conductor decide o que vem depois |
+| engine `driver` | qualquer outra sessão | permite a parada com um aviso nomeando o run do driver e seu pid |
+| presente, mas o payload não tem `session_id` | impossível escopar | continua como antes e registra `owner_unknown` uma vez (`no_session_in_payload`) |
+| ausente (um state anterior ao registro) | qualquer uma | continua como antes e registra `owner_unknown` uma vez (`no_owner_in_state`) — reative com `/leopold-run` para vincular o run |
+
+Um state escrito por um `/leopold-run` antigo carrega a sessão no `session_id` de
+primeiro nível; o hook o lê como owner, então esses runs também ficam escopados. Um
+state que um driver antigo escreveu tem `orchestrator_pid` e nenhuma sessão: é um run do
+driver.
+
+Por que existe: em 2026-09-02 uma segunda janela do Claude Code, aberta num checkout
+para uma pergunta sem relação, foi bloqueada por este hook, cobrada em nove das dezessete
+iterações do run e encerrou um run produtivo com `no_progress` — o executor nunca tinha
+parado uma vez sequer. A mesma regra encerra um defeito latente nos runs padrão do
+driver, onde o hook disparava dentro de cada worker (eles rodam no cwd do projeto com os
+hooks do usuário carregados) e mandava cada um pegar o próximo item do plano depois do
+seu status block ([SDK Worker Hooks](sdk-worker-hooks.md)).
+
+Duas consequências a mais de um único owner: o budget de contexto é medido apenas na
+transcrição da dona (uma parada estrangeira não sobrescreve mais `transcript_path`), e
+todo evento que o hook registra carrega `session` (os oito primeiros caracteres do id).
+
+**Um escritor por vez.** Toda parada contada toma um lock `mkdir`
+(`.leopold/.state.lock`) em volta do seu read-modify-write do `state.json`; um lock com
+mais de um minuto é de um hook que morreu e é recolhido. Antes dele, duas paradas no
+mesmo segundo — ou uma parada com o hook fiado duas vezes — perdiam uma atualização em
+cada contador. Se o lock não puder ser tomado em cerca de cinco segundos a parada ainda
+é contada e um evento `lock_timeout` diz isso: continuidade vence precisão de contador.
+
+**O hook é o dono dos contadores.** `iteration`, `no_progress`, `progress_sig`,
+`windows`, `window_*`, `context_mb`, `transcript_path`, `last_turn` e `owner` são
+escritos só pelo hook (e pela ativação); a skill de run diz isso nas regras duras.
+
+**Quem mais lê o owner.** `scripts/leopold-owner.sh` é o único leitor, compartilhado por
+`/leopold-run` (que se recusa a iniciar ao lado de uma dona viva e assume uma abandonada;
+`--takeover` força), `/leopold-stop` (que se recusa a encerrar o run de outra sessão viva
+sem `--force`), `/leopold-status`, `leopold doctor` e `leopold watch`. Vitalidade é
+qualquer sinal dentro de dez minutos: o pid do harness da dona ainda roda, `last_turn`
+está fresco, ou o arquivo de transcrição da dona foi modificado — então um executor que
+trabalha um turno longo sem parar nunca é lido como abandonado.
+
+Verificado ao vivo no Claude Code 2.1.258 e no Codex CLI 0.150.1: o `session_id` do
+payload de Stop é igual ao `CLAUDE_CODE_SESSION_ID` / `CODEX_THREAD_ID` do shell;
+sobrevive a `claude -p --resume`; subagentes do Agent tool disparam `SubagentStop` (com
+o id do pai), nunca `Stop`; e um processo de hook do Codex não herda nenhuma variável
+`CODEX_*`, então no Codex o payload é a única identidade que um hook tem.
 
 ### O roll da janela de contexto
 
@@ -297,7 +360,8 @@ não têm como divergir.
 ## Log de eventos
 
 Os dois hooks do engine anexam eventos estruturados em `.leopold/events.jsonl`
-(`turn_start`, `stop`, `guard_block`, e os eventos de continuidade
+(`turn_start`, `stop`, `guard_block`, os eventos de propriedade `foreign_stop`,
+`owner_unknown`, `owner_takeover` e `lock_timeout`, e os eventos de continuidade
 `checkpoint_instruction`, `checkpoint_grace`, `window_roll`,
 `no_progress_across_windows`, `max_windows`; o watcher adiciona `window_relaunch` /
 `window_relaunch_refused`),

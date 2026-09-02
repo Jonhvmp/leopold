@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
-import { boolFrom, autonomyFrom, loadConfig, briefDigest, readAmendmentsAdded } from "../src/config.ts";
+import { boolFrom, autonomyFrom, loadConfig, briefDigest, readAmendmentsAdded, initState } from "../src/config.ts";
+import { OWNER_KEYS, type Brief } from "../src/types.ts";
 
 const GUARDRAILS = `# Guardrails
 ## Quality & orchestration
@@ -223,4 +224,20 @@ test("an autonomy value the driver cannot read never resolves to the permissive 
     "an ignored posture must SAY it was ignored — silent is how the operator never finds out");
   // And the default is untouched: nothing typed still means full (decision D0).
   withCleanEnv(() => { assert.equal(loadConfig([], "").autonomy, "full"); });
+});
+
+test("initState writes the driver's owner record: engine driver, no session, this process", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "leo-owner-"));
+  const leoDir = path.join(root, ".leopold");
+  fs.mkdirSync(leoDir);
+  const brief = { mission: "", charter: "", guardrails: "", planPath: path.join(leoDir, "PLAN.md"), root, leoDir } as Brief;
+  const st = initState(brief, { harness: "codex" });
+  // No interactive session can ever match an empty session_id: the in-session Stop hook
+  // continues nobody inside a driver run, and the driver's own workers stop freely.
+  assert.deepEqual(st.owner, {
+    session_id: "", harness: "codex", engine: "driver", claimed_at: st.started_at, pid: process.pid, transcript_path: "",
+  });
+  const onDisk = JSON.parse(fs.readFileSync(path.join(leoDir, "state.json"), "utf8")) as { owner: Record<string, unknown> };
+  assert.deepEqual(Object.keys(onDisk.owner).sort(), [...OWNER_KEYS].sort());
+  assert.equal(initState(brief).owner?.harness, "", "harness unknown -> empty, never invented");
 });

@@ -214,6 +214,18 @@ working tree, so they would clobber each other's state and code. `/leopold-run`
 refuses to start a second run while another is active (a run idle for 10+ minutes
 is treated as stale and can be taken over).
 
+### One owner per run
+
+The run is conducted by **one session**, recorded as `owner` in `state.json` at
+activation. The Stop hook continues and counts only that session; every other session
+that stops in this checkout is told who owns the run and allowed to stop, and its stops
+are logged as `foreign_stop` — never charged to the run. `/leopold-run` refuses to start
+beside a live owner and takes over a stale one (no sign of life for ten minutes;
+`--takeover` forces it); `/leopold-stop` refuses to end another live session's run
+without `--force`. `/leopold-status` and `leopold doctor` name the owner and whether it
+is alive. The git lock stays project-wide — the checkout shares one index — and its
+denial names the owning run.
+
 ### Running in parallel — use worktrees
 
 True parallelism comes from isolation, not threads: two agents editing the same

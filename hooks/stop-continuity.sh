@@ -10,6 +10,15 @@
 # {"decision":"block","reason":"..."} and exit 0. To allow stopping, exit 0 with
 # no output. Failure mode is intentionally fail-open (allow stop): a broken hook
 # must never trap a session in a loop.
+#
+# ONE SESSION CONDUCTS A RUN. The run records its owner (`owner.session_id`, written
+# by /leopold-run Step 1 or by the driver's initState) and every Stop payload names the
+# stopping session (`session_id`, on Claude Code and Codex alike). Only the owner is
+# continued and counted; any other session that stops inside the checkout is told, once,
+# who owns the run and is allowed to stop -- nothing is re-injected, nothing is counted.
+# This is the fix for a real incident: a second window opened in a checkout for an
+# unrelated question was conscripted, charged nine of the run's seventeen iterations and
+# ended a producing run with a `no_progress` verdict fed only by its own idle stops.
 
 input="$(cat 2>/dev/null || true)"
 
@@ -45,6 +54,102 @@ jq -e . "$STATE" >/dev/null 2>&1 || state_invalid "malformed JSON"
 active="$(jq -r '.active // false' "$STATE" 2>/dev/null || echo false)"
 [ "$active" = "true" ] || exit 0
 
+log_event() { printf '%s\n' "$1" >> "$LEO/events.jsonl" 2>/dev/null || true; }
+
+# ---- Session ownership: only the session that conducts the run is continued --------
+# Identity is the payload's `session_id` (Claude Code 2.1.258 and Codex 0.150.1 both
+# send it; it equals CLAUDE_CODE_SESSION_ID / CODEX_THREAD_ID in the shell and survives
+# a --resume -- verified live, docs/reference/hooks.md). The owner is `owner.session_id`
+# in state.json, falling back to the top-level `session_id` an older /leopold-run wrote
+# from the same env var, so a state activated before the owner record existed is still
+# scoped to the session that activated it.
+#
+# The table, in order:
+#   * owner engine is the driver -> the in-session engine has nothing to conduct. A
+#     session the driver spawned (LEOPOLD_SDK_WORKER=1 in its env, set at the one query
+#     seam in packages/driver/src/sdk.ts) stops silently; any other session beside a
+#     driver run gets the one-line notice below. Before this rule the driver's own
+#     workers were blocked after their status block and told to "pick the next PLAN
+#     item" -- reproduced with a real runItem, docs/reference/sdk-worker-hooks.md.
+#   * owner known, payload names another session -> allow the stop. NOTHING is written
+#     to state.json (no iteration, no no_progress, no transcript_path), one
+#     `foreign_stop` event names the session, and the notice reaches the person through
+#     `systemMessage` (stderr is dropped on an allowed stop).
+#   * owner known, payload has no session_id -> a harness this hook cannot scope. Today's
+#     behavior, said out loud once (`owner_unknown`, reason no_session_in_payload).
+#   * no owner at all (a state older than the record, or an env var that was unset at
+#     activation) -> today's behavior, said out loud once (`owner_unknown`).
+# Unknown never silently becomes "not mine": the fail-open direction for CONTINUITY is
+# to keep continuing, so the two unscopable cases behave as before and say so.
+me="$(printf '%s' "$input" | jq -r '.session_id // empty' 2>/dev/null || true)"
+me8="${me:0:8}"; [ -n "$me8" ] || me8="-"
+owner_sid="$(jq -r '.owner.session_id // .session_id // ""' "$STATE" 2>/dev/null || true)"
+owner_engine="$(jq -r '.owner.engine // ""' "$STATE" 2>/dev/null || true)"
+owner_harness="$(jq -r '.owner.harness // ""' "$STATE" 2>/dev/null || true)"
+owner_pid="$(jq -r '.owner.pid // .orchestrator_pid // ""' "$STATE" 2>/dev/null || true)"
+# A driver run is recognized by its engine, or -- for a state an older driver wrote --
+# by the orchestrator pid it has always persisted with no session id beside it.
+if [ "$owner_engine" = "driver" ] || { [ -z "$owner_sid" ] && [ -n "$owner_pid" ] && [ "$owner_engine" = "" ]; }; then
+  owner_engine="driver"
+fi
+OWNER_UNKNOWN=""
+if [ "$owner_engine" = "driver" ]; then
+  if [ "${LEOPOLD_SDK_WORKER:-}" = "1" ]; then
+    # The driver's own spawned session: the conductor decides what happens next.
+    exit 0
+  fi
+  log_event "$(jq -cn --arg ts "$now" --arg s "$me8" --arg e "driver" --arg pid "$owner_pid" \
+    '{ts:$ts,event:"foreign_stop",session:$s,owner:"driver",owner_engine:$e,owner_pid:$pid}' 2>/dev/null || echo '{}')"
+  fmsg="Leopold: a driver-conducted run is active in this project (leopold run, pid ${owner_pid:-?}); this session is not conducting it, so nothing was counted and no plan item was re-injected. Watch it with leopold watch, or stop it with /leopold-stop --force."
+  jq -cn --arg m "$fmsg" '{systemMessage:$m}' 2>/dev/null
+  echo "$fmsg" >&2
+  exit 0
+fi
+if [ -n "$owner_sid" ] && [ -n "$me" ] && [ "$owner_sid" != "$me" ]; then
+  o8="${owner_sid:0:8}"
+  log_event "$(jq -cn --arg ts "$now" --arg s "$me8" --arg o "$o8" --arg e "${owner_engine:-skill}" --arg h "$owner_harness" \
+    '{ts:$ts,event:"foreign_stop",session:$s,owner:$o,owner_engine:$e,owner_harness:$h}' 2>/dev/null || echo '{}')"
+  fmsg="Leopold: the run in this project is conducted by session ${o8} (${owner_engine:-skill}${owner_harness:+, $owner_harness}); this session is not the executor, so nothing was counted and no plan item was re-injected. To take the seat when that session is gone: /leopold-run takes over a stale owner (add --takeover to force it)."
+  jq -cn --arg m "$fmsg" '{systemMessage:$m}' 2>/dev/null
+  echo "$fmsg" >&2
+  exit 0
+fi
+if [ -n "$owner_sid" ] && [ -z "$me" ]; then
+  OWNER_UNKNOWN="no_session_in_payload"
+elif [ -z "$owner_sid" ]; then
+  OWNER_UNKNOWN="no_owner_in_state"
+fi
+if [ -n "$OWNER_UNKNOWN" ] && [ "$(jq -r '.owner_unknown_noted // false' "$STATE" 2>/dev/null)" != "true" ]; then
+  log_event "$(jq -cn --arg ts "$now" --arg s "$me8" --arg r "$OWNER_UNKNOWN" \
+    '{ts:$ts,event:"owner_unknown",session:$s,reason:$r}' 2>/dev/null || echo '{}')"
+  echo "Leopold: this run has no session owner ($OWNER_UNKNOWN) -- every session that stops in this checkout is continued and counted, as before the owner record existed. Re-activate with /leopold-run to bind the run to one session." >&2
+fi
+
+# ---- One writer at a time -----------------------------------------------------------
+# Every counted stop below is a read-modify-write of state.json. Two stops in the same
+# second -- or one stop with the hook wired twice -- used to lose an update on every
+# counter (four concurrent hooks left iteration=1 with four turn_start events claiming
+# turn 1). A mkdir lock is atomic on every filesystem bash runs on; a lock older than a
+# minute is a hook that died holding it and is reaped. If the lock cannot be taken in
+# ~5s the stop still proceeds -- continuity beats counter accuracy -- and says so.
+LOCK="$LEO/.state.lock"
+lock_state() {
+  local i=0
+  while ! mkdir "$LOCK" 2>/dev/null; do
+    if [ -n "$(find "$LEO" -maxdepth 1 -name .state.lock -mmin +1 2>/dev/null)" ]; then
+      rmdir "$LOCK" 2>/dev/null || true; continue
+    fi
+    i=$((i + 1)); [ "$i" -ge 50 ] && return 1
+    sleep 0.1
+  done
+  trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
+  return 0
+}
+if ! lock_state; then
+  log_event "$(jq -cn --arg ts "$now" --arg s "$me8" '{ts:$ts,event:"lock_timeout",session:$s}' 2>/dev/null || echo '{}')"
+  echo "Leopold: .leopold/.state.lock was held for over 5s by another hook -- this stop is counted without the lock." >&2
+fi
+
 # A present-but-non-numeric budget field is the real hole: it would make the
 # `iter >= max` test below error out (and get swallowed), silently skipping the
 # budget -> unbounded loop. So any present budget field must be an integer. Missing
@@ -55,8 +160,6 @@ for f in iteration max_iterations consecutive_failures max_failures windows max_
     state_invalid "non-numeric $f ($v)"
   fi
 done
-
-log_event() { printf '%s\n' "$1" >> "$LEO/events.jsonl" 2>/dev/null || true; }
 
 # allow_stop <reason> [operator notice]
 #
@@ -76,8 +179,9 @@ allow_stop() {
   local r="$1" n="${2:-}" tmp
   [ -n "$n" ] && jq -cn --arg m "$n" '{systemMessage:$m}' 2>/dev/null
   tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
-  jq --arg r "$r" '.active=false | .stopped_reason=$r' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
-  log_event "{\"ts\":\"$now\",\"event\":\"stop\",\"reason\":\"$r\"}"
+  jq --arg r "$r" --arg t "$now" '.active=false | .stopped_reason=$r
+    | (if (.owner | type) == "object" then .owner.released_at=$t else . end)' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+  log_event "{\"ts\":\"$now\",\"event\":\"stop\",\"reason\":\"$r\",\"session\":\"${me8:--}\"}"
   # Safety hygiene: always clear the kill switch and per-session git opt-in tokens
   # so the next run re-locks git and does not halt immediately on a stale STOP.
   rm -f "$LEO/STOP" "$LEO/ALLOW_GIT" "$LEO/ALLOW_PUSH" "$LEO/ALLOW_PUBLISH" 2>/dev/null || true
@@ -582,9 +686,11 @@ fi
 next=$((iter + 1))
 tmp="$(mktemp 2>/dev/null || echo "$STATE.tmp")"
 jq --argjson n "$next" --arg t "$now" --argjson np "$np" --arg sig "$sig" --argjson cm "${ctx_mb:-0}" --arg tp "${tpath:-}" \
+   --arg ou "${OWNER_UNKNOWN:-}" \
    '.iteration=$n | .last_turn=$t | .no_progress=$np | .progress_sig=$sig | .context_mb=$cm
-    | (if $tp != "" then .transcript_path=$tp else . end)' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
-log_event "{\"ts\":\"$now\",\"event\":\"turn_start\",\"iteration\":$next,\"open_items\":$open_items,\"no_progress\":$np}"
+    | (if $tp != "" then .transcript_path=$tp else . end)
+    | (if $ou != "" then .owner_unknown_noted=true else . end)' "$STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE" || true
+log_event "{\"ts\":\"$now\",\"event\":\"turn_start\",\"iteration\":$next,\"open_items\":$open_items,\"no_progress\":$np,\"session\":\"$me8\"}"
 
 # The re-grounding sentence, defined ONCE for the whole bash surface and injected into
 # every continued turn. A continuation follows narration from earlier in the window (or

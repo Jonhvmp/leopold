@@ -169,6 +169,24 @@ janelas ainda prepara e reporta; o humano é quem entrega. `context_budget` aind
 aparece como `stopped_reason` — mas agora marca um roll de janela em uma run que
 continua, não uma morte.
 
+## Um dono por run
+
+Um run é conduzido por uma sessão, registrada como `owner` no `state.json` quando ele é
+ativado. O hook de Stop continua e conta só essa sessão; qualquer outra sessão que pare
+dentro do checkout — uma segunda janela aberta para uma pergunta sem relação, um
+`claude -p` headless, os próprios workers do driver — pode parar e é avisada de quem é o
+dono ([Hooks: propriedade da sessão](../reference/hooks.pt-BR.md)).
+
+Propriedade e roll se encaixam. Um roll encerra o estado ativo do run, então o
+`/leopold-run` da próxima janela — o relançamento headless do watcher ou o seu — assume
+o assento sem esperar; uma sessão mantém o id através de `--resume`, então uma janela
+que compacta ou retoma continua conduzindo. O que uma sessão nova não pode fazer é
+começar ao lado de um dono vivo: `/leopold-run` se recusa enquanto o dono mostra sinal de
+vida dentro de dez minutos (um pid do harness vivo, um turno contado, uma escrita na
+transcrição) e assume um abandonado, registrando `owner_takeover`; `--takeover` força e
+fica registrado como forçado. `/leopold-stop` se recusa a encerrar o run de outra sessão
+viva sem `--force`.
+
 ## As três memórias
 
 Desde a 0.19.0 uma run lembra em três camadas distintas. Elas não se sobrepõem — cada
