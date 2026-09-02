@@ -2142,6 +2142,9 @@ the turn loop. The Stop hook carries it forward; the guard hook locks git.</p>
 <li><strong>Preflight</strong> aborts if the brief is missing — run <code>/leopold-brief</code> first.</li>
 <li><strong>Behavior</strong> adopts spawned-session mode so gstack skills auto-decide.</li>
 </ul>
+<p>One owner per run: <code>/leopold-run</code> refuses to activate beside a <strong>live</strong> owner (another
+session conducting this run, seen within the last ten minutes) and takes over a stale
+one; <code>/leopold-run --takeover</code> forces the seat and is recorded as forced.</p>
 <h2 id="leopold-workflow"><code>/leopold-workflow</code><a class="headerlink" href="#leopold-workflow" title="Permanent link">&para;</a></h2>
 <p>Phase 2, the workflow way. Compiles the same brief into a
 <a href="https://code.claude.com/docs/en/workflows">dynamic workflow</a> — a JavaScript harness
@@ -2223,10 +2226,16 @@ structured report of bugs, confusion, accessibility problems and friction.</p>
 </ul>
 <h2 id="leopold-status"><code>/leopold-status</code><a class="headerlink" href="#leopold-status" title="Permanent link">&para;</a></h2>
 <p>Read-only dashboard: active or not, plan progress, decisions logged, recent
-events. Never mutates anything.</p>
+events. Never mutates anything. It also names the run's <strong>owner</strong> — the session
+conducting it, its harness and engine, whether it shows a sign of life and when it was
+last seen — and how many stops from other sessions the hook turned away (a non-zero
+count means a second window is open in this checkout).</p>
 <h2 id="leopold-stop"><code>/leopold-stop</code><a class="headerlink" href="#leopold-stop" title="Permanent link">&para;</a></h2>
 <p>Clean shutdown. Flips the run inactive so the Stop hook allows the session to
-halt at the next turn boundary. The blunt alternative is <code>touch .leopold/STOP</code>.</p>
+halt at the next turn boundary. The blunt alternative is <code>touch .leopold/STOP</code>.
+A run is conducted by one session: stopping it from that session, or a run whose owner
+shows no sign of life, is a plain stop; stopping a run that another <strong>live</strong> session (or
+a live <code>leopold run</code>) is conducting is refused unless invoked as <code>/leopold-stop --force</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Frontmatter shape</p>
 <p>Each skill declares <code>name</code>, <code>version</code>, <code>description</code>, <code>allowed-tools</code>, and

@@ -1758,6 +1758,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#adendo-2026-09-02-o-hook-de-stop-disparava-dentro-dos-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adendo (2026-09-02) — o hook de Stop disparava dentro dos workers
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2050,6 +2061,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#adendo-2026-09-02-o-hook-de-stop-disparava-dentro-dos-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adendo (2026-09-02) — o hook de Stop disparava dentro dos workers
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2203,6 +2225,20 @@ vazio antes e depois, e um <code>sha1sum</code> sobre um tar de <code>.leopold/<
 antes e depois das duas execuções
 (<code>3a59fc63914dda7f8bb1cb65c5924293bfb2db2e</code>). Todas as escritas ficaram sob a
 raiz do <code>mktemp -d</code>.</p>
+<h2 id="adendo-2026-09-02-o-hook-de-stop-disparava-dentro-dos-workers">Adendo (2026-09-02) — o hook de Stop disparava <em>dentro</em> dos workers<a class="headerlink" href="#adendo-2026-09-02-o-hook-de-stop-disparava-dentro-dos-workers" title="Permanent link">&para;</a></h2>
+<p>A conclusão acima tinha uma consequência que ninguém tirou na época: como um worker roda
+no cwd do projeto com os hooks do usuário carregados, o próprio <code>stop-continuity.sh</code> do
+Leopold dispara dentro de cada worker do driver — e durante um run do driver o
+<code>state.json</code> está ativo. Reproduzido com um <code>runItem</code> real do <code>dist/worker.js</code> no Claude
+Code 2.1.258: o hook bloqueou a parada do worker depois do seu status block, o worker
+anunciou "I'll read the plan and get started on the next item", o conductor recebeu um
+segundo <code>onTurn</code> espúrio (tipo <code>blocked</code>), e o item levou o dobro do tempo. Runs com
+<code>--worktree</code> escapavam só porque <code>.leopold/</code> é gitignored e o worktree não tem
+<code>state.json</code>.</p>
+<p>O conserto é o registro de owner: o <code>initState</code> do driver escreve <code>owner.engine:
+"driver"</code> sem id de sessão, e o hook permite em silêncio toda parada de uma sessão que
+carrega <code>LEOPOLD_SDK_WORKER=1</code>. <code>scripts/test-hooks.sh</code> guarda o caso ("a driver worker
+stops silently"), e <a href="../hooks/">Hooks</a> documenta a tabela de decisão completa.</p>
 <!-- @emit hooks_fire=true -->
 
 

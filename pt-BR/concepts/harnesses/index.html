@@ -2233,9 +2233,20 @@ publica. O Codex entrega o PreToolUse com as mesmas chaves do Claude Code —
 <p><strong><code>stop-continuity.sh</code> (Stop) — o motor autônomo.</strong> Quando o agente termina um turno,
 ele lê <code>state.json</code> e <code>PLAN.md</code>; se ainda há trabalho e nenhuma condição de parada
 bateu, bloqueia o encerramento e reinjeta a próxima instrução. O Codex entrega o Stop
-com <code>cwd</code>, <code>transcript_path</code> e <code>stop_hook_active</code>, e honra a mesma resposta:</p>
+com <code>session_id</code>, <code>turn_id</code>, <code>cwd</code>, <code>transcript_path</code> e <code>stop_hook_active</code> (verificado
+no codex-cli 0.150.1; o Claude Code 2.1.258 envia <code>session_id</code>, <code>prompt_id</code>, <code>cwd</code>,
+<code>transcript_path</code>, <code>stop_hook_active</code> e <code>last_assistant_message</code>), e honra a mesma
+resposta:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span><span class="nt">"decision"</span><span class="p">:</span><span class="s2">"block"</span><span class="p">,</span><span class="nt">"reason"</span><span class="p">:</span><span class="s2">"…"</span><span class="p">}</span>
 </span></code></pre></div>
+<p>O <code>session_id</code> é o que vincula um run à única sessão que o conduz: é igual ao
+<code>CODEX_THREAD_ID</code> na shell tool do Codex e ao <code>CLAUDE_CODE_SESSION_ID</code> no Claude Code, e
+o hook continua só a sessão que bate com o <code>owner</code> do run
+(<a href="../../reference/hooks/">Hooks</a>). Uma diferença importa para quem escreve hooks:
+um processo de hook do Codex não herda nenhuma variável <code>CODEX_*</code> (o do Claude Code herda
+<code>CLAUDE_CODE_SESSION_ID</code>, <code>CLAUDE_PID</code> e <code>CLAUDE_PROJECT_DIR</code>), então no Codex o payload
+é a única identidade que um hook tem — por isso a checagem de owner lê o payload, nunca o
+ambiente.</p>
 <p>Ou seja: autonomia não é exclusividade do Claude. O <code>/leopold-run</code> mantém uma sessão
 Codex andando do mesmo jeito que mantém uma sessão do Claude Code — mesmos orçamentos,
 mesma detecção de não-progresso, mesmo teto de contexto.</p>

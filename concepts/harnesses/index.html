@@ -2233,9 +2233,20 @@ same reply:</p>
 <p><strong><code>stop-continuity.sh</code> (Stop) — the autonomous engine.</strong> When the agent finishes a
 turn it reads <code>state.json</code> and <code>PLAN.md</code>, and if work remains with no stop condition
 met it blocks the halt and re-injects the next instruction. Codex delivers Stop with
-<code>cwd</code>, <code>transcript_path</code> and <code>stop_hook_active</code>, and honors the same reply:</p>
+<code>session_id</code>, <code>turn_id</code>, <code>cwd</code>, <code>transcript_path</code> and <code>stop_hook_active</code> (verified on
+codex-cli 0.150.1; Claude Code 2.1.258 sends <code>session_id</code>, <code>prompt_id</code>, <code>cwd</code>,
+<code>transcript_path</code>, <code>stop_hook_active</code> and <code>last_assistant_message</code>), and honors the same
+reply:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span><span class="nt">"decision"</span><span class="p">:</span><span class="s2">"block"</span><span class="p">,</span><span class="nt">"reason"</span><span class="p">:</span><span class="s2">"…"</span><span class="p">}</span>
 </span></code></pre></div>
+<p>The <code>session_id</code> is what binds a run to the one session conducting it: it equals
+<code>CODEX_THREAD_ID</code> in the shell tool on Codex and <code>CLAUDE_CODE_SESSION_ID</code> on Claude
+Code, and the hook continues only the session that matches the run's <code>owner</code>
+(<a href="../../reference/hooks/">Hooks</a>). One difference matters to hook authors: a Codex hook
+process inherits no <code>CODEX_*</code> environment (Claude Code's inherits
+<code>CLAUDE_CODE_SESSION_ID</code>, <code>CLAUDE_PID</code> and <code>CLAUDE_PROJECT_DIR</code>), so on Codex the
+payload is the only identity a hook has — which is why the owner check reads the
+payload, never the environment.</p>
 <p>So autonomy is not a Claude-only feature. <code>/leopold-run</code> keeps a Codex session going
 the same way it keeps a Claude Code session going, with the same budgets, the same
 no-progress detection, and the same context ceiling.</p>

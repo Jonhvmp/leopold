@@ -1057,6 +1057,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#um-dono-por-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um dono por run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#as-tres-memorias" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2040,6 +2051,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#um-dono-por-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um dono por run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#as-tres-memorias" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2287,6 +2309,21 @@ na 0.18.0 estão marcadas:</p>
 janelas ainda prepara e reporta; o humano é quem entrega. <code>context_budget</code> ainda
 aparece como <code>stopped_reason</code> — mas agora marca um roll de janela em uma run que
 continua, não uma morte.</p>
+<h2 id="um-dono-por-run">Um dono por run<a class="headerlink" href="#um-dono-por-run" title="Permanent link">&para;</a></h2>
+<p>Um run é conduzido por uma sessão, registrada como <code>owner</code> no <code>state.json</code> quando ele é
+ativado. O hook de Stop continua e conta só essa sessão; qualquer outra sessão que pare
+dentro do checkout — uma segunda janela aberta para uma pergunta sem relação, um
+<code>claude -p</code> headless, os próprios workers do driver — pode parar e é avisada de quem é o
+dono (<a href="../../reference/hooks/">Hooks: propriedade da sessão</a>).</p>
+<p>Propriedade e roll se encaixam. Um roll encerra o estado ativo do run, então o
+<code>/leopold-run</code> da próxima janela — o relançamento headless do watcher ou o seu — assume
+o assento sem esperar; uma sessão mantém o id através de <code>--resume</code>, então uma janela
+que compacta ou retoma continua conduzindo. O que uma sessão nova não pode fazer é
+começar ao lado de um dono vivo: <code>/leopold-run</code> se recusa enquanto o dono mostra sinal de
+vida dentro de dez minutos (um pid do harness vivo, um turno contado, uma escrita na
+transcrição) e assume um abandonado, registrando <code>owner_takeover</code>; <code>--takeover</code> força e
+fica registrado como forçado. <code>/leopold-stop</code> se recusa a encerrar o run de outra sessão
+viva sem <code>--force</code>.</p>
 <h2 id="as-tres-memorias">As três memórias<a class="headerlink" href="#as-tres-memorias" title="Permanent link">&para;</a></h2>
 <p>Desde a 0.19.0 uma run lembra em três camadas distintas. Elas não se sobrepõem — cada
 uma responde uma pergunta diferente, e uma feature que borra duas delas está errada

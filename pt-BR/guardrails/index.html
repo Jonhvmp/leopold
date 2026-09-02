@@ -1270,6 +1270,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#um-dono-por-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um dono por run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rodando-em-paralelo-use-worktrees" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2225,6 +2236,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#um-dono-por-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um dono por run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rodando-em-paralelo-use-worktrees" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2485,6 +2507,16 @@ checkout compartilham <code>.leopold/</code> (um <code>state.json</code>, um <co
 tree, então uma sobrescreveria o estado e o código da outra. <code>/leopold-run</code> se
 recusa a iniciar uma segunda run enquanto outra está ativa (uma run ociosa por 10+
 minutos é tratada como abandonada e pode ser assumida).</p>
+<h3 id="um-dono-por-run">Um dono por run<a class="headerlink" href="#um-dono-por-run" title="Permanent link">&para;</a></h3>
+<p>O run é conduzido por <strong>uma sessão</strong>, registrada como <code>owner</code> no <code>state.json</code> na
+ativação. O hook de Stop continua e conta só essa sessão; toda outra sessão que pare
+neste checkout é avisada de quem é o dono e pode parar, e suas paradas são registradas
+como <code>foreign_stop</code> — nunca cobradas do run. <code>/leopold-run</code> se recusa a iniciar ao lado
+de um dono vivo e assume um abandonado (sem sinal de vida por dez minutos; <code>--takeover</code>
+força); <code>/leopold-stop</code> se recusa a encerrar o run de outra sessão viva sem <code>--force</code>.
+<code>/leopold-status</code> e <code>leopold doctor</code> nomeiam o dono e dizem se está vivo. A trava do
+git continua valendo para o projeto inteiro — o checkout compartilha um único index — e
+a negação nomeia o run dono.</p>
 <h3 id="rodando-em-paralelo-use-worktrees">Rodando em paralelo — use worktrees<a class="headerlink" href="#rodando-em-paralelo-use-worktrees" title="Permanent link">&para;</a></h3>
 <p>Paralelismo de verdade vem de isolamento, não de threads: dois agentes editando os
 mesmos arquivos conflitam por mais concorrente que o orquestrador seja. Para rodar

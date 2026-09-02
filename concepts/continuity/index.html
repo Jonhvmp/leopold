@@ -1057,6 +1057,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#one-owner-per-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One owner per run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-three-memories" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2040,6 +2051,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#one-owner-per-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One owner per run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-three-memories" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2285,6 +2307,20 @@ new in 0.18.0 are marked:</p>
 <p>And the boundary that never moved: <strong>the git lock</strong>. A run that survives ten windows
 still stages and reports; the human ships. <code>context_budget</code> still appears as a
 <code>stopped_reason</code> — but it now marks a window roll on a run that continues, not a death.</p>
+<h2 id="one-owner-per-run">One owner per run<a class="headerlink" href="#one-owner-per-run" title="Permanent link">&para;</a></h2>
+<p>A run is conducted by one session, recorded as <code>owner</code> in <code>state.json</code> when it is
+activated. The Stop hook continues and counts that session only; any other session that
+stops inside the checkout — a second window opened for an unrelated question, a headless
+<code>claude -p</code>, the driver's own workers — is allowed to stop and told who owns the run
+(<a href="../../reference/hooks/">Hooks: session ownership</a>).</p>
+<p>Ownership and the roll fit together. A roll ends the run's active state, so the next
+window's <code>/leopold-run</code> — the watcher's headless relaunch or yours — claims the seat
+without waiting; a session keeps its id across <code>--resume</code>, so a window that compacts or
+resumes keeps conducting. What a new session cannot do is start beside a live owner:
+<code>/leopold-run</code> refuses while the owner shows a sign of life within ten minutes (a live
+harness pid, a counted turn, a transcript write) and takes over a stale one, recording
+<code>owner_takeover</code>; <code>--takeover</code> forces it and is recorded as forced. <code>/leopold-stop</code>
+refuses to end another live session's run without <code>--force</code>.</p>
 <h2 id="the-three-memories">The three memories<a class="headerlink" href="#the-three-memories" title="Permanent link">&para;</a></h2>
 <p>Since 0.19.0 a run remembers on three distinct layers. They do not overlap — each
 answers a different question, and a feature that blurs two of them is wrong even when

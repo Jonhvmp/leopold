@@ -1270,6 +1270,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#one-owner-per-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One owner per run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#running-in-parallel-use-worktrees" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2225,6 +2236,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#one-owner-per-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One owner per run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#running-in-parallel-use-worktrees" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2479,6 +2501,16 @@ same checkout share <code>.leopold/</code> (one <code>state.json</code>, one <co
 working tree, so they would clobber each other's state and code. <code>/leopold-run</code>
 refuses to start a second run while another is active (a run idle for 10+ minutes
 is treated as stale and can be taken over).</p>
+<h3 id="one-owner-per-run">One owner per run<a class="headerlink" href="#one-owner-per-run" title="Permanent link">&para;</a></h3>
+<p>The run is conducted by <strong>one session</strong>, recorded as <code>owner</code> in <code>state.json</code> at
+activation. The Stop hook continues and counts only that session; every other session
+that stops in this checkout is told who owns the run and allowed to stop, and its stops
+are logged as <code>foreign_stop</code> — never charged to the run. <code>/leopold-run</code> refuses to start
+beside a live owner and takes over a stale one (no sign of life for ten minutes;
+<code>--takeover</code> forces it); <code>/leopold-stop</code> refuses to end another live session's run
+without <code>--force</code>. <code>/leopold-status</code> and <code>leopold doctor</code> name the owner and whether it
+is alive. The git lock stays project-wide — the checkout shares one index — and its
+denial names the owning run.</p>
 <h3 id="running-in-parallel-use-worktrees">Running in parallel — use worktrees<a class="headerlink" href="#running-in-parallel-use-worktrees" title="Permanent link">&para;</a></h3>
 <p>True parallelism comes from isolation, not threads: two agents editing the same
 files conflict no matter how concurrent the orchestrator is. To run Leopold in
