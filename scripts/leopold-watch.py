@@ -1381,6 +1381,33 @@ def continuity_loop(poll=CONTINUITY_POLL_SECS):
 
 
 # --------------------------------------------------------------------------- snapshot
+def _owner(st):
+    """The run's owner record as the dashboard shows it. Same resolution as
+    scripts/leopold-owner.sh: `owner`, else the legacy top-level `session_id`; a state
+    with an orchestrator pid and no session id is a driver run."""
+    o = st.get("owner") if isinstance(st.get("owner"), dict) else {}
+    sid = str(o.get("session_id") or st.get("session_id") or "")
+    engine = str(o.get("engine") or ("driver" if (not sid and st.get("orchestrator_pid")) else ("skill" if sid else "")))
+    return {
+        "session_id": sid,
+        "short": sid[:8],
+        "engine": engine,
+        "harness": str(o.get("harness") or ""),
+        "pid": o.get("pid") or st.get("orchestrator_pid") or "",
+        "claimed_at": str(o.get("claimed_at") or ""),
+        "released_at": str(o.get("released_at") or ""),
+    }
+
+
+def _foreign_stops():
+    """Stops the hook turned away because another session made them (whole log, not
+    the last-60 window read_events keeps)."""
+    try:
+        return _read("events.jsonl").count('"event":"foreign_stop"')
+    except Exception:
+        return 0
+
+
 def _num(state, key, default):
     v = state.get(key, default)
     try:
@@ -1411,6 +1438,11 @@ def snapshot():
         "stopped_reason": st.get("stopped_reason", ""),
         "stop_requested": os.path.exists(os.path.join(LEO, "STOP")),
         "session_id": st.get("session_id", ""),
+        # Who conducts the run (the Stop hook continues only this session) and how many
+        # stops from OTHER sessions it has turned away -- a non-zero count means a second
+        # window is open in this checkout.
+        "owner": _owner(st),
+        "foreign_stops": _foreign_stops(),
         "plan": plan,
         "meters": meters,
         "cost": read_cost(),
@@ -1795,7 +1827,8 @@ function fmtTok(n){return n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1
 function fmtDur(s){if(!s)return"0m";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?(h+"h"+m+"m"):(m+"m"+(m?"":(s%60+"s")));}
 const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med",
   review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high",
-  awaiting_human:"sev-high",persona:"sev-high",failure_rescue:"sev-high",failure_rescue_declined:"sev-crit"};
+  awaiting_human:"sev-high",persona:"sev-high",failure_rescue:"sev-high",failure_rescue_declined:"sev-crit",
+  foreign_stop:"sev-med",owner_unknown:"sev-high",owner_takeover:"sev-high",lock_timeout:"sev-high"};
 function renderCost(c){
   const box=$("#cost");box.innerHTML="";
   if(!c||!c.available){box.append(el("div","meta",c&&c.reason?c.reason:"waiting for session data… (cost shows once the run has a turn)"));return;}
@@ -1814,7 +1847,8 @@ function renderCost(c){
   if(c.sub_msgs)box.append(el("div","meta","main "+fmtUsd(c.main_usd)+" · subagents "+fmtUsd(c.sub_usd)+" ("+c.sub_msgs+" msgs)"));
 }
 function render(s){
-  $("#proj").textContent=s.session_id?("· "+s.session_id):"";
+  const o=s.owner||{};
+  $("#proj").textContent=o.session_id?("· owner "+o.short+" ("+(o.engine||"?")+(o.harness?(", "+o.harness):"")+")"+(s.foreign_stops?(" · "+s.foreign_stops+" foreign stop"+(s.foreign_stops==1?"":"s")+" ignored"):"")):(o.engine==="driver"?("· owner: leopold run (driver"+(o.pid?(", pid "+o.pid):"")+")"):(s.session_id?("· "+s.session_id):""));
   const pill=$("#status"),dot=$("#dot"),tx=$("#stext");
   pill.className="pill";dot.classList.remove("pulse");
   if(!s.present){tx.textContent="no active run";}
@@ -1856,6 +1890,10 @@ function render(s){
     else if(e.event==="failure_rescue")d="last attempt · "+(e.persona||"Leopold")+(e.role?(", "+e.role):"")+" · "+(e.approach||"").slice(0,80)+" · ceiling "+(e.max_failures==null?"?":e.max_failures)+" unchanged";
     else if(e.event==="failure_rescue_declined")d="no different approach decided · run stops · "+(e.item||"").slice(0,60);
     else if(e.event==="merge_conflict")d=(e.item||"").slice(0,60)+" · worktree kept";
+    else if(e.event==="foreign_stop")d="session "+(e.session||"?")+" stopped here · owner "+(e.owner||"?")+(e.owner_engine?(" ("+e.owner_engine+")"):"")+" · not counted";
+    else if(e.event==="owner_unknown")d=(e.reason||"")+" · every session that stops here is continued";
+    else if(e.event==="owner_takeover")d="session "+(e.session||"?")+" took over from "+(e.previous||"?")+(e.forced?" · FORCED":" · stale owner");
+    else if(e.event==="lock_timeout")d="state lock held over 5s · this stop was counted unlocked";
     else if(e.event==="cost")d=(e.usd!=null?("+$"+Number(e.usd).toFixed(3)):"")+(e.spent_usd!=null?(" · total $"+Number(e.spent_usd).toFixed(2)):"");
     else if(e.event==="learn")d=(e.proposed>0?(e.proposed+" charter amendment"+(e.proposed==1?"":"s")+" proposed"):"no amendments")+(e.out?(" · "+e.out.split("/").pop()):"");
     r.append(el("span","dt",d));f.append(r);

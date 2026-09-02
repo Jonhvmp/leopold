@@ -126,8 +126,11 @@ for entry in d.get("hooks", {}).get(sys.argv[2], []):
 print("")
 PY
 }
-perm() { printf '%s' "$1" | jq -r '.hookSpecificOutput.permissionDecision // "allow"' 2>/dev/null || echo allow; }
-dec()  { printf '%s' "$1" | jq -r '.decision // "none"' 2>/dev/null || echo none; }
+# `sealed` folds stderr into the capture, and the hooks now say things on stderr on
+# the way to a decision (the owner notice, a fail-safe). Codex reads the JSON on stdout
+# and nothing else, so these read the JSON line and nothing else.
+perm() { local d; d="$(printf '%s' "$1" | grep '^{' | jq -r '.hookSpecificOutput.permissionDecision // "allow"' 2>/dev/null | tail -1)"; printf '%s' "${d:-allow}"; }
+dec()  { local d; d="$(printf '%s' "$1" | grep '^{' | jq -r '.decision // "none"' 2>/dev/null | tail -1)"; printf '%s' "${d:-none}"; }
 
 echo "codex install — a machine with no ~/.claude, no claude and no codex on PATH"
 

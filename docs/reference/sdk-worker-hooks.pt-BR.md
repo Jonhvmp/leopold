@@ -126,4 +126,21 @@ antes e depois das duas execuções
 (`3a59fc63914dda7f8bb1cb65c5924293bfb2db2e`). Todas as escritas ficaram sob a
 raiz do `mktemp -d`.
 
+## Adendo (2026-09-02) — o hook de Stop disparava *dentro* dos workers
+
+A conclusão acima tinha uma consequência que ninguém tirou na época: como um worker roda
+no cwd do projeto com os hooks do usuário carregados, o próprio `stop-continuity.sh` do
+Leopold dispara dentro de cada worker do driver — e durante um run do driver o
+`state.json` está ativo. Reproduzido com um `runItem` real do `dist/worker.js` no Claude
+Code 2.1.258: o hook bloqueou a parada do worker depois do seu status block, o worker
+anunciou "I'll read the plan and get started on the next item", o conductor recebeu um
+segundo `onTurn` espúrio (tipo `blocked`), e o item levou o dobro do tempo. Runs com
+`--worktree` escapavam só porque `.leopold/` é gitignored e o worktree não tem
+`state.json`.
+
+O conserto é o registro de owner: o `initState` do driver escreve `owner.engine:
+"driver"` sem id de sessão, e o hook permite em silêncio toda parada de uma sessão que
+carrega `LEOPOLD_SDK_WORKER=1`. `scripts/test-hooks.sh` guarda o caso ("a driver worker
+stops silently"), e [Hooks](hooks.pt-BR.md) documenta a tabela de decisão completa.
+
 <!-- @emit hooks_fire=true -->

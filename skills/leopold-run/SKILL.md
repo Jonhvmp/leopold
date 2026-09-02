@@ -77,36 +77,45 @@ fi
   checked. Say so in one line — never pretend it passed — and continue; a plan that
   uses no graph grammar cannot be malformed.
 
-**Single-run guard (one run per checkout).** A project supports one active Leopold
-run at a time: parallel runs share `.leopold/` and the same working tree, so they
-would collide. Before activating, check for another active run:
+**One owner per run (session ownership).** A project supports one active Leopold
+run at a time, and that run is conducted by ONE session: the Stop hook continues and
+counts only the session recorded as `owner` in `state.json`, and tells every other
+session that stops in this checkout who owns the run and lets it stop. Before
+activating, ask who owns the run here. If the user's invocation carried `--takeover`,
+export `LEOPOLD_TAKEOVER=1` for this block:
 
 ```bash
-LEO=.leopold
-if [ -f "$LEO/state.json" ]; then
-  a=$(jq -r '.active // false' "$LEO/state.json" 2>/dev/null)
-  l=$(jq -r '.last_turn // .started_at // empty' "$LEO/state.json" 2>/dev/null)
-  s=$(jq -r '.session_id // empty' "$LEO/state.json" 2>/dev/null)
-  if [ "$a" = "true" ] && [ -n "$l" ]; then
-    age=$(( $(date -u +%s) - $(date -u -d "$l" +%s 2>/dev/null || echo 0) ))
-    me="${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-none}}"
-    if [ "$age" -lt 600 ] && [ "$s" != "$me" ]; then
-      echo "BLOCKED: another Leopold run is active in this checkout (last active $l)."
-    fi
-  fi
+LEO_HOME="$(leopold home 2>/dev/null || echo "${LEOPOLD_HOME:-$([ -d "${CLAUDE_HOME:-$HOME/.claude}/leopold" ] && echo "${CLAUDE_HOME:-$HOME/.claude}" || echo "${CODEX_HOME:-$HOME/.codex}")/leopold}")"
+if [ -f "$LEO_HOME/scripts/leopold-owner.sh" ]; then
+  bash "$LEO_HOME/scripts/leopold-owner.sh" check "$PWD" ${LEOPOLD_TAKEOVER:+--takeover}
+else
+  echo "OWNER_CHECK_UNAVAILABLE"
 fi
 ```
 
-If it prints `BLOCKED`, stop. Tell the user a run is already active here. To run
-in **parallel**, use a separate git worktree (one run per worktree):
+Act on the first word it prints (the rest of the line is the reason, for the user):
+
+- `FREE` or `MINE`: activate. `MINE` is this session resuming its own run.
+- `STALE`: the owner shows no sign of life (no live harness pid, no counted turn and
+  no transcript write within 10 minutes). Activate; Step 1 records the takeover.
+- `BLOCKED`: **stop.** Another live session (or a live `leopold run`) conducts this
+  run. Repeat the line to the user -- it names the session, the engine and when it
+  was last seen -- and end the turn. Never start a second executor on your own: two
+  executors on one plan overwrite each other's uncommitted work. If the user
+  explicitly asks to take the seat anyway, re-run the check with `--takeover`.
+- `TAKEOVER`: the takeover was forced. Activate; Step 1 records it as forced.
+- `OWNER_CHECK_UNAVAILABLE`: the engine scripts are not installed beside the hooks
+  (`scripts/leopold-owner.sh`), so ownership cannot be checked. Say so in one line
+  and **do not activate** -- an unchecked activation is exactly the double executor
+  this check prevents. `./install.sh` restores the scripts.
+
+To run in **parallel**, use a separate git worktree (one run per worktree):
 
     git worktree add ../<proj>-leopold-2 && cd ../<proj>-leopold-2
 
 The SDK driver automates this: `leopold-driver run --worktree` isolates the run in
 its own `leopold/run-<id>` worktree and, on the next start, reaps an orphaned prior
 run (a dead process that left `active:true`) and prunes its leftover worktree.
-Otherwise wait for the other run, or `/leopold-stop` it first. A run idle for over
-10 minutes is treated as stale and may be taken over.
 
 ## Step 1 — Activate the run
 
@@ -142,10 +151,33 @@ if [ "$(jq -r '.stopped_reason // empty' .leopold/state.json 2>/dev/null)" = "co
   CARRY="$CARRY + {iteration:(.iteration // 0),windows:(.windows // 1),window_plan_vector:(.window_plan_vector // \"\"),window_zero_streak:(.window_zero_streak // 0),window_progress:(.window_progress // [])}"
 fi
 SPENT="$(jq -c "$CARRY" .leopold/state.json 2>/dev/null || echo '{}')"
+# THE OWNER RECORD. This session's id is what the harness exports into every shell it
+# runs (CLAUDE_CODE_SESSION_ID / CODEX_THREAD_ID) and what the Stop hook receives as
+# `session_id` on every stop: the hook continues and counts ONLY a session whose id
+# matches `owner.session_id`, and turns every other session away with a notice. The
+# harness pid (Claude Code exports CLAUDE_PID; Codex exports none) and this session's
+# transcript file (found by id under the harness home; best-effort) are liveness
+# signals for the owner check in Step 0, so a long single turn never reads as stale.
+# Same six keys as the driver's initState (packages/driver/src/types.ts, RunOwner);
+# packages/driver/test/owner-parity.test.ts fails the build if the two writers drift.
+ME="${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-}}"
+if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then HARNESS=claude; elif [ -n "${CODEX_THREAD_ID:-}" ]; then HARNESS=codex; else HARNESS=""; fi
+TP=""
+if [ -n "$ME" ] && [ "$HARNESS" = claude ]; then TP="$(ls -t "${CLAUDE_HOME:-$HOME/.claude}"/projects/*/"$ME".jsonl 2>/dev/null | head -1)"; fi
+if [ -n "$ME" ] && [ "$HARNESS" = codex ]; then TP="$(ls -t "${CODEX_HOME:-$HOME/.codex}"/sessions/*/*/*/*"$ME".jsonl 2>/dev/null | head -1)"; fi
+PREV_OWNER="$(jq -r '.owner.session_id // .session_id // ""' .leopold/state.json 2>/dev/null || true)"
+PREV_ENGINE="$(jq -r '.owner.engine // (if .orchestrator_pid then "driver" else "skill" end)' .leopold/state.json 2>/dev/null || true)"
+PREV_ACTIVE="$(jq -r '.active // false' .leopold/state.json 2>/dev/null || true)"
+NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 cat > .leopold/state.json <<JSON
-{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"max_forks":0,"forks_spawned":0,"max_context_mb":5,"started_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","last_turn":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","session_id":"${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-}}"}
+{"active":true,"iteration":0,"max_iterations":50,"consecutive_failures":0,"max_failures":3,"max_no_progress":6,"max_subagents":8,"subagents_spawned":0,"max_forks":0,"forks_spawned":0,"max_context_mb":5,"started_at":"$NOW","last_turn":"$NOW","session_id":"$ME","owner":{"session_id":"$ME","harness":"$HARNESS","engine":"skill","claimed_at":"$NOW","pid":"${CLAUDE_PID:-}","transcript_path":"$TP"}}
 JSON
 tmp="$(mktemp)" && jq --argjson s "${SPENT:-\{\}}" '. + $s' .leopold/state.json > "$tmp" && mv "$tmp" .leopold/state.json
+# A seat taken from another owner is on the record: who had it, who took it, forced or stale.
+if [ "$PREV_ACTIVE" = "true" ] && { [ "$PREV_OWNER" != "$ME" ] || [ "$PREV_ENGINE" = "driver" ]; } && { [ -n "$PREV_OWNER" ] || [ "$PREV_ENGINE" = "driver" ]; }; then
+  printf '{"ts":"%s","event":"owner_takeover","session":"%s","previous":"%s","previous_engine":"%s","forced":%s}\n' \
+    "$NOW" "${ME:0:8}" "${PREV_OWNER:0:8}" "$PREV_ENGINE" "$([ -n "${LEOPOLD_TAKEOVER:-}" ] && echo true || echo false)" >> .leopold/events.jsonl
+fi
 ```
 
 **Resume from a checkpoint.** If `.leopold/CHECKPOINT.md` exists, a prior window —
@@ -312,6 +344,13 @@ still end the run with `repeated_failure`. The driver does this reset itself
 - `git commit` and `git push` stay locked (force-push always). Stage and report;
   do not commit. (The hook enforces this; do not try to route around it.) Everything
   else is yours — act on it.
+- **The Stop hook owns the turn counters.** Never write `iteration`, `no_progress`,
+  `progress_sig`, `windows`, `window_*`, `context_mb`, `transcript_path`, `last_turn`
+  or `owner` in `state.json`: the hook stamps them on every counted stop, and a second
+  writer makes the budget lie (a run once reached turn 6 before the hook had counted a
+  single stop, because the executor bumped `iteration` itself on every item it closed).
+  `consecutive_failures` is yours, as Step 4 says; `PLAN.md` checkboxes are the only
+  progress signal the hook reads.
 - When the plan is complete or a stop condition is hit, write a short final
   summary (what shipped, key decisions, what is ready for the human to commit)
   and stop.

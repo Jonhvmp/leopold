@@ -58,6 +58,22 @@ echo "== whitespace/tab evasion =="
 active '{"active":true,"iteration":1}'
 ck_deny  'tab-separated git -c commit' "$(run_bash "$(printf 'git\t-c\tx=y\tcommit')")"
 
+echo "== the denial names the run that holds the lock (second window knows whose run it is) =="
+reason() { printf '%s' "$1" | jq -r '.hookSpecificOutput.permissionDecisionReason // ""' 2>/dev/null; }
+ck_has()  { if printf '%s' "$2" | grep -qF -- "$3"; then pass=$((pass+1)); else fail=$((fail+1)); printf '  \033[31mFAIL\033[0m want "%s" in: %s\n' "$3" "$1"; fi; }
+ck_hasnt(){ if printf '%s' "$2" | grep -qF -- "$3"; then fail=$((fail+1)); printf '  \033[31mFAIL\033[0m did not want "%s" in: %s\n' "$3" "$1"; else pass=$((pass+1)); fi; }
+active '{"active":true,"iteration":1,"owner":{"session_id":"AAAA-1111-owner","engine":"skill","harness":"claude"}}'
+out="$(run_bash 'git commit -m x')"; ck_deny 'still denied with an owner' "$out"
+ck_has  'commit denial names the owning session' "$(reason "$out")" 'conducted by session AAAA-111 (skill)'
+ck_has  'push denial names the owning session'   "$(reason "$(run_bash 'git push')")" 'conducted by session AAAA-111'
+ck_has  'force-push denial names it too'         "$(reason "$(run_bash 'git push --force')")" 'conducted by session AAAA-111'
+active '{"active":true,"iteration":1,"session_id":"OLD-OWNER-legacy"}'
+ck_has  'a legacy top-level session_id is named as the owner' "$(reason "$(run_bash 'git commit -m x')")" 'conducted by session OLD-OWNE'
+active '{"active":true,"iteration":1,"orchestrator_pid":4242}'
+ck_has  'a driver run is named as the owner' "$(reason "$(run_bash 'git commit -m x')")" 'conducted by leopold run (driver)'
+active '{"active":true,"iteration":1}'
+ck_hasnt 'no owner: the denial is byte-for-byte what it was' "$(reason "$(run_bash 'git commit -m x')")" 'conducted by'
+
 echo
 if [ "$fail" -eq 0 ]; then
   printf '\033[32mguard red-team: %d passed, 0 failed\033[0m\n' "$pass"

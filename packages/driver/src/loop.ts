@@ -777,7 +777,7 @@ export async function runDriver(cwd: string, argv: string[]): Promise<void> {
     }
   }
 
-  const state = initState(brief);
+  const state = initState(brief, { harness: currentProvider() });
   // Charge the pre-flight graph repair to the run-wide amendment purse. It runs BEFORE
   // state exists, so it reads its budget off disk and the spend is folded in here — one
   // writer for state.json, and no path that changes the plan without paying for it.

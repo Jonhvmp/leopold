@@ -170,5 +170,41 @@ has "kill switch is named first"       "$out" "kill switch present"
 has "kill switch blocks relaunch"      "$out" "nothing relaunches"
 rm -f "$LEO/STOP"
 
+echo "doctor continuity — who conducts the run, and is that session alive"
+rm -f "$LEO/events.jsonl"
+fresh="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '{"active":true,"last_turn":"%s","owner":{"session_id":"AAAA-1111-owner","engine":"skill","harness":"claude"}}\n' "$fresh" > "$LEO/state.json"
+out="$(run_doctor)"
+has "a live owner is named"            "$out" "run owner: session AAAA-111 (skill, claude) — alive"
+printf '{"active":true,"last_turn":"2020-01-01T00:00:00Z","owner":{"session_id":"AAAA-1111-owner","engine":"skill","harness":"claude"}}\n' > "$LEO/state.json"
+out="$(run_doctor)"
+has "a dead owner is a warning"        "$out" "no sign of life"
+has "...that names the takeover path"  "$out" "/leopold-run in a new session takes it over"
+printf '{"active":true,"last_turn":"%s","session_id":""}\n' "$fresh" > "$LEO/state.json"
+out="$(run_doctor)"
+has "a run with no owner is loud"      "$out" "NO session owner"
+printf '{"active":true,"orchestrator_pid":%s}\n' "$$" > "$LEO/state.json"
+out="$(run_doctor)"
+has "a live driver run is named"       "$out" "run owner: leopold run (driver, pid $$) — alive"
+printf '{"active":true,"last_turn":"%s","owner":{"session_id":"AAAA-1111-owner","engine":"skill"}}\n' "$fresh" > "$LEO/state.json"
+printf '{"event":"foreign_stop"}\n{"event":"foreign_stop"}\n{"event":"turn_start"}\n' > "$LEO/events.jsonl"
+out="$(run_doctor)"
+has "foreign stops are counted"        "$out" "2 stop(s) from other sessions were turned away"
+printf '{"active":false}\n' > "$LEO/state.json"
+out="$(run_doctor)"
+hasnt "an inactive run says nothing about owners" "$out" "run owner"
+rm -f "$LEO/events.jsonl"
+
+echo "doctor continuity — a Stop hook wired twice runs twice per stop"
+mkdir -p "$CLAUDE_HOME"
+printf '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"%s/leopold/hooks/stop-continuity.sh"}]},{"hooks":[{"type":"command","command":"%s/leopold/hooks/stop-continuity.sh"}]}]}}\n' "$CLAUDE_HOME" "$CLAUDE_HOME" > "$CLAUDE_HOME/settings.json"
+out="$(PATH="$T/bin:$PATH" run_doctor)"
+if printf '%s' "$out" | grep -q 'Claude Code: hooks wired in settings.json'; then
+  has "double wiring is a warning"     "$out" "the Stop hook is wired 2 times in settings.json"
+else
+  echo "  skip: doctor did not evaluate Claude Code wiring in this hermetic home (no claude binary on PATH)"
+fi
+rm -f "$CLAUDE_HOME/settings.json"
+
 echo
 if [ "$fail" = "0" ]; then echo "doctor continuity tests: all passed"; else echo "doctor continuity tests: FAILURES"; exit 1; fi
