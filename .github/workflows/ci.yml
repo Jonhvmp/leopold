@@ -23,18 +23,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # First, and cheap: every suite `make test` runs must be a step in this file, and
+      # every step here must be in `make test`. Enumerating the steps by hand is how
+      # scripts/test-doctor-matrix.sh and scripts/test-watch-events.py once ran locally
+      # and nowhere else.
+      - name: "CI parity — `make test` and this workflow run the same suites"
+        run: bash scripts/test-ci-parity.sh
+      # hooks/*.sh, not an enumeration: a hook added to hooks/ is syntax-checked the day
+      # it lands, with nothing here to remember to update (this list had already fallen
+      # behind hooks/permission-policy.sh).
       - name: Syntax-check hooks, installer, scripts, and extensions
-        run: bash -n hooks/stop-continuity.sh hooks/guard-irreversible.sh hooks/persona-guard.sh install.sh scripts/*.sh scripts/lib/*.sh extensions/*/*.sh
+        run: bash -n hooks/*.sh install.sh scripts/*.sh scripts/lib/*.sh scripts/probe/*.sh extensions/*/*.sh
       - name: Shellcheck every shell entrypoint (warning level)
-        run: shellcheck -S warning hooks/*.sh install.sh scripts/*.sh scripts/lib/*.sh extensions/*/*.sh
-      - name: Byte-compile Python scripts (dashboard, extension engines)
-        run: python3 -m py_compile scripts/*.py extensions/*/payload/*.py
+        run: shellcheck -S warning hooks/*.sh install.sh scripts/*.sh scripts/lib/*.sh scripts/probe/*.sh extensions/*/*.sh
+      - name: Byte-compile Python scripts (dashboard, extension engines, hook-event probe)
+        run: python3 -m py_compile scripts/*.py scripts/probe/*.py extensions/*/payload/*.py
       - name: Hook behavior tests
         run: bash scripts/test-hooks.sh
+      - name: "Capability matrix pin (hook-matrix.tsv vs the probe's captures)"
+        run: bash scripts/test-hook-matrix.sh
+      - name: "Hook-event probe: dump-hook + renderer tests (hermetic, no harness launched)"
+        run: bash scripts/test-probe-dump-hook.sh
       - name: "Toolchain tests (driver x assets, shadowed installs; hermetic: stubbed PATH, no network)"
         run: bash scripts/test-toolchain.sh
       - name: Doctor project-continuity tests
         run: bash scripts/test-doctor-continuity.sh
+      - name: "Doctor capability matrix (one row per capability per harness, incl. the npm asset home)"
+        run: bash scripts/test-doctor-matrix.sh
       - name: Guard red-team tests (bypass attempts must stay blocked)
         run: bash scripts/test-guard.sh
       - name: Enhance behavior tests (stubbed claude, no network)
@@ -63,6 +78,8 @@ jobs:
         run: python3 scripts/test-watch-graph.py
       - name: "Watcher continuity relaunch tests (hermetic: stub harnesses, temp homes)"
         run: python3 scripts/test-watch-continuity.py
+      - name: "Watch event registry (every event the hooks emit has a severity + a meaning)"
+        run: python3 scripts/test-watch-events.py
 
   driver:
     name: driver (${{ matrix.os }})

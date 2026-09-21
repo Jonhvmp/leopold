@@ -35,6 +35,46 @@ by default; `--no-review` / `LEOPOLD_REVIEW=0` / `review: off` in GUARDRAILS tur
 > Tip for the worker: self-review with `/code-review` *before* reporting done, so the gate
 > passes first try. The `/leopold-run` skill tells it exactly that.
 
+### On Codex: the lenses are native agent roles
+
+Codex CLI has something Claude Code does not — a **native agent role**: a file at
+`$CODEX_HOME/agents/<role>.toml` with a name, a description, `developer_instructions` and
+any `config.toml` key, which `spawn_agent(agent_type=<role>)` runs a subagent as. The
+installer writes one per lens, from the same definitions the driver builds its panelists
+from (`REVIEW_LENSES` in `packages/driver/src/review.ts`):
+
+```text
+~/.codex/agents/leopold-lens-correctness.toml
+~/.codex/agents/leopold-lens-security.toml
+~/.codex/agents/leopold-lens-does-it-work.toml
+~/.codex/agents/leopold-lens-conformance.toml
+```
+
+Each is `sandbox_mode = "read-only"` — a reviewer that can edit the diff it is reviewing is
+not a reviewer — and takes its model from `LEOPOLD_CODEX_REVIEW_MODEL`, or the harness
+default when that is unset. Convene one in any Codex session:
+
+```text
+spawn_agent(agent_type="leopold-lens-correctness")
+```
+
+Two facts from the live probe (`docs/reference/hook-events.md`) bound this, and
+`leopold doctor` states both rather than implying a parity that does not exist:
+
+- **One unknown key makes Codex ignore the whole role file**, with and without
+  `--strict-config`. So the installer emits only keys the capture proved are accepted, and
+  a test fails the build if a fifth key ever appears.
+- **`codex exec` cannot run *as* a role.** `-c agent_role=`, `-c agent_type=` and `-c role=`
+  are rejected as unknown config fields and a role file is not a valid `--profile` layer;
+  only `-c agents.<role>.config_file=<path>` is accepted, and it *declares* the role rather
+  than adopting it. So the driver's headless lenses name their role in the argv and are held
+  read-only by `--sandbox read-only` — the same guarantee the role file asks for.
+
+On Claude Code there are no role files at all: each lens is the driver's own SDK session,
+which the `SubagentStart` payload names in exactly the same field (`agent_type`). That is
+the matrix's `substitute` row for `review-lens-roles`, and it is a difference in mechanism,
+not in what the panel does.
+
 ## Conformance — verifying against your acceptance scenarios
 
 A "done when" line says what success is in prose; a **scenario** says it in cases the diff must

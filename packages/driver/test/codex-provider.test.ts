@@ -30,6 +30,24 @@ test("cwd, model and effort map onto codex flags", () => {
   assert.ok(s.includes('model_reasoning_effort="high"'));
 });
 
+test("a review lens is named in the argv as a Codex agent role, and stays read-only", () => {
+  const argv = buildArgv({
+    readOnly: true,
+    role: "leopold-lens-correctness",
+    roleFile: "/home/u/.codex/agents/leopold-lens-correctness.toml",
+  });
+  const s = argv.join(" ");
+  // The only role override Codex 0.152.1 accepts — every other spelling the probe tried
+  // was rejected as an unknown config field (docs/reference/hook-events.md).
+  assert.ok(s.includes('agents.leopold-lens-correctness.config_file="/home/u/.codex/agents/leopold-lens-correctness.toml"'), s);
+  assert.ok(s.includes("--sandbox read-only"));
+  // Half a pair is not a role: a name with no file, or a file with no name, declares nothing.
+  assert.ok(!buildArgv({ readOnly: true, role: "leopold-lens-security" }).join(" ").includes("config_file"));
+  assert.ok(!buildArgv({ readOnly: true, roleFile: "/x/y.toml" }).join(" ").includes("config_file"));
+  // An ordinary worker turn names no role at all.
+  assert.ok(!buildArgv({ readOnly: false }).join(" ").includes("agents."));
+});
+
 test("the git lock rides on the same guard script both harnesses use", () => {
   const argv = buildArgv({ readOnly: false, guard: "/leo/hooks/guard-irreversible.sh" });
   const s = argv.join(" ");

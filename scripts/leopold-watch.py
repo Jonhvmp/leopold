@@ -23,6 +23,7 @@ and uses no web fonts. Usage:
     python3 leopold-watch.py [--project DIR] [--port 4179] [--host 127.0.0.1]
 """
 import argparse
+import calendar
 import datetime
 import glob
 import importlib.util
@@ -1161,6 +1162,71 @@ CONTINUITY_FRESH_SECS = 600
 # recorded as FAILED and said out loud — a Popen that opened is not a seat that is taken.
 CONTINUITY_REACTIVATE_SECS = 120
 
+# --- THE API ERROR, WHICH IS NOT A ROLL ------------------------------------------------
+# hooks/stop-failure.sh is the only witness of a turn that died on the API (no `Stop`
+# fires for a failed turn), and it stops the run with `stopped_reason: api_error` plus
+# `api_error: {type, at, retryable, hint}`. A RETRYABLE class (rate_limit, overloaded,
+# server_error) is a wait, not a verdict: under `continuity: auto` the watcher retries it
+# on a doubling backoff — 30s, then 120s, 120s, 240s, 480s — and stops after five
+# attempts. The 30s first rung follows the API's own refusal; every rung AFTER it follows
+# a child THIS watcher spawned, so it is floored at CONTINUITY_REACTIVATE_SECS: a
+# relaunched agent may legitimately take that long to flip `active: true`, and firing the
+# next rung inside its startup would put a second `-p /leopold-run` on the same checkout.
+#
+# `windows` is NEVER touched on this path: an API error is not a context roll, no window
+# was consumed, and charging one would spend the run's window ceiling on the API's
+# mistake (and, at the ceiling, turn a transient 429 into `max_windows`). What bounds the
+# retry instead is its own attempt ceiling. Recorded in .leopold/DECISIONS.md.
+#
+# The record is the same shape the roll's is — written BEFORE the spawn, re-read on the
+# next tick — so a watcher restart resumes the ladder instead of restarting it:
+#   api_error_attempts    how many relaunches have been fired for this stop
+#   api_error_next_at     when the next one is due (UTC stamp)
+#   api_error_relaunch_at when the last one fired
+#   api_error_result      fired:<harness> | refused:<reason>  (a refusal is final)
+# A NON-retryable class (auth, billing, invalid_request, or a class Leopold does not
+# recognize) is refused ONCE, by name, and never retried: the credentials failed, not the
+# work. Every one of these fields dies with the stop it decides — the reseed
+# (/leopold-run Step 1) writes a fresh state and carries only budgets and spent one-shots.
+API_ERROR_MAX_ATTEMPTS = 5
+API_ERROR_BASE_DELAY_SECS = 30
+
+
+def _api_error_delay(attempt):
+    """The wait before a 1-based attempt: 30 120 120 240 480 — the doubling backoff
+    (30 60 120 240 480) with every rung after the first floored at the reactivation
+    grace the roll path already gives a relaunched child.
+
+    Rung 1 is measured from the API's refusal, so it keeps its 30s. Rung N+1 is measured
+    from OUR spawn of attempt N, and `active: true` can legitimately be up to
+    CONTINUITY_REACTIVATE_SECS away (a cold start whose own first API call is being
+    throttled is exactly the condition that produced the stop). An unfloored 60s rung
+    would spawn a second `claude -p /leopold-run` into the same checkout while the first
+    is still starting: two owners racing on state.json, the double-session failure the
+    ownership work exists to end.
+    """
+    n = max(1, int(attempt))
+    d = API_ERROR_BASE_DELAY_SECS * (2 ** (n - 1))
+    return d if n == 1 else max(d, CONTINUITY_REACTIVATE_SECS)
+
+
+def _api_error_hold(st, attempts, due):
+    """`due`, never earlier than the reactivation grace of the last attempt we fired.
+
+    _api_error_delay already floors the ladder, so this only bites on a state written by
+    an older watcher (or edited by hand) — belt to that braces, because the cost of being
+    wrong here is a second headless agent on the same checkout, not a late retry."""
+    if attempts:
+        fired_at = _parse_ts(st.get("api_error_relaunch_at"))
+        if fired_at is not None:
+            return max(due, fired_at + CONTINUITY_REACTIVATE_SECS)
+    return due
+
+
+def _utc(epoch=None):
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                         time.gmtime(epoch if epoch is not None else time.time()))
+
 
 def _guardrail_value(name):
     """First token after a `name:` line in GUARDRAILS.md (same line shapes the hook
@@ -1209,28 +1275,40 @@ def log_run_event(entry):
 
 
 def _parse_ts(v):
-    """An ISO-8601 UTC stamp -> epoch seconds, or None. The hook writes them with -u."""
+    """An ISO-8601 UTC stamp -> epoch seconds, or None. The hook writes them with -u, so
+    the stamp is UTC and `calendar.timegm` is the inverse of the `time.gmtime` `_utc`
+    formats with. `time.mktime(...) - time.timezone` is NOT: `time.timezone` is the zone's
+    standard-time offset, so on a machine observing DST the result lands an hour early —
+    every ladder deadline read as an hour past due and the freshness gate refused the
+    first tick. Regression: TestParseTsAcrossZones in scripts/test-watch-continuity.py."""
     try:
-        return time.mktime(time.strptime(str(v), "%Y-%m-%dT%H:%M:%SZ")) - time.timezone
+        return calendar.timegm(time.strptime(str(v), "%Y-%m-%dT%H:%M:%SZ"))
     except (TypeError, ValueError):
         return None
+
+
+def _write_state_fields(fields):
+    """Merge `fields` into state.json atomically. ONE writer for every record this
+    monitor keeps, so the roll's record and the API-error ladder's cannot drift in how
+    they land. Returns True when the state was written."""
+    st = read_state()
+    if not st or st.get("_invalid"):
+        return False
+    st.update(fields)
+    p = os.path.join(LEO, "state.json")
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(st, f)
+    os.replace(tmp, p)
+    return True
 
 
 def _record_relaunch(window, result):
     """The exactly-once record, written atomically. The hook ignores these fields (its
     numeric-budget validation names its own list) and the reseed template drops them,
     so the record lives exactly as long as the roll it decides."""
-    st = read_state()
-    if not st or st.get("_invalid"):
-        return
-    st["relaunch_window"] = window
-    st["relaunch_result"] = result
-    st["relaunch_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    p = os.path.join(LEO, "state.json")
-    tmp = p + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(st, f)
-    os.replace(tmp, p)
+    _write_state_fields({"relaunch_window": window, "relaunch_result": result,
+                         "relaunch_at": _utc()})
 
 
 def relaunch_argv(harness, project):
@@ -1252,15 +1330,133 @@ def relaunch_argv(harness, project):
     return []
 
 
+def _spawn_child(argv, spawn):
+    """Fire the relaunch. Raises OSError the way Popen does; `spawn` is injectable for
+    tests. ONE spawner, so the roll and the API-error ladder cannot differ in how a
+    child is detached."""
+    if spawn is not None:
+        spawn(argv)
+    else:
+        subprocess.Popen(argv, cwd=PROJECT or None, stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+
+
+def _relaunch_harness(st):
+    """(harness, argv) for the session this state owns; argv is [] when unknown."""
+    tp = st.get("transcript_path") or find_transcript()
+    harness = detect_harness(tp) if tp and os.path.isfile(tp) else "unknown"
+    return harness, relaunch_argv(harness, PROJECT)
+
+
+def _api_error_tick(st, spawn=None):
+    """The API-error half of the monitor -> 'api_relaunched:<harness>',
+    'api_refused:<reason>', 'api_waiting:<secs>' or 'already_handled'. Reached only past
+    the gates continuity_tick applies to every stop it may resume (open items, manual,
+    the kill switch), so the order a person reads in the header is the order in code."""
+    ae = st.get("api_error") if isinstance(st.get("api_error"), dict) else {}
+    etype = str(ae.get("type") or "unknown")
+    attempts = _int_field(st, "api_error_attempts", 0)
+    prior = str(st.get("api_error_result") or "")
+
+    # A refusal is FINAL for this stop: it was said once, with its reason, and a monitor
+    # that re-decided it every 2s would bury the one line that explains the empty seat.
+    if prior.startswith("refused:"):
+        return "already_handled"
+
+    attempt = attempts + 1
+    delay = _api_error_delay(attempt)
+
+    def refuse(reason, detail=""):
+        _write_state_fields({"api_error_attempts": attempts,
+                             "api_error_result": "refused:" + reason,
+                             "api_error_refused_at": _utc()})
+        e = {"event": "api_error_relaunch_refused", "reason": reason,
+             "attempt": attempt, "error_type": etype}
+        if detail:
+            e["detail"] = detail
+        log_run_event(e)
+        return "api_refused:" + reason
+
+    # The class decides first, and it is the hook's verdict, never re-derived here:
+    # `retryable` was classified lexically in hooks/stop-failure.sh from the harness's
+    # own `error` field. Auth, billing, an invalid request or a class Leopold does not
+    # recognize: the credentials or the input failed, not the work, and relaunching
+    # spends turns on the same refusal.
+    if ae.get("retryable") is not True:
+        return refuse("not_retryable",
+                      "the API error class `%s` is not retryable — a human decides" % etype)
+    # The ceiling. Five attempts across ~15 minutes is a transient outage; past that it
+    # is an outage a person should see, and `windows` was never charged for any of it.
+    if attempts >= API_ERROR_MAX_ATTEMPTS:
+        return refuse("attempts", "%d of %d relaunch attempts spent for `%s`"
+                      % (attempts, API_ERROR_MAX_ATTEMPTS, etype))
+
+    # WHEN the attempt is due, recorded once. The reference is the last attempt if there
+    # was one, else the moment the API refused (the hook's own stamp), so a watcher that
+    # starts a minute after a 429 fires at once instead of waiting a fresh 30s.
+    ref = _parse_ts(st.get("api_error_relaunch_at")) if attempts else None
+    if ref is None:
+        ref = _parse_ts(ae.get("at")) or _parse_ts(st.get("last_turn"))
+    if ref is None:
+        try:
+            ref = os.path.getmtime(os.path.join(LEO, "state.json"))
+        except OSError:
+            ref = time.time()
+    due = _parse_ts(st.get("api_error_next_at"))
+    if due is None:
+        due = ref + delay
+        _write_state_fields({"api_error_next_at": _utc(due)})
+    due = _api_error_hold(st, attempts, due)
+    now = time.time()
+    if now < due:
+        return "api_waiting:%d" % max(0, int(round(due - now)))
+
+    # Freshness, measured against when the attempt came DUE (not when the API refused):
+    # the ladder's own 480s wait must not read as staleness, while a dashboard opened on
+    # yesterday's api_error stop still refuses — that run belongs to a human.
+    if now - due > CONTINUITY_FRESH_SECS:
+        return refuse("stale_error", "the attempt came due %ds ago; the fresh bound is %ds"
+                      % (int(now - due), CONTINUITY_FRESH_SECS))
+    window = _int_field(st, "windows", 1)
+    if window > _max_windows(st):
+        return refuse("max_windows")
+    harness, argv = _relaunch_harness(st)
+    if not argv:
+        return refuse("unknown_harness")
+
+    # Record FIRST, then fire — one crash costs one attempt, never an unbounded ladder.
+    # `windows` is not in this write, and never will be: see the header.
+    fired = time.time()
+    _write_state_fields({
+        "api_error_attempts": attempt,
+        "api_error_result": "fired:" + harness,
+        "api_error_relaunch_at": _utc(fired),
+        "api_error_next_at": _utc(fired + _api_error_delay(attempt + 1)),
+    })
+    try:
+        _spawn_child(argv, spawn)
+    except OSError as e:
+        _write_state_fields({"api_error_result": "refused:spawn_failed"})
+        log_run_event({"event": "api_error_relaunch_refused", "reason": "spawn_failed",
+                       "attempt": attempt, "error_type": etype, "detail": str(e)})
+        return "api_refused:spawn_failed"
+    log_run_event({"event": "api_error_relaunch", "attempt": attempt, "delay": delay,
+                   "error_type": etype, "harness": harness, "binary": argv[0]})
+    return "api_relaunched:" + harness
+
+
 def continuity_tick(spawn=None):
     """One pass of the roll monitor -> a verdict string (for the terminal line and the
     tests): 'idle', 'manual', 'already_handled', 'relaunched:<harness>', or
-    'refused:<reason>'. `spawn` is injectable for tests; the default detaches a real
+    'refused:<reason>'; an api_error stop answers in the 'api_*' verdicts
+    _api_error_tick returns. `spawn` is injectable for tests; the default detaches a real
     process with the project as its cwd."""
     st = read_state()
     if not st or st.get("_invalid") or st.get("active") is True:
         return "idle"
-    if st.get("stopped_reason") != "context_budget":
+    reason = st.get("stopped_reason")
+    if reason not in ("context_budget", "api_error"):
         return "idle"       # every other stop is final on purpose; only a roll resumes
     if _open_items() == 0:
         return "idle"       # nothing left to continue — not a resumable roll
@@ -1272,6 +1468,10 @@ def continuity_tick(spawn=None):
     # one relaunch would leave the seat empty with the log claiming the switch did it.
     if os.path.exists(os.path.join(LEO, "STOP")):
         return "kill_switch"
+    if reason == "api_error":
+        # Not a roll: no window was consumed and none is charged. Same four gates above,
+        # in the same order; the ladder and its ceiling are below.
+        return _api_error_tick(st, spawn)
     window = _int_field(st, "windows", 1)   # the hook already incremented: this IS window N+1
     if st.get("relaunch_window") == window and st.get("relaunch_result"):
         # Fired is a claim about a Popen, not about the seat. If the child never
@@ -1323,20 +1523,13 @@ def continuity_tick(spawn=None):
         # seat stays empty rather than degrading into silence. /leopold-run resumes
         # from the brief alone when a human decides that is good enough.
         return refuse("checkpoint_missing")
-    tp = st.get("transcript_path") or find_transcript()
-    harness = detect_harness(tp) if tp and os.path.isfile(tp) else "unknown"
-    argv = relaunch_argv(harness, PROJECT)
+    harness, argv = _relaunch_harness(st)
     if not argv:
         return refuse("unknown_harness")
     # Record FIRST, then fire: a crash between the two costs one relaunch, never two.
     _record_relaunch(window, "fired:" + harness)
     try:
-        if spawn is not None:
-            spawn(argv)
-        else:
-            subprocess.Popen(argv, cwd=PROJECT or None, stdin=subprocess.DEVNULL,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             start_new_session=True)
+        _spawn_child(argv, spawn)
     except OSError as e:
         _record_relaunch(window, "refused:spawn_failed")
         log_run_event({"event": "window_relaunch_refused", "window": window,
@@ -1371,6 +1564,15 @@ def continuity_loop(poll=CONTINUITY_POLL_SECS):
                 say("Leopold watch: the relaunched window NEVER reactivated the run — the seat is empty. Resume by hand: /leopold-run (details in .leopold/events.jsonl)")
             elif verdict == "kill_switch":
                 say("Leopold watch: window roll detected but .leopold/STOP is present — remove it and the relaunch decision is made again.")
+            elif verdict.startswith("api_relaunched:"):
+                say("Leopold watch: the turn died on an API error -> relaunched headless (%s)"
+                    % verdict.split(":", 1)[1])
+            elif verdict.startswith("api_waiting:"):
+                say("Leopold watch: the turn died on a retryable API error — next relaunch in %ss"
+                    % verdict.split(":", 1)[1])
+            elif verdict.startswith("api_refused:"):
+                say("Leopold watch: API error NOT retried (%s) — see .leopold/events.jsonl; resume by hand with /leopold-run"
+                    % verdict.split(":", 1)[1])
         except Exception as e:
             # The monitor must never take the dashboard down — but a monitor that died
             # quietly on every tick is a relaunch feature that silently stopped existing.
@@ -1416,6 +1618,27 @@ def _num(state, key, default):
         return default
 
 
+def _api_retry(st):
+    """What the status pill says under an `api_error` stop: which attempt is next and how
+    many seconds until it is due — or None when nothing will retry (not retryable, the
+    ceiling spent, a refusal already recorded, or `continuity: manual`). Read-only: the
+    dashboard reports the ladder, it never advances it."""
+    if st.get("stopped_reason") != "api_error" or st.get("active") is True:
+        return None
+    ae = st.get("api_error") if isinstance(st.get("api_error"), dict) else {}
+    attempts = _int_field(st, "api_error_attempts", 0)
+    if (ae.get("retryable") is not True or attempts >= API_ERROR_MAX_ATTEMPTS
+            or str(st.get("api_error_result") or "").startswith("refused:")
+            or read_continuity() == "manual"):
+        return None
+    due = _parse_ts(st.get("api_error_next_at"))
+    if due is not None:
+        due = _api_error_hold(st, attempts, due)
+    secs = (max(0, int(round(due - time.time()))) if due is not None
+            else _api_error_delay(attempts + 1))
+    return {"attempt": attempts + 1, "max": API_ERROR_MAX_ATTEMPTS, "secs": secs}
+
+
 def snapshot():
     st = read_state()
     plan = read_plan()
@@ -1436,6 +1659,7 @@ def snapshot():
         "invalid": bool(st.get("_invalid")),
         "active": st.get("active") is True,
         "stopped_reason": st.get("stopped_reason", ""),
+        "api_retry": _api_retry(st),
         "stop_requested": os.path.exists(os.path.join(LEO, "STOP")),
         "session_id": st.get("session_id", ""),
         # Who conducts the run (the Stop hook continues only this session) and how many
@@ -1560,6 +1784,79 @@ def ext_by_name(name):
             return e
     return None
 
+
+# --------------------------------------------------------------- event registry
+# ONE registry for every event Leopold writes into .leopold/events.jsonl: its
+# severity class and a one-line meaning in plain English. The page's SEV map and the
+# feed's fallback description are GENERATED from it, so a new event is registered in
+# exactly one place — and scripts/test-watch-events.py derives the set of names the
+# scripts in hooks/ actually emit and fails on any name this dict does not carry.
+#
+# The renderer never depends on an entry existing: an unregistered event still shows
+# its name and its scalar fields (evGeneric below). Registration buys the severity
+# tone and the sentence, never the difference between rendered and blank.
+EVENTS = {
+    # --- the run's spine (driver + skill) ---
+    "turn_start":     ("low",  "a run turn began — iteration, open items, stuck count"),
+    "stop":           ("info", "the run ended; the reason names which stop condition fired"),
+    "item_start":     ("low",  "a plan item was picked up"),
+    "item_done":      ("info", "a plan item was checked off, verified"),
+    "item_incomplete":("med",  "an item was left open after a failed attempt"),
+    "cost":           ("low",  "spend recorded for the turn and the run so far"),
+    "review":         ("med",  "an adversarial review round finished (clean or blocking)"),
+    "hypothesis":     ("high", "a debugging hypothesis survived (or none did)"),
+    "learn":          ("high", "the charter learner proposed amendments for you to review"),
+    "merge_conflict": ("crit", "a worker's worktree would not merge; it was kept for you"),
+    "subagent_spawn": ("med",  "a subagent (or a fork) was launched"),
+    "persona":        ("high", "a persona spoke for a fork or asked for a human"),
+    "awaiting_human": ("high", "the run needs you: an item it may not decide alone"),
+    "failure_rescue": ("high", "one last attempt, with a different approach, before stopping"),
+    "failure_rescue_declined": ("crit", "no different approach was found — the run stops"),
+    # --- ownership + state (hooks/stop-continuity.sh) ---
+    "guard_block":    ("crit", "the git lock denied an irreversible command"),
+    "permission_decided": ("low", "a permission prompt was answered for the run — allowed, or denied in the git lock's own words"),
+    "persona_guard_block": ("crit", "the persona allowlist denied a navigation off the flow"),
+    "state_invalid":  ("crit", "state.json could not be parsed — the run is not counted"),
+    "foreign_stop":   ("med",  "a session that does not own this run stopped here; not counted"),
+    "owner_unknown":  ("high", "the run has no session owner — every stop here is continued"),
+    "owner_takeover": ("high", "a new session took the run over from a stale owner"),
+    "lock_timeout":   ("high", "the state lock was held over 5s; this stop was counted unlocked"),
+    # --- window continuity (hooks/stop-continuity.sh) ---
+    "checkpoint_instruction": ("med",  "the context is filling: the run was told to write a checkpoint"),
+    "checkpoint_grace":       ("high", "the checkpoint was asked for and has not landed yet — grace turn"),
+    "window_roll":            ("high", "the window rolled: a new one continues from the checkpoint"),
+    "max_windows":            ("crit", "the window ceiling was reached — the run stops here"),
+    "no_progress_across_windows": ("crit", "two windows in a row closed zero items — the run stops"),
+    # --- the API error nobody else sees (hooks/stop-failure.sh) ---
+    "stop_failure":   ("crit", "the turn died on an API error and the run was stopped — no Stop fires for a failed turn"),
+    "api_error_observed": ("high", "a driver worker's turn died on an API error; the conductor retries, so the run was not stopped"),
+    # --- compaction (hooks/compact-checkpoint.sh) ---
+    "compact_checkpoint":     ("info", "the checkpoint was composed from durable state before a compaction"),
+    "compact_resumed":        ("low",  "the window resumed after a compaction and was re-grounded on the brief"),
+    "checkpoint_oversize":    ("crit", "the merged checkpoint was over the cap — NOTHING was written, never truncated"),
+    "checkpoint_unmergeable": ("crit", "a checkpoint document does not parse under the contract — nothing was written"),
+    # --- subagents (hooks/subagent-account.sh + hooks/subagent-cap.sh) ---
+    "subagent_started": ("low",  "a subagent was spawned — counted against max_subagents"),
+    "subagent_stopped": ("low",  "a subagent finished; transcript_bytes is what it cost"),
+    "subagent_cap_denied": ("high", "the subagent ceiling denied a spawn — the run does this work in its own turn"),
+    # --- verification receipts (hooks/verify-receipt.sh) ---
+    "verify_recorded": ("low", "a verification command from GUARDRAILS ran — outcome says what it proves: passed and ran move last_verify_at, failed / nonzero (a re-interpreted non-zero exit) / incomplete (interrupted or backgrounded) do not"),
+    # --- the evidence gate (hooks/done-gate.sh) ---
+    "done_denied": ("high", "a claim of done was refused: nothing has verified this work since its last edit — via says which claim, plan_edit (a box ticked in PLAN.md) or task_completed"),
+    # --- second writer + config tamper (hooks/file-watch.sh, hooks/config-guard.sh) ---
+    "external_write": ("med", "a file this run keeps its record in (PLAN.md, DECISIONS.md) changed and the run did not write it — nothing was blocked; re-read it before acting on it"),
+    "config_change_blocked": ("crit", "a settings change was refused mid-run: the session keeps the hook wiring it started with, but the file on disk KEPT the edit — exit 2 stops the reload, not the write"),
+    # --- the watcher's own relaunch (continuity_loop, below) ---
+    "window_relaunch":         ("high", "the watcher relaunched the rolled window headless"),
+    "window_relaunch_refused": ("med",  "a relaunch was refused (already relaunched, or continuity is manual)"),
+    "window_relaunch_failed":  ("crit", "the relaunch could not be spawned — resume with /leopold-run"),
+    "api_error_relaunch":         ("high", "the watcher retried a run the API had refused — attempt N of 5, after a doubling backoff"),
+    "api_error_relaunch_refused": ("crit", "the API error was NOT retried (not retryable, the attempt ceiling, or a gate) — resume with /leopold-run"),
+}
+
+# Every OTHER event a run can write — the driver's ~70, an extension's own — renders
+# through the page's generic fallback (name + scalar fields). Registration is what buys
+# the severity tone and the sentence; nothing here is required for a row to appear.
 
 # --------------------------------------------------------------------------- page
 # Design system: warm cream (light) / near-black (dark), monochrome with semantic green/red
@@ -1825,10 +2122,21 @@ function hms(ts){return ts&&ts.length>=19?ts.slice(11,19):"";}
 function fmtUsd(x){if(x==null)return"$0";return x>=1?("$"+x.toFixed(2)):("$"+x.toFixed(x>=0.01?3:4));}
 function fmtTok(n){return n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":(""+(n||0));}
 function fmtDur(s){if(!s)return"0m";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?(h+"h"+m+"m"):(m+"m"+(m?"":(s%60+"s")));}
-const SEV={guard_block:"sev-crit",state_invalid:"sev-crit",turn_start:"sev-low",stop:"sev-info",subagent_spawn:"sev-med",
-  review:"sev-med",hypothesis:"sev-high",item_start:"sev-low",item_done:"sev-info",item_incomplete:"sev-med",merge_conflict:"sev-crit",cost:"sev-low",learn:"sev-high",
-  awaiting_human:"sev-high",persona:"sev-high",failure_rescue:"sev-high",failure_rescue_declined:"sev-crit",
-  foreign_stop:"sev-med",owner_unknown:"sev-high",owner_takeover:"sev-high",lock_timeout:"sev-high"};
+// Generated from the EVENTS registry in scripts/leopold-watch.py — never hand-edited.
+const EVENTS=__LEOPOLD_EVENTS__;
+const SEV={};for(const k in EVENTS)SEV[k]="sev-"+EVENTS[k].sev;
+// The fallback renderer: an event with no bespoke line still shows its scalar fields,
+// so an unregistered event is never a blank row.
+function evGeneric(e){
+  const out=[];
+  for(const k in e){
+    if(k==="ts"||k==="event")continue;
+    const v=e[k];
+    if(v===null||v===undefined||typeof v==="object")continue;
+    out.push(k+" "+v);
+  }
+  return out.join(" · ");
+}
 function renderCost(c){
   const box=$("#cost");box.innerHTML="";
   if(!c||!c.available){box.append(el("div","meta",c&&c.reason?c.reason:"waiting for session data… (cost shows once the run has a turn)"));return;}
@@ -1854,7 +2162,7 @@ function render(s){
   if(!s.present){tx.textContent="no active run";}
   else if(s.invalid){pill.className="pill bad";tx.textContent="state invalid";}
   else if(s.active){pill.className="pill on";dot.classList.add("pulse");tx.textContent="run active";}
-  else{tx.textContent="stopped"+(s.stopped_reason?(" · "+s.stopped_reason):"");}
+  else{const r=s.api_retry;tx.textContent="stopped"+(s.stopped_reason?(" · "+s.stopped_reason):"")+(r?(" (retry in "+r.secs+"s)"):"");}
   $("#planline").textContent=s.plan.total?("plan "+s.plan.done+"/"+s.plan.total):"";
   const stop=$("#stop");stop.disabled=!s.active;stop.textContent=s.stop_requested?"stop requested…":"Stop run";
   renderCost(s.cost);
@@ -1873,7 +2181,10 @@ function render(s){
     let sev=SEV[e.event]||"sev-info";
     if(e.event==="subagent_spawn"&&e.fork)sev="sev-high";
     if(e.event==="review"&&e.ok===false)sev="sev-high";
-    r.append(el("span","sev "+sev,(e.event||"?").replace(/_/g," ")));
+    const meta=EVENTS[e.event];
+    const badge=el("span","sev "+sev,(e.event||"?").replace(/_/g," "));
+    if(meta&&meta.meaning)badge.title=meta.meaning;
+    r.append(badge);
     let d="";
     if(e.event==="turn_start")d="iter "+e.iteration+" · open "+e.open_items+(e.no_progress?(" · stuck "+e.no_progress):"");
     else if(e.event==="guard_block")d=e.tool||"";
@@ -1896,6 +2207,7 @@ function render(s){
     else if(e.event==="lock_timeout")d="state lock held over 5s · this stop was counted unlocked";
     else if(e.event==="cost")d=(e.usd!=null?("+$"+Number(e.usd).toFixed(3)):"")+(e.spent_usd!=null?(" · total $"+Number(e.spent_usd).toFixed(2)):"");
     else if(e.event==="learn")d=(e.proposed>0?(e.proposed+" charter amendment"+(e.proposed==1?"":"s")+" proposed"):"no amendments")+(e.out?(" · "+e.out.split("/").pop()):"");
+    if(!d)d=[meta&&meta.meaning?meta.meaning:"",evGeneric(e)].filter(Boolean).join(" · ");
     r.append(el("span","dt",d));f.append(r);
   });
   const p=$("#plan");p.innerHTML="";
@@ -2200,6 +2512,13 @@ function renderView(host,name,v){
   setTab(start);
 })();
 </script></body></html>"""
+
+# The one substitution: the registry above becomes the page's EVENTS object. Generated,
+# never duplicated — the SEV map and the feed's fallback line both read it.
+PAGE = PAGE.replace(
+    "__LEOPOLD_EVENTS__",
+    json.dumps({k: {"sev": v[0], "meaning": v[1]} for k, v in EVENTS.items()}, sort_keys=True),
+)
 
 
 # --------------------------------------------------------------------------- server

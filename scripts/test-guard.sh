@@ -5,6 +5,7 @@
 set -u
 
 GUARD="$(cd "$(dirname "$0")/.." && pwd)/hooks/guard-irreversible.sh"
+POLICY="$(cd "$(dirname "$0")/.." && pwd)/hooks/permission-policy.sh"
 command -v jq >/dev/null 2>&1 || { echo "jq required"; exit 1; }
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
@@ -73,6 +74,63 @@ active '{"active":true,"iteration":1,"orchestrator_pid":4242}'
 ck_has  'a driver run is named as the owner' "$(reason "$(run_bash 'git commit -m x')")" 'conducted by leopold run (driver)'
 active '{"active":true,"iteration":1}'
 ck_hasnt 'no owner: the denial is byte-for-byte what it was' "$(reason "$(run_bash 'git commit -m x')")" 'conducted by'
+
+echo "== the permission policy answers with the guard's verdict, command for command =="
+# hooks/permission-policy.sh answers a PermissionRequest for the session conducting the
+# run. Its ONE exception is the git lock, and it does not re-implement it: it hands the
+# payload to guard-irreversible.sh and repeats the deny verbatim. So the red-team list
+# above is the policy's list too — every DENY command must come back as a policy deny
+# carrying THE GUARD'S OWN REASON, and every ALLOW command as a policy allow. A second
+# copy of the git rules living in the policy would pass a "deny/allow" test while
+# drifting on the reason; comparing the reason string is what makes the two one decision.
+#
+# MUTATION-VERIFIED: delete the guard call from hooks/permission-policy.sh (allow
+# unconditionally) and the DENY block below fails 14 times; re-implement the git check
+# locally with a reason of its own and the reason comparison fails.
+active '{"active":true,"iteration":1,"owner":{"session_id":"S-OWNER","engine":"skill","harness":"claude"}}'
+run_perm() { # <command> [session]
+  jq -cn --arg c "$1" --arg cwd "$TMP" --arg s "${2:-S-OWNER}" \
+    '{hook_event_name:"PermissionRequest",session_id:$s,cwd:$cwd,tool_name:"Bash",tool_input:{command:$c}}' \
+    | bash "$POLICY" 2>/dev/null
+}
+# No output at all is the third answer: the harness prompts exactly as it does today.
+p_behavior() { [ -n "$1" ] || { echo none; return; }; printf '%s' "$1" | jq -r '.hookSpecificOutput.decision.behavior // "none"' 2>/dev/null || echo none; }
+p_message()  { printf '%s' "$1" | jq -r '.hookSpecificOutput.decision.message // ""' 2>/dev/null || true; }
+ck_eq() { if [ "$2" = "$3" ]; then pass=$((pass+1)); else fail=$((fail+1)); printf '  \033[31mFAIL\033[0m %s: expected %s, got %s\n' "$1" "$2" "$3"; fi; }
+
+for c in "${DENY[@]}"; do
+  out="$(run_perm "$c")"
+  ck_eq "policy denies: $c" "deny" "$(p_behavior "$out")"
+  ck_eq "policy repeats the guard's reason: $c" "$(reason "$(run_bash "$c")")" "$(p_message "$out")"
+done
+for c in "${ALLOW[@]}"; do
+  ck_eq "policy allows: $c" "allow" "$(p_behavior "$(run_perm "$c")")"
+done
+
+# The tokens are the guard's, honored identically because the guard is the one reading them.
+touch "$TMP/.leopold/ALLOW_GIT"
+ck_eq "policy allows git commit with ALLOW_GIT" "allow" "$(p_behavior "$(run_perm 'git commit -m ok')")"
+rm -f "$TMP/.leopold/ALLOW_GIT"
+touch "$TMP/.leopold/ALLOW_PUSH"
+ck_eq "policy allows git push with ALLOW_PUSH"  "allow" "$(p_behavior "$(run_perm 'git push origin main')")"
+ck_eq "policy still denies force-push with ALLOW_PUSH" "deny" "$(p_behavior "$(run_perm 'git push --force')")"
+rm -f "$TMP/.leopold/ALLOW_PUSH"
+
+# The reason a person reads is the git lock's, owner note included — not a paraphrase.
+out="$(run_perm 'git commit -m x')"
+ck_has  'the policy deny names the owning session' "$(p_message "$out")" 'conducted by session S-OWNER (skill)'
+ck_has  'and names the escape token'               "$(p_message "$out")" 'touch .leopold/ALLOW_GIT'
+
+# Scope: only the session conducting the run is answered, and only while it is active.
+ck_eq "a foreign session gets today's prompt (no output)"  "none" "$(p_behavior "$(run_perm 'rm -rf build/' OTHER-SESSION)")"
+ck_eq "...and is not answered for git either"              "none" "$(p_behavior "$(run_perm 'git commit -m x' OTHER-SESSION)")"
+active '{"active":false}'
+ck_eq "an inactive run is not answered"                    "none" "$(p_behavior "$(run_perm 'rm -rf build/')")"
+active 'not valid json {'
+ck_eq "unparseable state denies (a guard fails closed)"    "deny" "$(p_behavior "$(run_perm 'rm -rf build/')")"
+ck_has "...and says why"                                   "$(p_message "$(run_perm 'rm -rf build/')")" 'does not parse'
+rm -f "$TMP/.leopold/state.json"
+ck_eq "no state.json at all: today's prompt"               "none" "$(p_behavior "$(run_perm 'rm -rf build/')")"
 
 echo
 if [ "$fail" -eq 0 ]; then

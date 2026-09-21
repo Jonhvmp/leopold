@@ -150,6 +150,135 @@ nenhuma persona pode aumentar um budget, limpar o kill switch ou editar o `GUARD
 
 ---
 
+## Bounds que antes eram prosa
+
+Uma regra que só vive num prompt é um desejo. Toda regra abaixo agora é um hook que roda
+no próprio harness, conectado pelo `extensions/lib/harness.sh` em cada harness onde a sonda
+provou que o evento dispara, **inerte a menos que um run esteja ativo**, e reportado por
+harness pelo `leopold doctor` — nunca silêncio. A descrição completa de cada script está em
+[Hooks](reference/hooks.md); o payload em que cada um monta está capturado em
+[Hook Events](reference/hook-events.md); quem vai para qual harness é decidido pelo
+`hooks/hook-matrix.tsv`, não por esta página.
+
+| Bound | Hook (eventos) | Claude Code | Codex CLI |
+| --- | --- | --- | --- |
+| Checkpoint de compactação | `compact-checkpoint.sh` (`PreCompact`, `PostCompact`) | available | available |
+| Livro-razão de subagents | `subagent-account.sh` (`SubagentStart`, `SubagentStop`) | available | available |
+| Teto de subagents | `subagent-cap.sh` (`PreToolUse`) | available | available |
+| Recibos de verificação | `verify-receipt.sh` (`PostToolUse`, `PostToolUseFailure`) | available | substitute |
+| Pronto significa verificado | `done-gate.sh` (`PreToolUse`, `TaskCompleted`) | available | substitute |
+| Política de permissão | `permission-policy.sh` (`PermissionRequest`) | available | substitute |
+| Parada por erro de API | `stop-failure.sh` (`StopFailure`) | available | unavailable |
+| Detector de segundo escritor | `file-watch.sh` (`FileChanged`) | available | unavailable |
+| Guarda de adulteração de config | `config-guard.sh` (`ConfigChange`) | available | unavailable |
+| Roles das lentes de review | `$CODEX_HOME/agents/*.toml` (`SubagentStart`) | substitute | available |
+
+Onde um harness não é `available`, o `leopold doctor` imprime a nota da própria linha da
+matriz, de modo que o custo é declarado em vez de subentendido. Literalmente, elas são:
+
+- **Política de permissão no Codex** — *dispara só sob `--approve-for-me`; o deny de
+  `decision.behavior` é honrado, o allow NÃO é, e `approval_policy=on-request` nunca
+  pergunta — a autonomia no Codex fica nas flags de sandbox do driver e o hook é conectado
+  para a metade do deny (ele repete a trava do git).*
+- **Recibos de verificação no Codex** — *o PostToolUse dispara igual para sucesso e falha e
+  o `tool_response` é só stdout — um recibo no Codex prova que a verificação RODOU depois
+  da última edição, nunca que ela passou.*
+- **Gate de pronto no Codex** — *o Codex não tem eventos de task; a metade do PLAN.md no
+  PreToolUse carrega o bound inteiro lá.*
+- **Parada por erro de API no Codex** — *um erro de API encerra um run do Codex como uma
+  parada comum — `turn.failed` no stream --json, sem Stop e sem hook de falha; retome com
+  `/leopold-run`.*
+- **Detector de segundo escritor no Codex** — *não existe FileChanged no Codex: um segundo
+  escritor nos arquivos do plano não é detectado lá.*
+- **Guarda de adulteração de config no Codex** — *não existe ConfigChange no Codex: uma
+  edição do config.toml ou do wiring dos hooks no meio do run não é detectada lá.*
+- **Roles das lentes de review no Claude Code** — *o Claude Code não tem arquivos de role:
+  as lentes do driver são as sessões SDK dele mesmo e o `agent_type` as nomeia no mesmo
+  payload.*
+
+Nada disso afrouxa coisa alguma. Um hook só acrescenta uma negativa, ou responde um prompt
+que de outro modo ficaria esperando; a trava do git decide primeiro e nunca é sobreposta.
+
+---
+
+## Duas linhas novas no `GUARDRAILS.md` — as duas opcionais, as duas ausentes por padrão
+
+Nada abaixo muda como um brief existente roda. Um `GUARDRAILS.md` escrito antes destes
+hooks parseia byte a byte como antes, e cada linha fica inerte até você escrevê-la.
+
+### `## Verification commands` — o que conta como evidência
+
+A seção está no template entregue com os exemplos **comentados**, e é exatamente esse o
+ponto: sem entradas, nada é registrado e nada é alegado.
+
+```markdown
+## Verification commands
+- make test
+- npm test
+```
+
+Com entradas, o `verify-receipt.sh` registra um recibo sempre que um comando Bash
+**começa** com uma delas. O casamento é lexical e propositalmente estreito:
+`cd sub && make test` e `echo $(make test)` casam com `make test`; um comentário
+(`make build # make test comes later`), um argumento
+(`echo "- ran make test" >> notes.md`) e um corpo de heredoc que o cita, não. O hook nunca
+reinterpreta o que o modelo quis dizer.
+
+Cada recibo carrega um `outcome`, e só `passed` ou `ran` move o `last_verify_at`. No Claude
+Code um comando que falha normalmente chega como `PostToolUseFailure` (`failed`), e um
+`PostToolUse` reinterpretado a partir de um exit não-zero, interrompido ou em background é
+registrado como `nonzero` / `incomplete` em vez de sucesso. No Codex nenhum payload carrega
+status nenhum, então um recibo lá é `ran`.
+
+O `done-gate.sh` é quem lê esses recibos: uma edição que transforma um `- [ ]` em `- [x]`
+no `.leopold/PLAN.md`, ou um `TaskCompleted` no Claude Code, é recusada quando nenhum
+comando de verificação produziu um recibo de sucesso desde a última edição do item — com os
+comandos desta seção nomeados na recusa. Com a seção vazia, o gate não tem o que checar e
+permite, exatamente como antes.
+
+### `max_subagents` — o teto de spawn
+
+O arquivo de estado carrega `subagents_spawned` e `max_subagents` desde a 0.9 e nada nunca
+os aplicou. Agora o `subagent-account.sh` conta cada filho no `SubagentStart` /
+`SubagentStop` (indexado por `agent_id`, sob o lock de estado) e o `subagent-cap.sh` recusa
+o spawn no `PreToolUse` assim que a contagem atinge o teto — antes de o filho existir,
+porque o `SubagentStart` não tem resposta de deny.
+
+O teto é lido do `max_subagents` no `.leopold/state.json`, senão de uma linha
+`max_subagents:` no `.leopold/GUARDRAILS.md`, senão **não há teto** e o hook fica em
+silêncio — um projeto que nunca definiu um se comporta como antes do hook existir.
+`max_subagents: 0` é um teto de verdade ("nenhum subagent nesta run"), não um teto ausente.
+A recusa diz ao run para fazer o trabalho no turno dele mesmo; levantar o teto é decisão do
+humano, no `GUARDRAILS.md`.
+
+### Os novos campos de estado e eventos
+
+Cada um destes é escrito sob o `.leopold/.state.lock`, e toda linha de evento carrega
+`session`:
+
+| No `state.json` | Escrito por |
+| --- | --- |
+| `compact_checkpoints` | `compact-checkpoint.sh` |
+| `subagents_spawned`, `subagents` | `subagent-account.sh` |
+| `verify_receipts`, `last_verify_at`, `last_edit_at`, `own_edits` | `verify-receipt.sh` |
+
+| Novo evento no `events.jsonl` | O que significa |
+| --- | --- |
+| `compact_checkpoint`, `compact_resumed` | uma compactação foi sobrevivida |
+| `checkpoint_oversize`, `checkpoint_unmergeable` | o checkpoint foi recusado, alto e claro, e nada foi truncado |
+| `subagent_started`, `subagent_stopped` | o livro-razão |
+| `subagent_cap_denied` | o teto recusou um spawn |
+| `verify_recorded` | um comando de verificação produziu um recibo |
+| `done_denied` | um item foi fechado sem evidência |
+| `external_write` | algo fora desta sessão mudou o plano (um aviso, nunca um bloqueio) |
+| `config_change_blocked` | um reload de configuração foi recusado no meio do run |
+| `stop_failure` | o turno terminou em erro de API, com a classe dele |
+
+O `leopold watch` renderiza cada um com uma severidade e um significado de uma linha — um
+evento não registrado ainda assim renderiza, nunca como uma linha em branco.
+
+---
+
 ## O kill switch
 
 Duas formas de parar uma run na próxima fronteira de turno:
@@ -190,6 +319,8 @@ commit e push.
 | Continuidade                | `auto`     | `GUARDRAILS.md` (`continuity: manual`) |
 | Máx. de janelas             | 10         | `GUARDRAILS.md` (`max_windows:`) |
 | Budget em USD               | nenhum (opt-in) | `--budget` no driver  |
+| Teto de subagents           | nenhum até ser definido (o `state.json` de um run novo escreve 8) | `GUARDRAILS.md` (`max_subagents:`) |
+| Comandos de verificação     | nenhum (opt-in) | `GUARDRAILS.md` (`## Verification commands`) |
 
 ## Higiene de run e runs paralelas
 

@@ -1,5 +1,5 @@
 {
-  "description": "Leopold hooks: Stop-hook continuity and the PreToolUse git-lock guard. Both are no-ops unless a Leopold run is active in the project.",
+  "description": "Leopold hooks: Stop-hook continuity, the PreToolUse git-lock guard, the PermissionRequest policy that answers a prompt for the session conducting the run (repeating the git lock's deny verbatim), the PreCompact/PostCompact checkpoint that composes .leopold/CHECKPOINT.md from durable state before a compaction and re-grounds the window after it, the StopFailure hook that ends a run whose turn died on an API error — no Stop fires for a failed turn, so nothing else would notice — the subagent ledger (SubagentStart/SubagentStop) with the PreToolUse cap that denies a spawn past max_subagents, and the PostToolUse/PostToolUseFailure receipts that record when a command the brief calls verification ran and how it ended \u2014 the evidence 'done means verified' is checked against. Two more ride on what those receipts record: the PreToolUse edit gate and the TaskCompleted gate of done-gate.sh, which refuse a claim of done \u2014 a `- [ ]` turned into a `- [x]` in .leopold/PLAN.md, or a completed task \u2014 while nothing has verified the work since its last edit. Two more are Claude-Code-only, because Codex CLI 0.152.1 fires neither event: the FileChanged detector of file-watch.sh, which warns (never blocks) when .leopold/PLAN.md or .leopold/DECISIONS.md changes and the run did not write it, and the ConfigChange guard of config-guard.sh, which refuses a settings reload while a run is active \u2014 the run keeps the hook wiring it started with. All are no-ops unless a Leopold run is active in the project.",
   "hooks": {
     "Stop": [
       {
@@ -13,6 +13,116 @@
         "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-irreversible.sh\"" }
+        ]
+      },
+      {
+        "matcher": "Agent|Task|collaborationspawn_agent",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-cap.sh\"" }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|apply_patch",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/done-gate.sh\"" }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/permission-policy.sh\"" }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/compact-checkpoint.sh\"" }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/compact-checkpoint.sh\"" }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-failure.sh\"" }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-account.sh\"" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-account.sh\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|apply_patch",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/verify-receipt.sh\"" }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|apply_patch",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/verify-receipt.sh\"" }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "matcher": ".leopold/PLAN.md",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/file-watch.sh\"" }
+        ]
+      },
+      {
+        "matcher": "PLAN.md",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/file-watch.sh\"" }
+        ]
+      },
+      {
+        "matcher": ".leopold/DECISIONS.md",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/file-watch.sh\"" }
+        ]
+      },
+      {
+        "matcher": "DECISIONS.md",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/file-watch.sh\"" }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/config-guard.sh\"" }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/done-gate.sh\"" }
         ]
       }
     ]

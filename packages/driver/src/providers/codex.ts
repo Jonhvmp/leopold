@@ -19,8 +19,10 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { assetRoot } from "../harness.js";
+import { REVIEW_LENSES } from "../review.js";
 
 /** The subset of the Agent SDK message stream the driver actually reads. */
 export interface SdkMessage {
@@ -128,6 +130,30 @@ export function guardScript(): string | undefined {
   return existsSync(p) ? p : undefined;
 }
 
+/** Where Codex looks for agent roles: `$CODEX_HOME/agents`, else `~/.codex/agents`.
+ *  Read from the session's own env so a hermetic test (and a run with CODEX_HOME set)
+ *  resolves the same directory the installer wrote into. */
+export function codexAgentsDir(env: NodeJS.ProcessEnv = process.env): string {
+  return join(env.CODEX_HOME || join(homedir(), ".codex"), "agents");
+}
+
+/** The role a query should run under, when the call site tagged itself with a review
+ *  lens (`options.leopoldLens`) and the installer actually wrote that lens's role file.
+ *
+ *  No file, no role: naming a role Codex has never heard of would put a lens in the
+ *  argv that does not exist, which is precisely the no-op that reads as success. A
+ *  Codex-only install is enough to make it exist — see `leo_write_codex_agent_roles`. */
+export function lensRoleArgs(
+  lens: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+): { role?: string; roleFile?: string } {
+  if (typeof lens !== "string") return {};
+  const def = REVIEW_LENSES.find((d) => d.lens === lens);
+  if (!def) return {};
+  const roleFile = join(codexAgentsDir(env), `${def.role}.toml`);
+  return existsSync(roleFile) ? { role: def.role, roleFile } : {};
+}
+
 export interface CodexArgvOpts {
   cwd?: string;
   model?: string;
@@ -136,6 +162,11 @@ export interface CodexArgvOpts {
   /** Wire Leopold's git-lock hook into this session. */
   guard?: string;
   resumeId?: string;
+  /** Codex agent role for this session (a review lens: `leopold-lens-<lens>`). */
+  role?: string;
+  /** The role's file, as written by `leo_write_codex_agent_roles`. Both halves are
+   *  required — a role named without its file is a role Codex does not know. */
+  roleFile?: string;
 }
 
 /** Build the `codex exec` argv. Kept pure so the mapping is unit-testable without
@@ -149,6 +180,17 @@ export function buildArgv(o: CodexArgvOpts): string[] {
   if (o.model) args.push("-m", o.model);
   const effort = mapEffort(o.effort);
   if (effort) args.push("-c", `model_reasoning_effort="${effort}"`);
+  if (o.role && o.roleFile) {
+    // The ONE role override Codex 0.152.1 accepts. The probe tried every other spelling
+    // and each was rejected as an unknown config field — `-c agent_role=`, `-c
+    // agent_type=`, `-c role=`, and the role file as a `--profile` layer (see
+    // docs/reference/hook-events.md, "#subagentstart-codex-cli"). `agents.<role>.config_file`
+    // parses and DECLARES the role: it does not make `codex exec` itself run as that
+    // role. So this argv names the lens for anything the session spawns
+    // (`spawn_agent(agent_type=…)`), and what actually keeps a headless lens read-only
+    // is `--sandbox read-only` above — the same guarantee the role file asks for.
+    args.push("-c", `agents.${o.role}.config_file=${JSON.stringify(o.roleFile)}`);
+  }
   if (o.guard) {
     // Codex's PreToolUse payload and deny reply are Claude Code's, so the very same
     // guard script enforces the lock on both harnesses. Config-file hooks are inert
@@ -231,6 +273,8 @@ export function codexQuery(args: QueryArgs): AsyncIterable<SdkMessage> {
   // canUseTool is the Agent SDK's in-process guard; Codex has no such callback, so
   // its presence is the signal to enforce the same policy through the hook instead.
   const guard = options.canUseTool && !readOnly ? guardScript() : undefined;
+  // A review lens runs as its own Codex agent role when the installer wrote one.
+  const { role, roleFile } = lensRoleArgs(options.leopoldLens, env);
 
   return (async function* (): AsyncGenerator<SdkMessage> {
     let threadId: string | undefined;
@@ -248,6 +292,8 @@ export function codexQuery(args: QueryArgs): AsyncIterable<SdkMessage> {
         readOnly,
         guard,
         resumeId: threadId,
+        role,
+        roleFile,
       });
       const turn = await runTurn(argv, input, env, model || "gpt-5");
       usd += turn.usd;

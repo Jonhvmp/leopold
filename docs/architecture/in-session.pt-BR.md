@@ -1,7 +1,7 @@
 # Engine In-Session
 
 O engine in-session é o tier da v0.1: ele roda inteiramente dentro de uma
-sessão do Claude Code, usando dois hooks e um conjunto de skills. Sem processo
+sessão do Claude Code, usando três hooks e um conjunto de skills. Sem processo
 externo, sem chave de API, sem infraestrutura nova.
 
 !!! info "Mais dois hooks vêm junto com o engine"
@@ -10,9 +10,9 @@ externo, sem chave de API, sem infraestrutura nova.
     *seus* prompts do dia a dia, desligado por padrão) — e o repositório traz o
     [`persona-guard.sh`](../reference/persona-guard-hooks.md), armado apenas
     enquanto um [persona run](../concepts/persona-testing.md) está ativo. Esta
-    página cobre os dois hooks que implementam a run autônoma.
+    página cobre os três hooks que implementam a run autônoma.
 
-## Os dois hooks
+## Os três hooks
 
 ```mermaid
 flowchart TB
@@ -64,6 +64,19 @@ um token explícito por sessão esteja presente.
 | `git push` | negado | `.leopold/ALLOW_PUSH` |
 | force-push | negado | nenhum (sempre negado) |
 | todo o resto (`rm -rf`, `reset --hard`, `gh pr`, publicar, …) | permitido | — (chamada da própria run) |
+
+### Hook PermissionRequest — o prompt que a run responde sozinha
+
+Um pedido de permissão numa run autônoma é uma parada: não tem ninguém ali para clicar.
+Quando a sessão que conduz a run esbarra num, o `permission-policy.sh` responde — `allow`,
+exceto que um `git commit` / `git push` é entregue à trava do git acima e o deny dela é
+repetido palavra por palavra. Uma sessão que não conduz a run, uma run inativa, ou run
+nenhuma não recebem resposta alguma, e o harness pergunta exatamente como pergunta hoje.
+
+É o mesmo script nos dois harnesses, mas não o mesmo poder: o Claude Code honra allow e
+deny, o Codex honra só deny. O `leopold doctor` imprime esse custo na linha da capacidade
+em vez de sugerir paridade. Veja
+[Hooks → `permission-policy.sh`](../reference/hooks.md).
 
 ## As skills
 

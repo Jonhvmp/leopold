@@ -35,6 +35,46 @@ ligado por padrão; `--no-review` / `LEOPOLD_REVIEW=0` / `review: off` no GUARDR
 > Dica para o worker: faça self-review com `/code-review` *antes* de reportar done, para o gate
 > passar de primeira. A skill `/leopold-run` diz exatamente isso a ele.
 
+### No Codex: as lentes são agent roles nativas
+
+O Codex CLI tem algo que o Claude Code não tem — uma **agent role nativa**: um arquivo em
+`$CODEX_HOME/agents/<role>.toml` com nome, descrição, `developer_instructions` e qualquer
+chave do `config.toml`, que o `spawn_agent(agent_type=<role>)` usa para rodar um subagente
+como aquela role. O instalador escreve uma por lente, a partir das mesmas definições de que
+o driver monta seus panelistas (`REVIEW_LENSES` em `packages/driver/src/review.ts`):
+
+```text
+~/.codex/agents/leopold-lens-correctness.toml
+~/.codex/agents/leopold-lens-security.toml
+~/.codex/agents/leopold-lens-does-it-work.toml
+~/.codex/agents/leopold-lens-conformance.toml
+```
+
+Cada uma é `sandbox_mode = "read-only"` — um revisor que pode editar o diff que revisa não é
+um revisor — e tira o modelo de `LEOPOLD_CODEX_REVIEW_MODEL`, ou o padrão do harness quando
+essa variável não está setada. Para convocar uma em qualquer sessão do Codex:
+
+```text
+spawn_agent(agent_type="leopold-lens-correctness")
+```
+
+Dois fatos do probe ao vivo (`docs/reference/hook-events.md`) delimitam isso, e o
+`leopold doctor` afirma os dois em vez de sugerir uma paridade que não existe:
+
+- **Uma única chave desconhecida faz o Codex ignorar o arquivo de role inteiro**, com e sem
+  `--strict-config`. Por isso o instalador emite só as chaves que a captura provou serem
+  aceitas, e um teste quebra o build se uma quinta chave aparecer.
+- **`codex exec` não roda *como* uma role.** `-c agent_role=`, `-c agent_type=` e `-c role=`
+  são rejeitados como campos de config desconhecidos e um arquivo de role não é uma camada
+  `--profile` válida; só `-c agents.<role>.config_file=<caminho>` é aceito, e ele *declara* a
+  role em vez de adotá-la. Então as lentes headless do driver nomeiam sua role no argv e são
+  mantidas read-only pelo `--sandbox read-only` — a mesma garantia que o arquivo de role pede.
+
+No Claude Code não existe arquivo de role: cada lente é a própria sessão SDK do driver, que o
+payload de `SubagentStart` nomeia exatamente no mesmo campo (`agent_type`). Essa é a linha
+`substitute` da matriz para `review-lens-roles`, e é uma diferença de mecanismo, não do que o
+painel faz.
+
 ## Conformidade — verificando contra os seus cenários de aceite
 
 Uma linha "done when" diz o que é sucesso em prosa; um **cenário** diz isso em casos que o diff

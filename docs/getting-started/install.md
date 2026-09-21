@@ -83,7 +83,7 @@ hooks, templates, docs, scripts, extensions — goes into one shared **asset hom
 migration, otherwise `~/.codex/leopold`. `LEOPOLD_HOME` overrides both. See
 [Asset Home](../reference/leopold-home.md).
 
-Three hooks are wired into your harness config: the two engine hooks are **inert
+Four hooks are wired into your harness config: the three engine hooks are **inert
 unless a Leopold run is active**, and the [prompt enhancer](../reference/enhance.md)
 is **off until you toggle it on** (`leopold menu` → enhance) — so none of them
 interfere with normal sessions.

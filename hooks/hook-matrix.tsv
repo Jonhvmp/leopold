@@ -1,0 +1,56 @@
+# probed: claude "2.1.259 (Claude Code)" codex "codex-cli 0.152.1"
+#
+# Leopold's capability matrix, DERIVED from the probe's captures in
+# docs/reference/hook-events.md. One row per capability x event x harness.
+# The probed-versions line above is read out of that page, never typed by hand;
+# scripts/test-hook-matrix.sh fails the moment the two disagree.
+#
+# Columns (tab-separated): capability  event  harness  status  evidence  note
+#   capability  the bound being enforced (one hook family)
+#   event       the lifecycle event it rides on
+#   harness     claude | codex
+#   status      available   the event fires on that harness and the reply this bound
+#                           needs was honored in the capture; the hook is wired there
+#               substitute  the bound reaches that harness by other means (a different
+#                           event, a weaker guarantee, or a driver flag); note says which,
+#                           and the hook is still wired where an event exists
+#               unavailable the event does not exist on that harness and no substitute
+#                           reaches the same rule; nothing is wired and doctor says so
+#   evidence    the anchor of the hook-events.md section that proves the row
+#   note        what the bound rides on, and what it costs on this harness
+#
+# Rows 1-6 are the hooks Leopold already ships; the rest are this run's bounds.
+run-continuity	Stop	claude	available	#stop-claude-code	the Stop hook that conducts the run; `decision:block` and exit 2 both honored, `stop_hook_active` marks the re-entry
+run-continuity	Stop	codex	available	#stop-codex-cli	same contract on Codex: `decision:block` and exit 2 honored, `stop_hook_active` on the second firing
+git-lock	PreToolUse	claude	available	#pretooluse-claude-code	`permissionDecision:deny` honored — the tool never ran and the reason reached the model
+git-lock	PreToolUse	codex	available	#pretooluse-codex-cli	`permissionDecision:deny` honored the same way; Codex reports its shell as `Bash`
+persona-guard	PreToolUse	claude	available	#pretooluse-claude-code	armed per run over matcher `mcp__.*|WebFetch`, same deny reply as the git lock
+persona-guard	PreToolUse	codex	available	#pretooluse-codex-cli	same script, same matcher, same honored deny
+permission-policy	PermissionRequest	claude	available	#permissionrequest-claude-code	`tool_name` + `tool_input` in the payload; `decision.behavior` allow and deny both honored — but only under `--permission-prompts none`; the default `host` prompt is never offered to the hook
+permission-policy	PermissionRequest	codex	substitute	#permissionrequest-codex-cli	fires only under `--approve-for-me`; `decision.behavior` deny honored, allow NOT honored, and `approval_policy=on-request` never asks — Codex autonomy stays with the driver's sandbox flags and the hook is wired for the deny half (it repeats the git lock)
+compact-checkpoint	PreCompact	claude	available	#precompact-claude-code	`trigger` (auto|manual) + `custom_instructions`; the checkpoint is composed from durable state, never from the payload
+compact-checkpoint	PostCompact	claude	available	#postcompact-claude-code	`trigger` + the full `compact_summary`; `SessionStart` fires again with `source: compact`
+compact-checkpoint	PreCompact	codex	available	#precompact-codex-cli	`trigger` plus `turn_id` and `model`; no `custom_instructions`, which durable-state composition does not need
+compact-checkpoint	PostCompact	codex	available	#postcompact-codex-cli	`trigger` only — no `compact_summary` on Codex, so the checkpoint text must not depend on one
+api-error-stop	StopFailure	claude	available	#stopfailure-claude-code	`error` is `rate_limit` / `server_error` / `authentication_failed`; `Stop` does not fire, so only this event sees the failed turn
+api-error-stop	StopFailure	codex	unavailable	#what-this-decides-for-leopold	an API error ends a Codex run as a plain stop — `turn.failed` in the --json stream, no Stop and no failure hook; resume with /leopold-run
+subagent-accounting	SubagentStart	claude	available	#subagentstart-claude-code	`agent_id` + `agent_type` identify the child; nested PreToolUse carries the same `agent_id`
+subagent-accounting	SubagentStop	claude	available	#subagentstop-claude-code	`agent_id`, `agent_transcript_path`, `last_assistant_message`, `stop_hook_active`
+subagent-accounting	SubagentStart	codex	available	#subagentstart-codex-cli	`agent_id` + `agent_type` (plus `turn_id`, `model`) — the same accounting keys as Claude
+subagent-accounting	SubagentStop	codex	available	#subagentstop-codex-cli	`agent_id` + `agent_transcript_path` + `stop_hook_active`; exit 2 honored
+subagent-cap	PreToolUse	claude	available	#pretooluse-claude-code	the cap must deny before the spawn, and SubagentStart has no deny reply — matcher `Agent|Task` (a superset; the hook re-checks `tool_name` lexically)
+subagent-cap	PreToolUse	codex	available	#pretooluse-codex-cli	the spawn reaches PreToolUse as `collaborationspawn_agent` (Findings); deny honored
+verify-receipt	PostToolUse	claude	available	#posttooluse-claude-code	no exit code anywhere in the payload — most non-zero exits route to PostToolUseFailure, but the firing is NOT itself a pass: `returnCodeInterpretation` (a re-interpreted non-zero, captured for `grep -c zzz /dev/null`), `interrupted` and `backgroundTaskId` each deny exit 0
+verify-receipt	PostToolUseFailure	claude	available	#posttoolusefailure-claude-code	`error` is the string `Exit code 1`; the non-zero half of a receipt rides here
+verify-receipt	PostToolUse	codex	substitute	#posttooluse-codex-cli	PostToolUse fires for pass and fail alike and `tool_response` is stdout only — a Codex receipt proves the verification RAN after the last edit, never that it passed
+verify-receipt	PostToolUseFailure	codex	unavailable	#what-this-decides-for-leopold	Codex has no tool-failure event; the weaker Codex guarantee lives on its PostToolUse row
+done-gate	PreToolUse	claude	available	#pretooluse-claude-code	the `- [ ]` -> `- [x]` gate on `Edit|Write|MultiEdit` of .leopold/PLAN.md, decided lexically from `tool_input`
+done-gate	PreToolUse	codex	available	#pretooluse-codex-cli	the same gate on Codex's edit tool `apply_patch`, whose `tool_input.command` holds the patch
+done-gate	TaskCompleted	claude	available	#taskcompleted-claude-code	exit 2 honored — the task stays pending; `task_id` / `task_subject` / `task_description` name it
+done-gate	TaskCompleted	codex	substitute	#what-this-decides-for-leopold	Codex has no task events; the PLAN.md PreToolUse half carries the whole bound there
+file-watch	FileChanged	claude	available	#filechanged-claude-code	`file_path` + `event` only — nothing in the payload separates the session's own Edit from another process's write, so correlate with PostToolUse / `last_edit_at`; the watch needs a path-shaped entry to register and a basename-shaped one to receive, and a `cd` detaches it
+file-watch	FileChanged	codex	unavailable	#what-this-decides-for-leopold	no FileChanged on Codex: a second writer on the plan's files is not detected there
+config-guard	ConfigChange	claude	available	#configchange-claude-code	`source` (project_settings / user_settings / ...) + `file_path`; exit 2 blocks the RELOAD, not the write — invisible in this probe's stream (no hook_response for ConfigChange), measured by side effect in docs/reference/config-reload-block.md — so the hook logs as loudly as it blocks
+config-guard	ConfigChange	codex	unavailable	#what-this-decides-for-leopold	no ConfigChange on Codex: a mid-run edit of config.toml or of the hook wiring is not detected there
+review-lens-roles	SubagentStart	codex	available	#subagentstart-codex-cli	role file `.codex/agents/<role>.toml` (`name`, `description`, `developer_instructions`, plus any config.toml key) honored by `spawn_agent(agent_type=<role>)` and echoed as `agent_type`; an unknown key makes Codex ignore the whole file, and `codex exec` CANNOT run as a role
+review-lens-roles	SubagentStart	claude	substitute	#subagentstart-claude-code	Claude Code has no role files: the driver's lenses are its own SDK sessions and `agent_type` names them in the same payload

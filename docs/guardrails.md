@@ -144,6 +144,133 @@ may raise a budget, clear the kill switch or edit `GUARDRAILS.md`.
 
 ---
 
+## Bounds that used to be prose
+
+A rule that lives only in a prompt is a wish. Every rule below is now a hook that runs on
+the harness itself, wired by `extensions/lib/harness.sh` on every harness where the probe
+proved the event fires, **inert unless a run is active**, and reported per harness by
+`leopold doctor` — never silence. The full description of each script is in
+[Hooks](reference/hooks.md); the payload each rides on is captured in
+[Hook Events](reference/hook-events.md); which harness gets which is decided by
+`hooks/hook-matrix.tsv`, not by this page.
+
+| Bound | Hook (events) | Claude Code | Codex CLI |
+| --- | --- | --- | --- |
+| Compaction checkpoint | `compact-checkpoint.sh` (`PreCompact`, `PostCompact`) | available | available |
+| Subagent ledger | `subagent-account.sh` (`SubagentStart`, `SubagentStop`) | available | available |
+| Subagent ceiling | `subagent-cap.sh` (`PreToolUse`) | available | available |
+| Verification receipts | `verify-receipt.sh` (`PostToolUse`, `PostToolUseFailure`) | available | substitute |
+| Done means verified | `done-gate.sh` (`PreToolUse`, `TaskCompleted`) | available | substitute |
+| Permission policy | `permission-policy.sh` (`PermissionRequest`) | available | substitute |
+| API-error stop | `stop-failure.sh` (`StopFailure`) | available | unavailable |
+| Second-writer detector | `file-watch.sh` (`FileChanged`) | available | unavailable |
+| Config tamper guard | `config-guard.sh` (`ConfigChange`) | available | unavailable |
+| Review-lens roles | `$CODEX_HOME/agents/*.toml` (`SubagentStart`) | substitute | available |
+
+Where a harness is not `available`, `leopold doctor` prints the matrix row's own note, so
+the cost is stated rather than implied. Verbatim, those are:
+
+- **Permission policy on Codex** — *fires only under `--approve-for-me`;
+  `decision.behavior` deny honored, allow NOT honored, and `approval_policy=on-request`
+  never asks — Codex autonomy stays with the driver's sandbox flags and the hook is wired
+  for the deny half (it repeats the git lock).*
+- **Verification receipts on Codex** — *PostToolUse fires for pass and fail alike and
+  `tool_response` is stdout only — a Codex receipt proves the verification RAN after the
+  last edit, never that it passed.*
+- **Done gate on Codex** — *Codex has no task events; the PLAN.md PreToolUse half carries
+  the whole bound there.*
+- **API-error stop on Codex** — *an API error ends a Codex run as a plain stop —
+  `turn.failed` in the --json stream, no Stop and no failure hook; resume with
+  `/leopold-run`.*
+- **Second-writer detector on Codex** — *no FileChanged on Codex: a second writer on the
+  plan's files is not detected there.*
+- **Config tamper guard on Codex** — *no ConfigChange on Codex: a mid-run edit of
+  config.toml or of the hook wiring is not detected there.*
+- **Review-lens roles on Claude Code** — *Claude Code has no role files: the driver's
+  lenses are its own SDK sessions and `agent_type` names them in the same payload.*
+
+None of these loosen anything. A hook only adds a denial, or answers a prompt that would
+otherwise wait; the git lock decides first and is never overridden.
+
+---
+
+## Two new lines in `GUARDRAILS.md` — both optional, both absent by default
+
+Nothing below changes how an existing brief runs. A `GUARDRAILS.md` written before these
+hooks existed parses byte-for-byte as it did, and each line is inert until you write it.
+
+### `## Verification commands` — what counts as evidence
+
+The section is in the shipped template with its examples **commented out**, which is the
+whole point: with no entries, nothing is recorded and nothing is claimed.
+
+```markdown
+## Verification commands
+- make test
+- npm test
+```
+
+With entries, `verify-receipt.sh` records a receipt whenever a Bash command **begins** with
+one of them. The match is lexical and deliberately narrow: `cd sub && make test` and
+`echo $(make test)` match `make test`; a comment (`make build # make test comes later`), an
+argument (`echo "- ran make test" >> notes.md`) and a heredoc body that names it do not.
+The hook never re-interprets what the model meant.
+
+Each receipt carries an `outcome`, and only `passed` or `ran` moves `last_verify_at`. On
+Claude Code a failing command usually arrives as `PostToolUseFailure` (`failed`), and a
+`PostToolUse` that was re-interpreted from a non-zero exit, interrupted or backgrounded is
+recorded as `nonzero` / `incomplete` rather than as a pass. On Codex no payload carries a
+status at all, so a receipt there is `ran`.
+
+`done-gate.sh` is what reads those receipts: an edit that turns a `- [ ]` into a `- [x]` in
+`.leopold/PLAN.md`, or a `TaskCompleted` on Claude Code, is denied when no verification
+command has produced a passing receipt since the item's last edit — with the commands from
+this section named in the denial. With the section empty, the gate has nothing to check and
+allows, exactly as before.
+
+### `max_subagents` — the spawn ceiling
+
+The state file has carried `subagents_spawned` and `max_subagents` since 0.9 and nothing
+ever enforced them. Now `subagent-account.sh` counts every child at `SubagentStart` /
+`SubagentStop` (keyed by `agent_id`, under the state lock) and `subagent-cap.sh` denies the
+spawn at `PreToolUse` once the count reaches the ceiling — before the child exists, because
+`SubagentStart` has no deny reply.
+
+The ceiling is read from `max_subagents` in `.leopold/state.json`, else from a
+`max_subagents:` line in `.leopold/GUARDRAILS.md`, else there is **no cap** and the hook is
+silent — a project that never set one behaves as it did before the hook existed.
+`max_subagents: 0` is a real ceiling ("no subagents this run"), not an absent one. The
+denial tells the run to do the work in its own turn; raising the ceiling is the human's
+call, in `GUARDRAILS.md`.
+
+### The new state fields and events
+
+Every one of these is written under `.leopold/.state.lock`, and every event line carries
+`session`:
+
+| In `state.json` | Written by |
+| --- | --- |
+| `compact_checkpoints` | `compact-checkpoint.sh` |
+| `subagents_spawned`, `subagents` | `subagent-account.sh` |
+| `verify_receipts`, `last_verify_at`, `last_edit_at`, `own_edits` | `verify-receipt.sh` |
+
+| New event in `events.jsonl` | What it means |
+| --- | --- |
+| `compact_checkpoint`, `compact_resumed` | a compaction was survived |
+| `checkpoint_oversize`, `checkpoint_unmergeable` | the checkpoint was refused, loudly, and nothing was truncated |
+| `subagent_started`, `subagent_stopped` | the ledger |
+| `subagent_cap_denied` | the ceiling refused a spawn |
+| `verify_recorded` | a verification command produced a receipt |
+| `done_denied` | an item was closed without evidence |
+| `external_write` | something outside this session changed the plan (a warning, never a block) |
+| `config_change_blocked` | a settings reload was refused mid-run |
+| `stop_failure` | the turn ended in an API error, with its class |
+
+`leopold watch` renders each one with a severity and a one-line meaning — an unregistered
+event still renders, never as a blank row.
+
+---
+
 ## The kill switch
 
 Two ways to stop a run at the next turn boundary:
@@ -184,6 +311,8 @@ commit and push.
 | Continuity            | `auto`  | `GUARDRAILS.md` (`continuity: manual`) |
 | Max windows           | 10      | `GUARDRAILS.md` (`max_windows:`) |
 | USD budget            | none (opt-in) | `--budget` on the driver |
+| Subagent ceiling      | none until set (`state.json` default 8 on a fresh run) | `GUARDRAILS.md` (`max_subagents:`) |
+| Verification commands | none (opt-in) | `GUARDRAILS.md` (`## Verification commands`) |
 
 ## Run hygiene and parallel runs
 

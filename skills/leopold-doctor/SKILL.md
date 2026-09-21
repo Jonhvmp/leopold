@@ -22,7 +22,7 @@ bash "$LEO/scripts/leopold-doctor.sh"
 ```
 
 It checks every harness it finds — Claude Code and Codex — since Leopold's skills
-and both hooks run on either.
+and hooks run on either.
 
 Run it from the project directory when a run's continuity is the question: with a
 `.leopold/` brief present, doctor also reports whether the run will survive a full
