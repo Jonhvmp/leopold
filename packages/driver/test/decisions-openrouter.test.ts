@@ -60,6 +60,15 @@ async function startStub(t: TestContext, args: string[]): Promise<{ port: number
   const child = spawn("python3", [STUB, "--log", path.join(dir, "req.jsonl"), "--shape", "chat", ...args], {
     stdio: ["ignore", "pipe", "pipe"],
   });
+  // CLEANUP IS REGISTERED BEFORE THE AWAIT, and that ordering is the whole point: if the port
+  // promise rejects (a cold runner where python3 takes longer than the budget to report), a
+  // cleanup registered after it would never run, the stub would leak, and the leaked child would
+  // hold Node's event loop open forever. That is a HANG, not a failure — it is what kept the
+  // macOS CI leg running for 24 minutes while every other job was green.
+  t.after(() => {
+    child.kill("SIGKILL");
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
   const port = await new Promise<number>((resolve, reject) => {
     let buf = "";
     child.stdout.on("data", (c: Buffer) => {
@@ -68,11 +77,8 @@ async function startStub(t: TestContext, args: string[]): Promise<{ port: number
       if (m) resolve(Number(m[1]));
     });
     child.on("error", reject);
-    setTimeout(() => reject(new Error("no port in 5s")), 5000);
-  });
-  t.after(() => {
-    child.kill("SIGKILL");
-    fs.rmSync(dir, { recursive: true, force: true });
+    child.on("exit", (code) => reject(new Error(`the stub exited before reporting a port (${code})`)));
+    setTimeout(() => reject(new Error("the stub did not report a port in 20s")), 20000);
   });
   return { port };
 }
