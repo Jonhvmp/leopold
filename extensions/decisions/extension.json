@@ -1,0 +1,11 @@
+{
+  "name": "decisions",
+  "title": "decisions",
+  "summary": "OPTIONAL typed, calibrated judgements (choice/score/noul) for the driver and the hooks. Pluggable providers: jev · openrouter · vercel · generic. Every consumer keeps its deterministic path; absent means today's behaviour.",
+  "homepage": "https://github.com/Jonhvmp/leopold",
+  "license": "MIT",
+  "order": 40,
+  "configure": true,
+  "capabilities": ["network", "filesystem.home"],
+  "toggle": { "label": "Active provider" }
+}

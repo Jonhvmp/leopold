@@ -1,0 +1,11 @@
+{
+  "version": "decisions/1.0",
+  "questions": {
+    "severity": {
+      "type": "score",
+      "instructions": "How severe is this?",
+      "criteria": ["l0","l1","l2","l3","l4","l5","l6","l7","l8","l9","l10","l11"]
+    }
+  },
+  "thresholds": { "severity": { "floor": 0.5, "escalate": 0.65, "act": 0.85 } }
+}

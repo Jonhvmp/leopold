@@ -153,7 +153,9 @@ Use o plugin **ou** o `install.sh`, não os dois, pra evitar hooks plugados em d
 
 ## As extensions
 
-O `leopold menu` instala e gerencia as extensions embutidas — serena, gstack, ovmem e
+O `leopold menu` instala e gerencia as extensions embutidas — serena, gstack, ovmem,
+[decisions](../reference/decisions.md) (julgamentos tipados e calibrados; **opcional**, e
+todo consumidor mantém um caminho determinístico sem ela) e
 o prompt enhancer. Cada uma instala, reporta status e roda o doctor **por harness**,
 então uma máquina com dois harnesses recebe os dois plugados e uma máquina só com
 Codex não fica com nada apontando pra um caminho do Claude. Veja

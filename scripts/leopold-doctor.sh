@@ -407,6 +407,89 @@ else
   note "ovmem not installed (optional) — leopold menu (ovmem -> Install)"
 fi
 
+# decisions: the OPTIONAL typed-judgement seam. Two things make its rows unlike the
+# extensions above.
+#
+# IT IS SILENT WHEN ABSENT. The others say "not installed (optional)" to advertise
+# themselves; this one says nothing at all, because a project that never opted in has no
+# decisions capability to report on and the charter's loudness rule is about a capability
+# that IS in use failing, not about one nobody asked for. `leopold doctor` output on a box
+# without it is byte for byte what it was before this module existed.
+#
+# IT HAS NO PER-HARNESS DIMENSION, and says so rather than printing two identical rows. The
+# shell seam is `curl` + `jq` — the same unmodified script on Claude Code and on Codex — and
+# the driver half is the same TypeScript either way. There is nothing a harness can lack
+# here, so a "wired on Claude / unavailable on Codex" pair would be noise shaped like
+# information. The line states the fact once.
+if   [ -n "${LEOPOLD_DECISIONS_DIR:-}" ]; then DEC_DIR="$LEOPOLD_DECISIONS_DIR"
+elif [ -n "${LEOPOLD_HOME:-}" ];          then DEC_DIR="$LEOPOLD_HOME/decisions"
+elif [ -d "$CLAUDE/decisions" ];          then DEC_DIR="$CLAUDE/decisions"
+elif [ -d "$CODEX/decisions" ];           then DEC_DIR="$CODEX/decisions"
+elif [ -d "$CLAUDE" ];                    then DEC_DIR="$CLAUDE/decisions"
+else                                           DEC_DIR="$CODEX/decisions"
+fi
+if [ -f "$DEC_DIR/decisions.sh" ]; then
+  dec_missing=""
+  for f in catalog.schema.json providers.json; do
+    [ -f "$DEC_DIR/$f" ] || dec_missing="${dec_missing:+$dec_missing, }$f"
+  done
+  if [ -n "$dec_missing" ]; then
+    miss "decisions installed but missing $dec_missing — re-run: leopold menu (decisions -> Install)"
+  else
+    pass "decisions installed in $DEC_DIR (same seam on every harness — curl + jq)"
+  fi
+  for t in jq curl; do
+    command -v "$t" >/dev/null 2>&1 || miss "decisions: $t is not on PATH — the shell seam cannot run; every consumer falls back"
+  done
+
+  DEC_PROJ="${LEOPOLD_PROJECT_DIR:-$PWD}/.leopold"
+  DEC_CFG="$DEC_PROJ/decisions/config.json"
+  if [ ! -f "$DEC_CFG" ]; then
+    note "decisions: this project has no $DEC_CFG — every consumer uses its deterministic path"
+  elif ! jq -e . "$DEC_CFG" >/dev/null 2>&1; then
+    miss "decisions: $DEC_CFG is not valid JSON — every consumer falls back until it parses"
+  else
+    dec_active="$(jq -r '.provider // ""' "$DEC_CFG")"
+    if [ -z "$dec_active" ]; then
+      note "decisions: $DEC_CFG names no active provider — every consumer uses its deterministic path"
+    fi
+    # One row per CONFIGURED provider, the active one marked. There is no harness axis.
+    while IFS= read -r p; do
+      [ -n "$p" ] || continue
+      cal="$(jq -r --arg p "$p" '.providers[$p].calibrated // false' "$DEC_CFG")"
+      src="$(jq -r --arg p "$p" '.providers[$p].calibration_source // ""' "$DEC_CFG")"
+      mdl="$(jq -r --arg p "$p" '.providers[$p].model // ""' "$DEC_CFG")"
+      var="$(jq -r --arg p "$p" '.providers[$p].auth_env // ""' "$DEC_CFG")"
+      label="$(leo_calibration_label "$cal" "$src")"
+      state="configured"; [ "$p" = "$dec_active" ] && state="active"
+      keystate="no auth_env declared"
+      if [ -n "$var" ]; then
+        if [ -n "$(eval printf '%s' "\${$var:-}")" ]; then keystate="$var present"; else keystate="$var absent"; fi
+      fi
+      row="decisions provider $p · $state · $label · key: $keystate"
+      [ -n "$mdl" ] || row="$row · NO MODEL PINNED"
+      if [ "$state" = active ] && { [ "$cal" != "true" ] || [ -z "$mdl" ] || [ "$keystate" = "$var absent" ]; }; then
+        note "$row"
+      else
+        pass "$row"
+      fi
+    done <<< "$(jq -r '(.providers // {}) | keys_unsorted[]' "$DEC_CFG" 2>/dev/null)"
+  fi
+
+  # The catalogs are the project's content: name them and whether they parse, never their text.
+  if [ -d "$DEC_PROJ/decisions" ]; then
+    for c in "$DEC_PROJ"/decisions/*.json; do
+      [ -e "$c" ] || continue
+      case "$(basename "$c")" in config.json) continue ;; esac
+      if jq -e . "$c" >/dev/null 2>&1; then
+        pass "decisions catalog $(basename "$c") parses"
+      else
+        miss "decisions catalog $(basename "$c") is not valid JSON — its consumer falls back"
+      fi
+    done
+  fi
+fi
+
 # gstack is per harness: each one discovers skills in its own skills root, so a
 # machine can easily have it on one and not the other. Say which.
 # `-e` on the SKILL.md, not `-d` on the dir: gstack installs each skill as a dir

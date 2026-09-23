@@ -92,6 +92,29 @@ leo_ovmem_dir() {
   _leo_data_dir ovmem
 }
 
+# The decisions seam's data home: the shell seam, the derived catalog schema, and the
+# provider templates the installer offers. Machine-level like the others, because the
+# payload is a tool; the CATALOGS and the active-provider config are per PROJECT and live
+# in `.leopold/decisions/`, because what a project asks a model is a property of that project.
+leo_decisions_dir() {
+  if [ -n "${LEOPOLD_DECISIONS_DIR:-}" ]; then printf '%s\n' "$LEOPOLD_DECISIONS_DIR"; return; fi
+  _leo_data_dir decisions
+}
+
+# How a provider's calibration is said to a human, in the shell.
+#
+# ONE HOME for the shell side (extensions/decisions/manage.sh and scripts/leopold-doctor.sh
+# both call this), kept word for word in step with `calibrationLabel()` in
+# packages/driver/src/decisions/contract.ts. The parity is DERIVED by
+# packages/driver/test/decisions-contract.test.ts, which runs THIS function and compares its
+# three answers to the TypeScript's -- so a reworded caveat fails the gate rather than leaving
+# an operator-declared claim reading like a verified one on one surface and not the other.
+leo_calibration_label() { # <calibrated:true|false> <calibration_source>
+  if [ "${1:-false}" != "true" ]; then printf 'UNCALIBRATED — thresholds not portable'
+  elif [ "${2:-}" = "operator-declared" ]; then printf 'calibrated (operator-declared, unverified)'
+  else printf 'calibrated'; fi
+}
+
 # ---- harness resolution -----------------------------------------------------
 
 # Which harnesses to wire, honoring LEOPOLD_HARNESS (auto|claude|codex|all).

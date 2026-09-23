@@ -301,6 +301,38 @@ only the **deny** half is honored — so on Codex this hook is the git lock's vo
 prompt and nothing more, and Codex autonomy stays with the driver's sandbox flags. That
 is a `substitute` row, not an `available` one, and `leopold doctor` says so on the line.
 
+### The semantic second axis — it may only ever DENY { #permission-semantic-axis }
+
+When the optional [decisions](decisions.md) capability is installed **and** the project has a
+`.leopold/decisions/permission.json` catalog, the hook asks one more question before it grants:
+*how destructive and hard to reverse is this command?* — a four-level Score.
+
+It is consulted **only on a path that has already decided allow**. It is never reached on a path
+heading for a deny, so it cannot grant, soften or reword one. `guard-irreversible.sh` decides git
+before this line and its verdict was already repeated verbatim.
+
+It denies only when **both** bounds are cleared: the answer is above its confidence bar *and* the
+score is at or above 2.5 on the 0–3 rubric — the top level, "irreversible, or reaches outside this
+machine". A merely cautious answer cannot block work. The refusal **quotes the score**, because
+"a model said no" is not a reason a person can argue with and "scored it 3 of 3 on *how
+destructive and hard to reverse is this command?*" is. Each denial logs `decision_denied` with
+the command and the score.
+
+**Every failure keeps today's behaviour, and most cost no network call at all:**
+
+| situation | what happens |
+| --- | --- |
+| the extension is not installed | allow, silently, exactly as before |
+| the project has no permission catalog | allow, silently, exactly as before |
+| the provider is unreachable, slow, or answers below the bar | allow, logged as `decision_timeout` |
+| a chat-completions provider is configured | the shell seam answers `unsupported`; allow, logged |
+
+The call is bounded by a **hard outer kill**, not just by the seam's own `--timeout-ms`: that
+bounds `curl`, not the seam, and a seam stalled on anything else would hold the prompt open —
+which is the precise failure this hook exists to end. `timeout(1)` is not portable (macOS ships
+without it), so the wait is a bounded poll in the shell. Default budget 2000 ms, overridable with
+`LEOPOLD_DECISIONS_TIMEOUT_MS`.
+
 ## `compact-checkpoint.sh` — the PreCompact / PostCompact hook
 
 Runs when the harness compacts the context window: once before it rewrites the

@@ -163,6 +163,68 @@ assert "the driver's own worker is" "allow" \
 pstate '{"active":true,"iteration":1,"orchestrator_pid":4242}'
 assert "a state an OLDER driver wrote (pid, no session) is a driver run too" "none" "$(pbeh "$(pperm 'ls' human-3)")"
 
+# ---- the semantic second axis (item 15): it may only ever DENY ------------------------
+# Exercised with a FAKE seam, because what is under test is the HOOK's logic: whether it
+# consults the seam at all, how it reads a band and a score, where the deny line sits, and
+# that every failure keeps today's behaviour. The seam itself is held to the driver by
+# packages/driver/test/decisions-parity.test.ts.
+#
+# MUTATION-VERIFIED: move the axis above the git-lock check and "never consulted on a deny
+# path" fails; drop the 2.5 comparison and the mid-score case fails; remove the outer kill
+# and the hang case fails by hanging.
+pstate '{"active":true,"iteration":1,"owner":{"session_id":"S-OWNER","engine":"skill","harness":"claude"}}'
+DEC="$P/decstub"; mkdir -p "$DEC" "$P/.leopold/decisions"
+: > "$DEC/catalog.schema.json"
+printf '%s\n' '{"version":"decisions/1.0","questions":{"destructive":{"type":"score","instructions":"x","criteria":["a","b","c","d"]}},"thresholds":{"destructive":{"floor":0.5,"escalate":0.7,"act":0.9}}}' > "$P/.leopold/decisions/permission.json"
+
+fake_seam() { # <band> <score> [sleep-seconds]
+  { printf '#!/usr/bin/env bash\n'
+    printf 'echo ran >> "%s/invoked"\n' "$DEC"
+    [ -n "${3:-}" ] && printf 'sleep %s\n' "$3"
+    printf "printf '%%s\\n' '{\"provider\":\"stub\",\"source\":\"config\",\"usable\":true,\"answers\":{\"destructive\":{\"ok\":true,\"type\":\"score\",\"score\":%s}},\"bands\":{\"destructive\":\"%s\"},\"events\":[]}'\n" "$2" "$1"
+  } > "$DEC/decisions.sh"
+  chmod +x "$DEC/decisions.sh"; rm -f "$DEC/invoked"
+}
+dtimeout() { jq -c 'select(.event=="decision_timeout")' "$P/.leopold/events.jsonl" 2>/dev/null | tail -1; }
+ddenied()  { jq -c 'select(.event=="decision_denied")'  "$P/.leopold/events.jsonl" 2>/dev/null | tail -1; }
+
+fake_seam act 3; pevents
+out="$(LEOPOLD_DECISIONS_DIR="$DEC" pperm 'rm -rf /important/data')"
+assert "a top-of-rubric score turns a lexical allow into a deny" "deny" "$(pbeh "$out")"
+assert "...and the reason names the score, so the denial is auditable" "yes" \
+  "$(printf '%s' "$out" | jq -r '.hookSpecificOutput.decision.message' | grep -q 'scored it 3 of 3' && echo yes || echo no)"
+assert "...and decision_denied records the score" "3" "$(ddenied | jq -r '.score // "-"')"
+
+fake_seam act 1; pevents
+assert "a mid-rubric score is NOT a denial — the axis fires only at or above 2.5" "allow" \
+  "$(pbeh "$(LEOPOLD_DECISIONS_DIR="$DEC" pperm 'rm -rf build/')")"
+
+fake_seam floor 3; pevents
+assert "an answer below the bar keeps the lexical allow" "allow" \
+  "$(pbeh "$(LEOPOLD_DECISIONS_DIR="$DEC" pperm 'rm -rf build/')")"
+assert "...and says it fell back, so a silent axis can be diagnosed" "true" \
+  "$(dtimeout | jq -r '.fell_back // "-"')"
+
+fake_seam act 3; pevents
+out="$(LEOPOLD_DECISIONS_DIR="$DEC" pperm 'git -c user.name=x commit -m y')"
+assert "the axis is NEVER consulted on a path already heading for a deny" "deny" "$(pbeh "$out")"
+assert "...the seam did not run at all on that path" "no" \
+  "$([ -f "$DEC/invoked" ] && echo yes || echo no)"
+
+pevents
+assert "with no decisions extension the hook behaves exactly as before" "allow" \
+  "$(pbeh "$(LEOPOLD_DECISIONS_DIR="$P/nothing-here" pperm 'rm -rf /important/data')")"
+assert "...and nothing is logged about an axis that is not there" "" "$(dtimeout)"
+
+fake_seam act 3 3; pevents
+hang_start="$(date +%s)"
+hang_out="$(LEOPOLD_DECISIONS_DIR="$DEC" LEOPOLD_DECISIONS_TIMEOUT_MS=400 pperm 'rm -rf /important/data')"
+hang_elapsed=$(( $(date +%s) - hang_start ))
+assert "a seam that hangs is abandoned and the lexical allow stands" "allow" "$(pbeh "$hang_out")"
+assert "...within the bound, not the seam's runtime (${hang_elapsed}s, budget 2s)" "yes" \
+  "$([ "$hang_elapsed" -le 2 ] && echo yes || echo no)"
+rm -f "$P/.leopold/decisions/permission.json"
+
 # Fail CLOSED: this is a guard. An unreadable scope, or a git lock it cannot consult,
 # denies and says which.
 # A payload that does not parse: every field this hook decides on comes out of it, so

@@ -171,6 +171,7 @@ nav:
   - Reference:
       - Skills: reference/skills.md
       - Hooks: reference/hooks.md
+      - Decisions: reference/decisions.md
       - Prompt Enhancer: reference/enhance.md
       - Brief Artifacts: reference/artifacts.md
       - Plan Grammar: reference/plan-grammar.md

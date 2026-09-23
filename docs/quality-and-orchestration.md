@@ -115,6 +115,15 @@ blast radius — which files, how many callers — before routing. It always fal
 deterministic classifier on any failure, and it can never lower a keyword-critical item below
 critical (a safety floor: money/auth/migrations stay guarded even if the router relaxes).
 
+A third option sits between the two, and costs neither a regex's blindness nor a session: with the
+optional [decisions](reference/decisions.md) capability installed, **code** gathers the evidence —
+the paths the item names, filtered to the ones that exist, with their reference counts — and a
+provider judges the blast radius from that. Counting is what code does exactly and a model does
+badly, so neither does the other's job. The deterministic classifier stays the floor: below the
+answer's confidence bar, or on any failure, its verdict stands field for field. The bars are
+deliberately asymmetric — raising scrutiny is recoverable, lowering it skips a review that was
+deserved — so the same confidence that promotes an item will not demote one.
+
 ## Slice-scoped context — point the worker at the right files
 
 Smart routing already researches which files an item touches. Turn on **slice scope**

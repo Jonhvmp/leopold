@@ -1,0 +1,33 @@
+{
+  "version": "decisions/1.0",
+  "questions": {
+    "effort": {
+      "type": "choice",
+      "instructions": "How much reasoning effort does this plan item need, given the evidence?",
+      "criteria": {
+        "low": { "what": "Cosmetic or tiny blast radius", "not_for": "Anything with callers" },
+        "medium": { "what": "An ordinary change" },
+        "high": { "what": "Wide blast radius, or the project is flagged high-risk" },
+        "max": { "what": "Sharp edges: schema, payments, crypto, auth internals, irreversible operations" }
+      }
+    },
+    "irreversible": {
+      "type": "noul",
+      "instructions": "Does this item touch money, identity, data integrity, or anything hard to walk back?",
+      "criteria": {
+        "true": "Changes something a later commit cannot simply revert",
+        "false": "Fully recoverable by reverting the diff"
+      }
+    },
+    "blast_radius": {
+      "type": "score",
+      "instructions": "How far does a defect in this item reach, given the caller counts in the state?",
+      "criteria": ["One file, no callers", "A module and its direct callers", "Cross-cutting: many callers or a public contract"]
+    }
+  },
+  "thresholds": {
+    "effort": { "floor": 0.5, "escalate": 0.65, "act": 0.85, "act_raise": 0.65, "act_lower": 0.85 },
+    "irreversible": { "floor": 0.5, "escalate": 0.65, "act": 0.85 },
+    "blast_radius": { "floor": 0.5, "escalate": 0.65, "act": 0.85 }
+  }
+}

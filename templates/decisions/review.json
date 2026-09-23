@@ -1,0 +1,33 @@
+{
+  "version": "decisions/1.0",
+  "questions": {
+    "same_defect": {
+      "type": "noul",
+      "instructions": {
+        "question": "Do `a` and `b` describe the SAME defect?",
+        "focus": "Two lenses looking at one bug word it differently. Same defect means fixing one fixes the other — not merely the same file, and not merely the same category.",
+        "note": "If they are two different problems that happen to live near each other, the answer is no."
+      },
+      "criteria": {
+        "true": { "what": "One fix resolves both", "examples": ["'null deref in handler' and 'handler assumes the option is present'"] },
+        "false": { "what": "Two separate problems", "not_for": "Two findings in the same file", "examples": ["'missing await' and 'error is swallowed' in one function"] }
+      }
+    },
+    "is_defect": {
+      "type": "noul",
+      "instructions": {
+        "question": "Is `finding` a DEFECT rather than a style preference?",
+        "focus": "A defect makes the program do the wrong thing, or lets it. A preference is about how the code reads.",
+        "note": "When it is genuinely both, it is a defect."
+      },
+      "criteria": {
+        "true": { "what": "Wrong behaviour, a missing guard, an unhandled case, a security or data risk" },
+        "false": { "what": "Naming, formatting, structure, or 'I would have written it differently'", "not_for": "A readability problem that hides a real bug" }
+      }
+    }
+  },
+  "thresholds": {
+    "same_defect": { "floor": 0.5, "escalate": 0.7, "act": 0.85 },
+    "is_defect":   { "floor": 0.5, "escalate": 0.7, "act": 0.85 }
+  }
+}

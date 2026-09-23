@@ -151,8 +151,9 @@ Use the plugin **or** `install.sh`, not both, to avoid double-wired hooks.
 
 ## The extensions
 
-`leopold menu` installs and manages the bundled extensions — serena, gstack, ovmem
-and the prompt enhancer. Each one installs, reports status and runs its doctor
+`leopold menu` installs and manages the bundled extensions — serena, gstack, ovmem,
+the prompt enhancer and [decisions](../reference/decisions.md) (typed, calibrated
+judgements; **optional**, and every consumer keeps a deterministic path without it). Each one installs, reports status and runs its doctor
 **per harness**, so a two-harness machine gets both wired and a Codex-only machine
 gets nothing pointing at a Claude path. See
 [Toolchain Manager](toolchain-manager.md).

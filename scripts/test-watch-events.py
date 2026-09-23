@@ -78,6 +78,38 @@ def hook_events():
     return found, by_lib
 
 
+def decision_events():
+    """The decisions seam's event names, derived from the two places that own them.
+
+    The seam is NOT a hook, so the hooks/ deriver above never sees it — and a registry entry
+    written by hand for a name nothing checks is decoration. The authority is the
+    `DecisionEventName` union in the driver (one home for the vocabulary) and the literals the
+    shell seam emits. Both are read; a name in either that has no registry entry fails.
+
+    Returns {} when the decisions module is not in this checkout, so a Leopold without it is
+    unaffected.
+    """
+    found = {}
+    union = os.path.join(ROOT, "packages", "driver", "src", "decisions", "events.ts")
+    if os.path.exists(union):
+        text = open(union, encoding="utf-8").read()
+        block = re.search(r"export type DecisionEventName\s*=(.*?);", text, re.S)
+        if block:
+            for name in re.findall(r'"([a-z_]+)"', block.group(1)):
+                found.setdefault(name, "packages/driver/src/decisions/events.ts")
+        else:
+            fails.append(
+                "packages/driver/src/decisions/events.ts has no DecisionEventName union — the "
+                "deriver's pattern has rotted and every decision event is now unpinned"
+            )
+    seam = os.path.join(ROOT, "extensions", "decisions", "payload", "decisions.sh")
+    if os.path.exists(seam):
+        for n, line in enumerate(open(seam, encoding="utf-8"), 1):
+            for name in re.findall(r'event:\s*"([a-z_]+)"', line):
+                found.setdefault(name, "extensions/decisions/payload/decisions.sh:%d" % n)
+    return found
+
+
 def main():
     watch = load_watch()
     reg = watch.EVENTS
@@ -94,6 +126,51 @@ def main():
             "call — the deriver's library form has rotted and every event logged through it "
             "is now unpinned"
         )
+
+    decisions = decision_events()
+    for ev, where in sorted(decisions.items()):
+        if ev not in reg:
+            fails.append(
+                "%s emits '%s' and scripts/leopold-watch.py has no EVENTS entry for it — the "
+                "dashboard would render it blank" % (where, ev)
+            )
+
+    # The meter: absent when the module was never used, correct when it was. `LEO` is module
+    # state the dashboard sets in its own main(), so a temp project is enough to drive it.
+    import json as _json
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        watch.LEO = tmp
+        if watch.decisions_meters():
+            fails.append(
+                "a project with no events.jsonl produced decisions meters — a row of zeroes "
+                "reads as 'the seam ran and did nothing', which is the opposite of the truth"
+            )
+        log = os.path.join(tmp, "events.jsonl")
+        with open(log, "w", encoding="utf-8") as fh:
+            fh.write(_json.dumps({"event": "item_done"}) + "\n")
+        if watch.decisions_meters():
+            fails.append("events with no decision_* lines still produced decisions meters")
+
+        with open(log, "a", encoding="utf-8") as fh:
+            for ms in (80, 120, 400):
+                fh.write(_json.dumps({"event": "decision_asked", "provider": "jev"}) + "\n")
+                fh.write(_json.dumps({"event": "decision_answered", "elapsed_ms": ms}) + "\n")
+            fh.write(_json.dumps({"event": "decision_failed", "reason": "timeout"}) + "\n")
+        meters = {m["label"]: m for m in watch.decisions_meters()}
+        if sorted(meters) != ["decide p50", "decisions", "fallback"]:
+            fails.append("the decisions meters changed shape: %s" % sorted(meters))
+        else:
+            if meters["decisions"]["val"] != 3:
+                fails.append("calls counted %s, expected 3 (one per decision_asked)"
+                             % meters["decisions"]["val"])
+            if meters["decide p50"]["val"] != 120:
+                fails.append("median latency was %s, expected 120"
+                             % meters["decide p50"]["val"])
+            if meters["fallback"]["val"] != 25:
+                fails.append("fallback rate was %s%%, expected 25 (1 failure in 4 outcomes)"
+                             % meters["fallback"]["val"])
+    watch.LEO = ""
 
     for ev, where in sorted(emitted.items()):
         if ev not in reg:
@@ -120,6 +197,9 @@ def main():
 
     print("watch event registry: %d registered, %d emitted by hooks (%d through hooks/_lib.sh)"
           % (len(reg), len(emitted), len(by_lib)))
+    if decisions:
+        print("watch event registry: %d decision events derived from the driver union + the shell seam"
+              % len(decisions))
     for f in fails:
         print("  FAIL: %s" % f)
     if fails:

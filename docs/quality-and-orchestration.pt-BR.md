@@ -118,6 +118,16 @@ classificador determinístico em qualquer falha, e nunca pode rebaixar um item c
 para abaixo de crítico (um piso de segurança: dinheiro/auth/migrações continuam guardados mesmo se o
 roteador relaxar).
 
+Há uma terceira opção entre as duas, e ela não custa nem a cegueira de um regex nem uma sessão:
+com a capacidade opcional [decisions](reference/decisions.md) instalada, **o código** junta a
+evidência — os caminhos que o item nomeia, filtrados para os que existem, com suas contagens de
+referência — e um provider julga o raio de impacto a partir disso. Contar é o que o código faz
+exato e um modelo faz mal, então nenhum dos dois faz o trabalho do outro. O classificador
+determinístico continua sendo o piso: abaixo da barra de confiança da resposta, ou em qualquer
+falha, o veredito dele vale campo por campo. As barras são deliberadamente assimétricas — subir
+escrutínio é recuperável, baixar pula um review que era merecido — então a mesma confiança que
+promove um item não rebaixa outro.
+
 ## Contexto escopado por fatia — aponte o worker para os arquivos certos
 
 O roteamento inteligente já pesquisa quais arquivos um item toca. Ative o **slice scope**

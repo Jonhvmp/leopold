@@ -1,0 +1,47 @@
+{
+  "version": "decisions/1.0",
+  "providers": {
+    "jev": {
+      "name": "jev",
+      "endpoint": "https://api.typesafe.ai/v1/systemone",
+      "model": "jev-1.13.0",
+      "calibrated": true,
+      "calibration_source": "trained",
+      "auth_env": "TYPESAFE_API_KEY",
+      "timeout_ms": 5000,
+      "max_options": 255,
+      "max_state_tokens": 32000
+    },
+    "openrouter": {
+      "name": "openrouter",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "model": "",
+      "calibrated": false,
+      "auth_env": "OPENROUTER_API_KEY",
+      "timeout_ms": 20000,
+      "max_options": 64,
+      "max_state_tokens": 32000
+    },
+    "vercel": {
+      "name": "vercel",
+      "endpoint": "https://ai-gateway.vercel.sh/v1/chat/completions",
+      "model": "",
+      "calibrated": false,
+      "auth_env": "AI_GATEWAY_API_KEY",
+      "timeout_ms": 20000,
+      "max_options": 64,
+      "max_state_tokens": 32000
+    },
+    "generic": {
+      "name": "generic",
+      "endpoint": "",
+      "model": "",
+      "calibrated": false,
+      "calibration_source": "operator-declared",
+      "auth_env": "LEOPOLD_DECISIONS_API_KEY",
+      "timeout_ms": 5000,
+      "max_options": 255,
+      "max_state_tokens": 32000
+    }
+  }
+}

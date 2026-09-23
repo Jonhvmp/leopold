@@ -196,4 +196,85 @@ if [ -n "$guard_out" ]; then
   fi
 fi
 
+# ---- the semantic second axis: it may only ever DENY ---------------------------------
+# Everything above has already decided ALLOW. This asks one more question — "how destructive
+# and hard to reverse is this command?" — and can turn that allow into a deny. It can do
+# nothing else: it is never consulted on a path that was heading for a deny, so it cannot
+# grant, soften, or reword one. `guard-irreversible.sh` decided git before this line and its
+# verdict was already repeated verbatim.
+#
+# EVERY FAILURE MODE KEEPS TODAY'S BEHAVIOUR, and costs no network call:
+#   the decisions extension is not installed        -> allow, silently, as before
+#   this project has no permission catalog          -> allow, silently, as before
+#   the provider is unreachable / slow / uncalibrated for this catalog -> allow, logged
+# A stalled permission prompt is the exact failure this hook exists to END, so the seam is
+# given a hard millisecond bound and anything at or past it is a fall back, not a wait.
+#
+# The seam is `curl` + `jq` and speaks the System One shape only; a chat-completions provider
+# configured here answers `unsupported` and lands in the same fall-back branch, named.
+if   [ -n "${LEOPOLD_DECISIONS_DIR:-}" ]; then DEC_DIR="$LEOPOLD_DECISIONS_DIR"
+elif [ -n "${LEOPOLD_HOME:-}" ];          then DEC_DIR="$LEOPOLD_HOME/decisions"
+elif [ -d "${CLAUDE_HOME:-$HOME/.claude}/decisions" ]; then DEC_DIR="${CLAUDE_HOME:-$HOME/.claude}/decisions"
+elif [ -d "${CODEX_HOME:-$HOME/.codex}/decisions" ];   then DEC_DIR="${CODEX_HOME:-$HOME/.codex}/decisions"
+# An existing harness home, before the historical default — the step the other two copies of this
+# resolution have (leo_decisions_dir in extensions/lib/harness.sh, and scripts/leopold-doctor.sh).
+# Without it a Codex-only box looked under ~/.claude for a payload installed under ~/.codex.
+elif [ -d "${CLAUDE_HOME:-$HOME/.claude}" ];           then DEC_DIR="${CLAUDE_HOME:-$HOME/.claude}/decisions"
+elif [ -d "${CODEX_HOME:-$HOME/.codex}" ];             then DEC_DIR="${CODEX_HOME:-$HOME/.codex}/decisions"
+else DEC_DIR="${CLAUDE_HOME:-$HOME/.claude}/decisions"
+fi
+DEC_SEAM="$DEC_DIR/decisions.sh"
+DEC_CATALOG="$cwd/.leopold/decisions/permission.json"
+DEC_TIMEOUT="${LEOPOLD_DECISIONS_TIMEOUT_MS:-2000}"
+
+if [ -x "$DEC_SEAM" ] && [ -f "$DEC_CATALOG" ] && [ -n "$cmd" ]; then
+  dec_state="$(mktemp)"
+  jq -cn --arg c "$cmd" --arg t "$tool" '{tool:$t,command:$c}' > "$dec_state" 2>/dev/null || printf '{}' > "$dec_state"
+  # A HARD OUTER BOUND, not just the seam's own. `--timeout-ms` bounds the seam's curl; it does
+  # not bound the seam. A stalled prompt is the failure this hook exists to end, so the call runs
+  # as a child and is killed at the deadline no matter what it is stuck on. `timeout(1)` is not
+  # portable (macOS ships without it), so the wait is a bounded poll in the shell itself.
+  dec_result="$(mktemp)"
+  bash "$DEC_SEAM" --leo-dir "$cwd/.leopold" --catalog permission \
+       --questions destructive --state-file "$dec_state" \
+       --schema "$DEC_DIR/catalog.schema.json" --timeout-ms "$DEC_TIMEOUT" > "$dec_result" 2>/dev/null &
+  dec_pid=$!
+  # +250ms of grace over the seam's own budget, then it is over regardless.
+  dec_deadline=$(( DEC_TIMEOUT + 250 ))
+  dec_waited=0
+  while kill -0 "$dec_pid" 2>/dev/null && [ "$dec_waited" -lt "$dec_deadline" ]; do
+    sleep 0.05
+    dec_waited=$(( dec_waited + 50 ))
+  done
+  if kill -0 "$dec_pid" 2>/dev/null; then
+    kill -9 "$dec_pid" 2>/dev/null || true
+    dec_out=""
+  else
+    wait "$dec_pid" 2>/dev/null || true
+    dec_out="$(cat "$dec_result" 2>/dev/null || true)"
+  fi
+  rm -f "$dec_state" "$dec_result"
+
+  dec_band="$(printf '%s' "$dec_out" | jq -r '.bands.destructive // ""' 2>/dev/null || true)"
+  dec_score="$(printf '%s' "$dec_out" | jq -r '.answers.destructive.score // empty' 2>/dev/null || true)"
+  dec_reason="$(printf '%s' "$dec_out" | jq -r '.answers.destructive.reason // ""' 2>/dev/null || true)"
+
+  if [ "$dec_band" = "act" ] && [ -n "$dec_score" ]; then
+    # The top level of the rubric is "irreversible, or reaches outside this machine". Deny only
+    # when the mass is actually there — 2.5 on a 0..3 scale — and say the number, so the reason
+    # is auditable rather than an appeal to a model.
+    if awk -v s="$dec_score" 'BEGIN { exit !(s >= 2.5) }'; then
+      leo_hook_event decision_denied "$(jq -cn --arg cmd "$log_cmd" --arg s "$dec_score" \
+        '{command:$cmd,score:($s|tonumber),axis:"destructive"}' 2>/dev/null || echo '{}')"
+      deny "Leopold: the permission policy allowed this lexically, then scored it $dec_score of 3 on \"how destructive and hard to reverse is this command?\" — at or above 2.5 that rubric means irreversible, or reaching outside this machine. Denied by the semantic axis, which can only ever add a denial. Adjust .leopold/decisions/permission.json, or run the command yourself."
+    fi
+  elif [ -z "$dec_band" ] || [ "$dec_band" != "act" ]; then
+    # Not usable: a timeout, an unreachable provider, an `unsupported` seam, or an answer that
+    # did not clear the bar. All the same outcome — the lexical verdict stands — and all worth
+    # one line, because a run whose semantic axis never fires should be able to find out why.
+    leo_hook_event decision_timeout "$(jq -cn --arg cmd "$log_cmd" --arg r "${dec_reason:-not usable}" \
+      '{command:$cmd,axis:"destructive",fell_back:true,reason:$r}' 2>/dev/null || echo '{}')"
+  fi
+fi
+
 allow "an active Leopold run conducts this session — autonomy over the prompt"

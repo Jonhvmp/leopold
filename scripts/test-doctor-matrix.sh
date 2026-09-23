@@ -445,6 +445,77 @@ out7c="$(run_doctor)"
 has "a missing lens is named, not rounded up" "$out7c" \
   "review-lens-roles · Codex: incomplete — 3/4 role files in $CODEX_HOME/agents (missing: leopold-lens-conformance.toml)"
 
+# ---- the decisions capability ------------------------------------------------------------
+# Five statuses and one silence. The silence is the one worth a test: an optional capability
+# nobody opted into must not add a line to a health report, and "byte for byte what it was
+# before" is only true if something checks.
+echo
+echo "decisions capability rows"
+
+export LEOPOLD_DECISIONS_DIR="$T/decisions"
+DEC_PROJ="$LEOPOLD_PROJECT_DIR/.leopold"
+mkdir -p "$DEC_PROJ"
+
+out_absent="$(bash "$ROOT/scripts/leopold-doctor.sh" 2>&1 || true)"
+hasnt "absent: doctor says nothing about decisions" "$out_absent" "decisions"
+
+mkdir -p "$LEOPOLD_DECISIONS_DIR"
+install -m 0755 "$ROOT/extensions/decisions/payload/decisions.sh" "$LEOPOLD_DECISIONS_DIR/decisions.sh"
+install -m 0644 "$ROOT/packages/driver/src/decisions/catalog.schema.json" "$LEOPOLD_DECISIONS_DIR/"
+install -m 0644 "$ROOT/packages/driver/src/decisions/providers.json" "$LEOPOLD_DECISIONS_DIR/"
+
+out_unconf="$(bash "$ROOT/scripts/leopold-doctor.sh" 2>&1 || true)"
+has "installed: the payload row names the dir and the one-seam fact" "$out_unconf" "decisions installed in"
+has "installed: the seam is stated as harness-independent" "$out_unconf" "same seam on every harness"
+has "no config: consumers are said to use the deterministic path" "$out_unconf" "every consumer uses its deterministic path"
+
+mkdir -p "$DEC_PROJ/decisions"
+cat > "$DEC_PROJ/decisions/config.json" <<'JSON'
+{ "version": "decisions/1.0", "provider": "jev",
+  "providers": {
+    "jev": { "name":"jev","endpoint":"https://api.typesafe.ai/v1/systemone","model":"jev-1.13.0",
+             "calibrated":true,"calibration_source":"trained","auth_env":"DOCTOR_TEST_KEY",
+             "timeout_ms":5000,"max_options":255,"max_state_tokens":32000 },
+    "openrouter": { "name":"openrouter","endpoint":"https://openrouter.ai/api/v1/chat/completions",
+             "model":"openai/gpt-5.1","calibrated":false,"auth_env":"DOCTOR_TEST_OR_KEY",
+             "timeout_ms":20000,"max_options":64,"max_state_tokens":32000 }
+  } }
+JSON
+
+out_nokey="$(bash "$ROOT/scripts/leopold-doctor.sh" 2>&1 || true)"
+has "active provider is marked active" "$out_nokey" "decisions provider jev · active"
+has "a configured but inactive provider is listed too" "$out_nokey" "decisions provider openrouter · configured"
+has "an absent key is named by variable, not by value" "$out_nokey" "key: DOCTOR_TEST_KEY absent"
+has "an uncalibrated provider carries the portability warning" "$out_nokey" "UNCALIBRATED — thresholds not portable"
+
+export DOCTOR_TEST_KEY="doctor-canary-0002"
+out_key="$(bash "$ROOT/scripts/leopold-doctor.sh" 2>&1 || true)"
+has "a present key is reported as present" "$out_key" "key: DOCTOR_TEST_KEY present"
+hasnt "the key VALUE never reaches the report" "$out_key" "doctor-canary-0002"
+
+# An operator-declared claim must never read like a trained one.
+python3 - "$DEC_PROJ/decisions/config.json" <<'PYEOF'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["providers"]["jev"]["calibration_source"] = "operator-declared"
+json.dump(d, open(p, "w"))
+PYEOF
+out_declared="$(bash "$ROOT/scripts/leopold-doctor.sh" 2>&1 || true)"
+has "an operator-declared claim is labelled unverified" "$out_declared" "calibrated (operator-declared, unverified)"
+
+# A catalog that does not parse is named, and its consumer is said to fall back.
+printf 'not json' > "$DEC_PROJ/decisions/routing.json"
+out_badcat="$(bash "$ROOT/scripts/leopold-doctor.sh" 2>&1 || true)"
+has "an unparseable catalog is named" "$out_badcat" "decisions catalog routing.json is not valid JSON"
+rm -f "$DEC_PROJ/decisions/routing.json"
+
+# A half-install is a FAIL, not a warning: the seam cannot validate a catalog without its schema.
+rm -f "$LEOPOLD_DECISIONS_DIR/catalog.schema.json"
+out_half="$(bash "$ROOT/scripts/leopold-doctor.sh" 2>&1 || true)"
+has "a missing derived asset is named" "$out_half" "missing catalog.schema.json"
+unset DOCTOR_TEST_KEY LEOPOLD_DECISIONS_DIR
+
 echo
 if [ "$fail" = "0" ]; then echo "doctor capability matrix: all checks passed"; else echo "doctor capability matrix: FAILURES"; fi
 exit "$fail"

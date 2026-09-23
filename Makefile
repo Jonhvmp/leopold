@@ -192,6 +192,14 @@ driver-check: ## Typecheck the SDK driver
 driver-test: ## Run the SDK driver unit tests (parser + guard; needs Node 22.6+)
 	@cd $(DRIVER) && $(NPM) test
 
+decisions-test: ## Run the decisions module suites (contract + validator; extended by later items)
+	@python3 -m py_compile scripts/decisions/systemone-stub.py
+	@bash -n extensions/decisions/payload/decisions.sh
+	@bash -n extensions/decisions/install.sh
+	@bash -n extensions/decisions/manage.sh
+	@bash scripts/test-decisions-install.sh
+	@cd $(DRIVER) && node --import tsx --test test/decisions-contract.test.ts test/decisions-ask.test.ts test/decisions-jev.test.ts test/decisions-openrouter.test.ts test/decisions-vercel.test.ts test/decisions-generic.test.ts test/decisions-parity.test.ts test/decisions-routing.test.ts test/decisions-review.test.ts test/decisions-triage.test.ts test/decisions-ledger.test.ts
+
 driver-smoke: ## Build the driver, then smoke the built CLI end to end (no network)
 	@cd $(DRIVER) && $(NPM) run build
 	@bash scripts/test-cli-smoke.sh
@@ -223,7 +231,7 @@ docs-clean: ## Remove the built docs site
 # ci-parity comes first and costs nothing: it reads this chain and ci.yml and fails if a
 # suite here has no CI step (or the reverse). "`make test` is the gate, it is what CI
 # runs" is a promise, and this is the only thing that keeps it.
-test: ci-parity hooks-check hooks-test probe-test toolchain-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+test: ci-parity hooks-check hooks-test probe-test toolchain-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test decisions-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

@@ -1639,6 +1639,56 @@ def _api_retry(st):
     return {"attempt": attempts + 1, "max": API_ERROR_MAX_ATTEMPTS, "secs": secs}
 
 
+def decisions_meters():
+    """Calls, fallback rate and median latency for the OPTIONAL decisions seam.
+
+    Aggregated from events.jsonl rather than state.json, because the seam deliberately writes
+    no state -- it is a pure function whose caller owns the event log.
+
+    Returns [] when the run asked nothing. A project without the module must see no meter at
+    all: a row of zeroes would read as "the seam ran and did nothing", which is the opposite
+    of the truth. `decision_asked` means a provider was ENGAGED (see DECISIONS, turn 3), so
+    the fallback rate below is out of real calls, not out of intentions.
+    """
+    path = os.path.join(LEO, "events.jsonl")
+    if not os.path.exists(path):
+        return []
+    calls = 0
+    failed = 0
+    spent = []
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if "decision_" not in line:
+                    continue
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                name = ev.get("event", "")
+                if name == "decision_asked":
+                    calls += 1
+                elif name in ("decision_failed", "decision_timeout"):
+                    failed += 1
+                ms = ev.get("elapsed_ms")
+                if name == "decision_answered" and isinstance(ms, (int, float)):
+                    spent.append(float(ms))
+    except OSError:
+        return []
+    if calls == 0:
+        return []
+    spent.sort()
+    median = spent[len(spent) // 2] if spent else 0.0
+    return [
+        {"label": "decisions", "val": calls, "max": calls, "unit": ""},
+        {"label": "fallback", "val": int(round(100.0 * failed / max(1, failed + calls))),
+         "max": 100, "unit": "%"},
+        # The bar is scaled to one second: this seam exists to answer in ~100ms, so "how close
+        # to a second" is the reading that matters. A slower provider fills it, which is the point.
+        {"label": "decide p50", "val": int(round(median)), "max": 1000, "unit": "ms"},
+    ]
+
+
 def snapshot():
     st = read_state()
     plan = read_plan()
@@ -1653,7 +1703,7 @@ def snapshot():
          "max": int(_num(st, "max_forks", 0)), "unit": ""},
         {"label": "failures", "val": int(_num(st, "consecutive_failures", 0)),
          "max": int(_num(st, "max_failures", 3)), "unit": ""},
-    ]
+    ] + decisions_meters()
     return {
         "present": bool(st) and not st.get("_invalid"),
         "invalid": bool(st.get("_invalid")),
@@ -1812,6 +1862,16 @@ EVENTS = {
     "awaiting_human": ("high", "the run needs you: an item it may not decide alone"),
     "failure_rescue": ("high", "one last attempt, with a different approach, before stopping"),
     "failure_rescue_declined": ("crit", "no different approach was found — the run stops"),
+    # --- the decisions seam (driver + extensions/decisions/payload/decisions.sh) ---
+    # Present only when a project opted into the optional module. `decision_failed` is `med`
+    # and not `crit` on purpose: a failure here means the consumer used the deterministic path
+    # it always had, which is the designed behaviour, not an outage.
+    "decision_asked":    ("low",  "a provider was asked a set of typed questions"),
+    "decision_answered": ("low",  "a typed answer came back — with its band: act, escalate or floor"),
+    "decision_failed":   ("med",  "no usable answer; the consumer used its deterministic path"),
+    "decision_retry":    ("med",  "the provider was congested (429/529) — backing off and retrying"),
+    "decision_timeout":  ("high", "the provider did not answer in time; the lexical path decided"),
+    "decision_denied":   ("crit", "the semantic axis turned a lexical allow into a deny — a command scored at the top of its rubric"),
     # --- ownership + state (hooks/stop-continuity.sh) ---
     "guard_block":    ("crit", "the git lock denied an irreversible command"),
     "permission_decided": ("low", "a permission prompt was answered for the run — allowed, or denied in the git lock's own words"),

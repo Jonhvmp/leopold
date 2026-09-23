@@ -50,6 +50,8 @@ jobs:
         run: bash scripts/test-doctor-continuity.sh
       - name: "Doctor capability matrix (one row per capability per harness, incl. the npm asset home)"
         run: bash scripts/test-doctor-matrix.sh
+      - name: "Decisions extension contract (idempotent install, no key leak, remove keeps catalogs)"
+        run: bash scripts/test-decisions-install.sh
       - name: Guard red-team tests (bypass attempts must stay blocked)
         run: bash scripts/test-guard.sh
       - name: Enhance behavior tests (stubbed claude, no network)

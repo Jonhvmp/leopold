@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`decisions`: typed, calibrated judgements for the driver and the hooks — optional by
+  construction.** A new capability that lets code ask a model a *typed* question — `choice`,
+  `score`, `noul` — and get back a decision with a probability distribution, instead of prose
+  to parse. It replaces the false choice the codebase had between a keyword regex and a whole
+  model session: `packages/driver/src/classify.ts` reads an item's *wording*, and
+  `route.ts --smart-routing` spends a read-only session per item.
+  **It is optional and stays optional.** The core never calls a provider. Every consumer keeps
+  the deterministic path it already had, and that path runs when the extension is absent, the
+  key is missing, the network fails, the provider times out, or the answer's confidence is
+  below its floor. "Refine, never replace" is enforced by the compiler: `ask()` takes the
+  deterministic fallback as a **required** argument, pinned by a `@ts-expect-error` in
+  `src/decisions/type-assertions.ts` (it lives in `src/` because `make driver-check` never
+  compiles a test file).
+  **The contract is data, not prose.** `decisions/1.0` ships a validator, a JSON Schema and the
+  installer's provider templates, both **generated** from the driver's own constants and pinned
+  to them by test — so `jev-1.13.0` cannot become `jev-latest` in one of two places.
+  Thresholds are `floor` / `escalate` / `act`, plus an optional **asymmetric** `act_raise` /
+  `act_lower`: raising scrutiny is recoverable, lowering it skips a review that was deserved.
+  **Five providers behind one seam, in 133 lines of descriptor:** `jev` (TypeSafe System One,
+  pinned `jev-1.13.0`, calibrated), `openrouter` and `vercel` (chat-completions gateways,
+  **uncalibrated**), `generic` (any wire-compatible endpoint, calibration **declared by the
+  operator** and labelled `calibrated (operator-declared, unverified)` everywhere a human reads
+  it), and `none`, the deterministic floor. A threshold **never** carries across providers: a
+  catalog declares `thresholds_for`, and the loader refuses both a borrowed catalog and an
+  uncalibrated provider running on bars nobody chose for it — the cost is measured, not argued
+  (one stub answer at confidence 0.90 clears `jev`'s 0.85 bar and misses `openrouter`'s 0.95).
+  **Two seams, one behaviour.** The TypeScript driver and `extensions/decisions/payload/decisions.sh`
+  (`curl` + `jq`, zero packages) read the same catalogs and config, and
+  `packages/driver/test/decisions-parity.test.ts` runs both against one stub and compares —
+  no hand-written expectation, one named exemption (`elapsed_ms`), and the exemption set itself
+  asserted. The shell seam speaks the System One shape only; a chat gateway configured there
+  returns the explicit `unsupported` failure rather than hanging.
+  **Three consumers, each keeping its floor.** Item routing (`routeWithDecisions`: code gathers
+  the evidence — paths the item names, filtered to what exists on disk, with reference counts —
+  and the provider judges blast radius); review finding dedupe and demotion (fails closed in
+  both directions); and `/leopold-triage` classification, where the stage quarantine **stays** —
+  typed output removes prose and tool access from a classifier but a hostile issue body can
+  still push a classification *within the enum*.
+  **A semantic second axis on `hooks/permission-policy.sh`, which may only ever DENY.** It is
+  consulted only on a path already heading for allow, so it cannot grant, soften or reword a
+  denial; `hooks/guard-irreversible.sh` decides git before it and is unmodified. It fires only
+  above the confidence bar *and* only at the top of its rubric, names the score in the refusal,
+  and is bounded by a hard outer kill — `--timeout-ms` bounds curl, not the seam, and a stalled
+  permission prompt is the failure the hook exists to end.
+  **The calibration ledger** records every answer with its band and, later, its outcome as a
+  **second** row — never an edit of the first, so a row means what it meant when written. The
+  learn pass proposes the weakest bar the evidence supports, says so when the sample is under
+  30, and **never writes a catalog**.
+  `leopold doctor` prints one row per configured provider (there is no per-harness axis: the
+  seam is the same script on both) and is **silent** when the extension is absent;
+  `leopold watch` registers six decision events and shows a decisions meter only when the module
+  was actually used. Install from `make menu` (`decisions`); `manage.sh remove` takes back the
+  payload and **leaves your catalogs**.
 - **The second-writer and tamper detectors: a plan that changes under a run is now
   visible, and settings cannot be swapped from inside one.** Two hooks, the fourteenth
   through eighteenth specs in `leo_core_hook_specs`, both **Claude Code only** — Codex CLI

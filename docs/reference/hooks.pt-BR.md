@@ -305,6 +305,39 @@ humano ali. No Codex CLI 0.152.1 ele dispara só sob `--approve-for-me` e apenas
 disso, e a autonomia no Codex continua nas flags de sandbox do driver. Isso é uma linha
 `substitute`, não `available`, e o `leopold doctor` diz isso na linha.
 
+### O segundo eixo semântico — ele só pode NEGAR { #permission-semantic-axis }
+
+Quando a capacidade opcional [decisions](decisions.md) está instalada **e** o projeto tem um
+catálogo `.leopold/decisions/permission.json`, o hook faz mais uma pergunta antes de conceder:
+*quão destrutivo e difícil de reverter é este comando?* — um Score de quatro níveis.
+
+Ele é consultado **apenas num caminho que já decidiu permitir**. Nunca é alcançado num caminho
+que ia negar, então não tem como conceder, suavizar ou reescrever uma negação. O
+`guard-irreversible.sh` decide git antes desta linha e o veredito dele já foi repetido
+literalmente.
+
+Ele nega somente quando **as duas** barreiras são vencidas: a resposta está acima da barra de
+confiança *e* a nota é 2.5 ou mais na rubrica 0–3 — o nível de topo, "irreversível, ou alcança
+fora desta máquina". Uma resposta apenas cautelosa não bloqueia trabalho. A recusa **cita a
+nota**, porque "um modelo disse não" não é razão que alguém possa contestar e "scored it 3 of 3
+on *how destructive and hard to reverse is this command?*" é. Cada negação registra
+`decision_denied` com o comando e a nota.
+
+**Toda falha mantém o comportamento de hoje, e a maioria não custa nem uma chamada de rede:**
+
+| situação | o que acontece |
+| --- | --- |
+| a extension não está instalada | permite, em silêncio, exatamente como antes |
+| o projeto não tem catálogo de permissão | permite, em silêncio, exatamente como antes |
+| o provider está inalcançável, lento, ou responde abaixo da barra | permite, com `decision_timeout` |
+| um provider de chat-completions está configurado | o seam shell responde `unsupported`; permite, registrado |
+
+A chamada é limitada por um **kill externo duro**, não só pelo `--timeout-ms` do próprio seam:
+aquilo limita o `curl`, não o seam, e um seam travado em qualquer outra coisa seguraria o prompt
+aberto — que é exatamente a falha que este hook existe para acabar. `timeout(1)` não é portátil
+(o macOS não o traz), então a espera é um poll limitado no próprio shell. Orçamento padrão de
+2000 ms, ajustável com `LEOPOLD_DECISIONS_TIMEOUT_MS`.
+
 ## `compact-checkpoint.sh` — o hook de PreCompact / PostCompact
 
 Roda quando o harness compacta a janela de contexto: uma vez antes de reescrever o
