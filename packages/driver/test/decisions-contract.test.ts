@@ -179,9 +179,11 @@ test("jq validates the same fixtures against the same schema, and agrees with th
     ( ($c.questions // {} | keys_unsorted[]) as $k | select(($c.thresholds // {} | has($k)) | not) | "nothreshold:" + $k )
   ] | join(",")`;
 
+  // The filter goes in argv, NOT through `-f /dev/stdin`. Under `execFileSync` the child's stdin
+  // is a pipe, and on Linux jq cannot open /dev/stdin from there — "No such device or address".
+  // It works on macOS, so only the ubuntu leg of the driver matrix caught it.
   const run = (fixture: string): string =>
-    execFileSync("jq", ["-r", "--slurpfile", "cat", path.join(FIX, `${fixture}.json`), "-f", "/dev/stdin", SCHEMA_FILE], {
-      input: filter,
+    execFileSync("jq", ["-r", "--slurpfile", "cat", path.join(FIX, `${fixture}.json`), filter, SCHEMA_FILE], {
       encoding: "utf8",
     }).trim();
 

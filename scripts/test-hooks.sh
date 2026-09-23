@@ -1858,12 +1858,15 @@ dg_patch() {
 # carry part of this event's answer, so the three land in globals and the hook is called
 # PLAINLY: a command substitution runs in a subshell, and the globals would not survive it.
 DG_TASK_OUT=""; DG_TASK_ERR=""; DG_TASK_RC=0
-dg_task() { # [hooks dir] -> sets DG_TASK_OUT / DG_TASK_ERR / DG_TASK_RC
+# No parameter: every one of its six callers invokes it bare, so the optional hooks-dir argument
+# it used to accept was dead. Shellcheck's SC2120 is right about that, and a dead parameter that
+# only exists to be defaulted is one more thing a reader has to rule out.
+dg_task() { # -> sets DG_TASK_OUT / DG_TASK_ERR / DG_TASK_RC
   DG_TASK_OUT="$(jq -cn --arg cwd "$DG" \
     '{session_id:"S-OWNER",transcript_path:"/private/tmp/parent.jsonl",cwd:$cwd,
       prompt_id:"p-1",hook_event_name:"TaskCompleted",task_id:"1",
       task_subject:"probe task",task_description:"probe"}' \
-    | bash "${1:-$HOOKS}/done-gate.sh" 2>"$T/dg-err")"; DG_TASK_RC=$?
+    | bash "$HOOKS/done-gate.sh" 2>"$T/dg-err")"; DG_TASK_RC=$?
   DG_TASK_ERR="$(cat "$T/dg-err" 2>/dev/null || true)"
 }
 dgev() { jq -cR --arg e "$1" 'fromjson? // empty | select(.event==$e)' "$DG/.leopold/events.jsonl" 2>/dev/null | tail -1; }
