@@ -1323,15 +1323,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#os-dois-hooks" class="md-nav__link">
+  <a href="#os-tres-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Os dois hooks
+        Os três hooks
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Os dois hooks">
+    <nav class="md-nav" aria-label="Os três hooks">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1350,6 +1350,17 @@
     <span class="md-ellipsis">
       
         Hook PreToolUse — o lock de git
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hook-permissionrequest-o-prompt-que-a-run-responde-sozinha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hook PermissionRequest — o prompt que a run responde sozinha
       
     </span>
   </a>
@@ -1482,6 +1493,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1570,6 +1587,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1779,6 +1824,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eventos de hook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bloqueio do reload do ConfigChange
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1958,15 +2059,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#os-dois-hooks" class="md-nav__link">
+  <a href="#os-tres-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Os dois hooks
+        Os três hooks
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Os dois hooks">
+    <nav class="md-nav" aria-label="Os três hooks">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1985,6 +2086,17 @@
     <span class="md-ellipsis">
       
         Hook PreToolUse — o lock de git
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hook-permissionrequest-o-prompt-que-a-run-responde-sozinha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hook PermissionRequest — o prompt que a run responde sozinha
       
     </span>
   </a>
@@ -2040,7 +2152,7 @@
 
 <h1 id="engine-in-session">Engine In-Session<a class="headerlink" href="#engine-in-session" title="Permanent link">&para;</a></h1>
 <p>O engine in-session é o tier da v0.1: ele roda inteiramente dentro de uma
-sessão do Claude Code, usando dois hooks e um conjunto de skills. Sem processo
+sessão do Claude Code, usando três hooks e um conjunto de skills. Sem processo
 externo, sem chave de API, sem infraestrutura nova.</p>
 <div class="admonition info">
 <p class="admonition-title">Mais dois hooks vêm junto com o engine</p>
@@ -2049,9 +2161,9 @@ um hook de <code>UserPromptSubmit</code> independente do engine de run (ele melh
 <em>seus</em> prompts do dia a dia, desligado por padrão) — e o repositório traz o
 <a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a>, armado apenas
 enquanto um <a href="../../concepts/persona-testing/">persona run</a> está ativo. Esta
-página cobre os dois hooks que implementam a run autônoma.</p>
+página cobre os três hooks que implementam a run autônoma.</p>
 </div>
-<h2 id="os-dois-hooks">Os dois hooks<a class="headerlink" href="#os-dois-hooks" title="Permanent link">&para;</a></h2>
+<h2 id="os-tres-hooks">Os três hooks<a class="headerlink" href="#os-tres-hooks" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TB
     subgraph Turn["Um turno do Claude Code"]
         TC["chamada de ferramenta"] --&gt; PRE{{"Hook PreToolUse&lt;br/&gt;guard-irreversible.sh"}}
@@ -2120,6 +2232,16 @@ um token explícito por sessão esteja presente.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="hook-permissionrequest-o-prompt-que-a-run-responde-sozinha">Hook PermissionRequest — o prompt que a run responde sozinha<a class="headerlink" href="#hook-permissionrequest-o-prompt-que-a-run-responde-sozinha" title="Permanent link">&para;</a></h3>
+<p>Um pedido de permissão numa run autônoma é uma parada: não tem ninguém ali para clicar.
+Quando a sessão que conduz a run esbarra num, o <code>permission-policy.sh</code> responde — <code>allow</code>,
+exceto que um <code>git commit</code> / <code>git push</code> é entregue à trava do git acima e o deny dela é
+repetido palavra por palavra. Uma sessão que não conduz a run, uma run inativa, ou run
+nenhuma não recebem resposta alguma, e o harness pergunta exatamente como pergunta hoje.</p>
+<p>É o mesmo script nos dois harnesses, mas não o mesmo poder: o Claude Code honra allow e
+deny, o Codex honra só deny. O <code>leopold doctor</code> imprime esse custo na linha da capacidade
+em vez de sugerir paridade. Veja
+<a href="../../reference/hooks/">Hooks → <code>permission-policy.sh</code></a>.</p>
 <h2 id="as-skills">As skills<a class="headerlink" href="#as-skills" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     B["/leopold-brief"] --&gt; R["/leopold-run"]

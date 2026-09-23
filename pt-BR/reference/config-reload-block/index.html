@@ -1,46 +1,46 @@
 
 <!doctype html>
-<html lang="en" class="no-js">
+<html lang="pt" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An autonomous orchestration harness for Claude Code and Codex CLI. Brief it like a teammate; it conducts your coding agent in your seat.">
+        <meta name="description" content="Um harness de orquestração autônoma para o Claude Code e o Codex CLI. Faça o brief como para um colega; ele conduz o seu agente na sua cadeira.">
       
       
         <meta name="author" content="Jonhvmp">
       
       
-        <link rel="canonical" href="https://jonhvmp.github.io/leopold/concepts/harness/">
+        <link rel="canonical" href="https://jonhvmp.github.io/leopold/pt-BR/reference/config-reload-block/">
       
       
-        <link rel="prev" href="../../getting-started/toolchain-manager/">
+        <link rel="prev" href="../hook-events/">
       
       
-        <link rel="next" href="../harnesses/">
+        <link rel="next" href="../../comparisons/ralph/">
       
       
         
-          <link rel="alternate" href="./" hreflang="en">
+          <link rel="alternate" href="../../../reference/config-reload-block/" hreflang="en">
         
-          <link rel="alternate" href="../../pt-BR/concepts/harness/" hreflang="pt-BR">
+          <link rel="alternate" href="./" hreflang="pt-BR">
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>What Is a Harness - Leopold</title>
+        <title>Bloqueio do reload do ConfigChange - Leopold</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -59,7 +59,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -84,8 +84,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#what-is-a-harness" class="md-skip">
-          Skip to content
+        <a href="#configchange-exit-2-verificacao-ao-vivo" class="md-skip">
+          Pular para conteúdo
         </a>
       
     </div>
@@ -99,8 +99,8 @@
   
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
+  <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
+    <a href="../../" title="Leopold" class="md-header__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              What Is a Harness
+              Bloqueio do reload do ConfigChange
             
           </span>
         </div>
@@ -160,20 +160,20 @@
       <div class="md-header__option">
   <div class="md-select">
     
-    <button class="md-header__button md-icon" aria-label="Select language">
+    <button class="md-header__button md-icon" aria-label="Selecione o idioma">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
     </button>
     <div class="md-select__inner">
       <ul class="md-select__list">
         
           <li class="md-select__item">
-            <a href="./" hreflang="en" class="md-select__link">
+            <a href="../../../reference/config-reload-block/" hreflang="en" class="md-select__link">
               English
             </a>
           </li>
         
           <li class="md-select__item">
-            <a href="../../pt-BR/concepts/harness/" hreflang="pt-BR" class="md-select__link">
+            <a href="./" hreflang="pt-BR" class="md-select__link">
               Português (Brasil)
             </a>
           </li>
@@ -194,21 +194,21 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Buscar" placeholder="Buscar" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Search">
+      <nav class="md-search__options" aria-label="Pesquisar">
         
-          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Compartilhar" aria-label="Compartilhar" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
             
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
           </a>
         
-        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Limpar" aria-label="Limpar" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -221,7 +221,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Initializing search
+            Inicializando busca
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -233,7 +233,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
+        <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -248,7 +248,7 @@
   
     
       
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -258,13 +258,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../" class="md-tabs__link">
         
   
   
     
   
-  Home
+  Início
 
       </a>
     </li>
@@ -285,7 +285,7 @@
   
     
   
-  Getting Started
+  Primeiros passos
 
         </a>
       </li>
@@ -297,19 +297,17 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../concepts/harness/" class="md-tabs__link">
           
   
   
     
   
-  Concepts
+  Conceitos
 
         </a>
       </li>
@@ -331,7 +329,7 @@
   
     
   
-  Architecture
+  Arquitetura
 
         </a>
       </li>
@@ -343,17 +341,19 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../reference/skills/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../skills/" class="md-tabs__link">
           
   
   
     
   
-  Reference
+  Referência
 
         </a>
       </li>
@@ -375,7 +375,7 @@
   
     
   
-  Comparisons
+  Comparações
 
         </a>
       </li>
@@ -414,7 +414,7 @@
   
     
   
-  Contributing
+  Como contribuir
 
       </a>
     </li>
@@ -447,9 +447,9 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navegação" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
+    <a href="../../" title="Leopold" class="md-nav__button md-logo" aria-label="Leopold" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 11V7.5l2.2-2.21c.8-.79.95-2.05.39-3.03A2.47 2.47 0 0 0 13.45 1c-.21 0-.45.03-.64.09C11.73 1.38 11 2.38 11 3.5v3.24L7.86 9.91a5.95 5.95 0 0 0-1.25 6.43c.77 1.9 2.45 3.21 4.39 3.55v.61c0 .26-.23.5-.5.5H9v2h1.5c1.35 0 2.5-1.11 2.5-2.5V20c2.03 0 4.16-1.92 4.16-4.75 0-2.3-1.92-4.25-4.16-4.25m0-7.5c0-.23.11-.41.32-.47.22-.06.45.03.56.23a.5.5 0 0 1-.08.61l-.8.86zm-2 8c-.97.64-1.7 1.74-1.96 2.76l1.96.52v3.05a3.86 3.86 0 0 1-2.57-2.26c-.59-1.46-.27-3.12.83-4.24L11 9.5zm2 6.5v-5.06c1.17 0 2.18 1.1 2.18 2.31C15.18 17 13.91 18 13 18"/></svg>
@@ -459,7 +459,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/Jonhvmp/leopold" title="Go to repository" class="md-source" data-md-component="source">
+      <a href="https://github.com/Jonhvmp/leopold" title="Ir para repositório" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -479,14 +479,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Home
+    Início
   
 
     
@@ -539,7 +539,7 @@
   <span class="md-ellipsis">
     
   
-    Getting Started
+    Primeiros passos
   
 
     
@@ -555,7 +555,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Getting Started
+    Primeiros passos
   
 
           </label>
@@ -575,7 +575,7 @@
   <span class="md-ellipsis">
     
   
-    Install
+    Instalação
   
 
     
@@ -603,7 +603,7 @@
   <span class="md-ellipsis">
     
   
-    Quickstart
+    Início rápido
   
 
     
@@ -631,7 +631,7 @@
   <span class="md-ellipsis">
     
   
-    Your First Run
+    Sua primeira run
   
 
     
@@ -659,7 +659,7 @@
   <span class="md-ellipsis">
     
   
-    Toolchain Manager
+    Gerenciador de toolchain
   
 
     
@@ -684,10 +684,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -723,29 +721,26 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Concepts
+    Conceitos
   
 
     
@@ -756,12 +751,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Concepts
+    Conceitos
   
 
           </label>
@@ -771,114 +766,17 @@
                 
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    What Is a Harness
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    What Is a Harness
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-six-layers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The six layers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-leopold-sits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where Leopold sits
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="../harnesses/" class="md-nav__link">
+      <a href="../../concepts/harness/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Claude Code and Codex
+    O que é um harness
   
 
     
@@ -899,14 +797,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../two-phases/" class="md-nav__link">
+      <a href="../../concepts/harnesses/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    The Two Phases
+    Claude Code e Codex
   
 
     
@@ -927,14 +825,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dynamic-workflows/" class="md-nav__link">
+      <a href="../../concepts/two-phases/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Dynamic Workflows
+    As duas fases
   
 
     
@@ -955,7 +853,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../personas/" class="md-nav__link">
+      <a href="../../concepts/dynamic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows dinâmicos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/personas/" class="md-nav__link">
         
   
   
@@ -983,7 +909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../persona-testing/" class="md-nav__link">
+      <a href="../../concepts/persona-testing/" class="md-nav__link">
         
   
   
@@ -1011,14 +937,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../continuity/" class="md-nav__link">
+      <a href="../../concepts/continuity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Continuity
+    Continuidade
   
 
     
@@ -1046,7 +972,7 @@
   <span class="md-ellipsis">
     
   
-    The Canvas
+    O Canvas
   
 
     
@@ -1074,7 +1000,7 @@
   <span class="md-ellipsis">
     
   
-    Quality & Orchestration
+    Qualidade e orquestração
   
 
     
@@ -1102,7 +1028,7 @@
   <span class="md-ellipsis">
     
   
-    Decision Protocol
+    Protocolo de decisão
   
 
     
@@ -1158,7 +1084,7 @@
   <span class="md-ellipsis">
     
   
-    Cost & Security
+    Custo e segurança
   
 
     
@@ -1186,7 +1112,7 @@
   <span class="md-ellipsis">
     
   
-    Run Isolation
+    Isolamento da run
   
 
     
@@ -1214,7 +1140,7 @@
   <span class="md-ellipsis">
     
   
-    gstack Playbook
+    Playbook do gstack
   
 
     
@@ -1275,7 +1201,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Arquitetura
   
 
     
@@ -1291,7 +1217,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Architecture
+    Arquitetura
   
 
           </label>
@@ -1311,7 +1237,7 @@
   <span class="md-ellipsis">
     
   
-    Overview
+    Visão geral
   
 
     
@@ -1339,7 +1265,7 @@
   <span class="md-ellipsis">
     
   
-    In-Session Engine
+    Engine in-session
   
 
     
@@ -1367,7 +1293,7 @@
   <span class="md-ellipsis">
     
   
-    SDK Driver
+    Driver SDK
   
 
     
@@ -1395,7 +1321,7 @@
   <span class="md-ellipsis">
     
   
-    Conductor & Worker Protocol
+    Protocolo maestro–worker
   
 
     
@@ -1420,8 +1346,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1453,26 +1381,29 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Reference
+    Referência
   
 
     
@@ -1483,12 +1414,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Reference
+    Referência
   
 
           </label>
@@ -1501,7 +1432,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/skills/" class="md-nav__link">
+      <a href="../skills/" class="md-nav__link">
         
   
   
@@ -1529,7 +1460,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/hooks/" class="md-nav__link">
+      <a href="../hooks/" class="md-nav__link">
         
   
   
@@ -1557,7 +1488,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/decisions/" class="md-nav__link">
+      <a href="../decisions/" class="md-nav__link">
         
   
   
@@ -1585,7 +1516,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/enhance/" class="md-nav__link">
+      <a href="../enhance/" class="md-nav__link">
         
   
   
@@ -1613,14 +1544,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/artifacts/" class="md-nav__link">
+      <a href="../artifacts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Brief Artifacts
+    Artefatos do brief
   
 
     
@@ -1641,14 +1572,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/plan-grammar/" class="md-nav__link">
+      <a href="../plan-grammar/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Plan Grammar
+    Gramática do plano
   
 
     
@@ -1669,14 +1600,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/driver-config/" class="md-nav__link">
+      <a href="../driver-config/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Driver Config
+    Config do driver
   
 
     
@@ -1697,7 +1628,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/leopold-home/" class="md-nav__link">
+      <a href="../leopold-home/" class="md-nav__link">
         
   
   
@@ -1725,14 +1656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/sdk-worker-hooks/" class="md-nav__link">
+      <a href="../sdk-worker-hooks/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    SDK Worker Hooks
+    Hooks do worker SDK
   
 
     
@@ -1753,14 +1684,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/persona-guard-hooks/" class="md-nav__link">
+      <a href="../persona-guard-hooks/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Persona Guard Hooks
+    Hooks do persona guard
   
 
     
@@ -1781,14 +1712,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/hook-events/" class="md-nav__link">
+      <a href="../hook-events/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Hook Events
+    Eventos de hook
   
 
     
@@ -1806,17 +1737,44 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../reference/config-reload-block/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bloqueio do reload do ConfigChange
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    ConfigChange Reload Block
+    Bloqueio do reload do ConfigChange
   
 
     
@@ -1825,6 +1783,81 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Índice">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Índice
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#versoes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versões
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#por-que-o-probe-nao-conseguia-ver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Por que o probe não conseguia ver
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metodo-hermetico-pareado" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Método (hermético, pareado)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidencia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidência
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#o-que-isso-decide-para-o-leopold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        O que isso decide para o Leopold
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1871,7 +1904,7 @@
   <span class="md-ellipsis">
     
   
-    Comparisons
+    Comparações
   
 
     
@@ -1887,7 +1920,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Comparisons
+    Comparações
   
 
           </label>
@@ -1969,7 +2002,7 @@
   <span class="md-ellipsis">
     
   
-    Contributing
+    Como contribuir
   
 
     
@@ -1995,7 +2028,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+<nav class="md-nav md-nav--secondary" aria-label="Índice">
   
   
   
@@ -2004,15 +2037,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table of contents
+      Índice
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-six-layers" class="md-nav__link">
+  <a href="#versoes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The six layers
+        Versões
       
     </span>
   </a>
@@ -2020,10 +2053,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-leopold-sits" class="md-nav__link">
+  <a href="#por-que-o-probe-nao-conseguia-ver" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where Leopold sits
+        Por que o probe não conseguia ver
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metodo-hermetico-pareado" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Método (hermético, pareado)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidencia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidência
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#o-que-isso-decide-para-o-leopold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        O que isso decide para o Leopold
       
     </span>
   </a>
@@ -2050,46 +2116,189 @@
   
 
 
-<h1 id="what-is-a-harness">What Is a Harness<a class="headerlink" href="#what-is-a-harness" title="Permanent link">&para;</a></h1>
-<p>In current usage, an <strong>agent harness</strong> is everything wrapped around the model
-except the model itself: tool execution, memory and state, orchestration,
-guardrails, and observability.</p>
-<p style="text-align:center; font-size:1.25em"><code>Agent = Model + Harness</code></p>
-
-<p>A good harness is what turns a general LLM into a system that can run long,
-complex workflows reliably. It is the difference between a model that quits after
-one turn and one that finishes the job.</p>
-<h2 id="the-six-layers">The six layers<a class="headerlink" href="#the-six-layers" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>flowchart TB
-    API["API Layer&lt;br/&gt;&lt;small&gt;entrypoint, streaming&lt;/small&gt;"]
-    ORC["Orchestration Layer&lt;br/&gt;&lt;small&gt;plans, loops, replanning&lt;/small&gt;"]
-    TOOL["Tooling / MCP Layer&lt;br/&gt;&lt;small&gt;tools, skills, schema&lt;/small&gt;"]
-    MEM["Memory / Context Layer&lt;br/&gt;&lt;small&gt;logs, durable artifacts, RAG&lt;/small&gt;"]
-    EXE["Execution / Sandbox Layer&lt;br/&gt;&lt;small&gt;run code, isolation, quotas&lt;/small&gt;"]
-    OBS["Observability Layer&lt;br/&gt;&lt;small&gt;events, traces, audit&lt;/small&gt;"]
-    API --&gt; ORC --&gt; TOOL --&gt; EXE
-    ORC --&gt; MEM
-    ORC --&gt; OBS</code></pre>
-<h2 id="where-leopold-sits">Where Leopold sits<a class="headerlink" href="#where-leopold-sits" title="Permanent link">&para;</a></h2>
-<p>Claude Code is already a strong harness for a <strong>single interactive turn</strong>. It has
-the tooling, execution, and a permission system. What it lacks for <strong>unattended,
-long-running work</strong> is exactly what Leopold adds:</p>
-<pre class="mermaid"><code>flowchart LR
-    subgraph CC["Claude Code (one turn)"]
-        T[Tooling] --- E[Execution] --- P[Permissions]
-    end
-    subgraph LEO["Leopold (long-running)"]
-        DEC["Decider&lt;br/&gt;(your charter)"]
-        CON["Continuity&lt;br/&gt;(stop hook / driver)"]
-        GUARD["Guardrails&lt;br/&gt;(git lock)"]
-    end
-    CC --&gt; LEO</code></pre>
+<h1 id="configchange-exit-2-verificacao-ao-vivo">ConfigChange exit 2 — Verificação ao vivo<a class="headerlink" href="#configchange-exit-2-verificacao-ao-vivo" title="Permanent link">&para;</a></h1>
+<p><strong>A pergunta:</strong> o <code>hooks/config-guard.sh</code> recusa um reload de settings durante uma run do
+Leopold saindo com exit 2 no <code>ConfigChange</code>, e diz ao operador que a sessão portanto
+"mantém o wiring de hooks com que começou" — o git lock em primeiro lugar. Isso é uma
+afirmação de segurança, e o probe de eventos de hook não conseguia sustentá-la.
+<a href="../hook-events/">Eventos de hook</a> registra a resposta <code>exit2</code> do <code>ConfigChange</code> como
+<strong>unobservable</strong>: o único <code>exit2</code> do probe inteiro que não está marcado como <em>honored</em>. O
+seu único dado positivo — o arquivo em disco continuava com a edição — é igualmente
+verdadeiro tendo o reload sido bloqueado ou adotado, então não prova nada sozinho.</p>
+<p><strong>A resposta: o exit 2 bloqueia o reload, e o arquivo mantém a edição.</strong> As duas metades
+estão medidas abaixo, contra um controle, três vezes cada.</p>
+<h2 id="versoes">Versões<a class="headerlink" href="#versoes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Versão</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code CLI (<code>claude</code>)</td>
+<td>2.1.260 (Claude Code)</td>
+</tr>
+<tr>
+<td><code>jq</code></td>
+<td>jq-1.7.1-apple</td>
+</tr>
+<tr>
+<td>SO</td>
+<td>Darwin 27.0.0 arm64</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>2026-09-04</td>
+</tr>
+</tbody>
+</table>
+<p>O probe que escreveu <a href="../hook-events/">Eventos de hook</a> rodou contra a 2.1.259; esta
+página é um patch depois, e diz isso em vez de tomar emprestado o cabeçalho daquela.</p>
+<h2 id="por-que-o-probe-nao-conseguia-ver">Por que o probe não conseguia ver<a class="headerlink" href="#por-que-o-probe-nao-conseguia-ver" title="Permanent link">&para;</a></h2>
+<p>Um hook de <code>ConfigChange</code> <strong>nunca aparece no stream da sessão</strong>. Com
+<code>--include-hook-events</code> ligado, <code>hook_started</code> / <code>hook_response</code> saíram para
+<code>SessionStart</code>, <code>UserPromptSubmit</code>, <code>PreToolUse</code> e <code>Stop</code> — e para mais nada. A string
+<code>ConfigChange</code> não ocorre em lugar nenhum do stream de nenhuma das runs abaixo:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ jq -r 'select(.type=="system" and .subtype=="hook_started") | .hook_event' block3.stream.jsonl | sort | uniq -c
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>   4 PreToolUse
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>   2 SessionStart
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>   2 Stop
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>   2 UserPromptSubmit
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>$ grep -c ConfigChange block3.stream.jsonl
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>0
+</span></code></pre></div>
+<p>Sem <code>hook_response</code> não há campo <code>exit_code</code>, então o veredito de que toda outra resposta
+é lida não existe para esta. Ele tem que ser lido de um <strong>efeito colateral</strong>.</p>
+<h2 id="metodo-hermetico-pareado">Método (hermético, pareado)<a class="headerlink" href="#metodo-hermetico-pareado" title="Permanent link">&para;</a></h2>
+<p>Um projeto descartável por run sob o diretório de scratch da própria sessão, com
+<code>git init</code>, um <code>CLAUDE.md</code> e um <code>.claude/settings.json</code> que declara exatamente um hook:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"ConfigChange"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"command"</span><span class="p">,</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bash $P/.claude/hooks/cg.sh"</span><span class="p">,</span><span class="w"> </span><span class="nt">"timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+</span></code></pre></div>
+<p>O <code>cg.sh</code> anexa a um log o payload que recebeu e então sai com <strong>2</strong> (runs <code>block</code>) ou
+<strong>0</strong> (runs <code>allow</code>) — a única diferença entre os dois braços.</p>
+<p>Ao lado dele fica o <code>settings-v2.json</code>: o mesmo arquivo <strong>mais</strong> um hook <code>PreToolUse</code>
+extra em <code>Bash</code>, cujo script anexa <code>NEW_HOOK_FIRED</code> a um arquivo marcador. Esse hook é o
+efeito colateral observável — nada consegue dispará-lo a não ser que a sessão adote os
+settings reescritos.</p>
+<p>Um turno headless por run, idêntico nos dois braços:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>claude -p "Run this exact Bash command: bash rewire.sh. Then run this exact Bash command:
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>           echo SECOND_CALL. Then reply DONE."
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        --model haiku --permission-mode bypassPermissions
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        --output-format stream-json [--include-hook-events] --verbose
+</span></code></pre></div>
+<p>O <code>rewire.sh</code> copia o <code>settings-v2.json</code> por cima do <code>.claude/settings.json</code> e dorme 4 s.
+A sequência é: <strong>chamada de ferramenta 1</strong> reescreve os settings → o <code>ConfigChange</code>
+dispara e responde → <strong>chamada de ferramenta 2</strong> acontece sob o wiring que a sessão tem
+agora.</p>
+<p>O payload que o <code>ConfigChange</code> entregou, verbatim (run <code>block</code>, caminhos como reportados):</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span><span class="nt">"session_id"</span><span class="p">:</span><span class="s2">"41421919-ea1a-4f29-b2cf-f43ed7abdbf0"</span><span class="p">,</span><span class="nt">"transcript_path"</span><span class="p">:</span><span class="s2">"/Users/jonhvmp/.claude/projects/-private-tmp-…-cgprobe-block/41421919-ea1a-4f29-b2cf-f43ed7abdbf0.jsonl"</span><span class="p">,</span><span class="nt">"cwd"</span><span class="p">:</span><span class="s2">"/private/tmp/…/cgprobe/block"</span><span class="p">,</span><span class="nt">"scratchpad_dir"</span><span class="p">:</span><span class="s2">"/private/tmp/…/scratchpad"</span><span class="p">,</span><span class="nt">"prompt_id"</span><span class="p">:</span><span class="s2">"bb22d94f-47fb-4110-bb65-b9282fd2e991"</span><span class="p">,</span><span class="nt">"hook_event_name"</span><span class="p">:</span><span class="s2">"ConfigChange"</span><span class="p">,</span><span class="nt">"source"</span><span class="p">:</span><span class="s2">"project_settings"</span><span class="p">,</span><span class="nt">"file_path"</span><span class="p">:</span><span class="s2">"/private/tmp/…/cgprobe/block/.claude/settings.json"</span><span class="p">}</span>
+</span></code></pre></div>
+<p><code>source</code> e <code>file_path</code> são os dois campos que o <code>hooks/config-guard.sh</code> lê, exatamente
+como <a href="../hook-events/">Eventos de hook</a> os registra.</p>
+<h2 id="evidencia">Evidência<a class="headerlink" href="#evidencia" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Run</th>
+<th>exit do <code>ConfigChange</code></th>
+<th>disparou</th>
+<th>2ª chamada feita</th>
+<th>hook novo disparou</th>
+<th>edição mantida em disco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allow</code></td>
+<td>0</td>
+<td>1</td>
+<td>sim</td>
+<td><strong>sim</strong></td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>allow2</code></td>
+<td>0</td>
+<td>1</td>
+<td>sim</td>
+<td><strong>sim</strong></td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>allow3</code></td>
+<td>0</td>
+<td>1</td>
+<td>sim</td>
+<td><strong>sim</strong></td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>block</code></td>
+<td>2</td>
+<td>1</td>
+<td>sim</td>
+<td><strong>não</strong></td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>block2</code></td>
+<td>2</td>
+<td>1</td>
+<td>sim</td>
+<td><strong>não</strong></td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>block3</code></td>
+<td>2</td>
+<td>1</td>
+<td>sim</td>
+<td><strong>não</strong></td>
+<td>sim</td>
+</tr>
+</tbody>
+</table>
+<p>Os dois braços fizeram as mesmas duas chamadas de ferramenta — a ausência do marcador no
+braço <code>block</code> não é ausência da segunda chamada:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>=== allow
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>TOOL Bash :: bash rewire.sh
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>TOOL Bash :: echo SECOND_CALL
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>=== block
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>TOOL Bash :: bash rewire.sh
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>TOOL Bash :: echo SECOND_CALL
+</span></code></pre></div>
+<p>E o stream conta a mesma coisa de forma independente. Existem dois hooks <code>PreToolUse</code> no
+nível de usuário nesta máquina, então duas chamadas produzem quatro disparos; os settings
+reescritos acrescentam um terceiro hook, que só pode disparar na segunda chamada:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>allow3 (exit 0):   5 PreToolUse hook_started   ← 4 + o hook recém-declarado
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>block3 (exit 2):   4 PreToolUse hook_started   ← o hook recém-declarado nunca rodou
+</span></code></pre></div>
+<p>O arquivo em disco manteve a edição em todas as runs, <code>block</code> incluída:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ jq -r '.hooks | has("PreToolUse")' block/.claude/settings.json
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>true
+</span></code></pre></div>
+<h2 id="o-que-isso-decide-para-o-leopold">O que isso decide para o Leopold<a class="headerlink" href="#o-que-isso-decide-para-o-leopold" title="Permanent link">&para;</a></h2>
 <ul>
-<li>a <strong>decider</strong> (your charter) so the agent has authority to choose instead of asking,</li>
-<li><strong>continuity</strong> (a stop hook, or the SDK driver) so a finished turn rolls into the next item,</li>
-<li><strong>guardrails</strong> (a tool-call gate) so autonomy never touches your git.</li>
+<li><strong>O exit 2 do <code>hooks/config-guard.sh</code> faz o que diz.</strong> A sessão em execução não adota a
+  nova configuração; a run mantém o wiring de hooks com que começou, o git lock incluído.
+  A mensagem no stderr voltada ao operador está sustentada.</li>
+<li><strong>Ele não desfaz a escrita, e nada neste evento consegue.</strong> É por isso que o hook loga
+  <code>config_change_blocked</code> tão alto quanto recusa: o evento é o registro durável de que o
+  arquivo em disco e a sessão viva divergiram, e o <code>scripts/leopold-watch.py</code> o renderiza
+  como crítico.</li>
+<li><strong>O veredito é um efeito colateral, nunca um campo do stream.</strong> O
+  <code>scripts/probe-hook-events.sh</code> agora mede do mesmo jeito: o par
+  <code>config-change</code> / <code>config-change-exit2</code> reescreve os settings da sessão para um gêmeo
+  que carrega um hook <code>PreToolUse</code> extra e etiquetado, e conta se ele dispara —
+  <code>config-change</code> é o controle, e rodar <code>config-change-exit2</code> sem ele registra
+  "NO CONTROL" em vez de um veredito. Refaça com <code>make probe-hook-events</code>.</li>
+<li><strong>O Codex não é afetado.</strong> O Codex CLI 0.152.1 não tem <code>ConfigChange</code> nenhum
+  (<code>hooks/hook-matrix.tsv</code>), então uma edição do <code>config.toml</code> no meio da run não é
+  detectada lá e o <code>leopold doctor</code> diz isso por harness.</li>
 </ul>
-<p>See the full mapping in the <a href="../../architecture/">Architecture Overview</a>.</p>
 
 
 
@@ -2115,7 +2324,7 @@ long-running work</strong> is exactly what Leopold adds:</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Back to top
+  Voltar para o topo
 </button>
         
       </main>
@@ -2124,33 +2333,33 @@ long-running work</strong> is exactly what Leopold adds:</p>
   
     
       
-      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+      <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
         
           
-          <a href="../../getting-started/toolchain-manager/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Toolchain Manager">
+          <a href="../hook-events/" class="md-footer__link md-footer__link--prev" aria-label="Anterior: Eventos de hook">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Previous
+                Anterior
               </span>
               <div class="md-ellipsis">
-                Toolchain Manager
+                Eventos de hook
               </div>
             </div>
           </a>
         
         
           
-          <a href="../harnesses/" class="md-footer__link md-footer__link--next" aria-label="Next: Claude Code and Codex">
+          <a href="../../comparisons/ralph/" class="md-footer__link md-footer__link--next" aria-label="Próximo: Leopold vs Ralph">
             <div class="md-footer__title">
               <span class="md-footer__direction">
-                Next
+                Próximo
               </span>
               <div class="md-ellipsis">
-                Claude Code and Codex
+                Leopold vs Ralph
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2202,10 +2411,10 @@ long-running work</strong> is exactly what Leopold adds:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "mais 1 nesta p\u00e1gina", "search.result.more.other": "# mais nesta p\u00e1gina", "search.result.none": "Nenhum documento encontrado", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

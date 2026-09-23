@@ -1192,6 +1192,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#bounds-that-used-to-be-prose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bounds that used to be prose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-new-lines-in-guardrailsmd-both-optional-both-absent-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two new lines in GUARDRAILS.md — both optional, both absent by default
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two new lines in GUARDRAILS.md — both optional, both absent by default">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verification-commands-what-counts-as-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ## Verification commands — what counts as evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#max_subagents-the-spawn-ceiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        max_subagents — the spawn ceiling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-new-state-fields-and-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The new state fields and events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-kill-switch" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1604,6 +1665,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1692,6 +1759,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1888,6 +1983,62 @@
     
   
     Persona Guard Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hook Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ConfigChange Reload Block
   
 
     
@@ -2158,6 +2309,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#bounds-that-used-to-be-prose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bounds that used to be prose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-new-lines-in-guardrailsmd-both-optional-both-absent-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two new lines in GUARDRAILS.md — both optional, both absent by default
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two new lines in GUARDRAILS.md — both optional, both absent by default">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verification-commands-what-counts-as-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ## Verification commands — what counts as evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#max_subagents-the-spawn-ceiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        max_subagents — the spawn ceiling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-new-state-fields-and-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The new state fields and events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-kill-switch" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2404,6 +2616,222 @@ decided by a role Leopold synthesizes for it, on both engines; set
 instead. A persona decides; it never ships — git stays locked either way, and no persona
 may raise a budget, clear the kill switch or edit <code>GUARDRAILS.md</code>.</p>
 <hr />
+<h2 id="bounds-that-used-to-be-prose">Bounds that used to be prose<a class="headerlink" href="#bounds-that-used-to-be-prose" title="Permanent link">&para;</a></h2>
+<p>A rule that lives only in a prompt is a wish. Every rule below is now a hook that runs on
+the harness itself, wired by <code>extensions/lib/harness.sh</code> on every harness where the probe
+proved the event fires, <strong>inert unless a run is active</strong>, and reported per harness by
+<code>leopold doctor</code> — never silence. The full description of each script is in
+<a href="../reference/hooks/">Hooks</a>; the payload each rides on is captured in
+<a href="../reference/hook-events/">Hook Events</a>; which harness gets which is decided by
+<code>hooks/hook-matrix.tsv</code>, not by this page.</p>
+<table>
+<thead>
+<tr>
+<th>Bound</th>
+<th>Hook (events)</th>
+<th>Claude Code</th>
+<th>Codex CLI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Compaction checkpoint</td>
+<td><code>compact-checkpoint.sh</code> (<code>PreCompact</code>, <code>PostCompact</code>)</td>
+<td>available</td>
+<td>available</td>
+</tr>
+<tr>
+<td>Subagent ledger</td>
+<td><code>subagent-account.sh</code> (<code>SubagentStart</code>, <code>SubagentStop</code>)</td>
+<td>available</td>
+<td>available</td>
+</tr>
+<tr>
+<td>Subagent ceiling</td>
+<td><code>subagent-cap.sh</code> (<code>PreToolUse</code>)</td>
+<td>available</td>
+<td>available</td>
+</tr>
+<tr>
+<td>Verification receipts</td>
+<td><code>verify-receipt.sh</code> (<code>PostToolUse</code>, <code>PostToolUseFailure</code>)</td>
+<td>available</td>
+<td>substitute</td>
+</tr>
+<tr>
+<td>Done means verified</td>
+<td><code>done-gate.sh</code> (<code>PreToolUse</code>, <code>TaskCompleted</code>)</td>
+<td>available</td>
+<td>substitute</td>
+</tr>
+<tr>
+<td>Permission policy</td>
+<td><code>permission-policy.sh</code> (<code>PermissionRequest</code>)</td>
+<td>available</td>
+<td>substitute</td>
+</tr>
+<tr>
+<td>API-error stop</td>
+<td><code>stop-failure.sh</code> (<code>StopFailure</code>)</td>
+<td>available</td>
+<td>unavailable</td>
+</tr>
+<tr>
+<td>Second-writer detector</td>
+<td><code>file-watch.sh</code> (<code>FileChanged</code>)</td>
+<td>available</td>
+<td>unavailable</td>
+</tr>
+<tr>
+<td>Config tamper guard</td>
+<td><code>config-guard.sh</code> (<code>ConfigChange</code>)</td>
+<td>available</td>
+<td>unavailable</td>
+</tr>
+<tr>
+<td>Review-lens roles</td>
+<td><code>$CODEX_HOME/agents/*.toml</code> (<code>SubagentStart</code>)</td>
+<td>substitute</td>
+<td>available</td>
+</tr>
+</tbody>
+</table>
+<p>Where a harness is not <code>available</code>, <code>leopold doctor</code> prints the matrix row's own note, so
+the cost is stated rather than implied. Verbatim, those are:</p>
+<ul>
+<li><strong>Permission policy on Codex</strong> — <em>fires only under <code>--approve-for-me</code>;
+  <code>decision.behavior</code> deny honored, allow NOT honored, and <code>approval_policy=on-request</code>
+  never asks — Codex autonomy stays with the driver's sandbox flags and the hook is wired
+  for the deny half (it repeats the git lock).</em></li>
+<li><strong>Verification receipts on Codex</strong> — <em>PostToolUse fires for pass and fail alike and
+  <code>tool_response</code> is stdout only — a Codex receipt proves the verification RAN after the
+  last edit, never that it passed.</em></li>
+<li><strong>Done gate on Codex</strong> — <em>Codex has no task events; the PLAN.md PreToolUse half carries
+  the whole bound there.</em></li>
+<li><strong>API-error stop on Codex</strong> — <em>an API error ends a Codex run as a plain stop —
+  <code>turn.failed</code> in the --json stream, no Stop and no failure hook; resume with
+  <code>/leopold-run</code>.</em></li>
+<li><strong>Second-writer detector on Codex</strong> — <em>no FileChanged on Codex: a second writer on the
+  plan's files is not detected there.</em></li>
+<li><strong>Config tamper guard on Codex</strong> — <em>no ConfigChange on Codex: a mid-run edit of
+  config.toml or of the hook wiring is not detected there.</em></li>
+<li><strong>Review-lens roles on Claude Code</strong> — <em>Claude Code has no role files: the driver's
+  lenses are its own SDK sessions and <code>agent_type</code> names them in the same payload.</em></li>
+</ul>
+<p>None of these loosen anything. A hook only adds a denial, or answers a prompt that would
+otherwise wait; the git lock decides first and is never overridden.</p>
+<hr />
+<h2 id="two-new-lines-in-guardrailsmd-both-optional-both-absent-by-default">Two new lines in <code>GUARDRAILS.md</code> — both optional, both absent by default<a class="headerlink" href="#two-new-lines-in-guardrailsmd-both-optional-both-absent-by-default" title="Permanent link">&para;</a></h2>
+<p>Nothing below changes how an existing brief runs. A <code>GUARDRAILS.md</code> written before these
+hooks existed parses byte-for-byte as it did, and each line is inert until you write it.</p>
+<h3 id="verification-commands-what-counts-as-evidence"><code>## Verification commands</code> — what counts as evidence<a class="headerlink" href="#verification-commands-what-counts-as-evidence" title="Permanent link">&para;</a></h3>
+<p>The section is in the shipped template with its examples <strong>commented out</strong>, which is the
+whole point: with no entries, nothing is recorded and nothing is claimed.</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="gu">## Verification commands</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">-</span><span class="w"> </span>make test
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">-</span><span class="w"> </span>npm test
+</span></code></pre></div>
+<p>With entries, <code>verify-receipt.sh</code> records a receipt whenever a Bash command <strong>begins</strong> with
+one of them. The match is lexical and deliberately narrow: <code>cd sub &amp;&amp; make test</code> and
+<code>echo $(make test)</code> match <code>make test</code>; a comment (<code>make build # make test comes later</code>), an
+argument (<code>echo "- ran make test" &gt;&gt; notes.md</code>) and a heredoc body that names it do not.
+The hook never re-interprets what the model meant.</p>
+<p>Each receipt carries an <code>outcome</code>, and only <code>passed</code> or <code>ran</code> moves <code>last_verify_at</code>. On
+Claude Code a failing command usually arrives as <code>PostToolUseFailure</code> (<code>failed</code>), and a
+<code>PostToolUse</code> that was re-interpreted from a non-zero exit, interrupted or backgrounded is
+recorded as <code>nonzero</code> / <code>incomplete</code> rather than as a pass. On Codex no payload carries a
+status at all, so a receipt there is <code>ran</code>.</p>
+<p><code>done-gate.sh</code> is what reads those receipts: an edit that turns a <code>- [ ]</code> into a <code>- [x]</code> in
+<code>.leopold/PLAN.md</code>, or a <code>TaskCompleted</code> on Claude Code, is denied when no verification
+command has produced a passing receipt since the item's last edit — with the commands from
+this section named in the denial. With the section empty, the gate has nothing to check and
+allows, exactly as before.</p>
+<h3 id="max_subagents-the-spawn-ceiling"><code>max_subagents</code> — the spawn ceiling<a class="headerlink" href="#max_subagents-the-spawn-ceiling" title="Permanent link">&para;</a></h3>
+<p>The state file has carried <code>subagents_spawned</code> and <code>max_subagents</code> since 0.9 and nothing
+ever enforced them. Now <code>subagent-account.sh</code> counts every child at <code>SubagentStart</code> /
+<code>SubagentStop</code> (keyed by <code>agent_id</code>, under the state lock) and <code>subagent-cap.sh</code> denies the
+spawn at <code>PreToolUse</code> once the count reaches the ceiling — before the child exists, because
+<code>SubagentStart</code> has no deny reply.</p>
+<p>The ceiling is read from <code>max_subagents</code> in <code>.leopold/state.json</code>, else from a
+<code>max_subagents:</code> line in <code>.leopold/GUARDRAILS.md</code>, else there is <strong>no cap</strong> and the hook is
+silent — a project that never set one behaves as it did before the hook existed.
+<code>max_subagents: 0</code> is a real ceiling ("no subagents this run"), not an absent one. The
+denial tells the run to do the work in its own turn; raising the ceiling is the human's
+call, in <code>GUARDRAILS.md</code>.</p>
+<h3 id="the-new-state-fields-and-events">The new state fields and events<a class="headerlink" href="#the-new-state-fields-and-events" title="Permanent link">&para;</a></h3>
+<p>Every one of these is written under <code>.leopold/.state.lock</code>, and every event line carries
+<code>session</code>:</p>
+<table>
+<thead>
+<tr>
+<th>In <code>state.json</code></th>
+<th>Written by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compact_checkpoints</code></td>
+<td><code>compact-checkpoint.sh</code></td>
+</tr>
+<tr>
+<td><code>subagents_spawned</code>, <code>subagents</code></td>
+<td><code>subagent-account.sh</code></td>
+</tr>
+<tr>
+<td><code>verify_receipts</code>, <code>last_verify_at</code>, <code>last_edit_at</code>, <code>own_edits</code></td>
+<td><code>verify-receipt.sh</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>New event in <code>events.jsonl</code></th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compact_checkpoint</code>, <code>compact_resumed</code></td>
+<td>a compaction was survived</td>
+</tr>
+<tr>
+<td><code>checkpoint_oversize</code>, <code>checkpoint_unmergeable</code></td>
+<td>the checkpoint was refused, loudly, and nothing was truncated</td>
+</tr>
+<tr>
+<td><code>subagent_started</code>, <code>subagent_stopped</code></td>
+<td>the ledger</td>
+</tr>
+<tr>
+<td><code>subagent_cap_denied</code></td>
+<td>the ceiling refused a spawn</td>
+</tr>
+<tr>
+<td><code>verify_recorded</code></td>
+<td>a verification command produced a receipt</td>
+</tr>
+<tr>
+<td><code>done_denied</code></td>
+<td>an item was closed without evidence</td>
+</tr>
+<tr>
+<td><code>external_write</code></td>
+<td>something outside this session changed the plan (a warning, never a block)</td>
+</tr>
+<tr>
+<td><code>config_change_blocked</code></td>
+<td>a settings reload was refused mid-run</td>
+</tr>
+<tr>
+<td><code>stop_failure</code></td>
+<td>the turn ended in an API error, with its class</td>
+</tr>
+</tbody>
+</table>
+<p><code>leopold watch</code> renders each one with a severity and a one-line meaning — an unregistered
+event still renders, never as a blank row.</p>
+<hr />
 <h2 id="the-kill-switch">The kill switch<a class="headerlink" href="#the-kill-switch" title="Permanent link">&para;</a></h2>
 <p>Two ways to stop a run at the next turn boundary:</p>
 <ul>
@@ -2416,8 +2844,8 @@ finishes, so nothing is left half-done.</p>
 <hr />
 <h2 id="opting-in-to-git-when-you-actually-want-commits">Opting in to git (when you actually want commits)<a class="headerlink" href="#opting-in-to-git-when-you-actually-want-commits" title="Permanent link">&para;</a></h2>
 <p>If you want a run to commit or push on its own, you opt in explicitly and per run:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>touch<span class="w"> </span>.leopold/ALLOW_GIT<span class="w">      </span><span class="c1"># allow commit</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>touch<span class="w"> </span>.leopold/ALLOW_PUSH<span class="w">     </span><span class="c1"># allow push (force-push stays denied)</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>touch<span class="w"> </span>.leopold/ALLOW_GIT<span class="w">      </span><span class="c1"># allow commit</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>touch<span class="w"> </span>.leopold/ALLOW_PUSH<span class="w">     </span><span class="c1"># allow push (force-push stays denied)</span>
 </span></code></pre></div>
 <p>The default posture, and the recommended one, is: Leopold stages and reports, you
 commit and push.</p>
@@ -2477,6 +2905,16 @@ commit and push.</p>
 <td>none (opt-in)</td>
 <td><code>--budget</code> on the driver</td>
 </tr>
+<tr>
+<td>Subagent ceiling</td>
+<td>none until set (<code>state.json</code> default 8 on a fresh run)</td>
+<td><code>GUARDRAILS.md</code> (<code>max_subagents:</code>)</td>
+</tr>
+<tr>
+<td>Verification commands</td>
+<td>none (opt-in)</td>
+<td><code>GUARDRAILS.md</code> (<code>## Verification commands</code>)</td>
+</tr>
 </tbody>
 </table>
 <h2 id="run-hygiene-and-parallel-runs">Run hygiene and parallel runs<a class="headerlink" href="#run-hygiene-and-parallel-runs" title="Permanent link">&para;</a></h2>
@@ -2515,8 +2953,8 @@ denial names the owning run.</p>
 <p>True parallelism comes from isolation, not threads: two agents editing the same
 files conflict no matter how concurrent the orchestrator is. To run Leopold in
 parallel, give each run its own git worktree:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>worktree<span class="w"> </span>add<span class="w"> </span>../proj-leopold-2<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../proj-leopold-2
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># now /leopold-brief + /leopold-run here, fully isolated from the first run</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>worktree<span class="w"> </span>add<span class="w"> </span>../proj-leopold-2<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../proj-leopold-2
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># now /leopold-brief + /leopold-run here, fully isolated from the first run</span>
 </span></code></pre></div>
 <p>Each worktree has its own checkout and its own <code>.leopold/</code>, so N runs proceed
 concurrently without collision.</p>

@@ -1526,6 +1526,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1614,6 +1620,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1810,6 +1844,62 @@
     
   
     Persona Guard Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hook Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ConfigChange Reload Block
   
 
     
@@ -2186,7 +2276,7 @@ hooks, templates, docs, scripts, extensions — goes into one shared <strong>ass
 <code>~/.claude/leopold</code> whenever Claude Code is in play, so existing installs need no
 migration, otherwise <code>~/.codex/leopold</code>. <code>LEOPOLD_HOME</code> overrides both. See
 <a href="../../reference/leopold-home/">Asset Home</a>.</p>
-<p>Three hooks are wired into your harness config: the two engine hooks are <strong>inert
+<p>Four hooks are wired into your harness config: the three engine hooks are <strong>inert
 unless a Leopold run is active</strong>, and the <a href="../../reference/enhance/">prompt enhancer</a>
 is <strong>off until you toggle it on</strong> (<code>leopold menu</code> → enhance) — so none of them
 interfere with normal sessions.</p>
@@ -2237,8 +2327,9 @@ automatically, with no config merge. Leopold ships both manifests
 the install, so there is no separate approval step.</p>
 <p>Use the plugin <strong>or</strong> <code>install.sh</code>, not both, to avoid double-wired hooks.</p>
 <h2 id="the-extensions">The extensions<a class="headerlink" href="#the-extensions" title="Permanent link">&para;</a></h2>
-<p><code>leopold menu</code> installs and manages the bundled extensions — serena, gstack, ovmem
-and the prompt enhancer. Each one installs, reports status and runs its doctor
+<p><code>leopold menu</code> installs and manages the bundled extensions — serena, gstack, ovmem,
+the prompt enhancer and <a href="../../reference/decisions/">decisions</a> (typed, calibrated
+judgements; <strong>optional</strong>, and every consumer keeps a deterministic path without it). Each one installs, reports status and runs its doctor
 <strong>per harness</strong>, so a two-harness machine gets both wired and a Codex-only machine
 gets nothing pointing at a Claude path. See
 <a href="../toolchain-manager/">Toolchain Manager</a>.</p>

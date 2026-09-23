@@ -1066,6 +1066,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="O gate de review — um painel de céticos">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-codex-as-lentes-sao-agent-roles-nativas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No Codex: as lentes são agent roles nativas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1542,6 +1559,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1630,6 +1653,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1839,6 +1890,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eventos de hook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bloqueio do reload do ConfigChange
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2026,6 +2133,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="O gate de review — um painel de céticos">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-codex-as-lentes-sao-agent-roles-nativas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No Codex: as lentes são agent roles nativas
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2207,6 +2331,38 @@ ligado por padrão; <code>--no-review</code> / <code>LEOPOLD_REVIEW=0</code> / <
 <p>Dica para o worker: faça self-review com <code>/code-review</code> <em>antes</em> de reportar done, para o gate
 passar de primeira. A skill <code>/leopold-run</code> diz exatamente isso a ele.</p>
 </blockquote>
+<h3 id="no-codex-as-lentes-sao-agent-roles-nativas">No Codex: as lentes são agent roles nativas<a class="headerlink" href="#no-codex-as-lentes-sao-agent-roles-nativas" title="Permanent link">&para;</a></h3>
+<p>O Codex CLI tem algo que o Claude Code não tem — uma <strong>agent role nativa</strong>: um arquivo em
+<code>$CODEX_HOME/agents/&lt;role&gt;.toml</code> com nome, descrição, <code>developer_instructions</code> e qualquer
+chave do <code>config.toml</code>, que o <code>spawn_agent(agent_type=&lt;role&gt;)</code> usa para rodar um subagente
+como aquela role. O instalador escreve uma por lente, a partir das mesmas definições de que
+o driver monta seus panelistas (<code>REVIEW_LENSES</code> em <code>packages/driver/src/review.ts</code>):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>~/.codex/agents/leopold-lens-correctness.toml
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>~/.codex/agents/leopold-lens-security.toml
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>~/.codex/agents/leopold-lens-does-it-work.toml
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>~/.codex/agents/leopold-lens-conformance.toml
+</span></code></pre></div>
+<p>Cada uma é <code>sandbox_mode = "read-only"</code> — um revisor que pode editar o diff que revisa não é
+um revisor — e tira o modelo de <code>LEOPOLD_CODEX_REVIEW_MODEL</code>, ou o padrão do harness quando
+essa variável não está setada. Para convocar uma em qualquer sessão do Codex:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>spawn_agent(agent_type="leopold-lens-correctness")
+</span></code></pre></div>
+<p>Dois fatos do probe ao vivo (<code>docs/reference/hook-events.md</code>) delimitam isso, e o
+<code>leopold doctor</code> afirma os dois em vez de sugerir uma paridade que não existe:</p>
+<ul>
+<li><strong>Uma única chave desconhecida faz o Codex ignorar o arquivo de role inteiro</strong>, com e sem
+  <code>--strict-config</code>. Por isso o instalador emite só as chaves que a captura provou serem
+  aceitas, e um teste quebra o build se uma quinta chave aparecer.</li>
+<li><strong><code>codex exec</code> não roda <em>como</em> uma role.</strong> <code>-c agent_role=</code>, <code>-c agent_type=</code> e <code>-c role=</code>
+  são rejeitados como campos de config desconhecidos e um arquivo de role não é uma camada
+  <code>--profile</code> válida; só <code>-c agents.&lt;role&gt;.config_file=&lt;caminho&gt;</code> é aceito, e ele <em>declara</em> a
+  role em vez de adotá-la. Então as lentes headless do driver nomeiam sua role no argv e são
+  mantidas read-only pelo <code>--sandbox read-only</code> — a mesma garantia que o arquivo de role pede.</li>
+</ul>
+<p>No Claude Code não existe arquivo de role: cada lente é a própria sessão SDK do driver, que o
+payload de <code>SubagentStart</code> nomeia exatamente no mesmo campo (<code>agent_type</code>). Essa é a linha
+<code>substitute</code> da matriz para <code>review-lens-roles</code>, e é uma diferença de mecanismo, não do que o
+painel faz.</p>
 <h2 id="conformidade-verificando-contra-os-seus-cenarios-de-aceite">Conformidade — verificando contra os seus cenários de aceite<a class="headerlink" href="#conformidade-verificando-contra-os-seus-cenarios-de-aceite" title="Permanent link">&para;</a></h2>
 <p>Uma linha "done when" diz o que é sucesso em prosa; um <strong>cenário</strong> diz isso em casos que o diff
 precisa de fato satisfazer. Um item do plano pode carregar linhas de aceite
@@ -2214,9 +2370,9 @@ precisa de fato satisfazer. Um item do plano pode carregar linhas de aceite
 <strong>conformidade</strong> então confere o diff não commitado contra <em>cada</em> cenário antes de o item fechar —
 um cenário não atendido volta para o worker como a correção concreta, não como um vago "não
 funciona":</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Register the <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>      <span class="ni">@scenario</span> no flag → the table prints unchanged
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table's exact fields
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">- [ ]</span> Register the <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>      <span class="ni">@scenario</span> no flag → the table prints unchanged
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table's exact fields
 </span></code></pre></div>
 <p>A lente fica <strong>ativa apenas quando o item declara linhas <code>@scenario</code></strong>, então planos sem cenário
 se comportam exatamente como antes — totalmente retrocompatível. Vem ligada por padrão;
@@ -2269,6 +2425,15 @@ do item — quais arquivos, quantos chamadores — antes de rotear. Ele sempre c
 classificador determinístico em qualquer falha, e nunca pode rebaixar um item crítico-por-palavra-chave
 para abaixo de crítico (um piso de segurança: dinheiro/auth/migrações continuam guardados mesmo se o
 roteador relaxar).</p>
+<p>Há uma terceira opção entre as duas, e ela não custa nem a cegueira de um regex nem uma sessão:
+com a capacidade opcional <a href="../reference/decisions/">decisions</a> instalada, <strong>o código</strong> junta a
+evidência — os caminhos que o item nomeia, filtrados para os que existem, com suas contagens de
+referência — e um provider julga o raio de impacto a partir disso. Contar é o que o código faz
+exato e um modelo faz mal, então nenhum dos dois faz o trabalho do outro. O classificador
+determinístico continua sendo o piso: abaixo da barra de confiança da resposta, ou em qualquer
+falha, o veredito dele vale campo por campo. As barras são deliberadamente assimétricas — subir
+escrutínio é recuperável, baixar pula um review que era merecido — então a mesma confiança que
+promove um item não rebaixa outro.</p>
 <h2 id="contexto-escopado-por-fatia-aponte-o-worker-para-os-arquivos-certos">Contexto escopado por fatia — aponte o worker para os arquivos certos<a class="headerlink" href="#contexto-escopado-por-fatia-aponte-o-worker-para-os-arquivos-certos" title="Permanent link">&para;</a></h2>
 <p>O roteamento inteligente já pesquisa quais arquivos um item toca. Ative o <strong>slice scope</strong>
 (<code>--slice-scope</code> ou <code>slice_scope: on</code> no GUARDRAILS — precisa do <code>smart_routing</code> ligado) e esse
@@ -2314,10 +2479,10 @@ significa menos escalações na próxima run.</p>
 <h2 id="execucao-paralela">Execução paralela<a class="headerlink" href="#execucao-paralela" title="Permanent link">&para;</a></h2>
 <p>Itens independentes do plano não precisam esperar na fila. Declare a ordem no <code>PLAN.md</code> com um
 marcador <code>(after: N)</code> (posição do item, começando em 1); itens sem marcador são independentes:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">- [ ]</span> Add the API layer
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">- [ ]</span> Refresh the docs
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">- [ ]</span> Add the API layer
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">- [ ]</span> Refresh the docs
 </span></code></pre></div>
 <p>Com <code>leopold-driver run --parallel 3</code>, um agendador ciente de dependências despacha até 3 itens
 prontos de uma vez, <strong>cada um em seu próprio git worktree</strong> derivado da árvore principal. Quando um

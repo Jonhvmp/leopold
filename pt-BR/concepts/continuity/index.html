@@ -1024,6 +1024,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compactacao-o-outro-jeito-de-uma-janela-ser-cortada" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compactação: o outro jeito de uma janela ser cortada
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#o-gate-de-livelock-rolar-e-de-graca-produzir-e-obrigatorio" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1039,6 +1050,17 @@
     <span class="md-ellipsis">
       
         Budgets sobrevivem ao roll
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#um-erro-de-api-e-uma-espera-nao-um-veredito" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um erro de API é uma espera, não um veredito
       
     </span>
   </a>
@@ -1520,6 +1542,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1608,6 +1636,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1804,6 +1860,62 @@
     
   
     Hooks do persona guard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eventos de hook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bloqueio do reload do ConfigChange
   
 
     
@@ -2018,6 +2130,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compactacao-o-outro-jeito-de-uma-janela-ser-cortada" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compactação: o outro jeito de uma janela ser cortada
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#o-gate-de-livelock-rolar-e-de-graca-produzir-e-obrigatorio" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2033,6 +2156,17 @@
     <span class="md-ellipsis">
       
         Budgets sobrevivem ao roll
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#um-erro-de-api-e-uma-espera-nao-um-veredito" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Um erro de API é uma espera, não um veredito
       
     </span>
   </a>
@@ -2196,6 +2330,35 @@ artefato. Quando uma run termina limpa, o checkpoint é arquivado com a run
 escreveu nele não tem autoridade sobre a janela seguinte — o prompt de continuação o
 enquadra explicitamente como estado de janela passada não confiável, a verificar contra
 o workspace, nunca como ordens a seguir.</p>
+<h2 id="compactacao-o-outro-jeito-de-uma-janela-ser-cortada">Compactação: o outro jeito de uma janela ser cortada<a class="headerlink" href="#compactacao-o-outro-jeito-de-uma-janela-ser-cortada" title="Permanent link">&para;</a></h2>
+<p>Um window roll é uma decisão do próprio Leopold. Uma <strong>compactação</strong> é do harness: ele
+descarta o meio do transcript no ritmo dele, e a sessão segue com um resumo no lugar do
+que acabou de fazer. Sem intervenção, isso é a mesma amnésia de um roll, menos o handoff —
+por isso o <code>hooks/compact-checkpoint.sh</code> monta nas duas metades dela.</p>
+<ul>
+<li><strong><code>PreCompact</code></strong> — antes de o harness cortar, o hook escreve o <code>.leopold/CHECKPOINT.md</code>
+  pelo mesmo contrato acima e loga <code>compact_checkpoint</code> com o trigger (<code>auto</code> ou
+  <code>manual</code>).</li>
+<li><strong><code>PostCompact</code></strong> — depois do corte, ele loga <code>compact_resumed</code> e devolve o checkpoint à
+  sessão como <code>additionalContext</code>, de modo que a janela compactada é re-aterrada no estado
+  durável do run, e não no resumo em prosa do harness.</li>
+<li>Ele conta: <code>compact_checkpoints</code> no <code>state.json</code> é o número de compactações que este run
+  sobreviveu, distinto de <code>windows</code>.</li>
+</ul>
+<p><strong>O checkpoint é composto a partir de estado durável — <code>state.json</code>, <code>PLAN.md</code>, o journal
+— e nunca do payload da compactação.</strong> Isso não é preferência estilística; é o que torna a
+capacidade portátil. O <code>hooks/hook-matrix.tsv</code> marca o <code>compact-checkpoint</code> como
+<strong><code>available</code> nos dois harnesses</strong>: a sonda pegou o Codex CLI 0.152.1 disparando
+<code>PreCompact</code> e <code>PostCompact</code> com <code>trigger</code> mais <code>turn_id</code> e <code>model</code>. O que o Codex não
+manda é o <code>custom_instructions</code> antes e o <code>compact_summary</code> depois do Claude Code — e um
+hook que tivesse montado seu checkpoint a partir do resumo teria sido Claude-only por
+construção. Composto a partir de estado durável, isso não custa nada (capturas:
+<a href="../../reference/hook-events/#precompact-codex-cli">Hook Events</a>,
+<a href="../../reference/hook-events/#postcompact-codex-cli">PostCompact</a>).</p>
+<p>O teto é o do contrato, não um novo: um merge grande demais escreve <strong>nada</strong>, loga
+<code>checkpoint_oversize</code> com a contagem de bytes e diz isso no <code>systemMessage</code>; um checkpoint
+que não pode ser mesclado loga <code>checkpoint_unmergeable</code>. Truncar para caber semearia a
+próxima janela com uma mentira confiante, então isso não acontece.</p>
 <h2 id="o-gate-de-livelock-rolar-e-de-graca-produzir-e-obrigatorio">O gate de livelock: rolar é de graça, produzir é obrigatório<a class="headerlink" href="#o-gate-de-livelock-rolar-e-de-graca-produzir-e-obrigatorio" title="Permanent link">&para;</a></h2>
 <p>Ressemeadura não é progresso; só item de plano fechado é. A cada roll o hook compara o
 vetor de checkboxes do plano com a fotografia tirada quando a janela começou e registra
@@ -2240,6 +2403,78 @@ então nada renova:</p>
 </ul>
 <p>O watcher não é um agendador: ele reage a um roll de janela detectado (um evento
 <code>window_relaunch</code> marca cada um), nunca acorda uma run por timer.</p>
+<h2 id="um-erro-de-api-e-uma-espera-nao-um-veredito">Um erro de API é uma espera, não um veredito<a class="headerlink" href="#um-erro-de-api-e-uma-espera-nao-um-veredito" title="Permanent link">&para;</a></h2>
+<p>Um turno que morre na API não é um roll nem uma falha do trabalho: o <code>Stop</code> nunca dispara
+para um turno que falhou, então o <code>hooks/stop-failure.sh</code> é a única testemunha — ele para
+a run com <code>stopped_reason: api_error</code> e um bloco <code>api_error: {type, at, retryable, hint}</code>
+(Claude Code; no Codex CLI 0.152.1 o evento não existe, então um erro de API encerra a run
+como uma parada comum e o <code>/leopold-run</code> a retoma na mão).</p>
+<p>Sob <code>continuity: auto</code>, o <code>leopold watch</code> trata uma classe <strong>retryable</strong> (<code>rate_limit</code>,
+<code>overloaded</code>, <code>server_error</code>) como trata um roll — relança a run headless pelo mesmo
+comando <code>claude -p</code> / <code>codex exec</code> — mas com <strong>backoff que dobra</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Tentativa</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dispara depois de</td>
+<td>30s</td>
+<td>120s</td>
+<td>120s</td>
+<td>240s</td>
+<td>480s</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<p><strong>Todo degrau depois do primeiro espera a carência de reativação.</strong> O primeiro é medido
+  a partir da recusa da própria API, então mantém seus 30s. Os demais são medidos a partir
+  do <em>nosso</em> spawn da tentativa anterior, e um agente relançado pode legitimamente levar
+  até 120s (<code>CONTINUITY_REACTIVATE_SECS</code>, a mesma carência que o caminho do roll lhe dá)
+  para virar <code>active: true</code> — uma partida a frio cuja primeira chamada está sendo
+  throttled é exatamente a condição que produziu a parada. Por isso o backoff que dobra
+  tem esse piso: um segundo degrau de 60s sem piso colocaria um segundo
+  <code>claude -p /leopold-run</code> no mesmo checkout enquanto o primeiro ainda sobe, dois donos
+  disputando o <code>state.json</code>.</p>
+</li>
+<li>
+<p><strong>Cinco tentativas, depois uma pessoa.</strong> A sexta é recusada com
+  <code>api_error_relaunch_refused</code> (motivo <code>attempts</code>), nomeando a classe do erro. Cinco
+  tentativas em ~15 minutos é uma instabilidade passageira; além disso é uma queda que
+  você precisa ver.</p>
+</li>
+<li><strong>Uma classe não-retryable é recusada uma vez, pelo nome.</strong> Autenticação, cobrança,
+  requisição inválida ou uma classe que o Leopold não reconhece: o que falhou foram as
+  credenciais ou a entrada, não o trabalho, então nada é retentado e a recusa nomeia a
+  classe. O veredito é do hook — classificado lexicamente a partir do campo <code>error</code> do
+  próprio harness — e o watcher nunca o re-deriva.</li>
+<li><strong><code>windows</code> nunca é tocado.</strong> Nenhuma janela foi consumida, então nenhuma é cobrada:
+  cobrar uma gastaria o teto de janelas da run com a queda da API e, no teto, transformaria
+  um 429 passageiro numa parada permanente por <code>max_windows</code>. O teto de tentativas é o que
+  limita a retentativa. <code>max_windows</code>, o kill switch, o frescor e <code>continuity: manual</code>
+  continuam valendo, na mesma ordem em que valem para um roll.</li>
+<li><strong>Exatamente uma vez, mesmo com restart.</strong> A contagem de tentativas e o horário da
+  próxima vivem no <code>state.json</code> (<code>api_error_attempts</code>, <code>api_error_next_at</code>,
+  <code>api_error_relaunch_at</code>, <code>api_error_result</code>), escritos antes do spawn — um watcher
+  reiniciado no meio da escada a retoma em vez de recomeçá-la. A pílula de status mostra
+  <code>stopped · api_error (retry in 47s)</code> enquanto espera.</li>
+<li><strong>O reseed carrega os budgets.</strong> O Passo 1 do <code>/leopold-run</code> carrega <code>iteration</code>,
+  <code>windows</code>, <code>window_plan_vector</code>, <code>window_zero_streak</code> e <code>window_progress</code> num
+  <code>api_error</code> exatamente como num roll. Sem isso, uma run rate-limitada ganharia bolso
+  novo em cada uma das cinco retentativas.</li>
+</ul>
+<p>Cada relançamento loga <code>api_error_relaunch</code> (tentativa, atraso, tipo do erro, harness);
+cada recusa loga <code>api_error_relaunch_refused</code> com o motivo. Os dois aparecem no
+<code>leopold watch</code>.</p>
 <p><strong>Custo em billing API.</strong> O cap do checkpoint é proporcional à janela —
 <code>min(32KB, 2% de max_context_mb)</code> — então o único knob que governa custo por turno
 governa o checkpoint também: um projeto em API que abaixa <code>max_context_mb</code> ganha turnos
@@ -2274,6 +2509,10 @@ na 0.18.0 estão marcadas:</p>
 <tr>
 <td><code>max_windows</code> — <strong>novo</strong></td>
 <td>A run consumiu seu teto de janelas (padrão 10). Sem relançamento.</td>
+</tr>
+<tr>
+<td><code>api_error</code></td>
+<td>Um turno morreu na API (só no Claude Code — o <code>Stop</code> não dispara para um turno que falhou). Classes retryable são relançadas até cinco vezes com backoff que dobra; uma classe não-retryable para aqui.</td>
 </tr>
 <tr>
 <td><code>iteration_budget</code></td>

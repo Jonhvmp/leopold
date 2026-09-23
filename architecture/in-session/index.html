@@ -1323,15 +1323,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-two-hooks" class="md-nav__link">
+  <a href="#the-three-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The two hooks
+        The three hooks
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The two hooks">
+    <nav class="md-nav" aria-label="The three hooks">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1350,6 +1350,17 @@
     <span class="md-ellipsis">
       
         PreToolUse hook — the git lock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#permissionrequest-hook-the-prompt-the-run-answers-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PermissionRequest hook — the prompt the run answers itself
       
     </span>
   </a>
@@ -1482,6 +1493,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1570,6 +1587,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1779,6 +1824,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hook Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ConfigChange Reload Block
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1958,15 +2059,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-two-hooks" class="md-nav__link">
+  <a href="#the-three-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The two hooks
+        The three hooks
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The two hooks">
+    <nav class="md-nav" aria-label="The three hooks">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1985,6 +2086,17 @@
     <span class="md-ellipsis">
       
         PreToolUse hook — the git lock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#permissionrequest-hook-the-prompt-the-run-answers-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PermissionRequest hook — the prompt the run answers itself
       
     </span>
   </a>
@@ -2040,7 +2152,7 @@
 
 <h1 id="in-session-engine">In-Session Engine<a class="headerlink" href="#in-session-engine" title="Permanent link">&para;</a></h1>
 <p>The in-session engine is the v0.1 tier: it runs entirely inside one Claude Code
-session, using two hooks and a set of skills. No external process, no API key, no
+session, using three hooks and a set of skills. No external process, no API key, no
 new infrastructure.</p>
 <div class="admonition info">
 <p class="admonition-title">Two more hooks ship alongside the engine</p>
@@ -2049,9 +2161,9 @@ new infrastructure.</p>
 everyday prompts, off by default) — and the repo carries
 <a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a>, armed only while a
 <a href="../../concepts/persona-testing/">persona run</a> is active. This page covers the
-two hooks that implement the autonomous run.</p>
+three hooks that implement the autonomous run.</p>
 </div>
-<h2 id="the-two-hooks">The two hooks<a class="headerlink" href="#the-two-hooks" title="Permanent link">&para;</a></h2>
+<h2 id="the-three-hooks">The three hooks<a class="headerlink" href="#the-three-hooks" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart TB
     subgraph Turn["A Claude Code turn"]
         TC["tool call"] --&gt; PRE{{"PreToolUse hook&lt;br/&gt;guard-irreversible.sh"}}
@@ -2119,6 +2231,16 @@ token is present.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="permissionrequest-hook-the-prompt-the-run-answers-itself">PermissionRequest hook — the prompt the run answers itself<a class="headerlink" href="#permissionrequest-hook-the-prompt-the-run-answers-itself" title="Permanent link">&para;</a></h3>
+<p>A permission prompt in an autonomous run is a stall: nobody is there to click. While
+the session conducting the run hits one, <code>permission-policy.sh</code> answers it — <code>allow</code>,
+except that a <code>git commit</code> / <code>git push</code> is handed to the git lock above and its deny
+repeated word for word. A session that does not conduct the run, an inactive run, or no
+run at all gets no answer at all and the harness prompts exactly as it does today.</p>
+<p>It is the same script on both harnesses, but not the same power: Claude Code honors
+allow and deny, Codex honors only deny. <code>leopold doctor</code> prints that cost on the
+capability row rather than implying parity. See
+<a href="../../reference/hooks/">Hooks → <code>permission-policy.sh</code></a>.</p>
 <h2 id="the-skills">The skills<a class="headerlink" href="#the-skills" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     B["/leopold-brief"] --&gt; R["/leopold-run"]

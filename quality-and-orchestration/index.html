@@ -1066,6 +1066,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The review gate — a panel of skeptics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-codex-the-lenses-are-native-agent-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On Codex: the lenses are native agent roles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1542,6 +1559,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1630,6 +1653,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1839,6 +1890,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hook Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ConfigChange Reload Block
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2026,6 +2133,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The review gate — a panel of skeptics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-codex-the-lenses-are-native-agent-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On Codex: the lenses are native agent roles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2207,15 +2331,47 @@ by default; <code>--no-review</code> / <code>LEOPOLD_REVIEW=0</code> / <code>rev
 <p>Tip for the worker: self-review with <code>/code-review</code> <em>before</em> reporting done, so the gate
 passes first try. The <code>/leopold-run</code> skill tells it exactly that.</p>
 </blockquote>
+<h3 id="on-codex-the-lenses-are-native-agent-roles">On Codex: the lenses are native agent roles<a class="headerlink" href="#on-codex-the-lenses-are-native-agent-roles" title="Permanent link">&para;</a></h3>
+<p>Codex CLI has something Claude Code does not — a <strong>native agent role</strong>: a file at
+<code>$CODEX_HOME/agents/&lt;role&gt;.toml</code> with a name, a description, <code>developer_instructions</code> and
+any <code>config.toml</code> key, which <code>spawn_agent(agent_type=&lt;role&gt;)</code> runs a subagent as. The
+installer writes one per lens, from the same definitions the driver builds its panelists
+from (<code>REVIEW_LENSES</code> in <code>packages/driver/src/review.ts</code>):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>~/.codex/agents/leopold-lens-correctness.toml
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>~/.codex/agents/leopold-lens-security.toml
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>~/.codex/agents/leopold-lens-does-it-work.toml
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>~/.codex/agents/leopold-lens-conformance.toml
+</span></code></pre></div>
+<p>Each is <code>sandbox_mode = "read-only"</code> — a reviewer that can edit the diff it is reviewing is
+not a reviewer — and takes its model from <code>LEOPOLD_CODEX_REVIEW_MODEL</code>, or the harness
+default when that is unset. Convene one in any Codex session:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>spawn_agent(agent_type="leopold-lens-correctness")
+</span></code></pre></div>
+<p>Two facts from the live probe (<code>docs/reference/hook-events.md</code>) bound this, and
+<code>leopold doctor</code> states both rather than implying a parity that does not exist:</p>
+<ul>
+<li><strong>One unknown key makes Codex ignore the whole role file</strong>, with and without
+  <code>--strict-config</code>. So the installer emits only keys the capture proved are accepted, and
+  a test fails the build if a fifth key ever appears.</li>
+<li><strong><code>codex exec</code> cannot run <em>as</em> a role.</strong> <code>-c agent_role=</code>, <code>-c agent_type=</code> and <code>-c role=</code>
+  are rejected as unknown config fields and a role file is not a valid <code>--profile</code> layer;
+  only <code>-c agents.&lt;role&gt;.config_file=&lt;path&gt;</code> is accepted, and it <em>declares</em> the role rather
+  than adopting it. So the driver's headless lenses name their role in the argv and are held
+  read-only by <code>--sandbox read-only</code> — the same guarantee the role file asks for.</li>
+</ul>
+<p>On Claude Code there are no role files at all: each lens is the driver's own SDK session,
+which the <code>SubagentStart</code> payload names in exactly the same field (<code>agent_type</code>). That is
+the matrix's <code>substitute</code> row for <code>review-lens-roles</code>, and it is a difference in mechanism,
+not in what the panel does.</p>
 <h2 id="conformance-verifying-against-your-acceptance-scenarios">Conformance — verifying against your acceptance scenarios<a class="headerlink" href="#conformance-verifying-against-your-acceptance-scenarios" title="Permanent link">&para;</a></h2>
 <p>A "done when" line says what success is in prose; a <strong>scenario</strong> says it in cases the diff must
 actually satisfy. A plan item may carry <code>@scenario &lt;given → when → then&gt;</code> acceptance lines
 directly under its checkbox, and a dedicated <strong>conformance</strong> review lens then checks the
 uncommitted diff against <em>every</em> scenario before the item closes — an unmet scenario comes back
 to the worker as the concrete fix, not a vague "doesn't work":</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">- [ ]</span> Register the <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>      <span class="ni">@scenario</span> no flag → the table prints unchanged
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table's exact fields
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">- [ ]</span> Register the <span class="sb">`--json`</span> flag — done when: <span class="sb">`mycli --json`</span> emits valid JSON
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>      <span class="ni">@scenario</span> no flag → the table prints unchanged
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>      <span class="ni">@scenario</span> <span class="sb">`--json`</span> set → stdout is valid JSON with the table's exact fields
 </span></code></pre></div>
 <p>The lens is <strong>active only when the item declares <code>@scenario</code> lines</strong>, so scenario-less plans
 behave exactly as before — fully backward compatible. On by default; <code>--no-conformance</code> /
@@ -2266,6 +2422,14 @@ dangerous ones get scrutiny.</p>
 blast radius — which files, how many callers — before routing. It always falls back to the
 deterministic classifier on any failure, and it can never lower a keyword-critical item below
 critical (a safety floor: money/auth/migrations stay guarded even if the router relaxes).</p>
+<p>A third option sits between the two, and costs neither a regex's blindness nor a session: with the
+optional <a href="../reference/decisions/">decisions</a> capability installed, <strong>code</strong> gathers the evidence —
+the paths the item names, filtered to the ones that exist, with their reference counts — and a
+provider judges the blast radius from that. Counting is what code does exactly and a model does
+badly, so neither does the other's job. The deterministic classifier stays the floor: below the
+answer's confidence bar, or on any failure, its verdict stands field for field. The bars are
+deliberately asymmetric — raising scrutiny is recoverable, lowering it skips a review that was
+deserved — so the same confidence that promotes an item will not demote one.</p>
 <h2 id="slice-scoped-context-point-the-worker-at-the-right-files">Slice-scoped context — point the worker at the right files<a class="headerlink" href="#slice-scoped-context-point-the-worker-at-the-right-files" title="Permanent link">&para;</a></h2>
 <p>Smart routing already researches which files an item touches. Turn on <strong>slice scope</strong>
 (<code>--slice-scope</code> or <code>slice_scope: on</code> in GUARDRAILS — it needs <code>smart_routing</code> on) and that file
@@ -2308,10 +2472,10 @@ escalations next run.</p>
 <h2 id="parallel-execution">Parallel execution<a class="headerlink" href="#parallel-execution" title="Permanent link">&para;</a></h2>
 <p>Independent plan items don't have to wait in line. Declare order in <code>PLAN.md</code> with an
 <code>(after: N)</code> marker (1-based item position); items with no marker are independent:</p>
-<div class="language-markdown highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">- [ ]</span> Add the API layer
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">- [ ]</span> Refresh the docs
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">- [ ]</span> Add the API layer
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">- [ ]</span> (after: 1) Wire the UI to the API
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">- [ ]</span> (after: 1) Add API metrics
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">- [ ]</span> Refresh the docs
 </span></code></pre></div>
 <p>With <code>leopold-driver run --parallel 3</code>, a dependency-aware scheduler dispatches up to 3 ready
 items at once, <strong>each in its own git worktree</strong> off the main tree. When an item finishes (and

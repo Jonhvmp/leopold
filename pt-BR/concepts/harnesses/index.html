@@ -884,6 +884,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#nenhum-harness-dispara-menos-eventos-eles-disparam-eventos-diferentes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nenhum harness dispara "menos" eventos — eles disparam eventos diferentes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#os-hooks-sao-os-mesmos-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1537,6 +1548,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1625,6 +1642,34 @@
     
   
     Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
   
 
     
@@ -1821,6 +1866,62 @@
     
   
     Hooks do persona guard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/hook-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eventos de hook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/config-reload-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bloqueio do reload do ConfigChange
   
 
     
@@ -2035,6 +2136,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#nenhum-harness-dispara-menos-eventos-eles-disparam-eventos-diferentes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nenhum harness dispara "menos" eventos — eles disparam eventos diferentes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#os-hooks-sao-os-mesmos-scripts" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2154,8 +2266,8 @@ camada de harness que fica em cima do agente de código que você usa — e hoje
 significa <strong>Claude Code</strong> e <strong>OpenAI Codex CLI</strong>.</p>
 <p>Isso funciona não por abstração esperta do lado do Leopold, mas porque o Codex
 reimplementou o contrato de hooks do Claude Code quase literalmente: mesmos nomes de
-evento, mesmas chaves de payload, mesmos formatos de resposta. Os dois hooks do
-Leopold rodam nos dois harnesses como os mesmos scripts shell, sem alteração.</p>
+evento, mesmas chaves de payload, mesmos formatos de resposta. Os hooks do Leopold
+rodam nos dois harnesses como os mesmos scripts shell, sem alteração.</p>
 <h2 id="o-que-ja-era-portatil">O que já era portátil<a class="headerlink" href="#o-que-ja-era-portatil" title="Permanent link">&para;</a></h2>
 <p>O brief é o ponto central do Leopold, e nunca foi específico de harness:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>.leopold/
@@ -2218,10 +2330,31 @@ brief escrito no Claude Code roda no Codex e vice-versa.</p>
 </table>
 <p>Essa última linha é a única diferença de comportamento de verdade, e o resto desta
 página é basicamente sobre ela.</p>
+<h2 id="nenhum-harness-dispara-menos-eventos-eles-disparam-eventos-diferentes">Nenhum harness dispara "menos" eventos — eles disparam eventos diferentes<a class="headerlink" href="#nenhum-harness-dispara-menos-eventos-eles-disparam-eventos-diferentes" title="Permanent link">&para;</a></h2>
+<p>É tentador ler a tabela acima como "o Codex é o harness menor, então deve disparar um
+subconjunto dos eventos de ciclo de vida". Ele não dispara, e a sonda resolveu isso: cada
+um dos <strong>12 eventos que o Codex CLI 0.152.1 documenta disparou</strong> num run headless
+hermético — <code>SessionStart</code>, <code>SessionEnd</code>, <code>UserPromptSubmit</code>, <code>PreToolUse</code>, <code>PostToolUse</code>,
+<code>PermissionRequest</code>, <code>PreCompact</code>, <code>PostCompact</code>, <code>SubagentStart</code>, <code>SubagentStop</code>, <code>Stop</code>
+e <code>Interrupt</code>. Compactação, subagents e prompts de permissão todos chegam a um hook no
+Codex.</p>
+<p>O Claude Code 2.1.259 documenta <strong>33</strong>, dos quais 26 dispararam headless; os sete que não
+dispararam não têm gatilho headless nessa versão (<code>PermissionDenied</code>, <code>Notification</code>,
+<code>TeammateIdle</code>, <code>DirectoryAdded</code>, <code>WorktreeRemove</code>, <code>Elicitation</code>, <code>ElicitationResult</code>).
+Então a diferença real não é tamanho, e sim <strong>quais</strong> eventos existem: o Claude Code tem
+eventos de task, arquivo, configuração, worktree e falha para os quais o Codex não tem
+equivalente, e o Codex tem <code>Interrupt</code>, que o Claude Code não dispara.</p>
+<p>Toda afirmação desta página vem daquela captura, não de uma página de docs:
+<a href="../../reference/hook-events/">Hook Events</a> é regenerado por <code>make probe-hook-events</code> e
+guarda um payload literal — ou o gatilho tentado, para um evento que não disparou — para
+as 45 linhas. O <code>hooks/hook-matrix.tsv</code> é derivado dele, e é ele, não esta prosa, que
+decide o status de cada capacidade por harness.</p>
 <h2 id="os-hooks-sao-os-mesmos-scripts">Os hooks são os mesmos scripts<a class="headerlink" href="#os-hooks-sao-os-mesmos-scripts" title="Permanent link">&para;</a></h2>
-<p>O engine de run se apoia em exatamente dois hooks sempre ativos (um terceiro, o
-<a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a>, é armado apenas
-enquanto um persona run está ativo — o mesmo script nos dois harnesses também).</p>
+<p>O engine de run se apoia em hooks sempre ativos que ficam inertes a menos que um run
+esteja ativo; os três cujo comportamento mais difere entre os harnesses estão abaixo, e o
+conjunto completo está em <a href="../../reference/hooks/">Hooks</a> (o
+<a href="../../reference/persona-guard-hooks/"><code>persona-guard.sh</code></a> é o que só é armado enquanto um
+persona run está ativo — o mesmo script nos dois harnesses também).</p>
 <p><strong><code>guard-irreversible.sh</code> (PreToolUse) — a trava do git.</strong> Nega <code>git commit</code> e
 <code>git push</code> enquanto um run está ativo, então o run deixa o trabalho staged e você
 publica. O Codex entrega o PreToolUse com as mesmas chaves do Claude Code —
@@ -2247,6 +2380,75 @@ um processo de hook do Codex não herda nenhuma variável <code>CODEX_*</code> (
 <code>CLAUDE_CODE_SESSION_ID</code>, <code>CLAUDE_PID</code> e <code>CLAUDE_PROJECT_DIR</code>), então no Codex o payload
 é a única identidade que um hook tem — por isso a checagem de owner lê o payload, nunca o
 ambiente.</p>
+<p><strong><code>permission-policy.sh</code> (PermissionRequest) — o prompt que o run responde sozinho.</strong>
+Quando a sessão que conduz um run esbarra num pedido de permissão, o hook responde em vez
+de esperar: allow, exceto que um <code>git commit</code> / <code>git push</code> é entregue à trava do git acima
+e o deny dela é repetido literalmente. Os dois harnesses mandam as mesmas chaves de
+payload (<code>tool_name</code>, <code>tool_input</code>, <code>cwd</code>, <code>session_id</code>) e leem a mesma resposta:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span><span class="nt">"hookSpecificOutput"</span><span class="p">:{</span><span class="nt">"hookEventName"</span><span class="p">:</span><span class="s2">"PermissionRequest"</span><span class="p">,</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w"> </span><span class="nt">"decision"</span><span class="p">:{</span><span class="nt">"behavior"</span><span class="p">:</span><span class="s2">"deny"</span><span class="p">,</span><span class="nt">"message"</span><span class="p">:</span><span class="s2">"…"</span><span class="p">}}}</span>
+</span></code></pre></div>
+<p>Este é o único ponto em que os dois harnesses não são iguais, e o Leopold diz isso em vez
+de fingir o contrário. O Claude Code (2.1.259) dispara o evento sob
+<code>--permission-prompts none</code> e honra <strong>allow e deny</strong>. O Codex (0.152.1) dispara só sob
+<code>--approve-for-me</code> e honra <strong>apenas deny</strong> — uma resposta allow é ignorada — então no
+Codex o hook é a voz da trava do git no prompt, e a autonomia fica nas flags de sandbox do
+driver. O <code>hooks/hook-matrix.tsv</code> registra isso como <code>substitute</code>, e o <code>leopold doctor</code>
+imprime o custo na linha em vez de alegar paridade.</p>
+<p><strong><code>subagent-account.sh</code> (SubagentStart / SubagentStop) e <code>subagent-cap.sh</code>
+(PreToolUse) — o que os filhos custam, e o teto.</strong> Esses dois <em>não</em> diferem. Os dois
+harnesses disparam os dois eventos de subagent com as mesmas chaves de contabilidade
+(<code>agent_id</code>, <code>agent_type</code>, e <code>agent_transcript_path</code> no stop), então o livro-razão indexa
+igual em cada um; e o deny do teto no <code>PreToolUse</code> é honrado nos dois, casando <code>Agent|Task</code>
+no Claude Code e <code>collaborationspawn_agent</code> no Codex com uma string de matcher só. As
+quatro linhas da matriz são <code>available</code>.</p>
+<p><strong><code>verify-receipt.sh</code> (PostToolUse / PostToolUseFailure) — a evidência de que um item
+está pronto.</strong> Esse <em>difere</em>, e a matriz diz isso. No Claude Code a maioria dos comandos
+Bash que falham nem chega ao <code>PostToolUse</code> — eles disparam <code>PostToolUseFailure</code> com
+<code>error: "Exit code 1"</code> — então os dois eventos juntos dão um recibo com exit code de
+verdade. O disparo do <code>PostToolUse</code> ainda assim não é, por si só, um sucesso: três campos
+do objeto de resposta dele (<code>returnCodeInterpretation</code>, <code>interrupted</code>, <code>backgroundTaskId</code>)
+negam cada um um sucesso, e o recibo registra <code>outcome: nonzero</code> ou <code>incomplete</code> em vez de
+um <code>0</code> forjado. O Codex não tem evento de falha de ferramenta, e o <code>PostToolUse</code> dele
+dispara para sucesso e falha igualmente com <code>tool_response</code> só de stdout: um recibo no
+Codex registra <code>exit_code: null</code>, <code>outcome: ran</code>, e prova que a verificação <strong>rodou</strong>
+depois da última edição, nunca que ela passou. Por isso a linha é <code>substitute</code>, o <code>leopold doctor</code> cita o custo na
+linha do Codex, e o bound ainda assim é entregue nos dois harnesses em vez de ser contido
+à interseção.</p>
+<p><strong><code>done-gate.sh</code> (PreToolUse / TaskCompleted) — pronto significa verificado.</strong> Este difere
+pela <em>metade</em>. O gate de <code>PreToolUse</code> que recusa uma edição de <code>.leopold/PLAN.md</code>
+transformando um <code>- [ ]</code> em <code>- [x]</code> é <code>available</code> nos dois — <code>Edit</code> / <code>Write</code> / <code>MultiEdit</code>
+do Claude Code, <code>apply_patch</code> do Codex, cujo <code>tool_input.command</code> carrega o patch. O
+<code>TaskCompleted</code>, onde exit 2 deixa a task pendente, só existe no Claude Code: o Codex não
+tem evento de task nenhum, então a matriz marca essa linha como <code>substitute</code>, o instalador
+recusa a spec lá pelo nome, e a metade do PLAN.md carrega o bound inteiro. O
+<code>leopold doctor</code> nomeia na mesma linha o evento que falta no Codex em vez de deixar um
+evento conectado parecer paridade.</p>
+<p><strong><code>compact-checkpoint.sh</code> (PreCompact / PostCompact) — a janela que sobrevive a uma
+compactação.</strong> <code>available</code> nos dois, e este surpreendeu a sonda: o Codex dispara os dois
+eventos de compactação, com <code>trigger</code> mais <code>turn_id</code> e <code>model</code>. O que ele <em>não</em> carrega é
+o <code>custom_instructions</code> antes e o <code>compact_summary</code> depois do Claude Code — o que aqui não
+custa nada, porque o checkpoint é composto a partir de estado durável
+(<code>.leopold/state.json</code>, <code>PLAN.md</code>, o journal) e nunca do resumo do payload. Veja
+<a href="../continuity/#compactacao-o-outro-jeito-de-uma-janela-ser-cortada">Continuidade</a>.</p>
+<p><strong><code>stop-failure.sh</code> (StopFailure) — um erro de API é uma espera, não um veredito.</strong> Só
+Claude Code. Num turno que falha o <code>Stop</code> não dispara de jeito nenhum, então o
+<code>StopFailure</code> é a única testemunha, e o <code>error</code> dele nomeia a classe (<code>rate_limit</code>,
+<code>server_error</code>, <code>authentication_failed</code>). O Codex não tem hook de falha: um erro de API
+encerra o turno como <code>turn.failed</code> no stream <code>--json</code>, que o driver lê no lugar — a matriz
+marca a linha como <code>unavailable</code> e o <code>leopold doctor</code> diz isso em palavras em vez de
+deixar o silêncio parecer cobertura.</p>
+<p><strong><code>file-watch.sh</code> (FileChanged) e <code>config-guard.sh</code> (ConfigChange) — os detectores de
+segundo escritor e de adulteração.</strong> Só Claude Code; as duas linhas são <code>unavailable</code> no
+Codex, o instalador recusa as specs lá pelo nome, e o doctor imprime a consequência: um
+segundo escritor nos arquivos do plano, e uma edição do wiring dos hooks no meio do run,
+não são detectados no Codex.</p>
+<p><strong><code>review-lens-roles</code> — a única capacidade cujo lado Codex é o mais rico.</strong> As lentes de
+review do driver são <strong>agent roles</strong> nativos do Codex (<code>$CODEX_HOME/agents/&lt;lens&gt;.toml</code>,
+honrados por <code>spawn_agent(agent_type=&lt;lens&gt;)</code> e ecoados de volta no <code>SubagentStart</code>); o
+Claude Code não tem arquivos de role, então as lentes dele são as sessões SDK do próprio
+driver e a matriz marca o <em>Claude Code</em> como <code>substitute</code>. A paridade não é afirmada duas
+vezes — ela é derivada por teste da própria lista de lentes do driver.</p>
 <p>Ou seja: autonomia não é exclusividade do Claude. O <code>/leopold-run</code> mantém uma sessão
 Codex andando do mesmo jeito que mantém uma sessão do Claude Code — mesmos orçamentos,
 mesma detecção de não-progresso, mesmo teto de contexto.</p>
@@ -2255,8 +2457,9 @@ mesma detecção de não-progresso, mesmo teto de contexto.</p>
 uma vez. Até lá ele fica inerte em silêncio — sem erro, simplesmente não roda.</p>
 <p>O Leopold não tenta forjar essa aprovação. Dois caminhos:</p>
 <ol>
-<li><strong>Abra o Codex uma vez e aprove os hooks do Leopold.</strong> Depois disso a trava do git
-   e o motor de continuidade ficam vivos em toda sessão interativa.</li>
+<li><strong>Abra o Codex uma vez e aprove os hooks do Leopold.</strong> Depois disso a trava do git,
+   o motor de continuidade e a política de permissão ficam vivos em toda sessão
+   interativa.</li>
 <li><strong>Instale o Leopold como plugin do Codex.</strong> Hooks vindos de plugin já são confiados
    na instalação do plugin, então não tem passo separado.</li>
 </ol>
@@ -2265,10 +2468,10 @@ run conduzido pelo driver fica travado desde o primeiro turno, tendo você aprov
 algo ou não.</p>
 <p>O <code>leopold doctor</code> diz em qual estado você está.</p>
 <h2 id="instalando">Instalando<a class="headerlink" href="#instalando" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./install.sh<span class="w">                     </span><span class="c1"># todo harness encontrado na máquina</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>claude<span class="w">    </span><span class="c1"># só Claude Code</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>codex<span class="w">     </span><span class="c1"># só Codex</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>all<span class="w">       </span><span class="c1"># os dois, instalados ou não</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>./install.sh<span class="w">                     </span><span class="c1"># todo harness encontrado na máquina</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>claude<span class="w">    </span><span class="c1"># só Claude Code</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>codex<span class="w">     </span><span class="c1"># só Codex</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>./install.sh<span class="w"> </span>--harness<span class="w"> </span>all<span class="w">       </span><span class="c1"># os dois, instalados ou não</span>
 </span></code></pre></div>
 <p>As skills vão para o diretório de skills de cada harness. Hooks, templates, docs e
 extensions vão para um único home compartilhado — <code>~/.claude/leopold</code> quando o Claude
@@ -2276,22 +2479,80 @@ Code está em jogo (assim instalações existentes continuam funcionando), senã
 <code>~/.codex/leopold</code>. Dá para sobrescrever com <code>LEOPOLD_HOME</code>.</p>
 <p>A configuração do Codex é escrita no <code>config.toml</code> como um bloco delimitado por
 marcadores:</p>
-<div class="language-toml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># &gt;&gt;&gt; leopold (managed) &gt;&gt;&gt;</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">[[hooks.PreToolUse]]</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Bash"</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/guard-irreversible.sh"</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="k">[[hooks.Stop]]</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="k">[[hooks.Stop.hooks]]</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/stop-continuity.sh"</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="c1"># &lt;&lt;&lt; leopold (managed) &lt;&lt;&lt;</span>
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># &gt;&gt;&gt; leopold (managed) &gt;&gt;&gt;</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">[[hooks.Stop]]</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">[[hooks.Stop.hooks]]</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/stop-continuity.sh"</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="k">[[hooks.PreToolUse]]</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Bash|Edit|Write|MultiEdit|NotebookEdit"</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/guard-irreversible.sh"</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="k">[[hooks.PermissionRequest]]</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="k">[[hooks.PermissionRequest.hooks]]</span>
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/permission-policy.sh"</span>
+</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+</span><span id="__span-5-23"><a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="k">[[hooks.PreCompact]]</span>
+</span><span id="__span-5-24"><a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>
+</span><span id="__span-5-25"><a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="k">[[hooks.PreCompact.hooks]]</span>
+</span><span id="__span-5-26"><a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-27"><a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/compact-checkpoint.sh"</span>
+</span><span id="__span-5-28"><a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+</span><span id="__span-5-29"><a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>
+</span><span id="__span-5-30"><a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="k">[[hooks.PostCompact]]</span>
+</span><span id="__span-5-31"><a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>
+</span><span id="__span-5-32"><a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="k">[[hooks.PostCompact.hooks]]</span>
+</span><span id="__span-5-33"><a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-34"><a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/compact-checkpoint.sh"</span>
+</span><span id="__span-5-35"><a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+</span><span id="__span-5-36"><a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>
+</span><span id="__span-5-37"><a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="k">[[hooks.SubagentStart]]</span>
+</span><span id="__span-5-38"><a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>
+</span><span id="__span-5-39"><a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="k">[[hooks.SubagentStart.hooks]]</span>
+</span><span id="__span-5-40"><a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-41"><a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/subagent-account.sh"</span>
+</span><span id="__span-5-42"><a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+</span><span id="__span-5-43"><a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>
+</span><span id="__span-5-44"><a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="k">[[hooks.SubagentStop]]</span>
+</span><span id="__span-5-45"><a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>
+</span><span id="__span-5-46"><a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="k">[[hooks.SubagentStop.hooks]]</span>
+</span><span id="__span-5-47"><a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-48"><a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/subagent-account.sh"</span>
+</span><span id="__span-5-49"><a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+</span><span id="__span-5-50"><a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>
+</span><span id="__span-5-51"><a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a><span class="k">[[hooks.PreToolUse]]</span>
+</span><span id="__span-5-52"><a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Agent|Task|collaborationspawn_agent"</span>
+</span><span id="__span-5-53"><a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>
+</span><span id="__span-5-54"><a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
+</span><span id="__span-5-55"><a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-56"><a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/subagent-cap.sh"</span>
+</span><span id="__span-5-57"><a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+</span><span id="__span-5-58"><a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>
+</span><span id="__span-5-59"><a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="k">[[hooks.PostToolUse]]</span>
+</span><span id="__span-5-60"><a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Bash|Edit|Write|MultiEdit|NotebookEdit|apply_patch"</span>
+</span><span id="__span-5-61"><a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>
+</span><span id="__span-5-62"><a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a><span class="k">[[hooks.PostToolUse.hooks]]</span>
+</span><span id="__span-5-63"><a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-64"><a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/verify-receipt.sh"</span>
+</span><span id="__span-5-65"><a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+</span><span id="__span-5-66"><a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a>
+</span><span id="__span-5-67"><a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="k">[[hooks.PreToolUse]]</span>
+</span><span id="__span-5-68"><a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="n">matcher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Edit|Write|MultiEdit|apply_patch"</span>
+</span><span id="__span-5-69"><a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a>
+</span><span id="__span-5-70"><a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="k">[[hooks.PreToolUse.hooks]]</span>
+</span><span id="__span-5-71"><a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span>
+</span><span id="__span-5-72"><a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/home/voce/.claude/leopold/hooks/done-gate.sh"</span>
+</span><span id="__span-5-73"><a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+</span><span id="__span-5-74"><a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a><span class="c1"># &lt;&lt;&lt; leopold (managed) &lt;&lt;&lt;</span>
 </span></code></pre></div>
 <p>Reinstalar troca o bloco e mais nada. Sua config é copiada antes, e o arquivo mesclado
 é validado — se não fosse parsear, a instalação volta atrás e imprime o bloco para
@@ -2336,8 +2597,8 @@ harnesses não têm como divergir em silêncio. E <strong>nada reporta por máqu
 <code>status</code>, <code>remove</code> e <code>doctor</code> respondem uma linha por harness, então uma máquina com
 dois harnesses nunca vê o estado de um passado como o dos dois, e o gate de confiança
 dos hooks do Codex é nomeado em vez de aparecer como um verde que ainda não está no ar.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>bash<span class="w"> </span>extensions/serena/manage.sh<span class="w"> </span>doctor<span class="w">   </span><span class="c1"># ou ovmem / gstack / enhance</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>leopold<span class="w"> </span>doctor<span class="w">                            </span><span class="c1"># todo harness presente, numa passada só</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>bash<span class="w"> </span>extensions/serena/manage.sh<span class="w"> </span>doctor<span class="w">   </span><span class="c1"># ou ovmem / gstack / enhance</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>leopold<span class="w"> </span>doctor<span class="w">                            </span><span class="c1"># todo harness presente, numa passada só</span>
 </span></code></pre></div>
 <p>Os dados do engine são compartilhados mesmo com o wiring não sendo: o ovmem mantém um
 diretório de memória por máquina, então uma decisão registrada numa sessão do Codex
@@ -2371,10 +2632,10 @@ aparece numa máquina sem <code>~/.claude</code> em vez de sumir calada.</p>
 precificação, a descoberta por <code>cwd</code>, o fallback de modelo desconhecido e o caso do
 "sem uso ainda".</p>
 <h2 id="escolhendo-o-harness-de-um-run">Escolhendo o harness de um run<a class="headerlink" href="#escolhendo-o-harness-de-um-run" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>leopold<span class="w"> </span>harness<span class="w">                    </span><span class="c1"># o que tem aqui, e o que cada um consegue fazer</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>leopold<span class="w"> </span>run<span class="w">                        </span><span class="c1"># conduz no harness padrão</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex<span class="w">       </span><span class="c1"># conduz no Codex</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run<span class="w"> </span><span class="c1"># o mesmo, pelo ambiente</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>leopold<span class="w"> </span>harness<span class="w">                    </span><span class="c1"># o que tem aqui, e o que cada um consegue fazer</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>leopold<span class="w"> </span>run<span class="w">                        </span><span class="c1"># conduz no harness padrão</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>leopold<span class="w"> </span>run<span class="w"> </span>--provider<span class="w"> </span>codex<span class="w">       </span><span class="c1"># conduz no Codex</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nv">LEOPOLD_PROVIDER</span><span class="o">=</span>codex<span class="w"> </span>leopold<span class="w"> </span>run<span class="w"> </span><span class="c1"># o mesmo, pelo ambiente</span>
 </span></code></pre></div>
 <p>A precedência é <code>--provider</code> → <code>LEOPOLD_PROVIDER</code> → o único harness instalado → <strong>o
 harness de cuja sessão o Leopold foi lançado</strong> → Claude Code como último recurso. Um
@@ -2387,9 +2648,9 @@ Code exporta <code>CLAUDECODE</code> / <code>CLAUDE_CODE_SESSION_ID</code> — e
 cadeira de onde você o lançou. Sem marcador nenhum, o fallback para Claude é o de sempre.</p>
 <h3 id="um-run-dois-harnesses">Um run, dois harnesses<a class="headerlink" href="#um-run-dois-harnesses" title="Permanent link">&para;</a></h3>
 <p>Um run não precisa escolher um. O <code>--provider hybrid</code> atribui um harness <strong>por papel</strong>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>leopold<span class="w"> </span>workflow<span class="w"> </span>--run<span class="w"> </span>--provider<span class="w"> </span>hybrid<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--executor-provider<span class="w"> </span>codex<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--review-provider<span class="w"> </span>claude
 </span></code></pre></div>
 <p><code>executor</code> são os workers, <code>review</code> são as lentes de review, painéis de hipótese e
 juízes de torneio, <code>conductor</code> são as decisões de turno e o roteamento. Um papel sem
