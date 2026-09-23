@@ -25,6 +25,7 @@ a log, an event or an error message.
 """
 import argparse
 import json
+import socketserver
 import sys
 import threading
 import time
@@ -194,12 +195,30 @@ def main() -> int:
             self.end_headers()
             self.wfile.write(data)
 
-    # THREADING IS LOAD-BEARING, not a default. A keep-alive client (Node's fetch, and any
-    # real one) holds its connection open between attempts; a single-threaded server sits
-    # blocked reading that idle connection and never accepts the next one, so every retry
-    # test hangs until its timeout. Verified by probe before it was changed.
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    server.daemon_threads = True
+    class Server(ThreadingHTTPServer):
+        """Threaded, and bound WITHOUT a reverse DNS lookup.
+
+        THREADING IS LOAD-BEARING, not a default. A keep-alive client (Node's fetch, and any
+        real one) holds its connection open between attempts; a single-threaded server sits
+        blocked reading that idle connection and never accepts the next one, so every retry
+        test hangs until its timeout. Verified by probe before it was changed.
+
+        SKIPPING getfqdn IS ALSO LOAD-BEARING. HTTPServer.server_bind calls
+        socket.getfqdn(host) purely to fill in `server_name`, which nothing here reads. That
+        is a reverse DNS lookup for 127.0.0.1: instant on a developer machine and on the
+        Linux runners, and tens of seconds on a macOS CI runner with no reverse resolver --
+        all of it BEFORE the port is printed. Every stub in the suite then timed out waiting
+        for a port that was coming, eventually. Bind, name it ourselves, get on with it.
+        """
+
+        daemon_threads = True
+
+        def server_bind(self):  # noqa: D102
+            socketserver.TCPServer.server_bind(self)
+            self.server_name = "127.0.0.1"
+            self.server_port = self.server_address[1]
+
+    server = Server(("127.0.0.1", args.port), Handler)
     print(f"PORT {server.server_address[1]}", flush=True)
     try:
         server.serve_forever()
