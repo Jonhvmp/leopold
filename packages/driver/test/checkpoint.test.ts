@@ -7,6 +7,7 @@ import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import {
   CHECKPOINT_SECTIONS,
   CHECKPOINT_TITLE,
@@ -21,7 +22,10 @@ import {
   readCheckpoint,
   type Checkpoint,
   checkpointCapBytes,
+  CHECKPOINT_DATA_AUTHORITY,
 } from "../src/checkpoint.ts";
+import { logDecision } from "../src/log.ts";
+import type { WorkerStatus } from "../src/types.ts";
 
 function sample(): Checkpoint {
   const cp = emptyCheckpoint();
@@ -254,6 +258,171 @@ test("the hook's checkpoint instruction carries the one contract verbatim", () =
     hook.includes(String(CHECKPOINT_MAX_BYTES)),
     `the hook must name the ${CHECKPOINT_MAX_BYTES}-byte cap`,
   );
+});
+
+// -- the compaction hook writes THIS contract, and its output is parsed by it ----
+// hooks/compact-checkpoint.sh composes .leopold/CHECKPOINT.md in bash on PreCompact,
+// on both harnesses. Two things have to hold and only a test can hold them: its
+// transcription of the contract must not drift from the exported one, and the document
+// it actually writes must parse HERE — with the real parser, not a bash approximation.
+//
+// MUTATION-VERIFIED: change one section name in the hook's CHECKPOINT_SECTIONS and the
+// first test fails; drop the trailing newline from the hook's section loop (so the last
+// section never renders) and the second fails with "missing section \"Next Step\"".
+test("the compaction hook carries the one contract verbatim", () => {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const hookPath = path.resolve(HERE, "..", "..", "..", "hooks", "compact-checkpoint.sh");
+  const hook = fs.readFileSync(hookPath, "utf8");
+  assert.ok(
+    hook.includes(`CHECKPOINT_SECTIONS="${CHECKPOINT_SECTIONS.join(", ")}"`),
+    "the hook must hold every checkpoint section, in order, exactly as the contract exports them",
+  );
+  assert.ok(
+    hook.includes(`CHECKPOINT_TITLE="${CHECKPOINT_TITLE}"`),
+    `the hook must hold the checkpoint title (${CHECKPOINT_TITLE})`,
+  );
+  assert.ok(
+    hook.includes(String(CHECKPOINT_MAX_BYTES)) && hook.includes("8192"),
+    `the hook must compute the same cap formula (ceiling ${CHECKPOINT_MAX_BYTES}, floor 8192)`,
+  );
+  assert.ok(
+    hook.includes(CHECKPOINT_DATA_AUTHORITY),
+    "the hook's PostCompact re-grounding must frame the checkpoint with CHECKPOINT_DATA_AUTHORITY verbatim",
+  );
+});
+
+/** Run hooks/compact-checkpoint.sh on PreCompact over a hermetic .leopold/ whose PLAN.md
+ * is the caller's, and hand back the run and the file it wrote. */
+function runCompactionHook(plan: string): {
+  result: ReturnType<typeof spawnSync>;
+  file: string;
+} {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const hookPath = path.resolve(HERE, "..", "..", "..", "hooks", "compact-checkpoint.sh");
+  const dir = tmpdir();
+  const leo = path.join(dir, ".leopold");
+  fs.mkdirSync(leo, { recursive: true });
+  fs.writeFileSync(
+    path.join(leo, "state.json"),
+    JSON.stringify({
+      active: true,
+      iteration: 7,
+      windows: 2,
+      started_at: "2026-09-01T00:00:00Z",
+      owner: { session_id: "S-OWNER", engine: "skill", harness: "claude" },
+    }),
+  );
+  fs.writeFileSync(path.join(leo, "PLAN.md"), plan);
+  // DECISIONS.md is seeded through the DRIVER'S OWN WRITER for the entry that must be
+  // kept, so the heading shape the hook's `started_at` filter has to recognize is DERIVED
+  // from packages/driver/src/log.ts rather than transcribed here. A hand-typed fixture is
+  // how that filter went stale unnoticed: logDecision() puts "turn N, " inside the
+  // parens, and a stamp pattern reading the whole paren body matches none of it — which
+  // keeps every heading, writing prior missions' decisions into this run's checkpoint.
+  // The dropped entry is literal on purpose: it must carry a stamp from before
+  // `started_at`, which the real writer (always `new Date()`) cannot produce.
+  fs.writeFileSync(
+    path.join(leo, "DECISIONS.md"),
+    "# Decisions\n\n## D1 — the call from an older run   (turn 2, 2020-01-01T00:00:00Z)\nDecision: no\n",
+  );
+  logDecision(leo, 7, { kind: "needs-decision", item: "i", summary: "s", raw: "" } as WorkerStatus, {
+    action: "answer",
+    classification: "reversible",
+    charterBasis: "c",
+    logTitle: "the call inside the run",
+  });
+  fs.writeFileSync(
+    path.join(leo, "events.jsonl"),
+    '{"ts":"2026-09-02T11:00:00Z","event":"item_incomplete","reason":"tests red"}\nnot json\n',
+  );
+  const payload = JSON.stringify({
+    session_id: "S-OWNER",
+    cwd: dir,
+    hook_event_name: "PreCompact",
+    trigger: "auto",
+    custom_instructions: null,
+  });
+  const result = spawnSync("bash", [hookPath], { input: payload, encoding: "utf8" });
+  return { result, file: path.join(leo, "CHECKPOINT.md") };
+}
+
+test("@scenario a checkpoint the compaction hook wrote parses under this contract", (t) => {
+  const { result: r, file } = runCompactionHook(
+    "# Plan\n- [x] closed\n- [ ] the open one\n- [ ] the one after it\n",
+  );
+  if (r.status !== 0) t.diagnostic(`hook exited ${r.status}: ${r.stderr}`);
+  assert.equal(r.status, 0);
+
+  const text = fs.readFileSync(file, "utf8");
+  // The real parser, on the real bash output — the whole point of this test.
+  const cp = parseCheckpoint(text);
+  assert.equal(cp["In-Flight Item"], "the open one");
+  assert.ok(cp["Next Step"].includes("the one after it"));
+  assert.ok(cp["Current Work"].includes("compaction (auto) at iteration 7, window 2"));
+  // The `started_at` filter reads the stamp off a heading the DRIVER wrote. If log.ts
+  // ever changes that heading's shape, this is where the hook's pattern is caught going
+  // stale — not in production, where the symptom is a checkpoint that reports another
+  // mission's decisions as this run's.
+  assert.ok(
+    cp["Decisions This Run"].includes("the call inside the run"),
+    "an entry logDecision() wrote after started_at must reach the checkpoint",
+  );
+  assert.ok(
+    !cp["Decisions This Run"].includes("from an older run"),
+    "an entry stamped before started_at must not",
+  );
+  // And it is BYTE-STABLE against the TypeScript serializer: the bash writer is not a
+  // lookalike, it emits the same document this module would.
+  assert.equal(serializeCheckpoint(cp), text, "the hook's bytes must equal serializeCheckpoint's");
+  assert.equal(readCheckpoint(file)?.["In-Flight Item"], "the open one");
+});
+
+// The In-Flight Item body is the one variable field the hook emits WITHOUT a "- " prefix,
+// so it is the one place a plan item's own text can reach column 0 of a section body. A
+// plan item that reads as markdown structure ("## ## Files and Code", "# # Leopold
+// Checkpoint") must not become structure: serializeCheckpoint refuses such a body loudly,
+// and the bash writer's cp_line() has to reach the same place by neutralizing it.
+//
+// MUTATION-VERIFIED: unloop the hook's strip (`-e ':a' … -e 'ta'` back to one pass) and
+// this test fails on the first item — parseCheckpoint throws `"## Files and Code" twice
+// — a nested prior checkpoint`, which is exactly what the driver's readCheckpoint would
+// hit at loop.ts, resuming the run from the brief alone.
+test("@scenario a heading-shaped plan item never becomes a heading in the hook's document", (t) => {
+  for (const item of [
+    "## ## Files and Code", // a second contract section
+    "# # Leopold Checkpoint", // a second title
+    "#### Next Step", // a deeper run collapsing onto a section
+    "## Mission", // brief state, which the parser rejects by name
+  ]) {
+    const { result: r, file } = runCompactionHook(`# Plan\n- [ ] ${item}\n- [ ] the one after it\n`);
+    if (r.status !== 0) t.diagnostic(`hook exited ${r.status}: ${r.stderr}`);
+    assert.equal(r.status, 0, `the hook must not fail on a plan item reading "${item}"`);
+    assert.ok(
+      fs.existsSync(file),
+      `a plan item reading "${item}" must still produce a checkpoint — the hook's own ` +
+        `contract self-check refused to write, so cp_line() let structure through`,
+    );
+    const text = fs.readFileSync(file, "utf8");
+    // Parses, with the item as TEXT in the body — not as a section boundary.
+    const cp = parseCheckpoint(text);
+    assert.equal(
+      text.split("\n").filter((l) => l.trim() === CHECKPOINT_TITLE).length,
+      1,
+      `a plan item reading "${item}" must not add a second title`,
+    );
+    assert.equal(
+      text.split("\n").filter((l) => /^##\s+/.test(l.trim())).length,
+      CHECKPOINT_SECTIONS.length,
+      `a plan item reading "${item}" must not add a heading line`,
+    );
+    assert.ok(
+      !cp["In-Flight Item"].split("\n").some((l) => l.trim().startsWith("#")),
+      `the In-Flight Item body must not start a line with "#" (item: "${item}")`,
+    );
+    // And the TS writer agrees it is emittable — the two writers refuse and accept the
+    // same documents, which is what "one contract" means.
+    assert.equal(serializeCheckpoint(cp), text, "the hook's bytes must equal serializeCheckpoint's");
+  }
 });
 
 // -- leopold doctor speaks THIS contract too, not a private copy ----------------

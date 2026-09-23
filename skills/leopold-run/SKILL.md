@@ -137,7 +137,15 @@ CARRY='{failure_rescue_used:(.failure_rescue_used // false),deadlock_repair_used
 # gate diffs against). A reseed that refreshes any of them is a runaway loop with extra
 # steps.
 #
-# The key is the ROLL (`stopped_reason: context_budget`), NEVER the checkpoint file:
+# An API ERROR (`stopped_reason: api_error`, written by hooks/stop-failure.sh when a turn
+# dies on the API — no Stop fires for a failed turn) carries the SAME budgets, for the same
+# reason: the API refused the turn, the run did not end. A failed turn is not a turn, so
+# nothing was spent — and a reseed that refreshed `iteration` and `windows` here would hand
+# a rate-limited run a fresh purse on every retry, which is exactly what the watcher's
+# automatic relaunch ladder (scripts/leopold-watch.py, up to 5 attempts) would then do five
+# times over. `windows` is carried unchanged, never incremented: an API error is not a roll.
+#
+# The key is the STOP REASON (`context_budget` or `api_error`), NEVER the checkpoint file:
 #   - a roll whose window failed to write a checkpoint still carries its budgets —
 #     otherwise the one run that most needs the ceilings (it is not even checkpointing)
 #     refreshes all of them on every resume and escapes max_windows, the livelock gate
@@ -147,9 +155,10 @@ CARRY='{failure_rescue_used:(.failure_rescue_used // false),deadlock_repair_used
 #     and then hit its iteration ceiling re-stops on turn 1 of every resume, permanently.
 #     The human resuming after such a stop is starting a fresh attempt; the checkpoint
 #     file is still read as DATA below, only the counters start over.
-if [ "$(jq -r '.stopped_reason // empty' .leopold/state.json 2>/dev/null)" = "context_budget" ]; then
-  CARRY="$CARRY + {iteration:(.iteration // 0),windows:(.windows // 1),window_plan_vector:(.window_plan_vector // \"\"),window_zero_streak:(.window_zero_streak // 0),window_progress:(.window_progress // [])}"
-fi
+case "$(jq -r '.stopped_reason // empty' .leopold/state.json 2>/dev/null)" in
+  context_budget|api_error)
+    CARRY="$CARRY + {iteration:(.iteration // 0),windows:(.windows // 1),window_plan_vector:(.window_plan_vector // \"\"),window_zero_streak:(.window_zero_streak // 0),window_progress:(.window_progress // [])}" ;;
+esac
 SPENT="$(jq -c "$CARRY" .leopold/state.json 2>/dev/null || echo '{}')"
 # THE OWNER RECORD. This session's id is what the harness exports into every shell it
 # runs (CLAUDE_CODE_SESSION_ID / CODEX_THREAD_ID) and what the Stop hook receives as
@@ -248,6 +257,12 @@ For this entire run you are an orchestrator-driven session. That means:
   on Codex that is `spawn_agent` in fork mode).
   Default to doing straightforward items in your own turn; reach for subagents for isolatable
   sub-tasks and bulk-output work (next bullet).
+  Every spawn is now COUNTED in code: `hooks/subagent-account.sh` increments
+  `subagents_spawned` on `SubagentStart` (that is the number `leopold watch`'s subagents
+  meter draws), and `hooks/subagent-cap.sh` denies the spawn at `max_subagents` with a
+  reason naming `count/cap`. A brief with no `max_subagents` has no ceiling. Do not try to
+  raise it — a budget is the human's, in `.leopold/GUARDRAILS.md`; at the ceiling, do the
+  work in your own turn.
 - **Context discipline — the brief is your memory, not the transcript.** This is the
   single biggest cost lever: a long session re-bills its whole growing context *every
   turn*, so keeping your own context flat is what keeps a run cheap. Three rules:
@@ -317,7 +332,14 @@ Each turn:
    before guessing an API — invoke each as `/spec` on Claude Code, `$spec` or by
    name on Codex). Verify your work (build, lint, tests) before moving on —
    and if a run-skill exists for this project, `/verify` the change in the running app,
-   not just via tests.
+   not just via tests. If `.leopold/GUARDRAILS.md` has a `## Verification commands`
+   section, those commands are what this project counts as evidence: run one of them from
+   your own Bash tool (not from a subagent's) after your last edit, and
+   `hooks/verify-receipt.sh` records the receipt in `state.json` for you — `last_edit_at`,
+   `verify_receipts`, `last_verify_at`. You do not write those fields; you earn them.
+   Run it in the foreground and let it finish: a command you background, interrupt, or
+   only mention inside a `#` comment records an `outcome` that is not evidence, and
+   `last_verify_at` does not move.
 3. Resolve forks with the decision protocol; log non-mechanical decisions.
 4. Mark the item done (`[x]`) in `PLAN.md`.
 5. Finish your turn. Do not ask "should I continue?" The Stop hook decides that

@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "Leopold",
     "shortDescription": "Autonomous runs from a brief you wrote, with git locked",
-    "longDescription": "Leopold turns a debated brief (mission, charter, guardrails, plan) into an autonomous run. It burns down the plan one item at a time, decides forks from your charter instead of asking, reviews each item before it closes, and keeps git commit and git push locked so shipping stays your call. Installing as a plugin arms both hooks — the git lock and the continuity engine that keeps the run going — without a separate trust step. You can also conduct a run headlessly with `leopold run --provider codex`.",
+    "longDescription": "Leopold turns a debated brief (mission, charter, guardrails, plan) into an autonomous run. It burns down the plan one item at a time, decides forks from your charter instead of asking, reviews each item before it closes, and keeps git commit and git push locked so shipping stays your call. Installing as a plugin arms every Leopold hook — the git lock, the continuity engine that keeps the run going, and the permission policy that answers a prompt for the run — without a separate trust step. You can also conduct a run headlessly with `leopold run --provider codex`.",
     "developerName": "Jonhvmp",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],

@@ -48,16 +48,91 @@ export function lensesFor(opts: { sensitive: boolean; critical: boolean; hasScen
   return base;
 }
 
-const LENS_FOCUS: Record<ReviewLens, string> = {
-  correctness:
-    "Your lens is CORRECTNESS: logic bugs, broken edge cases, unhandled errors, off-by-one, wrong assumptions about inputs or state, regressions in behavior the surrounding code depends on. If the /code-review skill is available, invoke it on the diff and fold its findings in.",
-  security:
-    "Your lens is SECURITY: injection, authn/authz gaps, secret handling, data exposure, unsafe defaults, trust-boundary mistakes. If the /security-review skill is available, invoke it; otherwise apply that rigor yourself.",
-  "does-it-work":
-    "Your lens is DOES-IT-ACTUALLY-WORK: was the change genuinely verified, or only claimed? Check that the build/tests the item needed would actually pass (run them read-only if cheap), that new code is actually wired in and reachable, and that nothing was left a stub or placeholder. Scrutinize any new or changed TESTS for reward-hacking: a test that mocks the very unit under test, asserts nothing meaningful, or would still pass if the change's core logic were reverted is worse than no test — flag it blocking. Tests must exercise behavior (inputs → observable effects), not restate the implementation.",
-  conformance:
-    "Your lens is CONFORMANCE: the plan item promised specific behavior as acceptance scenarios (listed below). For EACH scenario, verify the uncommitted diff actually makes it true — trace the code path end to end, and run it read-only if that is cheap. A scenario that is unmet, only partially met, or not implemented at all is a BLOCKING finding; put the exact scenario text in the issue so the fix is unambiguous. Judge ONLY whether the promised behavior is delivered — another panelist covers code quality. If a scenario is genuinely ambiguous, say so in the issue rather than guessing it passes.",
-};
+/** One review lens, as data.
+ *
+ *  This is the ONE definition of what a lens is and what it is told to look for.
+ *  Two consumers read it: `reviewSystem()` below, which builds the panelist's system
+ *  prompt, and Codex CLI, whose native **agent roles** are role files rendered by
+ *  `leo_write_codex_agent_roles` in `extensions/lib/harness.sh` — one
+ *  `$CODEX_HOME/agents/leopold-lens-<lens>.toml` per lens, with `developer_instructions`
+ *  set to `focus`. The shell writer necessarily carries its own copy of these strings
+ *  (an installer cannot import TypeScript), so `test/codex-agent-roles.test.ts` renders
+ *  the roles through that writer and asserts every field against this array — editing a
+ *  focus here without updating the writer fails the build. */
+export interface ReviewLensDef {
+  /** The lens itself — the panel's identity for this skeptic. */
+  lens: ReviewLens;
+  /** Codex role id and file stem: `leopold-lens-<lens>`. */
+  role: string;
+  /** One line, for the role file's required `description` (and any UI listing lenses). */
+  description: string;
+  /** What this skeptic is told to look for. Becomes `developer_instructions`. */
+  focus: string;
+  /** Every lens reads and runs, never edits. On Codex this is `sandbox_mode = "read-only"`
+   *  in the role file, which is the same guarantee `buildArgv` gives with `--sandbox
+   *  read-only`; in the Agent SDK it is the disallowed edit tools. */
+  readOnly: boolean;
+  /** Env var a per-role model override is read from. Unset -> the harness default model,
+   *  and the role file carries no `model` key at all. */
+  modelEnv: string;
+}
+
+/** The model override every lens honors. One key, not one per lens: a reviewer panel is
+ *  configured as a panel ("run my reviews on <model>"), and a per-lens knob nobody asked
+ *  for is a knob that drifts from the driver's own model selection. */
+const REVIEW_MODEL_ENV = "LEOPOLD_CODEX_REVIEW_MODEL";
+
+export const REVIEW_LENSES: readonly ReviewLensDef[] = [
+  {
+    lens: "correctness",
+    role: "leopold-lens-correctness",
+    description: "Leopold review lens: correctness — logic bugs, edge cases, unhandled errors, wrong assumptions.",
+    focus:
+      "Your lens is CORRECTNESS: logic bugs, broken edge cases, unhandled errors, off-by-one, wrong assumptions about inputs or state, regressions in behavior the surrounding code depends on. If the /code-review skill is available, invoke it on the diff and fold its findings in.",
+    readOnly: true,
+    modelEnv: REVIEW_MODEL_ENV,
+  },
+  {
+    lens: "security",
+    role: "leopold-lens-security",
+    description: "Leopold review lens: security — injection, authn/authz, secrets, trust boundaries.",
+    focus:
+      "Your lens is SECURITY: injection, authn/authz gaps, secret handling, data exposure, unsafe defaults, trust-boundary mistakes. If the /security-review skill is available, invoke it; otherwise apply that rigor yourself.",
+    readOnly: true,
+    modelEnv: REVIEW_MODEL_ENV,
+  },
+  {
+    lens: "does-it-work",
+    role: "leopold-lens-does-it-work",
+    description: "Leopold review lens: does-it-actually-work — was the change verified, wired in, and honestly tested?",
+    focus:
+      "Your lens is DOES-IT-ACTUALLY-WORK: was the change genuinely verified, or only claimed? Check that the build/tests the item needed would actually pass (run them read-only if cheap), that new code is actually wired in and reachable, and that nothing was left a stub or placeholder. Scrutinize any new or changed TESTS for reward-hacking: a test that mocks the very unit under test, asserts nothing meaningful, or would still pass if the change's core logic were reverted is worse than no test — flag it blocking. Tests must exercise behavior (inputs → observable effects), not restate the implementation.",
+    readOnly: true,
+    modelEnv: REVIEW_MODEL_ENV,
+  },
+  {
+    lens: "conformance",
+    role: "leopold-lens-conformance",
+    description: "Leopold review lens: conformance — every acceptance scenario the item promised, verified against the diff.",
+    focus:
+      "Your lens is CONFORMANCE: the plan item promised specific behavior as acceptance scenarios (listed below). For EACH scenario, verify the uncommitted diff actually makes it true — trace the code path end to end, and run it read-only if that is cheap. A scenario that is unmet, only partially met, or not implemented at all is a BLOCKING finding; put the exact scenario text in the issue so the fix is unambiguous. Judge ONLY whether the promised behavior is delivered — another panelist covers code quality. If a scenario is genuinely ambiguous, say so in the issue rather than guessing it passes.",
+    readOnly: true,
+    modelEnv: REVIEW_MODEL_ENV,
+  },
+];
+
+/** The lens definition, by lens. Throws on an unknown lens rather than returning a
+ *  panelist with no instructions — a reviewer told nothing reviews nothing. */
+export function lensDef(lens: ReviewLens): ReviewLensDef {
+  const def = REVIEW_LENSES.find((d) => d.lens === lens);
+  if (!def) throw new Error(`unknown review lens: ${lens}`);
+  return def;
+}
+
+/** Codex agent-role id for a lens, and the stem of its role file. */
+export function lensRole(lens: ReviewLens): string {
+  return lensDef(lens).role;
+}
 
 function reviewSystem(lens: ReviewLens, scenarios: string[] = []): string {
   const scenarioBlock =
@@ -69,7 +144,7 @@ function reviewSystem(lens: ReviewLens, scenarios: string[] = []): string {
 
 Steps:
 1. Run \`git --no-pager diff HEAD\` to see the change (and \`git --no-pager diff --stat HEAD\` for the file list). Read surrounding code with Read/Grep as needed.
-2. ${LENS_FOCUS[lens]}${scenarioBlock}
+2. ${lensDef(lens).focus}${scenarioBlock}
 3. Classify each finding's severity. "blocking" = a real defect a maintainer would refuse to merge. "minor" = style/nit/suggestion. Be conservative: do not invent blockers; an empty blocking list is the right answer for a clean diff. Stay inside your lens — another panelist covers the rest.
 
 You may read and run read-only shell commands. Do NOT edit files, commit, or push.
@@ -107,6 +182,10 @@ async function runOneReview(cfg: DriverConfig, brief: Brief, lens: ReviewLens, d
     options: {
       cwd: brief.worktreeRoot ?? brief.root,
       leopoldRole: "review",
+      // Which skeptic this is. On Codex the provider turns it into the session's
+      // native agent role (`agents.leopold-lens-<lens>.config_file`, the one override
+      // the probe proved Codex accepts); the Agent SDK ignores the key.
+      leopoldLens: lens,
       systemPrompt: reviewSystem(lens, scenarios),
       allowedTools: ["Bash", "Read", "Grep", "Glob", "Skill"],
       disallowedTools: ["Edit", "Write", "MultiEdit", "NotebookEdit"],

@@ -20,6 +20,29 @@ Covers the acceptance scenarios of the relaunch item:
     the decision is recorded in state.json and re-checked, never fired blindly
 plus: the codex argv, checkpoint-missing refusal, gate order (kill switch first),
 spawn failure is loud, and non-roll states stay idle.
+
+And the API-ERROR ladder (`stopped_reason: api_error`, written by hooks/stop-failure.sh):
+  - retryable + continuity auto -> exactly one stub spawn past the first delay, one
+    `api_error_relaunch` event with attempt 1
+  - the backoff doubles and every rung after the first is floored at the reactivation
+    grace: 30 120 120 240 480, and nothing fires before its delay
+  - a child that is still STARTING UP when the next rung would come due is never joined
+    by a second spawn (the grace floor)
+  - five attempts spent -> no spawn, one `api_error_relaunch_refused` reason `attempts`
+  - a non-retryable class is refused ONCE, by name, per class
+  - exactly-once across a watcher restart (the record is state.json, not memory)
+  - `windows` is never touched, and a `context_budget` roll still behaves byte-for-byte
+    as it did before the ladder existed
+
+MUTATION-VERIFIED (each reintroduced, watched fail, restored):
+  - drop the `api_error` branch from continuity_tick -> the ladder tests fail (idle)
+  - make the backoff constant instead of doubling -> the ladder test fails on delay 3
+  - drop the reactivation floor from _api_error_delay (and the _api_error_hold belt) ->
+    the mid-startup test fails: a second `claude -p /leopold-run` is spawned 60s into
+    attempt 1's child
+  - drop the attempt ceiling -> the `attempts` refusal test fails (it spawns)
+  - relax the `retryable is not True` check -> the per-class refusal tests fail
+  - write `windows` on the api_error path -> the windows-untouched test fails
 """
 import importlib.util
 import json
@@ -89,6 +112,23 @@ def rolled_state(**over):
         "window_zero_streak": 0,
         "window_plan_vector": "xo",
         "checkpoint_written": True,
+    }
+    st.update(over)
+    return st
+
+
+def api_error_state(at, retryable=True, etype="rate_limit", **over):
+    """The state hooks/stop-failure.sh leaves behind: active false, stopped_reason
+    api_error, the classified error block — and NO window field touched."""
+    st = {
+        "active": False,
+        "stopped_reason": "api_error",
+        "api_error": {"type": etype, "at": at, "retryable": retryable,
+                      "hint": "wait for the limit to clear, then /leopold-run"},
+        "iteration": 7,
+        "max_iterations": 50,
+        "windows": 2,
+        "window_zero_streak": 0,
     }
     st.update(over)
     return st
@@ -433,6 +473,373 @@ class FreshnessAndReactivation(ContinuityBase):
         st["relaunch_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         self.set_state(st)
         self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "already_handled")
+
+
+class ApiErrorLadder(ContinuityBase):
+    """`stopped_reason: api_error` is a wait, not a verdict — up to five relaunches on a
+    doubling backoff, and never a window charged for the API's mistake."""
+
+    def stamp(self, ago=0):
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - ago))
+
+    def api(self, ago=40, **over):
+        """A retryable api_error stop whose error is `ago` seconds old (40 > the 30s
+        first delay, so the first attempt is due)."""
+        self.set_state(api_error_state(self.stamp(ago), transcript_path=self.transcript,
+                                       **over))
+
+    def test_first_attempt_fires_once_past_the_first_delay(self):
+        """@scenario retryable api_error + continuity auto, past the first delay ->
+        exactly one stub `claude` spawn and one api_error_relaunch with attempt 1."""
+        self.api()
+        self.assertEqual(self.lw.continuity_tick(), "api_relaunched:claude")
+        calls = self.stub_calls(wait=5.0)
+        self.assertEqual(len(calls), 1, "expected exactly one stub invocation: %r" % calls)
+        self.assertIn("claude --dangerously-skip-permissions -p /leopold-run", calls[0])
+        ev = self.events("api_error_relaunch")
+        self.assertEqual(len(ev), 1)
+        self.assertEqual(ev[0]["attempt"], 1)
+        self.assertEqual(ev[0]["delay"], 30)
+        self.assertEqual(ev[0]["error_type"], "rate_limit")
+        self.assertEqual(ev[0]["harness"], "claude")
+        st = self.state()
+        self.assertEqual(st["api_error_attempts"], 1)
+        self.assertEqual(st["api_error_result"], "fired:claude")
+        # The next attempt is scheduled, not fired: a second tick waits.
+        v = self.lw.continuity_tick()
+        self.assertTrue(v.startswith("api_waiting:"), v)
+        time.sleep(0.3)
+        self.assertEqual(len(self.stub_calls()), 1)
+        self.assertEqual(len(self.events("api_error_relaunch")), 1)
+
+    def test_nothing_fires_before_the_delay(self):
+        self.api(ago=0)
+        v = self.lw.continuity_tick(spawn=self.spawn)
+        self.assertTrue(v.startswith("api_waiting:"), v)
+        self.assertLessEqual(int(v.split(":")[1]), 30)
+        self.assertEqual(self.spawned, [])
+        self.assertEqual(self.events(), [])
+        # The due time is recorded exactly once and re-read, never recomputed forward.
+        due = self.state()["api_error_next_at"]
+        self.assertTrue(self.lw.continuity_tick(spawn=self.spawn).startswith("api_waiting:"))
+        self.assertEqual(self.state()["api_error_next_at"], due)
+        self.assertEqual(self.state().get("api_error_attempts", 0), 0)
+
+    def test_the_backoff_doubles_and_stops_at_five(self):
+        self.api()
+        for n, delay in enumerate([30, 120, 120, 240, 480], start=1):
+            st = self.state()
+            # Make attempt n due: the ladder's reference is the last attempt's stamp.
+            st.pop("api_error_next_at", None)
+            if n > 1:
+                st["api_error_relaunch_at"] = self.stamp(ago=delay + 1)
+            self.set_state(st)
+            self.assertEqual(self.lw.continuity_tick(spawn=self.spawn),
+                             "api_relaunched:claude", "attempt %d" % n)
+        self.assertEqual([e["delay"] for e in self.events("api_error_relaunch")],
+                         [30, 120, 120, 240, 480])
+        self.assertEqual([e["attempt"] for e in self.events("api_error_relaunch")],
+                         [1, 2, 3, 4, 5])
+        self.assertEqual(len(self.spawned), 5)
+        # ...and the sixth is refused by the ceiling, once.
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_refused:attempts")
+        self.assertEqual(len(self.spawned), 5)
+
+    def test_a_child_still_starting_up_is_never_joined_by_a_second_spawn(self):
+        """The relaunched agent gets the same reactivation grace the roll path gives it:
+        no rung comes due inside CONTINUITY_REACTIVATE_SECS of the spawn before it.
+
+        Without the floor, attempt 2 is due 60s after attempt 1 — half the grace the file
+        itself says a child may need to flip `active: true` — and the watcher puts a
+        second `claude -p /leopold-run` on the same checkout while the first is still
+        starting: two owners racing on state.json."""
+        grace = self.lw.CONTINUITY_REACTIVATE_SECS
+        self.api()
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_relaunched:claude")
+        self.assertEqual(len(self.spawned), 1)
+        # The child is alive but still starting: `active` is not yet true, the stop is
+        # still on the state, and the unfloored 60s rung would already be due.
+        st = self.state()
+        st["api_error_relaunch_at"] = self.stamp(ago=grace - 30)
+        st["api_error_next_at"] = self.stamp(ago=5)      # an older watcher's stamp
+        self.set_state(st)
+        v = self.lw.continuity_tick(spawn=self.spawn)
+        self.assertTrue(v.startswith("api_waiting:"), v)
+        self.assertGreater(int(v.split(":")[1]), 0)
+        self.assertEqual(len(self.spawned), 1, "a second agent joined a starting child")
+        self.assertEqual(len(self.events("api_error_relaunch")), 1)
+        # The pill agrees with the gate: it never counts down to 0 while the hold holds.
+        self.assertGreater(self.lw._api_retry(self.state())["secs"], 0)
+        # Past the grace, the ladder resumes.
+        st = self.state()
+        st["api_error_relaunch_at"] = self.stamp(ago=grace + 1)
+        self.set_state(st)
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_relaunched:claude")
+        self.assertEqual(len(self.spawned), 2)
+
+    def test_the_grace_floor_is_the_roll_paths_grace(self):
+        """One constant, not two: the ladder's floor IS CONTINUITY_REACTIVATE_SECS."""
+        self.assertEqual(self.lw._api_error_delay(1), 30)
+        for n in (2, 3):
+            self.assertEqual(self.lw._api_error_delay(n),
+                             max(30 * 2 ** (n - 1), self.lw.CONTINUITY_REACTIVATE_SECS))
+        self.assertEqual([self.lw._api_error_delay(n) for n in range(1, 6)],
+                         [30, 120, 120, 240, 480])
+
+    def test_five_attempts_spent_refuses_with_reason_attempts(self):
+        """@scenario five failed attempts recorded -> no spawn, one refusal, reason
+        `attempts`."""
+        self.api(api_error_attempts=5, api_error_result="fired:claude",
+                 api_error_relaunch_at=self.stamp(ago=600))
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_refused:attempts")
+        self.assertEqual(self.spawned, [])
+        ev = self.events("api_error_relaunch_refused")
+        self.assertEqual(len(ev), 1)
+        self.assertEqual(ev[0]["reason"], "attempts")
+        self.assertIn("5 of 5", ev[0]["detail"])
+        # Said once. A refusal is final for this stop; it is not re-logged every 2s.
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "already_handled")
+        self.assertEqual(len(self.events("api_error_relaunch_refused")), 1)
+
+    def test_a_non_retryable_class_is_refused_once_by_name(self):
+        for cls in ("authentication_failed", "billing_error", "invalid_request_error",
+                    "something_leopold_has_never_seen"):
+            with self.subTest(cls):
+                os.path.isfile(os.path.join(self.leo, "events.jsonl")) and \
+                    os.remove(os.path.join(self.leo, "events.jsonl"))
+                self.api(retryable=False, etype=cls)
+                self.assertEqual(self.lw.continuity_tick(spawn=self.spawn),
+                                 "api_refused:not_retryable")
+                ev = self.events("api_error_relaunch_refused")
+                self.assertEqual(len(ev), 1)
+                self.assertEqual(ev[0]["reason"], "not_retryable")
+                self.assertEqual(ev[0]["error_type"], cls, "the refusal names the class")
+                self.assertIn(cls, ev[0]["detail"])
+                self.assertEqual(self.spawned, [])
+                self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "already_handled")
+                self.assertEqual(len(self.events("api_error_relaunch_refused")), 1)
+
+    def test_exactly_once_across_a_watcher_restart(self):
+        self.api()
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_relaunched:claude")
+        fresh = load_watch()          # the restart: no in-memory state survives
+        self.point(fresh)
+        fired = []
+        self.assertTrue(fresh.continuity_tick(spawn=fired.append).startswith("api_waiting:"))
+        self.assertEqual(fired, [])
+        self.assertEqual(len(self.events("api_error_relaunch")), 1)
+
+    def test_windows_is_never_touched_by_the_ladder(self):
+        self.api()
+        for _ in range(2):
+            self.lw.continuity_tick(spawn=self.spawn)
+        st = self.state()
+        self.assertEqual(st["windows"], 2, "an API error is not a context roll")
+        self.assertEqual(st["iteration"], 7, "a failed turn is not a turn")
+        self.assertNotIn("relaunch_window", st, "the roll's record belongs to the roll")
+        self.assertEqual(self.events("window_relaunch"), [])
+
+    def test_no_checkpoint_is_needed_for_an_api_error(self):
+        # The roll's checkpoint gate does not apply: the window did not roll, so there is
+        # nothing to hand the next one — the run resumes from the brief and the plan.
+        os.remove(os.path.join(self.leo, "CHECKPOINT.md"))
+        self.api()
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_relaunched:claude")
+
+    def test_codex_session_relaunches_on_codex(self):
+        self.write_transcript_codex()
+        self.api()
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_relaunched:codex")
+        self.assertEqual(self.events("api_error_relaunch")[0]["harness"], "codex")
+
+    def test_spawn_failure_is_loud_and_never_retried_blindly(self):
+        def boom(argv):
+            raise OSError("no such binary")
+        self.api()
+        self.assertEqual(self.lw.continuity_tick(spawn=boom), "api_refused:spawn_failed")
+        ev = self.events("api_error_relaunch_refused")
+        self.assertEqual(len(ev), 1)
+        self.assertIn("no such binary", ev[0]["detail"])
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "already_handled")
+
+    def test_the_pill_reports_the_next_retry(self):
+        self.api(ago=0)
+        self.lw.continuity_tick(spawn=self.spawn)          # schedules, does not fire
+        snap = self.lw.snapshot()
+        self.assertEqual(snap["stopped_reason"], "api_error")
+        self.assertEqual(snap["api_retry"]["attempt"], 1)
+        self.assertEqual(snap["api_retry"]["max"], 5)
+        self.assertLessEqual(snap["api_retry"]["secs"], 30)
+        # Nothing to retry -> nothing claimed.
+        self.api(retryable=False)
+        self.assertIsNone(self.lw.snapshot()["api_retry"])
+        self.set_state(rolled_state(transcript_path=self.transcript))
+        self.assertIsNone(self.lw.snapshot()["api_retry"])
+
+    def test_the_page_renders_the_retry_countdown_and_both_events(self):
+        # The pill reads `stopped · api_error (retry in Ns)`; the feed knows both events.
+        self.assertIn('" (retry in "+r.secs+"s)"', self.lw.PAGE)
+        for name in ("api_error_relaunch", "api_error_relaunch_refused"):
+            self.assertIn(name, self.lw.EVENTS, "the watch registry must carry %s" % name)
+            sev, meaning = self.lw.EVENTS[name]
+            self.assertIn(sev, ("crit", "high", "med", "low", "info"))
+            self.assertTrue(meaning.strip())
+
+
+class ApiErrorGates(ContinuityBase):
+    """The kill switch, `continuity: manual`, freshness and `max_windows`, in today's
+    order — the same four the roll passes through."""
+
+    def stamp(self, ago=0):
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - ago))
+
+    def api(self, ago=40, **over):
+        self.set_state(api_error_state(self.stamp(ago), transcript_path=self.transcript,
+                                       **over))
+
+    def test_manual_never_relaunches_and_never_records(self):
+        self.write(".leopold/GUARDRAILS.md",
+                   "# Guardrails\n- continuity: manual\n- max_windows: 10\n")
+        self.api()
+        before = self.state()
+        for _ in range(3):
+            self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "manual")
+        self.assertEqual(self.spawned, [])
+        self.assertEqual(self.events(), [])
+        self.assertEqual(self.state(), before)
+
+    def test_kill_switch_beats_auto_without_consuming_an_attempt(self):
+        self.api()
+        open(os.path.join(self.leo, "STOP"), "a").close()
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "kill_switch")
+        st = self.state()
+        self.assertNotIn("api_error_attempts", st)
+        self.assertNotIn("api_error_result", st)
+        os.remove(os.path.join(self.leo, "STOP"))
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_relaunched:claude")
+
+    def test_a_stale_api_error_belongs_to_a_human(self):
+        self.api(ago=7200)
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_refused:stale_error")
+        self.assertEqual(self.spawned, [])
+        self.assertEqual(self.events("api_error_relaunch_refused")[0]["reason"], "stale_error")
+
+    def test_max_windows_still_refuses(self):
+        self.api(windows=3, max_windows=2)
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "api_refused:max_windows")
+        self.assertEqual(self.spawned, [])
+        self.assertEqual(self.state()["windows"], 3, "the refusal does not charge a window")
+
+    def test_no_open_items_is_idle(self):
+        self.write(".leopold/PLAN.md", "# Plan\n\n- [x] all done\n")
+        self.api()
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "idle")
+        self.assertEqual(self.events(), [])
+
+    def test_an_active_run_is_idle(self):
+        self.api(active=True)
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "idle")
+        self.assertEqual(self.events(), [])
+
+
+class RollIsUnchangedByTheLadder(ContinuityBase):
+    """The regression the ladder must not cause: a `context_budget` roll writes exactly
+    the record it always wrote, logs exactly the event it always logged, and gains no
+    api_error field."""
+
+    def test_a_roll_records_and_logs_byte_for_byte_what_it_always_did(self):
+        before = self.state()
+        self.assertEqual(self.lw.continuity_tick(spawn=self.spawn), "relaunched:claude")
+        after = self.state()
+        self.assertEqual(sorted(set(after) - set(before)),
+                         ["relaunch_at", "relaunch_result", "relaunch_window"])
+        self.assertEqual({k: v for k, v in after.items() if k in before}, before,
+                         "a roll changes nothing that was already in state.json")
+        self.assertEqual(after["relaunch_window"], 2)
+        self.assertEqual(after["relaunch_result"], "fired:claude")
+        ev = self.events()
+        self.assertEqual(len(ev), 1)
+        self.assertEqual(sorted(ev[0]), ["binary", "event", "harness", "ts", "window"])
+        self.assertEqual(ev[0]["event"], "window_relaunch")
+        self.assertEqual(self.lw.snapshot()["api_retry"], None)
+
+
+class TimestampZones(ContinuityBase):
+    """The stamps the hooks write are UTC (`date -u`), and the monitor must read them as
+    UTC on ANY machine. Parsing them with `time.mktime(...) - time.timezone` was wrong on
+    every zone observing DST: `time.timezone` is the STANDARD-time offset, so a summer
+    stamp landed an hour early, every ladder deadline read an hour past due, and the
+    freshness gate refused the first attempt with `stale_error` instead of relaunching.
+    CI runs in UTC, which hid it — so the zone is a parameter here.
+
+    Mutation check: restore `time.mktime(str) - time.timezone` in _parse_ts and
+    test_the_first_attempt_still_fires_in_every_zone fails on the DST zones (a refusal
+    verdict `api_refused:stale_error`), while UTC and Asia/Kolkata still pass.
+    """
+
+    # A summer-DST zone west and east of UTC, a half-hour zone with no DST, and UTC.
+    ZONES = ("UTC", "America/New_York", "Europe/Berlin", "Asia/Kolkata",
+             "Pacific/Auckland")
+
+    def use_zone(self, tz):
+        """Point the process at `tz` and hand back a module that parsed its own clock
+        under it (restored for the next case by the cleanup)."""
+        prev = os.environ.get("TZ")
+
+        def restore():
+            if prev is None:
+                os.environ.pop("TZ", None)
+            else:
+                os.environ["TZ"] = prev
+            time.tzset()
+
+        self.addCleanup(restore)
+        os.environ["TZ"] = tz
+        time.tzset()
+        mod = load_watch()
+        self.point(mod)
+        return mod
+
+    def test_a_utc_stamp_round_trips_in_every_zone(self):
+        # A January instant and a July one: any zone with DST answers differently for
+        # the two under the old arithmetic, and identically under timegm.
+        for epoch in (1767225600, 1751328000):     # 2026-01-01Z and 2025-07-01Z
+            for tz in self.ZONES:
+                mod = self.use_zone(tz)
+                stamp = mod._utc(epoch)
+                self.assertEqual(mod._parse_ts(stamp), epoch,
+                                 "%s misread %s" % (tz, stamp))
+
+    def test_the_first_attempt_still_fires_in_every_zone(self):
+        """@scenario retryable api_error 40s old, continuity auto, on a DST machine ->
+        one spawn and one api_error_relaunch with attempt 1, never `stale_error`."""
+        for tz in self.ZONES:
+            mod = self.use_zone(tz)
+            log = os.path.join(self.leo, "events.jsonl")
+            if os.path.isfile(log):
+                os.remove(log)
+            spawned = []
+            at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 40))
+            self.set_state(api_error_state(at, transcript_path=self.transcript))
+            self.assertEqual(mod.continuity_tick(spawn=spawned.append),
+                             "api_relaunched:claude", tz)
+            self.assertEqual(len(spawned), 1, tz)
+            ev = self.events("api_error_relaunch")
+            self.assertEqual([e["attempt"] for e in ev], [1], tz)
+            self.assertEqual(ev[0]["delay"], 30, tz)
+            self.assertEqual(self.events("api_error_relaunch_refused"), [], tz)
+
+    def test_a_roll_still_relaunches_in_every_zone(self):
+        """The same helper carries the roll path's freshness window; it must not refuse
+        a 10s-old roll in a DST zone either."""
+        for tz in self.ZONES:
+            mod = self.use_zone(tz)
+            last = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 10))
+            self.set_state(rolled_state(transcript_path=self.transcript, last_turn=last))
+            spawned = []
+            self.assertEqual(mod.continuity_tick(spawn=spawned.append),
+                             "relaunched:claude", tz)
+            self.assertEqual(len(spawned), 1, tz)
 
 
 if __name__ == "__main__":

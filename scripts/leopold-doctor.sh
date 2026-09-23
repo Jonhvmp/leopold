@@ -29,10 +29,44 @@ if [ "$HAVE_CLAUDE" = "0" ] && [ "$HAVE_CODEX" = "0" ]; then
   miss "no agent harness found — install Claude Code or Codex CLI first"
 fi
 
-if [ -x "$LEO_HOME/hooks/stop-continuity.sh" ] && [ -x "$LEO_HOME/hooks/guard-irreversible.sh" ]; then
+# The hook writers and the ONE list of Leopold's own hooks. Sourced here (rather than at
+# the capability matrix below) so the on-disk check and the wiring check read the same
+# list: a hook added to leo_core_hook_specs is looked for here with nothing to update.
+MLIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)/extensions/lib/harness.sh"
+[ -f "$MLIB" ] || MLIB="$LEO_HOME/extensions/lib/harness.sh"
+if [ -f "$MLIB" ]; then
+  # shellcheck source=../extensions/lib/harness.sh
+  . "$MLIB"
+fi
+
+h_missing=""
+if command -v leo_core_hook_specs >/dev/null 2>&1; then
+  while IFS= read -r _spec; do
+    [ -n "$_spec" ] || continue
+    _hf="$(leo_spec_command "$_spec")"
+    [ -x "$_hf" ] && continue
+    # Named ONCE, however many events it rides. Two scripts are wired on two events each
+    # (the compaction checkpoint, the subagent ledger), and a missing one used to be
+    # reported twice in the same line — a remedy that reads like two broken files.
+    case " $h_missing " in *" $(basename "$_hf") "*) continue ;; esac
+    h_missing="${h_missing:+$h_missing }$(basename "$_hf")"
+  done < <(leo_core_hook_specs "$LEO_HOME")
+else
+  # No harness.sh to ask: fall back to the two hooks that predate the list, so a broken
+  # install still reports something rather than passing on a question it never asked.
+  for _hf in stop-continuity.sh guard-irreversible.sh; do
+    [ -x "$LEO_HOME/hooks/$_hf" ] || h_missing="${h_missing:+$h_missing }$_hf"
+  done
+fi
+# hooks/_lib.sh is not a hook and is never wired, so the spec list cannot speak for it —
+# but three hooks source it beside themselves and refuse to act without it (the guard
+# denies, the continuity hooks say so on stderr). A hooks dir missing it is an install
+# with hooks that cannot run, and that is worth a line here rather than a surprise later.
+[ -r "$LEO_HOME/hooks/_lib.sh" ] || h_missing="${h_missing:+$h_missing }_lib.sh"
+if [ -z "$h_missing" ]; then
   pass "hooks installed + executable ($LEO_HOME/hooks)"
 else
-  miss "hooks not installed — run ./install.sh"
+  miss "hooks not installed or not executable ($h_missing) — run ./install.sh"
 fi
 
 # --- Claude Code -------------------------------------------------------------
@@ -55,7 +89,7 @@ if [ "$HAVE_CLAUDE" = "1" ]; then
 fi
 
 # --- Codex CLI ---------------------------------------------------------------
-# Codex reimplemented Claude Code's hook contract, so the same two hooks run there.
+# Codex reimplemented Claude Code's hook contract, so the same hooks run there.
 # The extra check is trust: a config-declared hook stays inert until approved once.
 if [ "$HAVE_CODEX" = "1" ]; then
   cn=$(ls -d "$CODEX"/skills/leopold-* 2>/dev/null | wc -l | tr -d ' ')
@@ -75,6 +109,234 @@ if [ "$HAVE_CODEX" = "1" ]; then
   else
     note "Codex: hooks not wired — run ./install.sh --harness codex"
   fi
+fi
+
+# --- the capability matrix, per capability per harness ------------------------
+# hooks/hook-matrix.tsv is DERIVED from the probe's captures; it decides what each
+# harness can enforce. Doctor JOINS it with the live wiring so a reader sees, for
+# every capability and every harness that is actually on this machine, one of four
+# answers and never silence:
+#
+#   verified                       the hook is declared in that harness's config AND
+#                                  every evidence anchor the matrix cites resolves to a
+#                                  heading of the INSTALLED docs/reference/hook-events.md
+#   wired                          declared, but the proof is not here — the bound IS in
+#                                  force. Two different problems, so two different lines
+#                                  and two different remedies: the evidence page is not
+#                                  installed at all (re-run the installer, which brings
+#                                  it), or the page is here and the cited section moved
+#                                  (re-run the probe, which rewrites it). Telling a user
+#                                  to reinstall over a moved anchor sends them to fix
+#                                  the wrong thing; telling them to re-probe over a
+#                                  missing page sends them to run a probe that costs
+#                                  model calls and changes nothing.
+#   not wired — run ./install.sh   the matrix says the event fires here, nothing declares it
+#   unavailable on <harness> <ver> the matrix refuses it here; the row's note says the cost
+#
+# Plus one drift row per harness when the installed binary is not the one the matrix was
+# probed against: every status above is a claim about THAT version.
+#
+# The matrix is read through extensions/lib/harness.sh (leo_matrix_file /
+# leo_matrix_version) — the same resolver the writers use, so doctor and the installer
+# can never disagree about which file decided.
+MTSV=""
+command -v leo_matrix_file >/dev/null 2>&1 && MTSV="$(leo_matrix_file)"
+# Where the evidence page is looked for. The asset home first — that is the copy the
+# installer lays down, from the checkout AND from the npm package (the driver's build
+# vendors docs/ into assets/ precisely so this resolves) — then the tree beside this
+# script, then LEO_HOOK_EVENTS_DOC over both for hermetic tests. M_DOC_TRIED is kept so
+# the "not installed" line can name where it looked instead of leaving a user guessing.
+MDOC="${LEO_HOOK_EVENTS_DOC:-}"
+M_DOC_TRIED="$MDOC"
+if [ -z "$MDOC" ]; then
+  for c in "$LEO_HOME/docs/reference/hook-events.md" \
+           "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)/docs/reference/hook-events.md"; do
+    M_DOC_TRIED="${M_DOC_TRIED:+$M_DOC_TRIED }$c"
+    [ -f "$c" ] && { MDOC="$c"; break; }
+  done
+fi
+[ -n "$MDOC" ] && [ -f "$MDOC" ] || MDOC=""
+
+# Python-Markdown's toc slugify, the same one scripts/test-hook-matrix.sh pins the
+# anchors with: drop code ticks and non-ASCII, keep word chars, collapse to hyphens.
+m_slug() {
+  printf '%s' "$1" | tr -d '`' | LC_ALL=C tr -d '\200-\377' \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -e 's/[^a-z0-9 _-]//g' -e 's/^ *//' -e 's/ *$//' -e 's/[ -][ -]*/-/g'
+}
+M_ANCHORS=""
+if [ -n "$MDOC" ] && [ -f "$MDOC" ]; then
+  while IFS= read -r h; do
+    M_ANCHORS="$M_ANCHORS #$(m_slug "$h")"
+  done < <(grep -E '^#{1,6}[[:space:]]' "$MDOC" 2>/dev/null | sed -e 's/^#*[[:space:]]*//')
+fi
+m_anchor_present() { case " $M_ANCHORS " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
+# Which script carries a capability. The three Leopold ships today are named; every
+# other capability's hook is <capability>.sh in the hooks dir, which is the name each
+# new bound of this run installs under — so a capability that gains its hook is
+# reported the moment it lands, with no second list to update.
+m_hook_script() {
+  case "$1" in
+    run-continuity) echo "stop-continuity.sh" ;;
+    git-lock)       echo "guard-irreversible.sh" ;;
+    persona-guard)  echo "persona-guard.sh" ;;
+    # The hook is named for the EVENT it rides, because that is what a reader looking at
+    # settings.json sees; the capability is named for the bound. One case, here, rather
+    # than renaming either.
+    api-error-stop) echo "stop-failure.sh" ;;
+    # Same split, the other way round: the capability is `subagent-accounting`, the script
+    # is the shorter `subagent-account.sh` it was installed under. `subagent-cap` needs no
+    # case — its script IS <capability>.sh.
+    subagent-accounting) echo "subagent-account.sh" ;;
+    *)              echo "$1.sh" ;;
+  esac
+}
+# The one capability whose substrate is not a hook: the driver's review lenses as
+# Codex agent roles. Codex reads a role file per agent from $CODEX_HOME/agents; Claude
+# Code has no role files at all, so its lenses are the driver's own SDK sessions (the
+# matrix's `substitute` row). Reporting either through the hook check below would look
+# for a review-lens-roles.sh that is not supposed to exist and tell a healthy install to
+# re-run the installer.
+m_review_lens_row() { # <harness> <wired events> <substitute note> <1 if anchors resolved>
+  local ha="$1" evs="$2" sub="$3" anch="$4" word; word="$(m_word "$ha")"
+  # `codex exec` CANNOT run as a role — every override spelling but
+  # agents.<role>.config_file was rejected in the probe, and that one only DECLARES the
+  # role. Saying so on the line is the difference between a capability and a claim.
+  local caveat="\`codex exec\` cannot run as a role (probed) — headless lenses stay read-only via --sandbox"
+  if [ "$ha" != "codex" ]; then
+    pass "review-lens-roles · $word: verified ($evs) — no role files on $word; each lens is the driver's own SDK session$sub"
+    return
+  fi
+  local dir="$CODEX/agents" want=0 have=0 missing="" lens
+  if command -v leo_review_lens_specs >/dev/null 2>&1; then
+    while IFS= read -r _ls; do
+      [ -n "$_ls" ] || continue
+      lens="$(leo_lens_name "$_ls")"; want=$((want+1))
+      if [ -f "$dir/leopold-lens-$lens.toml" ]; then have=$((have+1))
+      else missing="${missing:+$missing }leopold-lens-$lens.toml"; fi
+    done < <(leo_review_lens_specs)
+  else
+    note "review-lens-roles · $word: cannot be stated — extensions/lib/harness.sh is not installed; re-run ./install.sh"
+    return
+  fi
+  if [ "$have" = "0" ]; then
+    note "review-lens-roles · $word: not installed — run ./install.sh ($want role files under $dir)"
+  elif [ -n "$missing" ]; then
+    note "review-lens-roles · $word: incomplete — $have/$want role files in $dir (missing: $missing); re-run ./install.sh"
+  elif [ "$anch" = "1" ]; then
+    pass "review-lens-roles · $word: verified ($evs) — $have role files in $dir, spawn_agent(agent_type=\"leopold-lens-<lens>\"); $caveat"
+  else
+    note "review-lens-roles · $word: wired ($evs) — $have role files in $dir; armed, unproven here: re-run: make probe-hook-events; $caveat"
+  fi
+}
+m_conf_file() { case "$1" in claude) echo "$CLAUDE/settings.json" ;; codex) echo "$CODEX/config.toml" ;; esac; }
+m_word()      { case "$1" in claude) echo "Claude Code" ;; codex) echo "Codex" ;; esac; }
+m_installed_version() { # <harness> -> what the local binary reports, trimmed
+  case "$1" in
+    claude) command -v claude >/dev/null 2>&1 && claude --version 2>/dev/null | head -1 | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' ;;
+    codex)  command -v codex  >/dev/null 2>&1 && codex  --version 2>/dev/null | head -1 | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' ;;
+  esac
+}
+
+echo
+echo "capability matrix"
+if [ -z "$MTSV" ] || [ ! -f "$MTSV" ]; then
+  miss "hook-matrix.tsv not found — capability per harness cannot be stated; re-run ./install.sh"
+else
+  echo "  (${MTSV})"
+  # Drift: the statuses below are claims about the probed binary, so say it out loud
+  # when the binary here is a different one.
+  for ha in claude codex; do
+    [ "$ha" = "claude" ] && [ "$HAVE_CLAUDE" != "1" ] && continue
+    [ "$ha" = "codex" ]  && [ "$HAVE_CODEX"  != "1" ] && continue
+    m_inst="$(m_installed_version "$ha")"
+    m_prob="$(leo_matrix_version "$ha" 2>/dev/null)"
+    [ -n "$m_inst" ] || continue
+    if [ -n "$m_prob" ] && [ "$m_inst" != "$m_prob" ]; then
+      note "$(m_word "$ha") $m_inst installed, matrix probed on $m_prob — re-run scripts/probe-hook-events.sh"
+    fi
+  done
+
+  for cap in $(awk -F'\t' '!/^[[:space:]]*#/ && NF>=6 && !s[$1]++ {print $1}' "$MTSV"); do
+    for ha in claude codex; do
+      [ "$ha" = "claude" ] && [ "$HAVE_CLAUDE" != "1" ] && continue
+      [ "$ha" = "codex" ]  && [ "$HAVE_CODEX"  != "1" ] && continue
+      # Every row for this capability on this harness, and whether the matrix wires it:
+      # `available`, or `substitute` citing #<event>-<harness-slug> (the anchor that says
+      # the event does fire here with a weaker guarantee). Same rule as
+      # extensions/lib/harness.sh's gate — stated once there, applied here.
+      case "$ha" in claude) slug="claude-code" ;; codex) slug="codex-cli" ;; *) slug="$ha" ;; esac
+      rows="$(awk -F'\t' -v c="$cap" -v h="$ha" -v sl="$slug" '
+        !/^[[:space:]]*#/ && NF>=6 && $1==c && $3==h {
+          ev=tolower($2); want="#" ev "-" sl
+          wire=($4=="available") || ($4=="substitute" && $5==want)
+          printf "%s\t%s\t%s\t%s\t%s\n", (wire?"wire":"no"), $2, $4, $5, $6
+        }' "$MTSV")"
+      [ -n "$rows" ] || continue
+      wired_events=""; anchors=""; missing_note=""; missing_events=""; sub_note=""; ok_anchors=1; lost_anchor=""
+      while IFS=$'\t' read -r w ev st anc nt; do
+        [ -n "$ev" ] || continue
+        if [ "$w" = "wire" ]; then
+          wired_events="${wired_events:+$wired_events, }$ev"
+          anchors="$anchors $anc"
+          # The FIRST anchor that does not resolve is kept, so the message can name the
+          # section a reader should go looking for rather than "an anchor, somewhere".
+          m_anchor_present "$anc" || { ok_anchors=0; [ -n "$lost_anchor" ] || lost_anchor="$anc"; }
+          # A `substitute` row that IS wired fires here with a weaker guarantee than the
+          # other harness gets (Codex honors the permission policy's deny and ignores its
+          # allow). Wiring it and printing "verified" with nothing else said is the silent
+          # degradation this project bans, so the row's own note is quoted on the line.
+          [ "$st" = "substitute" ] && [ -z "$sub_note" ] && sub_note=" — substitute on $ev: $nt"
+        else
+          [ -n "$missing_note" ] || missing_note="$nt"
+          missing_events="${missing_events:+$missing_events, }$ev"
+        fi
+      done <<< "$rows"
+      # A capability can be PART of itself here: hooks/done-gate.sh rides two events, and
+      # Codex has one of them. Saying only "verified (PreToolUse)" would read as parity
+      # with the harness that has both — the silent degradation this project bans — so the
+      # events this harness does NOT have are named on the same line, with the tsv's own
+      # note for what carries the bound instead.
+      if [ -n "$wired_events" ] && [ -n "$missing_events" ]; then
+        v="$(leo_matrix_version "$ha" 2>/dev/null)"
+        sub_note="$sub_note — $missing_events: unavailable on $(m_word "$ha")${v:+ $v} — $missing_note"
+      fi
+      if [ -z "$wired_events" ]; then
+        v="$(leo_matrix_version "$ha" 2>/dev/null)"
+        note "$cap · $(m_word "$ha"): unavailable on $(m_word "$ha")${v:+ $v} — $missing_note"
+        continue
+      fi
+      if [ "$cap" = "review-lens-roles" ]; then
+        m_review_lens_row "$ha" "$wired_events" "$sub_note" "$ok_anchors"
+        continue
+      fi
+      conf="$(m_conf_file "$ha")"
+      script="$(m_hook_script "$cap")"
+      if [ -f "$conf" ] && grep -qF "$script" "$conf" 2>/dev/null; then
+        if [ "$ok_anchors" = "1" ]; then
+          pass "$cap · $(m_word "$ha"): verified ($wired_events)$sub_note"
+        elif [ -z "$MDOC" ]; then
+          # The page itself never arrived. The bound is armed either way — this is a
+          # missing PROOF, not a missing hook — and the remedy is the installer, which
+          # copies docs/ out of the tree it installs from (the checkout, or the npm
+          # package, whose build vendors it for exactly this reason).
+          note "$cap · $(m_word "$ha"): wired ($wired_events) — armed, unproven here: docs/reference/hook-events.md is not installed (looked in: $M_DOC_TRIED); re-run ./install.sh to bring it$sub_note"
+        else
+          # The page is here and the section the matrix cites is not in it: the docs and
+          # the matrix have drifted, and only a re-probe re-derives both.
+          note "$cap · $(m_word "$ha"): wired ($wired_events) — armed, unproven here: $MDOC has no ${lost_anchor:-anchor} section; re-run: make probe-hook-events$sub_note"
+        fi
+      elif [ "$cap" = "persona-guard" ]; then
+        # The one bound that is SUPPOSED to be unwired at rest: the conductor arms it
+        # for the duration of a persona run and unwires it after. Saying "run
+        # ./install.sh" here would send a reader to fix a healthy install.
+        pass "$cap · $(m_word "$ha"): not wired — armed per run by /leopold-persona ($wired_events)"
+      else
+        note "$cap · $(m_word "$ha"): not wired — run ./install.sh ($wired_events)$sub_note"
+      fi
+    done
+  done
 fi
 
 # The enhancer keeps ONE data dir for the machine (so the switch and the learned
@@ -143,6 +405,89 @@ if [ -f "$OVM_DIR/ovmem.py" ]; then
   fi
 else
   note "ovmem not installed (optional) — leopold menu (ovmem -> Install)"
+fi
+
+# decisions: the OPTIONAL typed-judgement seam. Two things make its rows unlike the
+# extensions above.
+#
+# IT IS SILENT WHEN ABSENT. The others say "not installed (optional)" to advertise
+# themselves; this one says nothing at all, because a project that never opted in has no
+# decisions capability to report on and the charter's loudness rule is about a capability
+# that IS in use failing, not about one nobody asked for. `leopold doctor` output on a box
+# without it is byte for byte what it was before this module existed.
+#
+# IT HAS NO PER-HARNESS DIMENSION, and says so rather than printing two identical rows. The
+# shell seam is `curl` + `jq` — the same unmodified script on Claude Code and on Codex — and
+# the driver half is the same TypeScript either way. There is nothing a harness can lack
+# here, so a "wired on Claude / unavailable on Codex" pair would be noise shaped like
+# information. The line states the fact once.
+if   [ -n "${LEOPOLD_DECISIONS_DIR:-}" ]; then DEC_DIR="$LEOPOLD_DECISIONS_DIR"
+elif [ -n "${LEOPOLD_HOME:-}" ];          then DEC_DIR="$LEOPOLD_HOME/decisions"
+elif [ -d "$CLAUDE/decisions" ];          then DEC_DIR="$CLAUDE/decisions"
+elif [ -d "$CODEX/decisions" ];           then DEC_DIR="$CODEX/decisions"
+elif [ -d "$CLAUDE" ];                    then DEC_DIR="$CLAUDE/decisions"
+else                                           DEC_DIR="$CODEX/decisions"
+fi
+if [ -f "$DEC_DIR/decisions.sh" ]; then
+  dec_missing=""
+  for f in catalog.schema.json providers.json; do
+    [ -f "$DEC_DIR/$f" ] || dec_missing="${dec_missing:+$dec_missing, }$f"
+  done
+  if [ -n "$dec_missing" ]; then
+    miss "decisions installed but missing $dec_missing — re-run: leopold menu (decisions -> Install)"
+  else
+    pass "decisions installed in $DEC_DIR (same seam on every harness — curl + jq)"
+  fi
+  for t in jq curl; do
+    command -v "$t" >/dev/null 2>&1 || miss "decisions: $t is not on PATH — the shell seam cannot run; every consumer falls back"
+  done
+
+  DEC_PROJ="${LEOPOLD_PROJECT_DIR:-$PWD}/.leopold"
+  DEC_CFG="$DEC_PROJ/decisions/config.json"
+  if [ ! -f "$DEC_CFG" ]; then
+    note "decisions: this project has no $DEC_CFG — every consumer uses its deterministic path"
+  elif ! jq -e . "$DEC_CFG" >/dev/null 2>&1; then
+    miss "decisions: $DEC_CFG is not valid JSON — every consumer falls back until it parses"
+  else
+    dec_active="$(jq -r '.provider // ""' "$DEC_CFG")"
+    if [ -z "$dec_active" ]; then
+      note "decisions: $DEC_CFG names no active provider — every consumer uses its deterministic path"
+    fi
+    # One row per CONFIGURED provider, the active one marked. There is no harness axis.
+    while IFS= read -r p; do
+      [ -n "$p" ] || continue
+      cal="$(jq -r --arg p "$p" '.providers[$p].calibrated // false' "$DEC_CFG")"
+      src="$(jq -r --arg p "$p" '.providers[$p].calibration_source // ""' "$DEC_CFG")"
+      mdl="$(jq -r --arg p "$p" '.providers[$p].model // ""' "$DEC_CFG")"
+      var="$(jq -r --arg p "$p" '.providers[$p].auth_env // ""' "$DEC_CFG")"
+      label="$(leo_calibration_label "$cal" "$src")"
+      state="configured"; [ "$p" = "$dec_active" ] && state="active"
+      keystate="no auth_env declared"
+      if [ -n "$var" ]; then
+        if [ -n "$(eval printf '%s' "\${$var:-}")" ]; then keystate="$var present"; else keystate="$var absent"; fi
+      fi
+      row="decisions provider $p · $state · $label · key: $keystate"
+      [ -n "$mdl" ] || row="$row · NO MODEL PINNED"
+      if [ "$state" = active ] && { [ "$cal" != "true" ] || [ -z "$mdl" ] || [ "$keystate" = "$var absent" ]; }; then
+        note "$row"
+      else
+        pass "$row"
+      fi
+    done <<< "$(jq -r '(.providers // {}) | keys_unsorted[]' "$DEC_CFG" 2>/dev/null)"
+  fi
+
+  # The catalogs are the project's content: name them and whether they parse, never their text.
+  if [ -d "$DEC_PROJ/decisions" ]; then
+    for c in "$DEC_PROJ"/decisions/*.json; do
+      [ -e "$c" ] || continue
+      case "$(basename "$c")" in config.json) continue ;; esac
+      if jq -e . "$c" >/dev/null 2>&1; then
+        pass "decisions catalog $(basename "$c") parses"
+      else
+        miss "decisions catalog $(basename "$c") is not valid JSON — its consumer falls back"
+      fi
+    done
+  fi
 fi
 
 # gstack is per harness: each one discovers skills in its own skills root, so a

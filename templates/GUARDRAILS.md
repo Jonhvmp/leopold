@@ -64,6 +64,26 @@
 - slice_scope: off           # feed smart_routing's researched file set to the worker
                              # as an explicit scope (needs smart_routing on)
 
+## Verification commands
+> OPTIONAL, and inert until you list something. What counts as evidence that an item is
+> done: one of these ran after the item's last edit. `hooks/verify-receipt.sh` records a
+> receipt (`verify_receipts`, `last_verify_at`) whenever a Bash command lexically matches
+> an entry here — matched only where the entry BEGINS a command, so `cd sub && make test`
+> and `echo $(make test)` match `make test`, while `make build # make test comes later`
+> (a comment), `echo "- ran make test after the edit" >> notes.md` (an argument) and a
+> heredoc whose body names it (data) match nothing — and stamps `last_edit_at` on every
+> edit outside `.leopold/` (the run's own plan, decisions and journal are not the work a
+> verification covers). With no entries below, nothing is recorded and
+> nothing is claimed: the run behaves exactly as a project that predates the hook.
+> Each receipt carries an `outcome`, and only `passed` or `ran` moves `last_verify_at`.
+> On Claude Code a failing command usually arrives as `PostToolUseFailure` (`failed`), and
+> a `PostToolUse` that was re-interpreted from a non-zero exit, interrupted, or
+> backgrounded is recorded as `nonzero` / `incomplete` rather than as a pass; on Codex no
+> payload carries a status at all, so a receipt there is `ran` — it proves the command RAN,
+> not that it passed (hooks/hook-matrix.tsv, row `verify-receipt`).
+<!-- - make test -->
+<!-- - npm test -->
+
 ## On finish
 - on_finish: keep            # keep | archive
 > keep: brief, DECISIONS, and events stay in place. archive: on a clean finish,

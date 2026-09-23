@@ -1,16 +1,25 @@
 {
-  "//": "Leopold hook wiring. install.sh merges this into your ~/.claude/settings.json,",
-  "//2": "substituting the absolute path to the installed hooks. All three hooks are",
-  "//3": "no-ops until armed: Stop/PreToolUse need an active Leopold run (.leopold/",
-  "//4": "state.json with active=true) and the enhancer needs enabled=true in",
-  "//5": "~/.claude/enhance/state.json — so they are safe to leave installed everywhere.",
-  "//6": "The enhancer engine is vendored by extensions/enhance/install.sh; wiring this",
-  "//7": "entry without running that installer does nothing (the file won't exist).",
+  "//": "Leopold hook wiring — the hand-paste fallback for a machine without jq. On a",
+  "//2": "normal install nothing reads this file: install.sh wires the Leopold hooks",
+  "//3": "from leo_core_hook_specs through extensions/lib/harness.sh, and this file is",
+  "//4": "pinned to that same list (event, matcher, script, timeout) by",
+  "//5": "scripts/test-harness-lib.sh. Paths here are ~/.claude/leopold; install.sh",
+  "//6": "substitutes the real asset home. All nineteen hooks are no-ops until armed:",
+  "//7": "Stop, PreToolUse (the git lock, the subagent cap and the evidence gate),",
+  "//8": "PermissionRequest, PreCompact, PostCompact, StopFailure, SubagentStart,",
+  "//9": "SubagentStop, PostToolUse, PostToolUseFailure, TaskCompleted, FileChanged (four",
+  "//9a": "entries: a path-shaped matcher registers each watch, a basename-shaped one",
+  "//9a2": "receives it \u2014 probed; neither shape fires alone) and ConfigChange need an active",
+  "//9b": "run (.leopold/state.json with active=true)",
+  "//10": "and the enhancer needs enabled=true in ~/.claude/enhance/state.json — so",
+  "//11": "they are safe to leave installed everywhere. The enhancer engine is",
+  "//12": "vendored by extensions/enhance/install.sh; wiring that entry without",
+  "//13": "running that installer does nothing (no file).",
   "hooks": {
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "~/.claude/leopold/hooks/stop-continuity.sh" }
+          { "type": "command", "command": "~/.claude/leopold/hooks/stop-continuity.sh", "timeout": 15 }
         ]
       }
     ],
@@ -18,7 +27,117 @@
       {
         "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "~/.claude/leopold/hooks/guard-irreversible.sh" }
+          { "type": "command", "command": "~/.claude/leopold/hooks/guard-irreversible.sh", "timeout": 5 }
+        ]
+      },
+      {
+        "matcher": "Agent|Task|collaborationspawn_agent",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/subagent-cap.sh", "timeout": 5 }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|apply_patch",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/done-gate.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/permission-policy.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/compact-checkpoint.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/compact-checkpoint.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/stop-failure.sh", "timeout": 15 }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/subagent-account.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/subagent-account.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|apply_patch",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/verify-receipt.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|apply_patch",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/verify-receipt.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/done-gate.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "matcher": ".leopold/PLAN.md",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/file-watch.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "PLAN.md",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/file-watch.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": ".leopold/DECISIONS.md",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/file-watch.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "DECISIONS.md",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/file-watch.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/leopold/hooks/config-guard.sh", "timeout": 5 }
         ]
       }
     ],

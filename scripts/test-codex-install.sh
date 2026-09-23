@@ -155,28 +155,78 @@ check "and none of them landed in a Claude skills dir" \
   "$( [ -e "$NOCLAUDE/skills" ] && echo yes || echo no )" "no"
 
 echo
-echo "  both hooks: wired"
+echo "  the core hooks: wired"
 check "config.toml still parses as TOML"    "$(toml_ok "$CFG" && echo yes || echo no)" "yes"
 check "exactly one managed leopold block"   "$(grep -c '^# >>> leopold (managed) >>>$' "$CFG")" "1"
 check "one PreToolUse git lock"             "$(hook_count PreToolUse guard-irreversible.sh)" "1"
 check "one Stop hook"                       "$(hook_count Stop stop-continuity.sh)" "1"
+# The permission policy is a `substitute` row on Codex, not an `unavailable` one: the
+# event fires (under --approve-for-me) and the DENY half — the half that carries the git
+# lock — is honored, so it is wired here exactly as on Claude Code.
+check "one PermissionRequest policy"        "$(hook_count PermissionRequest permission-policy.sh)" "1"
 GUARD="$(hook_cmd PreToolUse guard-irreversible.sh)"
 STOP="$(hook_cmd Stop stop-continuity.sh)"
+POLICY="$(hook_cmd PermissionRequest permission-policy.sh)"
 check "the git lock points into the Codex asset home" "$GUARD" "$LEO/hooks/guard-irreversible.sh"
 check "the continuity hook does too"                  "$STOP"  "$LEO/hooks/stop-continuity.sh"
-check "the guard is matched on Bash" \
+# One list for both harnesses (leo_core_hook_specs), so Codex gets the same matcher
+# Claude Code does. The alternatives Codex has no tool for cost nothing: its edit tool
+# is apply_patch, and guard-irreversible.sh exits 0 for any tool but Bash anyway.
+check "the guard carries the core spec's matcher, alternation intact" \
   "$(python3 -c '
 import sys, tomllib
 d = tomllib.load(open(sys.argv[1], "rb"))
 print(next(e.get("matcher", "") for e in d["hooks"]["PreToolUse"]
            if any("guard-irreversible.sh" in h.get("command", "") for h in e.get("hooks", []))))
-' "$CFG")" "Bash"
+' "$CFG")" "Bash|Edit|Write|MultiEdit|NotebookEdit"
+# Read through the spec parser, not a regex over the list: PreToolUse carries TWO specs
+# now (the git lock and the subagent cap), and a pattern that matched "the PreToolUse
+# line" would silently start comparing against whichever one came last.
+check "and the matcher is the one leo_core_hook_specs prints" \
+  "$(bash -c '. "$1"/extensions/lib/harness.sh
+     leo_core_hook_specs /X | while IFS= read -r sp; do
+       case "$(leo_spec_command "$sp")" in *guard-irreversible.sh) leo_spec_matcher "$sp"; echo ;; esac
+     done' _ "$ROOT")" \
+  "Bash|Edit|Write|MultiEdit|NotebookEdit"
+check "...and the subagent cap's is the spawn-tool union" \
+  "$(bash -c '. "$1"/extensions/lib/harness.sh
+     leo_core_hook_specs /X | while IFS= read -r sp; do
+       case "$(leo_spec_command "$sp")" in *subagent-cap.sh) leo_spec_matcher "$sp"; echo ;; esac
+     done' _ "$ROOT")" \
+  "Agent|Task|collaborationspawn_agent"
+check "which is what landed in config.toml" \
+  "$(python3 -c '
+import sys, tomllib
+d = tomllib.load(open(sys.argv[1], "rb"))
+print(next(e.get("matcher", "") for e in d["hooks"]["PreToolUse"]
+           if any("subagent-cap.sh" in h.get("command", "") for h in e.get("hooks", []))))
+' "$CFG")" "Agent|Task|collaborationspawn_agent"
 check "the guard hook is executable"        "$( [ -x "$GUARD" ] && echo yes || echo no )" "yes"
 check "the continuity hook is executable"   "$( [ -x "$STOP" ] && echo yes || echo no )" "yes"
+check "the policy points into the Codex asset home too" "$POLICY" "$LEO/hooks/permission-policy.sh"
+check "and it carries no matcher (it answers for every tool)" \
+  "$(python3 -c '
+import sys, tomllib
+d = tomllib.load(open(sys.argv[1], "rb"))
+print(next(e.get("matcher", "") for e in d["hooks"]["PermissionRequest"]
+           if any("permission-policy.sh" in h.get("command", "") for h in e.get("hooks", []))))
+' "$CFG")" ""
 check "the installed guard is the repo's, byte for byte" \
   "$(cmp -s "$GUARD" "$ROOT/hooks/guard-irreversible.sh" && echo same || echo different)" "same"
+check "the installed policy is the repo's too" \
+  "$(cmp -s "$POLICY" "$ROOT/hooks/permission-policy.sh" && echo same || echo different)" "same"
 check "the installed continuity hook too" \
   "$(cmp -s "$STOP" "$ROOT/hooks/stop-continuity.sh" && echo same || echo different)" "same"
+# The matrix and the page it cites travel WITH the hooks. hook-matrix.tsv is what the
+# writers ask "does this event fire here", and docs/reference/hook-events.md is the
+# capture every one of its rows cites — the file `leopold doctor` resolves those anchors
+# against to report a bound as `verified` rather than merely `wired`. Without the page in
+# the asset home, an install where everything is correctly armed reports every capability
+# as unproven, so this is part of a finished install, not documentation shipped by habit.
+check "the capability matrix shipped into the asset home" \
+  "$( [ -f "$LEO/hooks/hook-matrix.tsv" ] && echo yes || echo no )" "yes"
+check "and the evidence page its rows cite" \
+  "$( [ -f "$LEO/docs/reference/hook-events.md" ] && echo yes || echo no )" "yes"
 check "the user's own config keys survived" "$(toml_get "$CFG" 'tui.theme')" "dark"
 check "and the model they chose"            "$(toml_get "$CFG" model)" "gpt-5-codex"
 check "a backup of the pre-install config exists" "$( [ -f "$CFG.leopold.bak" ] && echo yes || echo no )" "yes"
@@ -187,7 +237,42 @@ check "the backup is byte-identical to the config as found" \
 check "nothing in config.toml points at a Claude path" "$(grep -c '\.claude' "$CFG")" "0"
 
 echo
-echo "  both hooks: working, driven from the INSTALLED copy exactly as Codex drives them"
+echo "  the review-lens agent roles (Codex has roles; Claude Code does not)"
+# Codex 0.152.1 reads a role file per agent from $CODEX_HOME/agents/<role>.toml and
+# spawn_agent(agent_type=<role>) runs a subagent as it (hooks/hook-matrix.tsv, row
+# review-lens-roles). One file per driver review lens, so a Codex session can convene
+# the same panel of skeptics the driver does.
+ROLES="$CODEX/agents"
+r_missing=0
+for lens in correctness security does-it-work conformance; do
+  [ -f "$ROLES/leopold-lens-$lens.toml" ] || { r_missing=$((r_missing+1)); bad "no role file for lens $lens"; }
+done
+check "one role file per review lens" "$r_missing" "0"
+check "and no role file for anything else" "$(set -- "$ROLES"/*.toml; [ -e "$1" ] && echo $# || echo 0)" "4"
+r_bad=0
+for f in "$ROLES"/leopold-lens-*.toml; do toml_ok "$f" || { r_bad=$((r_bad+1)); bad "$f does not parse as TOML"; }; done
+check "every role file parses as TOML" "$r_bad" "0"
+# read-only is the point: a reviewer that can edit the diff it is reviewing is not a
+# reviewer. It is also the same guarantee the driver gives a headless lens (--sandbox
+# read-only), which matters because `codex exec` cannot run AS a role.
+check "every role is sandboxed read-only"   "$(grep -l 'sandbox_mode = "read-only"' "$ROLES"/leopold-lens-*.toml 2>/dev/null | wc -l | tr -d ' ')" "4"
+check "each role declares the three keys Codex requires"   "$(for f in "$ROLES"/leopold-lens-*.toml; do
+       for k in name description developer_instructions; do grep -q "^$k = " "$f" || echo miss; done
+     done | wc -l | tr -d ' ')" "0"
+# ONE unknown key makes Codex ignore the WHOLE file (probed, with and without
+# --strict-config), so a stray key is not a cosmetic issue — it silently deletes a lens.
+check "and no key Codex would reject"   "$(grep -h '^[a-z_]* = ' "$ROLES"/leopold-lens-*.toml | cut -d' ' -f1 | sort -u \
+     | grep -cvE '^(name|description|developer_instructions|sandbox_mode|model)$')" "0"
+check "the role name matches its file, so spawn_agent can find it"   "$(for f in "$ROLES"/leopold-lens-*.toml; do
+       n="$(sed -n 's/^name = "\(.*\)"$/\1/p' "$f")"
+       [ "$n" = "$(basename "$f" .toml)" ] || echo miss
+     done | wc -l | tr -d ' ')" "0"
+check "no model is pinned when no override is set"   "$(grep -c '^model = ' "$ROLES"/leopold-lens-*.toml | grep -cv ':0$')" "0"
+has   "the installer says what landed" "$out" "review-lens roles ->"
+has   "and states that codex exec cannot run as a role" "$out" "cannot run AS a role"
+
+echo
+echo "  the core hooks: working, driven from the INSTALLED copy exactly as Codex drives them"
 # Wiring a hook proves nothing if the file it points at cannot run. These call the
 # command string read out of config.toml above, with the payloads codex-cli 0.146.0
 # sends (same keys as Claude Code's — that is why one script serves both).
@@ -203,6 +288,17 @@ g_out="$(sealed bash "$GUARD" <<< "$(printf '{"cwd":"%s","tool_name":"Bash","too
 # Allow is the empty reply — the hook says nothing and the harness proceeds.
 check "and lets git add through"                 "$g_out" ""
 
+# The policy, driven from the installed copy with the payload Codex sends: the deny half
+# repeats the git lock verbatim (the half Codex honors), the allow half is emitted the
+# same way on both harnesses even though Codex ignores it.
+p_perm() { printf '%s' "$1" | jq -r '.hookSpecificOutput.decision.behavior // "none"' 2>/dev/null || echo none; }
+p_out="$(sealed bash "$POLICY" <<< "$(printf '{"cwd":"%s","session_id":"S","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' "$PROJ")")"
+check "the installed policy DENIES a git commit prompt"  "$(p_perm "$p_out")" "deny"
+check "...in the git lock's own words" \
+  "$(printf '%s' "$p_out" | jq -r '.hookSpecificOutput.decision.message' | grep -c 'git commit is locked')" "1"
+p_out="$(sealed bash "$POLICY" <<< "$(printf '{"cwd":"%s","session_id":"S","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"rm -rf build"}}' "$PROJ")")"
+check "and ALLOWS everything else for the run"           "$(p_perm "$p_out")" "allow"
+
 s_out="$(sealed bash "$STOP" <<< "$(printf '{"cwd":"%s","transcript_path":"%s","stop_hook_active":false}' "$PROJ" "$TD/none.jsonl")")"
 check "the installed continuity hook blocks the stop while work remains" "$(dec "$s_out")" "block"
 printf '# Plan\n- [x] an open item\n' > "$PROJ/.leopold/PLAN.md"
@@ -211,6 +307,8 @@ check "and lets it stop once the plan is complete" "$s_out" ""
 echo '{"active":false}' > "$PROJ/.leopold/state.json"
 s_out="$(sealed bash "$STOP" <<< "$(printf '{"cwd":"%s"}' "$PROJ")")"
 check "and is inert when no run is active" "$s_out" ""
+p_out="$(sealed bash "$POLICY" <<< "$(printf '{"cwd":"%s","session_id":"S","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"rm -rf build"}}' "$PROJ")")"
+check "the policy is inert too — no run, no answer" "$p_out" ""
 
 echo
 echo "  extension: enhance (installed by install.sh, wired OFF)"
@@ -288,6 +386,7 @@ check "and it never grew a run of blank lines" \
 check "still valid TOML"                    "$(toml_ok "$CFG" && echo yes || echo no)" "yes"
 check "still one PreToolUse git lock"       "$(hook_count PreToolUse guard-irreversible.sh)" "1"
 check "still one Stop hook"                 "$(hook_count Stop stop-continuity.sh)" "1"
+check "still one PermissionRequest policy" "$(hook_count PermissionRequest permission-policy.sh)" "1"
 check "still one UserPromptSubmit hook"     "$(hook_count UserPromptSubmit enhance.py)" "1"
 check "still one managed leopold block"     "$(grep -c '^# >>> leopold (managed) >>>$' "$CFG")" "1"
 check "still one managed enhance block"     "$(grep -c '^# >>> leopold:enhance (managed) >>>$' "$CFG")" "1"
@@ -297,6 +396,153 @@ check "the user's own config keys are still there" "$(toml_get "$CFG" 'tui.theme
 check "the install verified itself green"   "$(printf '%s' "$out3" | grep -c 'git lock wired into')" "1"
 
 check "the backup of the 3rd install still parses" "$(toml_ok "$CFG.leopold.bak" && echo yes || echo no)" "yes"
+
+# The role files are written by their own writer, so they get their own idempotency
+# check: three installs, one file per lens, unchanged bytes, and no backup left behind
+# by a no-op rewrite.
+check "still exactly four role files after three installs" \
+  "$(set -- "$CODEX/agents"/leopold-lens-*.toml; [ -e "$1" ] && echo $# || echo 0)" "4"
+check "and no role file was rewritten on a re-install" \
+  "$(set -- "$CODEX/agents"/*.leopold.bak; [ -e "$1" ] && echo $# || echo 0)" "0"
+
+# Per EVENT, not per known command: three installs must leave exactly one Leopold
+# hook on each event Leopold wires, whatever the wiring grows to. Serena and the
+# enhancer declare hooks of their own on some of these events, so this counts only
+# the entries whose command points into the Leopold asset home's hooks/ dir.
+leopold_hooks_per_event() {
+  python3 - "$CFG" "$LEO/hooks/" <<'PY'
+import sys, tomllib
+d = tomllib.load(open(sys.argv[1], "rb"))
+prefix = sys.argv[2]
+for event, entries in sorted(d.get("hooks", {}).items()):
+    seen = {}
+    for e in entries:
+        for h in e.get("hooks", []):
+            cmd = h.get("command", "")
+            if cmd.startswith(prefix):
+                script = cmd.rsplit("/", 1)[-1]
+                seen[script] = seen.get(script, 0) + 1
+    for script, n in sorted(seen.items()):
+        print(f"{event} {script}={n}")
+PY
+}
+# Counted per (event, SCRIPT). PreToolUse legitimately carries two Leopold hooks now —
+# the git lock and the subagent cap — and a per-EVENT count would have to be loosened to
+# "at least one" to survive that, which stops catching the duplicate entry a re-install
+# used to leave behind. The pair is the invariant idempotency actually promises.
+check "exactly one Leopold hook per event and script after three installs" \
+  "$(leopold_hooks_per_event | grep -cv '=1$')" "0"
+check "and the event/script pairs wired are exactly the core spec list" \
+  "$(leopold_hooks_per_event | cut -d= -f1 | sort | paste -sd, -)" \
+  "PermissionRequest permission-policy.sh,PostCompact compact-checkpoint.sh,PostToolUse verify-receipt.sh,PreCompact compact-checkpoint.sh,PreToolUse done-gate.sh,PreToolUse guard-irreversible.sh,PreToolUse subagent-cap.sh,Stop stop-continuity.sh,SubagentStart subagent-account.sh,SubagentStop subagent-account.sh"
+
+# The capability matrix is the gate on what may be declared here at all: Codex
+# 0.152.1 has 12 events, and a table for one of the five it does not have would sit
+# in the user's config forever waiting for a hook that can never fire.
+absent=0
+for ev in StopFailure PostToolUseFailure TaskCompleted FileChanged ConfigChange; do
+  grep -q "^\[\[hooks\.$ev\]\]" "$CFG" && { absent=$((absent+1)); bad "config.toml declares [[hooks.$ev]], an event Codex does not have"; }
+done
+check "no event Codex lacks was declared in config.toml" "$absent" "0"
+
+echo
+echo "codex install — the installer reports what LANDED, never what it asked for"
+
+# The failure this guards: leo_wire_hooks_toml exits 0 having declared NOTHING when
+# hooks/hook-matrix.tsv refuses every spec (and it would also have done so, before
+# this pass, whenever the matrix could not be read at all). An installer that prints
+# "git lock + continuity -> config.toml" off its own argument list is the "no-op that
+# reads as success" CLAUDE.md bans, on the product's core promise.
+#
+# The matrix here is authored by the test — it refuses both core events on Codex — so
+# what is under test is the INSTALLER's honesty, not the shipped matrix.
+RTD="$TD/reports"; mkdir -p "$RTD/codex"
+cat > "$RTD/refuse-all.tsv" <<'TSV'
+# probed: claude "2.1.259 (Claude Code)" codex "codex-cli 0.152.1"
+run-continuity	Stop	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+git-lock	PreToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+permission-policy	PermissionRequest	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+compact-checkpoint	PreCompact	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+compact-checkpoint	PostCompact	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+api-error-stop	StopFailure	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+subagent-accounting	SubagentStart	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+subagent-accounting	SubagentStop	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+subagent-cap	PreToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+verify-receipt	PostToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+verify-receipt	PostToolUseFailure	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+done-gate	PreToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+done-gate	TaskCompleted	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+file-watch	FileChanged	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+config-guard	ConfigChange	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+TSV
+sealed_codex() { # <LEO_MATRIX_TSV> <codex home>
+  env -i PATH="$STUB" HOME="$TD/home" TERM=dumb \
+      CLAUDE_HOME="$NOCLAUDE" CODEX_HOME="$2" LEOPOLD_NONINTERACTIVE=1 \
+      LEO_MATRIX_TSV="$1" \
+      timeout 120 bash "$ROOT/scripts/install-codex.sh" "$ROOT" "$LEO" </dev/null 2>&1
+}
+r_out="$(sealed_codex "$RTD/refuse-all.tsv" "$RTD/codex")"; r_rc=$?
+check "a fully refused wire still exits clean (the skills did install)" "$r_rc" "0"
+hasnt "and never claims hooks reached config.toml"  "$r_out" "hooks ->"
+has   "it says NOT ONE hook was declared"           "$r_out" "NOT ONE Leopold hook was declared"
+has   "it says the git lock is not armed"           "$r_out" "git lock is NOT armed"
+has   "and names the events it refused"             "$r_out" "refused for Codex: Stop PreToolUse PermissionRequest PreCompact PostCompact StopFailure SubagentStart SubagentStop PreToolUse PostToolUse PostToolUseFailure PreToolUse TaskCompleted FileChanged FileChanged FileChanged FileChanged ConfigChange"
+check "and no config.toml was written at all" \
+  "$( [ -e "$RTD/codex/config.toml" ] && echo yes || echo no )" "no"
+
+# The positive control on the same path: with the real matrix, the line names the count
+# and the events that actually landed.
+mkdir -p "$RTD/codex-ok"
+g_out="$(sealed_codex "$ROOT/hooks/hook-matrix.tsv" "$RTD/codex-ok")"
+has   "with the real matrix it reports the count"   "$g_out" "10 hooks ->"
+has   "and the events by name"                      "$g_out" "(Stop PreToolUse PermissionRequest PreCompact PostCompact SubagentStart SubagentStop PreToolUse PostToolUse PreToolUse)"
+hasnt "and warns about nothing"                     "$g_out" "NOT ONE"
+# The shipped list has EIGHTEEN specs and Codex can fire ten: the eight it cannot — the
+# API-error stop, the tool-failure half of the receipts, the task gate, the four entries of
+# the second-writer watch and the config guard — are refused BY NAME, quoting the probed
+# version. A gap a user has to discover is the silent
+# degradation this project bans.
+has   "and the one hook Codex cannot fire is refused by name" "$g_out" \
+  "StopFailure: unavailable on Codex codex-cli 0.152.1 — not wired"
+check "and the hooks are really in that config.toml" \
+  "$(grep -c 'guard-irreversible.sh' "$RTD/codex-ok/config.toml")" "1"
+
+# ...and install.sh's own end-of-install verification agrees. The hard case is a
+# PARTIAL wire: the continuity hook lands, the git lock does not, so the managed block
+# and its markers are right there in config.toml with no git lock inside them. Grepping
+# for the markers reports that as green; only the guard's own command line tells the
+# truth, and "the git lock is wired" is the one claim this installer must never make
+# on a file that does not hold it.
+cat > "$RTD/refuse-guard.tsv" <<'TSV'
+# probed: claude "2.1.259 (Claude Code)" codex "codex-cli 0.152.1"
+run-continuity	Stop	codex	available	#stop-codex-cli	authored by the test
+git-lock	PreToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+permission-policy	PermissionRequest	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+compact-checkpoint	PreCompact	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+compact-checkpoint	PostCompact	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+api-error-stop	StopFailure	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+subagent-accounting	SubagentStart	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+subagent-accounting	SubagentStop	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+subagent-cap	PreToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+verify-receipt	PostToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+verify-receipt	PostToolUseFailure	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+done-gate	PreToolUse	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+done-gate	TaskCompleted	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+file-watch	FileChanged	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+config-guard	ConfigChange	codex	unavailable	#what-this-decides-for-leopold	authored by the test
+TSV
+v_out="$( env -i PATH="$STUB" HOME="$TD/home" TERM=dumb \
+              CLAUDE_HOME="$NOCLAUDE" CODEX_HOME="$RTD/codex-verify" \
+              LEOPOLD_NONINTERACTIVE=1 LEO_MATRIX_TSV="$RTD/refuse-guard.tsv" \
+              timeout 300 bash "$ROOT/install.sh" --harness codex </dev/null 2>&1 )"
+check "the partial wire really did leave a managed block behind" \
+  "$(grep -c '^# >>> leopold (managed) >>>$' "$RTD/codex-verify/config.toml")" "1"
+check "with the continuity hook in it and no git lock" \
+  "$(grep -c 'stop-continuity.sh' "$RTD/codex-verify/config.toml")$(grep -c 'guard-irreversible.sh' "$RTD/codex-verify/config.toml")" "10"
+has   "install.sh reports the git lock as NOT wired" "$v_out" "warn: git lock not wired into"
+hasnt "and never reports it as wired"                "$v_out" "ok   git lock wired into"
+has   "and install-codex.sh named what it did land"  "$v_out" "1 hooks ->"
+has   "and what it did not"                          "$v_out" "not wired here (Codex does not fire them): PreToolUse PermissionRequest PreCompact PostCompact StopFailure SubagentStart SubagentStop PreToolUse PostToolUse PostToolUseFailure PreToolUse TaskCompleted FileChanged FileChanged FileChanged FileChanged ConfigChange"
 
 echo
 echo "codex install — a corrupted config.toml is refused, not clobbered"

@@ -62,8 +62,18 @@ doctor: ## Diagnose the Leopold install (skills, hooks, wiring, gstack)
 
 .PHONY: hooks-check hooks-test
 hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
+	@# The shared library first: three hooks source it, so a syntax error here breaks them
+	@# all, and it is the one file in hooks/ that is never executed on its own.
+	@bash -n hooks/_lib.sh
 	@bash -n hooks/stop-continuity.sh
 	@bash -n hooks/guard-irreversible.sh
+	@bash -n hooks/permission-policy.sh
+	@bash -n hooks/compact-checkpoint.sh
+	@bash -n hooks/stop-failure.sh
+	@bash -n hooks/subagent-account.sh
+	@bash -n hooks/subagent-cap.sh
+	@bash -n hooks/verify-receipt.sh
+	@bash -n hooks/done-gate.sh
 	@bash -n hooks/persona-guard.sh
 	@bash -n install.sh
 	@bash -n scripts/install-codex.sh
@@ -74,29 +84,49 @@ hooks-check: ## Syntax-check the hooks, the installer, and the enhance engine
 	@bash -n extensions/enhance/manage.sh
 	@bash -n extensions/ovmem/install.sh
 	@bash -n extensions/ovmem/manage.sh
+	@# The hook-event probe (live, never run by `make test`) is linted here so a broken
+	@# probe is caught before the day someone needs to rerun it.
+	@bash -n scripts/probe-hook-events.sh
+	@bash -n scripts/probe/dump-hook.sh
+	@bash -n scripts/test-probe-dump-hook.sh
+	@bash -n scripts/test-hook-matrix.sh
+	@python3 -m py_compile scripts/probe/render-hook-events.py scripts/probe/api-stub.py scripts/probe/mcp-elicit-stub.py
 	@python3 -m py_compile extensions/enhance/payload/enhance.py
 	@python3 -m py_compile extensions/ovmem/payload/ovmem.py extensions/ovmem/payload/dashboard.py
 	@# The SAME lint CI runs (ci.yml), so `make test` green means the hooks job's lint is
 	@# green too. A machine without shellcheck says so out loud instead of skipping into a
 	@# local-passes-CI-fails surprise — that already happened once (SC2034, PR #58).
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck -S warning hooks/*.sh install.sh scripts/*.sh scripts/lib/*.sh extensions/*/*.sh && echo "shellcheck: clean"; \
+		shellcheck -S warning hooks/*.sh install.sh scripts/*.sh scripts/lib/*.sh scripts/probe/*.sh extensions/*/*.sh && echo "shellcheck: clean"; \
 	else \
 		echo "WARNING: shellcheck not installed — CI lints with it and this machine cannot."; \
 		echo "         install: https://github.com/koalaman/shellcheck#installing (static binary works in ~/.local/bin)"; \
 	fi
-	@echo "hooks + installers + harness lib + enhance/ovmem engines: syntax OK"
+	@echo "hooks + installers + harness lib + enhance/ovmem engines + hook-event probe: syntax OK"
 
-hooks-test: ## Run the hook behavior tests
+hooks-test: ## Run the hook behavior tests and the capability-matrix pin
 	@bash scripts/test-hooks.sh
+	@bash scripts/test-hook-matrix.sh
+
+.PHONY: probe-test probe-hook-events
+probe-test: ## Run the hook-event probe's dump-hook + renderer tests (hermetic: no harness launched)
+	@bash scripts/test-probe-dump-hook.sh
+
+probe-hook-events: ## Live-probe every documented hook event on both installed binaries (costs model calls; OUT=<dir>)
+	@bash scripts/probe-hook-events.sh --out "$${OUT:-.leopold/probe/hook-events}"
 
 .PHONY: toolchain-test
 toolchain-test: ## Run the toolchain tests (driver x assets, shadowed installs; hermetic: stubbed PATH, no network)
 	@bash scripts/test-toolchain.sh
 
+.PHONY: ci-parity
+ci-parity: ## Assert every suite this gate runs is also a step in .github/workflows/ci.yml
+	@bash scripts/test-ci-parity.sh
+
 .PHONY: doctor-test
-doctor-test: ## Run the doctor project-continuity tests (hermetic: temp homes + temp project)
+doctor-test: ## Run the doctor continuity + capability-matrix tests (hermetic: temp homes + stub binaries)
 	@bash scripts/test-doctor-continuity.sh
+	@bash scripts/test-doctor-matrix.sh
 
 .PHONY: harness-test
 harness-test: ## Run the shared harness-wiring tests (hermetic: temp CLAUDE_HOME/CODEX_HOME)
@@ -141,10 +171,11 @@ enhance-test: ## Run the prompt-enhancer behavior tests (stubbed claude, no netw
 	@bash scripts/test-enhance-ext.sh
 
 .PHONY: watch-test
-watch-test: ## Run the dashboard DAG-builder + steer-command + continuity-relaunch tests (stdlib, hermetic)
+watch-test: ## Run the dashboard DAG-builder + steer-command + continuity-relaunch + event-registry tests (stdlib, hermetic)
 	@python3 -m py_compile scripts/leopold-watch.py
 	@python3 scripts/test-watch-graph.py
 	@python3 scripts/test-watch-continuity.py
+	@python3 scripts/test-watch-events.py
 
 # ---- Driver -----------------------------------------------------------------
 
@@ -160,6 +191,14 @@ driver-check: ## Typecheck the SDK driver
 
 driver-test: ## Run the SDK driver unit tests (parser + guard; needs Node 22.6+)
 	@cd $(DRIVER) && $(NPM) test
+
+decisions-test: ## Run the decisions module suites (contract + validator; extended by later items)
+	@python3 -m py_compile scripts/decisions/systemone-stub.py
+	@bash -n extensions/decisions/payload/decisions.sh
+	@bash -n extensions/decisions/install.sh
+	@bash -n extensions/decisions/manage.sh
+	@bash scripts/test-decisions-install.sh
+	@cd $(DRIVER) && node --import tsx --test test/decisions-contract.test.ts test/decisions-ask.test.ts test/decisions-jev.test.ts test/decisions-openrouter.test.ts test/decisions-vercel.test.ts test/decisions-generic.test.ts test/decisions-parity.test.ts test/decisions-routing.test.ts test/decisions-review.test.ts test/decisions-triage.test.ts test/decisions-ledger.test.ts
 
 driver-smoke: ## Build the driver, then smoke the built CLI end to end (no network)
 	@cd $(DRIVER) && $(NPM) run build
@@ -189,7 +228,10 @@ docs-clean: ## Remove the built docs site
 # ---- Aggregate --------------------------------------------------------------
 
 .PHONY: test ci clean
-test: hooks-check hooks-test toolchain-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test driver-smoke docs-build ## Run the full check gate (what CI runs)
+# ci-parity comes first and costs nothing: it reads this chain and ci.yml and fails if a
+# suite here has no CI step (or the reverse). "`make test` is the gate, it is what CI
+# runs" is a promise, and this is the only thing that keeps it.
+test: ci-parity hooks-check hooks-test probe-test toolchain-test doctor-test test-guard harness-test codex-install-test serena-test ovmem-test gstack-test skills-test persona-test menu-test enhance-test watch-test driver-check driver-test decisions-test driver-smoke docs-build ## Run the full check gate (what CI runs)
 	@echo "all checks passed"
 
 ci: test ## Alias for the full check gate

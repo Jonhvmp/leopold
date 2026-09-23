@@ -30,6 +30,21 @@ access** and can only emit structured fields; the agents that *do* touch the rep
 injection in an issue body can distort at most its own classification — it cannot
 steer an agent with repo access. Do not "optimize" this away by merging the stages.
 
+**A typed classifier narrows the blast radius; it does not remove it.** If this project has the
+optional `decisions` extension installed, the classifier stage can run through it instead of
+spawning an agent per item: the catalog `.leopold/decisions/triage.json` asks the same fields as
+typed questions, and the typed answers feed the SAME downstream stages. That is a real improvement
+to this property — a constrained answer space cannot emit prose, cannot ask for a tool, and cannot
+be talked into taking an action, because there is no channel for any of those.
+
+It is NOT a reason to merge the stages. A decision model treats its state as data, not as hostile:
+a well-crafted issue body can still push a classification **within the enum** — calling a bug a
+`question`, or a dangerous item `cosmetic`. What that buys an attacker is a mis-filed item, which
+is exactly what the stage separation already bounds. Keep the fix planners reading structured
+fields only, with or without a provider. An item whose classification lands below its confidence
+floor goes to human review in the report rather than being auto-classified: the model saying "I am
+not sure" is a signal to use, not one to round away.
+
 ## Step 1 — Collect the queue
 
 Figure out what the user wants triaged:

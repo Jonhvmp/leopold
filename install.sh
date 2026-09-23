@@ -48,6 +48,14 @@ CODEX="${CODEX_HOME:-$HOME/.codex}"
 SKILLS="$CLAUDE/skills"
 SETTINGS="$CLAUDE/settings.json"
 
+# The hook writers and the one list of Leopold's own hooks. Nobody — not this
+# installer, not scripts/install-codex.sh, not an extension — writes settings.json
+# or config.toml hook wiring anywhere else.
+LIB="$SRC/extensions/lib/harness.sh"
+[ -f "$LIB" ] || { echo "install.sh: missing $LIB" >&2; exit 1; }
+# shellcheck source=extensions/lib/harness.sh
+. "$LIB"
+
 # Optional gstack integration: pass --with-gstack to install it non-interactively.
 WITH_GSTACK=0
 HARNESS="auto"
@@ -176,8 +184,15 @@ chmod +x "$LEO_HOME"/hooks/*.sh
 chmod +x "$LEO_HOME"/scripts/*.sh 2>/dev/null || true
 chmod +x "$LEO_HOME"/extensions/*/manage.sh 2>/dev/null || true
 
-STOP_HOOK="$LEO_HOME/hooks/stop-continuity.sh"
-GUARD_HOOK="$LEO_HOME/hooks/guard-irreversible.sh"
+# THE list of Leopold's own hooks, read once from its one home (leo_core_hook_specs).
+# The Claude wiring below declares it and the verification at the end checks that each
+# one actually landed — the same list on both ends, so neither can drift from the other.
+# Read line by line into an array rather than word-split, so an asset home with a space
+# in its path survives.
+CORE_SPECS=()
+while IFS= read -r spec; do
+  if [ -n "$spec" ]; then CORE_SPECS+=("$spec"); fi
+done < <(leo_core_hook_specs "$LEO_HOME")
 
 if [ "$DO_CODEX" = "1" ]; then
   echo
@@ -188,7 +203,7 @@ fi
 # Everything from here on is harness-aware: the settings.json wiring below is the
 # Claude Code half, and the extensions after it install into whichever harnesses
 # LEOPOLD_HARNESS resolved to. A Codex-only install used to `exit 0` right here,
-# which shipped the skills and the two hooks but silently skipped the enhancer,
+# which shipped the skills and the core hooks but silently skipped the enhancer,
 # Serena, the leopold CLI and the verification pass — half a product.
 if [ "$DO_CLAUDE" = "1" ]; then
   echo
@@ -199,19 +214,27 @@ if [ "$DO_CLAUDE" = "1" ]; then
     sed "s#~/.claude/leopold#$LEO_HOME#g" "$SRC/settings.template.json"
     echo
   else
-    [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
-    cp "$SETTINGS" "$SETTINGS.leopold.bak"
-    tmp="$(mktemp)"
-    jq --arg stop "$STOP_HOOK" --arg guard "$GUARD_HOOK" '
-      .hooks //= {}
-      | .hooks.Stop //= []
-      | .hooks.PreToolUse //= []
-      | (if any(.hooks.Stop[]?.hooks[]?; .command == $stop)
-          then . else .hooks.Stop += [{hooks:[{type:"command",command:$stop}]}] end)
-      | (if any(.hooks.PreToolUse[]?.hooks[]?; .command == $guard)
-          then . else .hooks.PreToolUse += [{matcher:"Bash|Edit|Write|MultiEdit|NotebookEdit",hooks:[{type:"command",command:$guard}]}] end)
-    ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
-    echo "   merged (backup at $SETTINGS.leopold.bak)"
+    # One writer, one list. The merge itself lives in extensions/lib/harness.sh
+    # (backup, temp file, idempotent, validated, rolled back rather than left
+    # unreadable) and the hooks it writes come from leo_core_hook_specs — the same
+    # list scripts/install-codex.sh hands to the TOML writer, so the two harnesses
+    # cannot drift.
+    #
+    # LEO_WIRED_COUNT is what LANDED. The writer exits 0 having declared nothing when
+    # hooks/hook-matrix.tsv refuses every spec, so the count is read, not assumed.
+    if leo_wire_hooks_json "$SETTINGS" leopold "${CORE_SPECS[@]}"; then
+      if [ "${LEO_WIRED_COUNT:-0}" -eq 0 ]; then
+        echo "   warn: NOT ONE Leopold hook was declared in $SETTINGS — the git lock is NOT armed."
+        echo "         refused for Claude Code: ${LEO_REFUSED_EVENTS:-(none — see the warnings above)}"
+      else
+        echo "   $LEO_WIRED_COUNT hooks wired ($LEO_WIRED_EVENTS)"
+        if [ -n "${LEO_REFUSED_EVENTS:-}" ]; then
+          echo "   not wired here (Claude Code does not fire them): $LEO_REFUSED_EVENTS"
+        fi
+      fi
+    else
+      echo "   warn: the hook wiring did not finish — see above, then re-run: ./install.sh"
+    fi
   fi
 fi
 
@@ -315,11 +338,37 @@ echo
 echo "-> verifying"
 v_warn=0
 hv="$( [ -f "$LEO_HOME/VERSION" ] && tr -d '[:space:]' < "$LEO_HOME/VERSION" || echo '?' )"
+# The matrix and the page every one of its rows cites travel WITH the hooks: the matrix
+# is what the writers ask "does this event fire here", and the page is what `leopold
+# doctor` resolves those anchors against to call a bound `verified` rather than merely
+# `wired`. The copies above are best-effort by design (a partial tree must not abort an
+# install), so what actually landed is reported here instead of assumed.
+if [ -f "$LEO_HOME/hooks/hook-matrix.tsv" ] && [ -f "$LEO_HOME/docs/reference/hook-events.md" ]; then
+  echo "   ok   capability matrix + its evidence page installed ($LEO_HOME/docs/reference)"
+else
+  echo "   warn: hook-matrix.tsv or docs/reference/hook-events.md did not land in $LEO_HOME"
+  echo "         — the bounds still run; leopold doctor just cannot prove them (it will say so)."
+  v_warn=$((v_warn+1))
+fi
 if [ "$DO_CLAUDE" = "1" ]; then
   sc=0; for d in "$SKILLS"/leopold-*; do [ -e "$d" ] && sc=$((sc+1)); done
   [ "${sc:-0}" -ge 4 ] 2>/dev/null && echo "   ok   $sc leopold skills installed (harness v$hv)" || { echo "   warn: leopold skills not found in $SKILLS"; v_warn=$((v_warn+1)); }
-  if command -v jq >/dev/null 2>&1 && [ -f "$SETTINGS" ] && jq -e '(.hooks.Stop|length>0) and (.hooks.PreToolUse|length>0)' "$SETTINGS" >/dev/null 2>&1; then
-    echo "   ok   Stop + PreToolUse hooks wired in settings.json"
+  # Checked against the ONE list, per hook, by the command that was supposed to land —
+  # not "the event has some entry", which a hook of the user's own would satisfy while
+  # Leopold's is missing.
+  if command -v jq >/dev/null 2>&1 && [ -f "$SETTINGS" ]; then
+    _missing=""
+    for _spec in "${CORE_SPECS[@]}"; do
+      if ! jq -e --arg c "$(leo_spec_command "$_spec")" \
+            'any(.hooks[]?[]?.hooks[]?; .command == $c)' "$SETTINGS" >/dev/null 2>&1; then
+        _missing="${_missing:+$_missing }$(leo_spec_event "$_spec")"
+      fi
+    done
+    if [ -z "$_missing" ]; then
+      echo "   ok   ${#CORE_SPECS[@]} Leopold hooks wired in settings.json"
+    else
+      echo "   warn: not wired in settings.json: $_missing"; v_warn=$((v_warn+1))
+    fi
   else echo "   warn: hooks not detected in settings.json"; v_warn=$((v_warn+1)); fi
 else
   echo "   ok   harness assets installed (v$hv) at $LEO_HOME"
@@ -338,7 +387,10 @@ fi
 if [ "$DO_CODEX" = "1" ]; then
   cs=0; for d in "$CODEX"/skills/leopold-*; do [ -e "$d" ] && cs=$((cs+1)); done
   [ "${cs:-0}" -ge 4 ] 2>/dev/null && echo "   ok   $cs leopold skills installed for Codex" || { echo "   warn: leopold skills not found in $CODEX/skills"; v_warn=$((v_warn+1)); }
-  grep -q 'leopold (managed)' "$CODEX/config.toml" 2>/dev/null && echo "   ok   git lock wired into $CODEX/config.toml (trust it once in Codex to arm it)" || { echo "   warn: git lock not wired into $CODEX/config.toml"; v_warn=$((v_warn+1)); }
+  # The guard's own command line, not just the managed markers: an empty or fully
+  # refused block still carries the markers, and "the git lock is wired" is the one
+  # claim this installer must never make on a file that does not hold it.
+  grep -qF "command = \"$LEO_HOME/hooks/guard-irreversible.sh\"" "$CODEX/config.toml" 2>/dev/null && echo "   ok   git lock wired into $CODEX/config.toml (trust it once in Codex to arm it)" || { echo "   warn: git lock not wired into $CODEX/config.toml"; v_warn=$((v_warn+1)); }
 fi
 command -v leopold  >/dev/null 2>&1 && echo "   ok   leopold CLI on PATH" || { echo "   warn: 'leopold' not on PATH yet (open a new shell, or: npm i -g leopold-driver)"; v_warn=$((v_warn+1)); }
 command -v serena   >/dev/null 2>&1 && echo "   ok   serena (LSP) present" || echo "   note: serena not on PATH — run: leopold serena install"

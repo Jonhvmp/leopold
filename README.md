@@ -169,7 +169,7 @@ Leopold never weakens the harness's own permissions — it adds a second lock on
 
 ## What is a harness?
 
-`Agent = Model + Harness` — everything around the model: orchestration, memory, guardrails, observability. Claude Code and Codex are both great harnesses for one *interactive* turn. Leopold adds the layer they lack for *unattended* work: a **decider** (your charter, so it chooses instead of asking), **continuity** (a stop hook, so a finished turn rolls into the next item), behind **guardrails** (the gate above). It runs on either — the brief in `.leopold/` is plain markdown, and both hooks are the same scripts on both. More in [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/) and [Claude Code and Codex](docs/concepts/harnesses.md).
+`Agent = Model + Harness` — everything around the model: orchestration, memory, guardrails, observability. Claude Code and Codex are both great harnesses for one *interactive* turn. Leopold adds the layer they lack for *unattended* work: a **decider** (your charter, so it chooses instead of asking), **continuity** (a stop hook, so a finished turn rolls into the next item), behind **guardrails** (the gate above). It runs on either — the brief in `.leopold/` is plain markdown, and its hooks are the same scripts on both. More in [What is a harness](https://jonhvmp.github.io/leopold/concepts/harness/) and [Claude Code and Codex](docs/concepts/harnesses.md).
 
 ## gstack + the toolchain manager
 
@@ -215,7 +215,7 @@ Full design in [`docs/architecture.md`](docs/architecture.md).
 - [x] Multi-worker fan-out (`run --parallel N`, one worktree per item) + `leopold watch` web dashboard (cost meters, decision log, workflow phase tree)
 - [x] Dynamic-workflow engine: `/leopold-workflow`, `leopold workflow` (compiler as tested code), `/leopold-learn`, `/leopold-triage`, plan-by-tournament
 - [x] Quality panels: diverse-lens review + conformance scenarios, root-cause hypotheses + literal reset, smart routing + slice scope, best-of-k tournaments; 161 driver tests + CLI smoke in CI (Ubuntu + macOS)
-- [x] Harness-universal: skills, both hooks, all four extensions, the dashboard and the driver on Claude Code **and** Codex CLI, with a hermetic end-to-end Codex install test in CI
+- [x] Harness-universal: skills, hooks, all four extensions, the dashboard and the driver on Claude Code **and** Codex CLI, with a hermetic end-to-end Codex install test in CI
 - [ ] Headless `workflow --run` exercised end to end; sandboxed workers (E2B/Daytona) — see the [full roadmap](docs/roadmap.md)
 
 ---

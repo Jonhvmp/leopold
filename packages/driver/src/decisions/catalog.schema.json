@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leopold.dev/schema/decisions/1.0/catalog.json",
+  "title": "Leopold decisions/1.0 question catalog",
+  "type": "object",
+  "required": [
+    "version",
+    "questions",
+    "thresholds"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": "decisions/1.0"
+    },
+    "thresholds_for": {
+      "type": "string"
+    },
+    "questions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "type",
+          "instructions"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "choice",
+              "score",
+              "noul"
+            ]
+          },
+          "instructions": {
+            "$comment": "Entry: string | number | boolean | null | array | object"
+          },
+          "criteria": {}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "choice"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "required": [
+                "criteria"
+              ],
+              "properties": {
+                "criteria": {
+                  "type": "object",
+                  "minProperties": 2,
+                  "maxProperties": 255
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "score"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "required": [
+                "criteria"
+              ],
+              "properties": {
+                "criteria": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 10
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "noul"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "criteria": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "true": {
+                      "$comment": "Entry: string | number | boolean | null | array | object"
+                    },
+                    "false": {
+                      "$comment": "Entry: string | number | boolean | null | array | object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "floor",
+          "escalate",
+          "act"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "floor": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "escalate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "act": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "act_raise": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "act_lower": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

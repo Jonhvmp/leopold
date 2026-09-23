@@ -88,6 +88,38 @@ wrote into it has no authority over the next window — the continuation prompt 
 it explicitly as untrusted past-window state to verify against the workspace, not as
 orders to follow.
 
+## Compaction: the other way a window is cut short { #compaction-the-other-way-a-window-is-cut-short }
+
+A window roll is Leopold's own decision. A **compaction** is the harness's: it discards
+the middle of the transcript on its own schedule, and the session keeps going with a
+summary in place of what it just did. Left alone, that is the same amnesia as a roll,
+minus the handoff — which is why `hooks/compact-checkpoint.sh` rides both halves of it.
+
+- **`PreCompact`** — before the harness cuts, the hook writes `.leopold/CHECKPOINT.md`
+  through the same contract above and logs `compact_checkpoint` with the trigger
+  (`auto` or `manual`).
+- **`PostCompact`** — after the cut, it logs `compact_resumed` and returns the checkpoint
+  to the session as `additionalContext`, so the compacted window is re-grounded in the
+  run's durable state rather than in the harness's prose summary.
+- It counts: `compact_checkpoints` in `state.json` is the number of compactions this run
+  survived, distinct from `windows`.
+
+**The checkpoint is composed from durable state — `state.json`, `PLAN.md`, the journal —
+and never from the compaction payload.** That is not a stylistic preference; it is what
+makes the capability portable. `hooks/hook-matrix.tsv` marks `compact-checkpoint`
+**`available` on both harnesses**: the probe caught Codex CLI 0.152.1 firing `PreCompact`
+and `PostCompact` with `trigger` plus `turn_id` and `model`. What Codex does not send is
+Claude Code's `custom_instructions` before and `compact_summary` after — and a hook that
+had built its checkpoint out of the summary would have been Claude-only by construction.
+Composed from durable state, it costs nothing (captures:
+[Hook Events](../reference/hook-events.md#precompact-codex-cli),
+[PostCompact](../reference/hook-events.md#postcompact-codex-cli)).
+
+The cap is the contract's, not a new one: an oversized merge writes **nothing**, logs
+`checkpoint_oversize` with the byte count and says so in `systemMessage`; a checkpoint
+that cannot be merged logs `checkpoint_unmergeable`. Truncating to fit would seed the next
+window with a confident lie, so it does not happen.
+
 ## The livelock gate: rolling is free, producing is mandatory
 
 A reseed is not progress; only closed plan items are. At every roll the hook diffs the
@@ -134,6 +166,59 @@ does:
 The watcher is not a scheduler: it reacts to a detected window roll (a
 `window_relaunch` event marks each one), it never wakes a run on a timer.
 
+## An API error is a wait, not a verdict
+
+A turn that dies on the API is not a roll and not a failure of the work: `Stop` never
+fires for a failed turn, so `hooks/stop-failure.sh` is the only witness — it stops the
+run with `stopped_reason: api_error` and an `api_error: {type, at, retryable, hint}`
+block (Claude Code; on Codex CLI 0.152.1 the event does not exist, so an API error ends
+a Codex run as a plain stop and `/leopold-run` resumes it by hand).
+
+Under `continuity: auto`, `leopold watch` treats a **retryable** class (`rate_limit`,
+`overloaded`, `server_error`) the way it treats a roll — it relaunches the run headless
+through the same `claude -p` / `codex exec` command — but on a **doubling backoff**:
+
+| Attempt | 1 | 2 | 3 | 4 | 5 |
+| --- | --- | --- | --- | --- | --- |
+| Fires after | 30s | 120s | 120s | 240s | 480s |
+
+- **Every rung after the first waits out the reactivation grace.** The first is measured
+  from the API's own refusal, so it keeps its 30s. The rest are measured from *our* spawn
+  of the previous attempt, and a relaunched agent may legitimately take up to 120s
+  (`CONTINUITY_REACTIVATE_SECS`, the same grace the roll path gives it) to flip
+  `active: true` — a cold start whose own first call is being throttled is exactly the
+  condition that produced the stop. So the doubling backoff is floored there: an
+  unfloored 60s second rung would put a second `claude -p /leopold-run` on the same
+  checkout while the first is still starting, two owners racing on `state.json`.
+
+- **Five attempts, then a person.** The sixth is refused with
+  `api_error_relaunch_refused` (reason `attempts`), naming the error class. Five
+  attempts across ~15 minutes is a transient outage; past that it is an outage you
+  should see.
+- **A non-retryable class is refused once, by name.** Authentication, billing, an
+  invalid request, or a class Leopold does not recognize: the credentials or the input
+  failed, not the work, so nothing retries and the refusal names the class. The verdict
+  is the hook's — classified lexically from the harness's own `error` field — and the
+  watcher never re-derives it.
+- **`windows` is never touched.** No window was consumed, so none is charged: charging
+  one would spend the run's window ceiling on the API's outage and, at the ceiling, turn
+  a transient 429 into a permanent `max_windows` stop. The attempt ceiling is what bounds
+  the retry instead. `max_windows`, the kill switch, freshness and `continuity: manual`
+  all still gate the relaunch, in the same order they gate a roll.
+- **Exactly once, across a restart.** The attempt count and the next-due time live in
+  `state.json` (`api_error_attempts`, `api_error_next_at`, `api_error_relaunch_at`,
+  `api_error_result`), written before the spawn — a watcher restarted mid-ladder resumes
+  it instead of restarting it. The status pill reads
+  `stopped · api_error (retry in 47s)` while it waits.
+- **The reseed carries the budgets.** `/leopold-run` Step 1 carries `iteration`,
+  `windows`, `window_plan_vector`, `window_zero_streak` and `window_progress` across an
+  `api_error` exactly as across a roll. Without that, a rate-limited run would be handed
+  a fresh purse on every one of the five retries.
+
+Each relaunch logs `api_error_relaunch` (attempt, delay, error type, harness); every
+refusal logs `api_error_relaunch_refused` with its reason. Both render in
+`leopold watch`.
+
 
 **Cost on API billing.** The checkpoint cap is proportional to the window —
 `min(32KB, 2% of max_context_mb)` — so the one knob that governs per-turn cost governs
@@ -155,6 +240,7 @@ new in 0.18.0 are marked:
 | `kill_switch` | `.leopold/STOP` exists. Beats `continuity: auto`, always. |
 | `no_progress_across_windows` — **new** | Two consecutive windows closed zero plan items (the livelock gate). No relaunch. |
 | `max_windows` — **new** | The run consumed its window ceiling (default 10). No relaunch. |
+| `api_error` | A turn died on the API (Claude Code only — `Stop` does not fire for a failed turn). Retryable classes are relaunched up to five times on a doubling backoff; a non-retryable class stops here. |
 | `iteration_budget` | The run-wide iteration counter reached `max_iterations` (default 50) — across all windows. |
 | `repeated_failure` | The same failure hit the ceiling after the one persona-led change of approach. |
 | `no_progress` | N turns in a row with no change in the plan's signature (within one window). |

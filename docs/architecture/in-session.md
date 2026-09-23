@@ -1,7 +1,7 @@
 # In-Session Engine
 
 The in-session engine is the v0.1 tier: it runs entirely inside one Claude Code
-session, using two hooks and a set of skills. No external process, no API key, no
+session, using three hooks and a set of skills. No external process, no API key, no
 new infrastructure.
 
 !!! info "Two more hooks ship alongside the engine"
@@ -10,9 +10,9 @@ new infrastructure.
     everyday prompts, off by default) — and the repo carries
     [`persona-guard.sh`](../reference/persona-guard-hooks.md), armed only while a
     [persona run](../concepts/persona-testing.md) is active. This page covers the
-    two hooks that implement the autonomous run.
+    three hooks that implement the autonomous run.
 
-## The two hooks
+## The three hooks
 
 ```mermaid
 flowchart TB
@@ -63,6 +63,19 @@ token is present.
 | `git push` | denied | `.leopold/ALLOW_PUSH` |
 | force-push | denied | none (always denied) |
 | everything else (`rm -rf`, `reset --hard`, `gh pr`, publish, …) | allowed | — (the run's own call) |
+
+### PermissionRequest hook — the prompt the run answers itself
+
+A permission prompt in an autonomous run is a stall: nobody is there to click. While
+the session conducting the run hits one, `permission-policy.sh` answers it — `allow`,
+except that a `git commit` / `git push` is handed to the git lock above and its deny
+repeated word for word. A session that does not conduct the run, an inactive run, or no
+run at all gets no answer at all and the harness prompts exactly as it does today.
+
+It is the same script on both harnesses, but not the same power: Claude Code honors
+allow and deny, Codex honors only deny. `leopold doctor` prints that cost on the
+capability row rather than implying parity. See
+[Hooks → `permission-policy.sh`](../reference/hooks.md).
 
 ## The skills
 

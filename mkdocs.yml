@@ -126,6 +126,8 @@ plugins:
             Driver Config: Config do driver
             SDK Worker Hooks: Hooks do worker SDK
             Persona Guard Hooks: Hooks do persona guard
+            Hook Events: Eventos de hook
+            ConfigChange Reload Block: Bloqueio do reload do ConfigChange
             Comparisons: Comparações
             Contributing: Como contribuir
 
@@ -169,6 +171,7 @@ nav:
   - Reference:
       - Skills: reference/skills.md
       - Hooks: reference/hooks.md
+      - Decisions: reference/decisions.md
       - Prompt Enhancer: reference/enhance.md
       - Brief Artifacts: reference/artifacts.md
       - Plan Grammar: reference/plan-grammar.md
@@ -176,6 +179,8 @@ nav:
       - Asset Home: reference/leopold-home.md
       - SDK Worker Hooks: reference/sdk-worker-hooks.md
       - Persona Guard Hooks: reference/persona-guard-hooks.md
+      - Hook Events: reference/hook-events.md
+      - ConfigChange Reload Block: reference/config-reload-block.md
   - Comparisons:
       - Leopold vs Ralph: comparisons/ralph.md
   - Roadmap: roadmap.md

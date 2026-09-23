@@ -6,6 +6,718 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`decisions`: typed, calibrated judgements for the driver and the hooks — optional by
+  construction.** A new capability that lets code ask a model a *typed* question — `choice`,
+  `score`, `noul` — and get back a decision with a probability distribution, instead of prose
+  to parse. It replaces the false choice the codebase had between a keyword regex and a whole
+  model session: `packages/driver/src/classify.ts` reads an item's *wording*, and
+  `route.ts --smart-routing` spends a read-only session per item.
+  **It is optional and stays optional.** The core never calls a provider. Every consumer keeps
+  the deterministic path it already had, and that path runs when the extension is absent, the
+  key is missing, the network fails, the provider times out, or the answer's confidence is
+  below its floor. "Refine, never replace" is enforced by the compiler: `ask()` takes the
+  deterministic fallback as a **required** argument, pinned by a `@ts-expect-error` in
+  `src/decisions/type-assertions.ts` (it lives in `src/` because `make driver-check` never
+  compiles a test file).
+  **The contract is data, not prose.** `decisions/1.0` ships a validator, a JSON Schema and the
+  installer's provider templates, both **generated** from the driver's own constants and pinned
+  to them by test — so `jev-1.13.0` cannot become `jev-latest` in one of two places.
+  Thresholds are `floor` / `escalate` / `act`, plus an optional **asymmetric** `act_raise` /
+  `act_lower`: raising scrutiny is recoverable, lowering it skips a review that was deserved.
+  **Five providers behind one seam, in 133 lines of descriptor:** `jev` (TypeSafe System One,
+  pinned `jev-1.13.0`, calibrated), `openrouter` and `vercel` (chat-completions gateways,
+  **uncalibrated**), `generic` (any wire-compatible endpoint, calibration **declared by the
+  operator** and labelled `calibrated (operator-declared, unverified)` everywhere a human reads
+  it), and `none`, the deterministic floor. A threshold **never** carries across providers: a
+  catalog declares `thresholds_for`, and the loader refuses both a borrowed catalog and an
+  uncalibrated provider running on bars nobody chose for it — the cost is measured, not argued
+  (one stub answer at confidence 0.90 clears `jev`'s 0.85 bar and misses `openrouter`'s 0.95).
+  **Two seams, one behaviour.** The TypeScript driver and `extensions/decisions/payload/decisions.sh`
+  (`curl` + `jq`, zero packages) read the same catalogs and config, and
+  `packages/driver/test/decisions-parity.test.ts` runs both against one stub and compares —
+  no hand-written expectation, one named exemption (`elapsed_ms`), and the exemption set itself
+  asserted. The shell seam speaks the System One shape only; a chat gateway configured there
+  returns the explicit `unsupported` failure rather than hanging.
+  **Three consumers, each keeping its floor.** Item routing (`routeWithDecisions`: code gathers
+  the evidence — paths the item names, filtered to what exists on disk, with reference counts —
+  and the provider judges blast radius); review finding dedupe and demotion (fails closed in
+  both directions); and `/leopold-triage` classification, where the stage quarantine **stays** —
+  typed output removes prose and tool access from a classifier but a hostile issue body can
+  still push a classification *within the enum*.
+  **A semantic second axis on `hooks/permission-policy.sh`, which may only ever DENY.** It is
+  consulted only on a path already heading for allow, so it cannot grant, soften or reword a
+  denial; `hooks/guard-irreversible.sh` decides git before it and is unmodified. It fires only
+  above the confidence bar *and* only at the top of its rubric, names the score in the refusal,
+  and is bounded by a hard outer kill — `--timeout-ms` bounds curl, not the seam, and a stalled
+  permission prompt is the failure the hook exists to end.
+  **The calibration ledger** records every answer with its band and, later, its outcome as a
+  **second** row — never an edit of the first, so a row means what it meant when written. The
+  learn pass proposes the weakest bar the evidence supports, says so when the sample is under
+  30, and **never writes a catalog**.
+  `leopold doctor` prints one row per configured provider (there is no per-harness axis: the
+  seam is the same script on both) and is **silent** when the extension is absent;
+  `leopold watch` registers six decision events and shows a decisions meter only when the module
+  was actually used. Install from `make menu` (`decisions`); `manage.sh remove` takes back the
+  payload and **leaves your catalogs**.
+- **The second-writer and tamper detectors: a plan that changes under a run is now
+  visible, and settings cannot be swapped from inside one.** Two hooks, the fourteenth
+  through eighteenth specs in `leo_core_hook_specs`, both **Claude Code only** — Codex CLI
+  0.152.1 fires neither event, `hooks/hook-matrix.tsv` marks both rows `unavailable`
+  there, the installer refuses the specs by name, and `leopold doctor` prints
+  `file-watch · Codex: unavailable on Codex codex-cli 0.152.1 — …` rather than letting the
+  silence read as coverage.
+  `hooks/file-watch.sh` rides **`FileChanged`** and **warns without ever blocking**: an
+  unexplained change to `.leopold/PLAN.md` or `.leopold/DECISIONS.md` logs `external_write`
+  (file, resolved path, session) and returns a `systemMessage` telling the run to re-read
+  the file before acting on it. A human editing the plan on purpose is a thing that
+  happens, and the ownership gate already keeps a run to one executor.
+  **Telling the run's own writes apart is a correlation, not a payload fact, and the hook
+  says so:** a `FileChanged` payload is `file_path` + `event` and nothing else, identical
+  for the session's own `Edit` and another process's append. So `hooks/verify-receipt.sh`
+  now also stamps `own_edits[<basename>]` on every edit tool call that touched a file
+  *inside* `.leopold/` — the exact complement of its `last_edit_at`, which stays the last
+  edit *outside* `.leopold/` so the evidence gate is untouched, bounded to the 16 newest —
+  and a change delivered within two seconds of that stamp is read as the run's own. That
+  window is measured, not guessed: in a live probe an `Edit`'s `PostToolUse` landed 0.6 s
+  before its `FileChanged`, every time. The stamp is **validated before it is compared**
+  and the window is bounded at both ends — only the format the receipt hook writes counts,
+  and a stamp *after now* is not a record of an edit that already happened — because the
+  comparison is lexicographic, and an unvalidated `own_edits` entry (`"unknown"`,
+  `"9999-01-01T00:00:00Z"`) would have let whoever can write the plan also write the
+  detector's off switch, permanently and in silence.
+  **The wiring is four `FileChanged` entries for two files, because the matcher is a
+  literal file name.** Probed live on Claude Code 2.1.260, one headless session per wiring:
+  an alternation (`PLAN.md|DECISIONS.md`) fired 0 times, basename-shaped entries alone
+  fired 0, path-shaped entries alone fired 0, and both shapes per file fired 8 — the
+  path-shaped entry registers the watch and never fires, the basename-shaped one receives.
+  A clever regex here would be a detector that silently detects nothing. The same probe
+  found every change delivered **twice** (~11 ms apart) and a `cd` in the session
+  **detaching the watches** entirely — both recorded in the docs. The two deliveries are two
+  *processes*, so the fold that makes one write one warning is taken under the run's
+  `.leopold/.state.lock`: unlocked, the second delivery's read lands before the first
+  delivery's append and both warn (two events in 5/5 trials, measured). That lock is why the
+  four entries are wired at 10 s and the config guard at 5 — the floor for a lock-taking
+  hook is derived in `scripts/test-harness-lib.sh` from the budget in `hooks/_lib.sh`. The JSON hook writer's dedupe key moved
+  from `(event, command)` to `(event, matcher, command)` to make that wiring expressible;
+  an entry a previous release wired under a matcher the list no longer declares is now
+  retired in place rather than left beside the new one.
+  **`.leopold/state.json` is deliberately not watched**, and the reason is in the hook, the
+  docs and `.leopold/DECISIONS.md`: the run's own hooks rewrite it several times a turn
+  from processes with no tool call to correlate against, so a watch there would report the
+  run's own bookkeeping as tampering every turn and bury the one signal it carries. That
+  file's second-writer bound is already enforced in code — ownership is compared on every
+  stop (`foreign_stop`, `owner_takeover`, `owner_unknown`) and by `scripts/leopold-owner.sh`
+  before a run is activated.
+  `hooks/config-guard.sh` rides **`ConfigChange`** and is the half that **refuses**: a
+  settings change during an active run exits 2 and logs `config_change_blocked` (source,
+  `file_path`, session). Exit 2 blocks the **reload, not the write**, and that is now
+  **measured rather than assumed** — the event probe cannot judge this reply at all (a
+  `ConfigChange` hook never reaches the stream, so there is no exit code to read, and its
+  row says `unobservable`), so it was measured by side effect in three paired runs on
+  Claude Code 2.1.260: the session rewrites its own settings to declare an extra
+  `PreToolUse` hook and makes one more tool call; with the guard observing the new hook
+  fires, with the guard exiting 2 it never does, and the file on disk keeps the edit
+  either way. The method and the numbers are in `docs/reference/config-reload-block.md`
+  (+ pt-BR twin), and `scripts/probe-hook-events.sh` now captures it the same way, with a
+  control run. So the session keeps the hook wiring it started with, and the event is the
+  durable record that the file and the live session have diverged. `policy_settings` (the
+  administrator's, not a run's to overrule) and `skills` (prompt material) pass — even
+  when the state file cannot be read, since neither layer can disarm a run; everything
+  else is refused, **including a source this guard has never heard of, a payload with no
+  `source` at all, an unparseable payload and an unparseable `.leopold/state.json`** — the
+  fail-closed direction, because every bound Leopold enforces is a hook declared in those
+  files, the git lock first among them. The one blindness that does *not* refuse is a
+  missing `jq`: without it every Leopold hook is already inert (the git lock included), so
+  the guard says so on stderr and allows.
+  Both hooks are inert without an active run and silent for a session that does not conduct
+  it, both write no state, and `leopold watch` renders `external_write` and
+  `config_change_blocked` with a severity and a one-line meaning.
+  `scripts/test-hooks.sh` covers the warn path, the own-write exclusion (and that it is a
+  *window*, not a permanent pass), the per-file scoping, the repeated delivery, the root
+  `PLAN.md` and `state.json` non-cases, the three blocked sources, the two passed sources,
+  the unknown and absent source, the inactive / foreign-session / not-a-project no-ops and
+  the installed layout — fifteen mutations, each applied to the shipped hook, watched to
+  fail and restored, listed in the suite's header.
+
+- **"Done means verified" now refuses: the evidence gate, on both harnesses.**
+  A new hook, the twelfth and thirteenth specs in `leo_core_hook_specs`.
+  `hooks/done-gate.sh` rides **`PreToolUse` and `TaskCompleted`** — one script, two
+  events, branching on `hook_event_name`, and the first Leopold hook whose two events
+  answer in *different reply shapes*. The receipts hook records the two halves of the rule
+  (`last_edit_at`, `last_verify_at`); this is the half that says no. On `PreToolUse`
+  (matcher `Edit|Write|MultiEdit|apply_patch` — the edit tools of both harnesses) it
+  **denies** an edit of `.leopold/PLAN.md` that turns a `- [ ]` into a `- [x]` while
+  nothing has verified the work since its last edit, with the brief's own verification
+  commands in the reason; on `TaskCompleted` it **exits 2** — the capture proved the task
+  then stays pending — with `run the verification first: <commands>` on stderr under the
+  same test. Every refusal logs one `done_denied` event carrying `via`
+  (`plan_edit` | `task_completed`), the two stamps it compared and the session, and
+  `leopold watch` renders it. **The flip is read lexically, never semantically:** the hook
+  counts the ticked boxes on each side of the edit and refuses when the new side has more,
+  which is what makes all four edit shapes answerable — `Edit` (`old_string` /
+  `new_string`), `MultiEdit` (the whole batch as one claim), `Write` (the file on disk
+  against `content`, because a `Write` carries no old side) and Codex's `apply_patch` (the
+  `-` and `+` lines of the patch's `.leopold/PLAN.md` hunks only, so an `[x]` in a source
+  file the same patch touches is not a claim of done). An edit that rewords an item,
+  unticks one, or touches another file goes through untouched — only the tick is gated.
+  **Absent means today's behavior:** a brief with no `## Verification commands` section
+  and a state with neither stamp both allow exactly as before, and the run skill's "mark
+  the item done" instruction stays where it was — the prompt is the belt, the hook is the
+  braces. Equal timestamps count as stale on purpose (the stamps are one-second grained,
+  and a guard that cannot tell what came first can only ask for a *later* verification,
+  never accept an earlier lie). Being a guard it fails **closed** — an unreadable
+  `state.json` denies and names the file, where the recorder next door fails open — and it
+  writes no state at all, so it never takes the state lock and is wired at 5s. **Per
+  harness** (`hooks/hook-matrix.tsv`, rows `done-gate`): the PLAN.md gate is `available` on
+  **both**; `TaskCompleted` is `available` on Claude Code and `substitute` on Codex, which
+  has no task events at all — the installer refuses that spec there by name, the PLAN.md
+  half carries the whole bound, and `leopold doctor` gained a new row shape for a
+  capability that is *part* of itself on one harness, naming the event Codex lacks with the
+  tsv's own note instead of letting one wired event read as parity.
+  **The refusal is scoped to a claim of done and nothing else:** the claim check and the
+  no-section pass-through run *before* the state is consulted, so a `state.json` that does
+  not parse never refuses an edit of `src/foo.ts`, never refuses a reworded plan item, and
+  never blocks its own repair — the state file is fixed with the very tools this gate sees.
+  And **`last_edit_at` is the last edit outside `.leopold/`**: the run's own bookkeeping —
+  ticking this plan, logging a decision, writing the journal — is not work a verification
+  could have covered, so it never invalidates the receipt it follows. Counting it denied
+  the turn loop `skills/leopold-run/SKILL.md` Step 4 prescribes on its *correct* path
+  (verify → log the decision → tick the box) and made the `TaskCompleted` half
+  unsatisfiable outright, since the tick is itself an edit.
+  `scripts/test-hooks.sh` covers deny-without-receipt, allow-with-fresh-receipt, the stale
+  receipt, the same-second tie, Write, MultiEdit, `apply_patch` (including the mixed patch),
+  the edits that are not claims, the absent-section pass-through, `TaskCompleted` exit 2 +
+  stderr and exit 0, the inactive and foreign-session no-ops, the fail-closed state and the
+  blast radius it must *not* have, and the installed layout — each verified by mutation,
+  listed in the suite's header — plus a pin proving the gate and the receipts hook read the
+  identical entry list out of one `GUARDRAILS.md`, and an end-to-end walk of the run
+  skill's own turn loop (source edit → verification → decision log → tick → `TaskCompleted`)
+  through both hooks with no hand-built state, which is the case a suite of hand-fed
+  payloads could not see.
+- **"Done means verified" stops being prose: verification receipts, on both harnesses.**
+  A new hook, the tenth and eleventh specs in `leo_core_hook_specs`.
+  `hooks/verify-receipt.sh` rides **`PostToolUse` and `PostToolUseFailure`** (one script,
+  two events, branching on `hook_event_name`) with matcher
+  `Bash|Edit|Write|MultiEdit|NotebookEdit|apply_patch` — the git lock's alternation plus
+  Codex's edit tool. **The bug it closes:** "an item is done when a verification command
+  ran with exit 0 after its last edit" has been in `.leopold/GUARDRAILS.md` and in the run
+  skill's prose since the beginning, and *nothing anywhere compared a test run to an
+  edit*. The hook records both halves as facts on disk: `last_edit_at` on every edit tool that
+  touches a file *outside* `.leopold/` (the run's own paperwork is not the work a
+  verification covers),
+  and — only when the brief declares a `## Verification commands` section — a
+  `verify_receipts` entry `{command, exit_code, outcome, at, session}` plus
+  `last_verify_at` whenever a Bash command lexically matches one of those entries, all
+  under `.leopold/.state.lock`, with a `verify_recorded` event. A brief without that section
+  gets no receipts and no events, so a project that predates this hook runs byte-for-byte
+  as before; the shipped `templates/GUARDRAILS.md` now documents the section with its
+  examples HTML-commented, and a test proves the template itself is inert. Matching is
+  lexical and never semantic, and **an entry only counts where it begins a command**: both
+  sides go through the *same* normalizer (heredoc *bodies* dropped, shell comments dropped
+  per line, whitespace collapsed, and a command-start marker at every line start and every
+  shell separator), and the entry must start at one of those markers. So `cd sub && make
+  test`, `make test 2>&1` and `echo $(make test)` match `- make test`, while `ls -la`,
+  `make build # make test comes later`, `echo "- ran make test after the edit" >> notes.md`,
+  `git commit -m "make test green"` and a `cat >> DECISIONS.md <<EOF` whose body names the
+  command do not. That boundary is the point: appending to `DECISIONS.md` by heredoc and
+  ticking `PLAN.md` by `echo` is the run's *own* prescribed loop, so a plain substring
+  search let the run mint its own exit-0 receipts by narrating them — in the one mechanism
+  whose whole purpose is to stop unearned *done*. An entry stays a literal string, never a
+  glob (`- pytest tests/*` matches `pytest tests/*` and never `pytest tests/unit`), and a
+  multi-line call opening with `# run the suite` still matches on its second line. **The exit code is not in the payload — on either harness — and the hook says so
+  rather than inventing one.** The probe went looking and captured none: on Claude Code
+  2.1.259 *most* non-zero Bash exits never reach `PostToolUse` at all (they fire
+  `PostToolUseFailure`, whose `error` is the string `Exit code 1`) and `tool_response` is
+  an object; on Codex CLI 0.152.1 the same event fires for pass and fail alike with
+  `tool_response` as stdout only and there is no `PostToolUseFailure` — the second event
+  the matrix refuses on Codex, after `StopFailure`. **But the firing of `PostToolUse` is
+  not itself a pass, and a receipt never claims it is.** Three fields of the Claude Code
+  response object each deny a clean exit 0, and the probe captured all three:
+  `returnCodeInterpretation` (the harness re-interpreted a *non-zero* status — the
+  capture is `grep -c zzz /dev/null`, which exits 1, in the same probe run whose `false`
+  fired `PostToolUseFailure`; the binary's own classifier sets the field iff the exit was
+  1 and never on 0), `interrupted` (cut off mid-run) and `backgroundTaskId` (launched, not
+  finished — `run_in_background`, or a timeout that backgrounded the command, returning an
+  empty stdout and `interrupted: false` at launch time). Each records `exit_code: null`
+  with its own `outcome` and leaves `last_verify_at` where it was, so a brief verifying
+  with `grep -q "0 failures" build/report.txt`, a Ctrl-C'd `make test` and a backgrounded
+  one can no longer mint a fabricated pass. That is what the new `outcome` field is for:
+  `exit_code` is the number the harness reported or `null` and is never inferred, while
+  `outcome` — `passed` / `failed` / `nonzero` / `incomplete` / `ran` — is what the payload
+  *proves*, and it alone moves the stamp (on `passed` and `ran`). A Codex receipt records
+  `exit_code: null`, `outcome: ran`, and proves the verification **ran** after the last
+  edit, never that it passed; `leopold doctor` quotes the tsv's
+  `substitute` note on the Codex row (`verify-receipt · Codex: verified (PostToolUse) —
+  substitute on PostToolUse: …`) instead of implying parity. Re-running the command from
+  the hook to learn its status is banned by the charter, and reading an outcome the
+  payload does not carry would be a fabricated receipt — both alternatives are recorded in
+  `.leopold/DECISIONS.md`. The hook never blocks and never speaks to the model:
+  `decision: block` is honored at `PostToolUse` on both harnesses and is deliberately
+  unused, because the tool has already run. Both specs are wired through
+  `extensions/lib/harness.sh` alone and reach the plugin manifest, the jq-less paste
+  template and the four documented wiring blocks from that one list; the timeout is 10,
+  not 5, because the append is a read-modify-write under the state lock, and
+  `scripts/test-harness-lib.sh` derives that floor from `hooks/_lib.sh`. `leopold watch`
+  registers `verify_recorded` with a severity and a sentence. Covered by
+  `scripts/test-hooks.sh` — receipt on a match with exit 0, no receipt and no event for
+  `ls -la`, the failing path leaving `last_verify_at` untouched, the Codex payload shape,
+  all five edit tools stamping `last_edit_at` outside `.leopold/` and none of them inside it,
+  a failed edit stamping nothing, the
+  absent-section and empty-section no-ops, the shipped template's inertness, the
+  foreign-session and inactive-run cases, four concurrent receipts landing through the
+  lock, and the installed layout — plus a named case for each of the three denials, for
+  the clean capture shape beside them, and for the commented-mention, multi-line and
+  `#`-inside-a-token forms of the normalizer. Every one verified by mutation; the
+  mutations are recorded in `.leopold/DECISIONS.md`, including stamping on the exit code
+  instead of the outcome, treating any object `tool_response` as exit 0, dropping each
+  denial clause alone, and the asymmetric `#` normalizer that let a comment mint a
+  receipt.
+- **Subagents are counted, and the ceiling is enforced in code — on both harnesses.** Two
+  new hooks, the seventh, eighth and ninth specs in `leo_core_hook_specs`.
+  `hooks/subagent-account.sh` rides **`SubagentStart` / `SubagentStop`** (one script, two
+  events, branching on `hook_event_name`); `hooks/subagent-cap.sh` rides **`PreToolUse`**
+  as a second entry beside the git lock, matching `Agent|Task|collaborationspawn_agent`.
+  All four `subagent-accounting` rows and both `subagent-cap` rows in
+  `hooks/hook-matrix.tsv` are `available`: the probe captured the same accounting keys on
+  Claude Code 2.1.259 and Codex CLI 0.152.1 (`agent_id`, `agent_type`, and
+  `agent_transcript_path` on stop), and a `permissionDecision: deny` honored on both.
+  **The bug it closes:** `leopold watch` has drawn a subagents meter since 0.9 — value
+  `subagents_spawned`, ceiling `max_subagents` — and *nothing in Leopold ever wrote that
+  field*. `/leopold-run` seeds it at 0 and never touches it again, the driver has no
+  reference to it at all, and the prompt that asked a run to "keep subagents lean" had
+  nothing counting them: every run ever conducted read `0/8`. The ledger is now that
+  field's one writer. `SubagentStart` increments it under `.leopold/.state.lock` and opens
+  `subagents[<agent_id>] = {agent_type, started_at}`; `SubagentStop` stamps `stopped_at`
+  and `transcript_bytes` — the size of the **child's own** `agent_transcript_path`, never
+  the parent's — and both log a line (`subagent_started` with the running count,
+  `subagent_stopped` with what it cost, each carrying `agent_id` and `session`). It writes
+  nothing else: not `iteration`, `no_progress`, `windows`, `context_mb`,
+  `transcript_path`, `last_turn` or `owner`, because a subagent is not a turn. The
+  model-facing `last_assistant_message` is in the payload and deliberately never read. The
+  cap reads that count and denies the spawn at the ceiling — `max_subagents` in
+  `state.json`, else the `max_subagents:` line in `.leopold/GUARDRAILS.md`, else **no cap
+  and no output at all**, so a project that never set one runs byte-for-byte as before —
+  with a reason naming `count/cap` and where the number came from, plus a
+  `subagent_cap_denied` event. `max_subagents: 0` is a real ceiling, the way `max_forks: 0`
+  already is. The cap only ever *denies*: an allow reply at `PreToolUse` would override the
+  git lock and the persona allowlist, which decide first, and `guard-irreversible.sh` is
+  untouched. Its one fail-closed case is a `state.json` that does not parse; a missing
+  `hooks/_lib.sh` says so on stderr and gets out of the way rather than stopping the run's
+  work (recorded in `.leopold/DECISIONS.md`). Both specs are wired through
+  `extensions/lib/harness.sh` alone and reach the plugin manifest, the jq-less paste
+  template and the four documented wiring blocks from that one list; the ledger declares
+  10s, not 5, because it counts under the lock, and `scripts/test-harness-lib.sh` derives
+  that floor from `hooks/_lib.sh` rather than trusting the number. `leopold doctor` prints
+  a row per capability per harness (`subagent-accounting · Codex: verified (SubagentStart,
+  SubagentStop)`), and names a missing hook script once however many events it rides.
+  `leopold watch` registers the three new events with a severity and a sentence, and its
+  subagents meter finally reads a number something writes. Covered by
+  `scripts/test-hooks.sh` — count-up, stop attribution, the child's transcript and not the
+  parent's, four concurrent starts counting four through the lock, deny at the cap on both
+  harnesses' tool names, the GUARDRAILS fallback, no-cap-when-absent, the foreign-session
+  and inactive-run cases, the fail-closed state, and the installed layout — every one
+  verified by mutation; the ten mutations are recorded in `.leopold/DECISIONS.md`.
+- **A retryable API error is retried, on a doubling backoff — the watcher's second
+  continuity ladder.** `hooks/stop-failure.sh` marks a turn the API refused with
+  `stopped_reason: api_error`; until now that was a terminal stop and the seat stayed
+  empty until a human typed `/leopold-run`, which at 2am means a 429 costs a night.
+  `scripts/leopold-watch.py` now treats a **retryable** class (`rate_limit`, `overloaded`,
+  `server_error` — the hook's own lexical verdict, never re-derived here) the way it
+  treats a window roll: it relaunches the run headless through the same
+  `relaunch_argv` command, after **30s, then 120s, 120s, 240s, 480s** (a doubling
+  backoff whose every rung after the first is floored at the 120s reactivation grace a
+  relaunched child gets, so a second agent can never join one that is still starting up),
+  at most **five attempts**, logging `api_error_relaunch` (attempt, delay, error type,
+  harness). A
+  **non-retryable** class — authentication, billing, an invalid request, or a class
+  Leopold does not recognize — is refused **once**, by name, with
+  `api_error_relaunch_refused`; so is the sixth attempt (reason `attempts`). The kill
+  switch, `max_windows`, freshness and `continuity: manual` gate it in exactly the order
+  they gate a roll, and the checkpoint gate does not apply — no window rolled, so there is
+  nothing to hand the next one. **`windows` is never touched** (recorded in
+  `.leopold/DECISIONS.md`): an API error is not a context roll, no window was consumed,
+  and charging one would spend the run's window ceiling on the API's outage and turn a
+  transient 429 at the ceiling into a permanent `max_windows` stop — the attempt ceiling
+  bounds it instead, and `windows` stays the Stop hook's field alone. The attempt count and
+  the next-due time are recorded in `state.json` (`api_error_attempts`, `api_error_next_at`,
+  `api_error_relaunch_at`, `api_error_result`) **before** the spawn, exactly the way
+  `relaunch_window` / `relaunch_result` are, so a watcher restarted mid-ladder resumes it
+  instead of restarting it, and a refusal is said once rather than every 2s. `/leopold-run`
+  Step 1 now carries the run's budgets across an `api_error` exactly as across a
+  `context_budget` roll (`iteration`, `windows`, `window_plan_vector`,
+  `window_zero_streak`, `window_progress`) — without that, a rate-limited run would be
+  handed a fresh purse on every one of the five retries and escape `max_iterations`,
+  `max_windows` and the livelock gate five times over. The dashboard registers both new
+  events with a severity and a sentence, and the status pill reads
+  `stopped · api_error (retry in 47s)` while the ladder waits.
+  Covered by `scripts/test-watch-continuity.py` (stub binaries, temp homes: the schedule,
+  the ceiling, the refusal per class, exactly-once across a watcher restart, `windows`
+  untouched, a `context_budget` roll still recording and logging byte-for-byte what it
+  always did, and the whole schedule re-run under five timezones — the UTC stamps the
+  hooks write are parsed with `calendar.timegm`, so a machine on daylight saving no longer
+  reads every deadline an hour past due and refuses the first attempt as stale) and `packages/driver/test/api-error-carry.test.ts`, which extracts and runs
+  the skill's own Step 1 block the way `owner-parity.test.ts` does. Every test verified by
+  mutation; the six mutations are recorded in `.leopold/DECISIONS.md`. Claude Code only —
+  on Codex CLI 0.152.1 no failure hook exists, so nothing writes `api_error` there and the
+  ladder never engages.
+- **An API error ends the run, in state.json — because `Stop` does not fire on a failed
+  turn.** New `hooks/stop-failure.sh` on `StopFailure`, the sixth spec in
+  `leo_core_hook_specs` and the first one the capability matrix refuses on a harness:
+  `available` on Claude Code 2.1.259, **`unavailable` on Codex CLI 0.152.1**, where an API
+  error ends a run as a plain stop (`turn.failed` in the `--json` stream, no `Stop` and no
+  failure hook — the probe's stub ended every turn that way and only `SessionStart`,
+  `UserPromptSubmit` and `SessionEnd` fired). The installer refuses it there by name,
+  quoting the probed version, and `leopold doctor` prints the row instead of leaving the
+  gap to be discovered. The bug it closes: the probe drove real 429, 500, 529 and 401
+  responses through a stdlib stub and recorded **zero** `Stop` hooks, so a run whose turn
+  died on the API stayed `active: true` forever — `leopold watch` showed a live run,
+  `/leopold-status` showed a live run, and nothing anywhere said the API had refused.
+  During an active run conducted by the payload's session the hook logs `stop_failure`
+  (`error_type`, `retryable`, `session`) and writes exactly three fields under
+  `.leopold/.state.lock`: `stopped_reason: api_error`, `api_error: {type, at, retryable,
+  hint}` and `active: false` — never `iteration`, `no_progress`, `windows`, `context_mb`,
+  `transcript_path`, `last_turn` or `owner`, which belong to the Stop hook and to
+  activation (a failed turn is not a turn). `retryable` is classified **lexically** from
+  the `error` field the capture proved exists — `rate_limit`, `server_error` (500 *and*
+  529), `authentication_failed` — true for rate-limit / overloaded / server-error, false
+  for auth, billing and invalid-request, and false for a class Leopold does not recognize,
+  because a wrong `true` buys an automatic relaunch loop against a failure that will never
+  clear. The model-facing `last_assistant_message` is never read and never copied into
+  state. The hint reaches a person through `systemMessage` and stderr; the auth hint names
+  re-login (`claude /login`, `codex login`) and never offers a relaunch. A foreign session,
+  an inactive run, a payload that does not parse or any other event: silence. Because an
+  `api_error` is a *terminal* stop, it also clears the run's tokens — `.leopold/STOP`,
+  `ALLOW_GIT`, `ALLOW_PUSH`, `ALLOW_PUBLISH` — the way every other terminal stop does
+  (`allow_stop()`, the driver's `clearRunTokens()`, `/leopold-stop`): those tokens are
+  scoped to one run by documentation alone and nothing clears them at activation, so
+  leaving them behind is how a per-run `touch .leopold/ALLOW_GIT` outlives its run and the
+  next `/leopold-run` in that project starts with `git commit` already unlocked from turn
+  1, with no human in the loop (a surviving `STOP` is the mirror image: the resume the
+  hook's own hint recommends halts on turn 1 with `kill_switch`). And it never ends a run
+  it does not *conduct*: on a driver run the session that passes the gate is the driver's
+  spawned worker, whose failed turn the conductor catches and retries to `max_failures`, so
+  `active: false` there would take the project-wide git lock off mid-run — the guard decides
+  on exactly that field — while sibling workers are live under `--parallel`. That branch
+  writes nothing, clears nothing, and logs `api_error_observed` instead (the driver's own
+  log says only `item_incomplete`, so a run that dies of three 429s would otherwise read as
+  three bad worker attempts); `leo_hook_gate` now publishes `LEO_OWNER_ENGINE` so a hook can
+  tell a run's conductor from its executor without re-deriving the owner record. Its declared
+  timeout is the Stop hook's 15 rather than the 5 a small hook looks like it needs, because
+  it takes the same ~5s state lock: at 5 the two numbers met and the harness killed the
+  hook *inside* the wait whenever a compaction or a stop held the lock — no state write, no
+  `lock_timeout`, no `systemMessage`, and a run left `active: true` forever, the one failure
+  this hook exists to end. The floor is now derived, not typed: `hooks/_lib.sh` names the
+  budget (`LEO_LOCK_TRIES` × `LEO_LOCK_SLEEP`, plus `LEO_LOCK_HEADROOM`) and
+  `scripts/test-harness-lib.sh` holds every lock-taking spec to it, while
+  `scripts/test-hooks.sh` runs the hook against a live foreign lock under exactly the
+  timeout the installers wire.
+- **`hooks/_lib.sh` — the owner gate, the state lock and the event stamp, written once.**
+  Three hooks had transcribed the same "whose run is this" (the drift that produced the
+  2026-09-02 incident), so the third caller is where the library arrives, with real callers
+  instead of a guess: `leo_hook_gate` (active run + the payload's session owns it, exiting
+  silently by default and *reporting* for a guard that must answer in its own shape, and
+  publishing `LEO_OWNER_ENGINE` so a hook that would *end* a run can tell its conductor
+  from the executor the gate admits),
+  `leo_hook_lock` / `leo_hook_unlock` (the Stop hook's mkdir lock and one-minute reap, now
+  bounded so an unremovable lock cannot spin, with the wait budget named — `LEO_LOCK_TRIES`,
+  `LEO_LOCK_SLEEP` — beside the `LEO_LOCK_HEADROOM` every caller's harness timeout must
+  leave beyond it, so the unlocked fallback is reachable instead of theoretical), and
+  `leo_hook_event` (one line, `ts` and
+  `session` stamped here so no hook can log a decision nobody can attribute, plus
+  `agent_id` when the payload carries one). It is sourced relative to `${BASH_SOURCE[0]}`,
+  so the installed asset home works exactly like the checkout, and a hooks dir without it
+  is a broken install that says so: `permission-policy.sh` **denies** naming the file,
+  the continuity hooks say so on stderr and let the harness carry on, and `leopold doctor`
+  reports `_lib.sh` by name in its hooks-installed line. `permission-policy.sh` and
+  `compact-checkpoint.sh` were moved onto it in the same change; `stop-continuity.sh`
+  deliberately was not (it needs the owner-unknown and foreign-stop branches to speak and
+  releases the lock through an EXIT trap), and `cp_cap()` stays transcribed, because two
+  callers is not the bar this library was created at. `make hooks-check` lints it first —
+  a syntax error there breaks three hooks at once.
+- **The compaction checkpoint: a window's state survives a compaction because a hook
+  writes it, not because the model remembered to.** New `hooks/compact-checkpoint.sh`
+  rides `PreCompact` and `PostCompact` — two specs, one script, appended to
+  `leo_core_hook_specs`, so the one list wires it into `settings.json` and `config.toml`
+  alike and the plugin manifest, the jq-less paste template and all four documented
+  wiring blocks are pinned to it. `hooks/hook-matrix.tsv` marks all four rows
+  `available`: Claude Code 2.1.259 and Codex CLI 0.152.1 both fire both events. On
+  `PreCompact`, during an active run conducted by the payload's session, the hook composes
+  `.leopold/CHECKPOINT.md` **from durable state only** — In-Flight Item from the first
+  open `PLAN.md` item, Files and Code from `git status --porcelain`, Errors and Fixes from
+  the run's failure/rescue events, Decisions This Run from the `DECISIONS.md` entries
+  stamped since `started_at`, Learned Constraints carried forward from the prior ledger,
+  Current Work as `compaction (<trigger>) at iteration N, window W`, Next Step as the open
+  item after the in-flight one. Nothing is read from the payload, which is exactly what
+  makes the two harnesses equal here: Claude Code hands `PostCompact` the whole
+  `compact_summary` and Codex hands it nothing, and the document is byte-identical either
+  way. It speaks the ONE contract in `packages/driver/src/checkpoint.ts` — the title, the
+  seven sections in order, snapshot sections replaced and ledger sections append-deduped,
+  **merged, never nested** — and the bytes it writes equal `serializeCheckpoint()`'s, which
+  `packages/driver/test/checkpoint.test.ts` now proves by running the hook and parsing its
+  output with the real `parseCheckpoint()`. The cap (`min(32768, max(8192, 2% of the
+  window))`, `max_checkpoint_kb:` overriding it outright) **fails loud**: a merged document
+  one byte over writes nothing at all, leaves the previous file byte-identical, logs
+  `checkpoint_oversize` with the size and the cap, and says so in `systemMessage` — never
+  truncated, because a half-checkpoint that still looks authoritative would seed the next
+  window with a lie. A `CHECKPOINT.md` that does not parse under the contract is likewise
+  never overwritten and never nested into: `checkpoint_unmergeable` names why and the
+  message prints the contract. Content never becomes structure: every variable field goes
+  through `cp_line()`, which collapses whitespace and strips **every** leading `#` run, so
+  a plan item reading `## ## Files and Code` or `# # Leopold Checkpoint` lands as body
+  text instead of an eighth section or a second title — and the hook then re-reads the
+  document it just composed through the same contract reader it used on the prior file,
+  so a composition that would not parse back is never moved into place
+  (`checkpoint_unmergeable` with `document: composed`). The two writers accept and refuse
+  the same documents; `serializeCheckpoint()` throws on those bodies on the TypeScript
+  side. A successful write logs `compact_checkpoint` (trigger, bytes, cap, session) and
+  bumps `compact_checkpoints` under `.leopold/.state.lock`,
+  touching no field the Stop hook owns. On `PostCompact` the hook re-grounds the rewritten
+  window through `systemMessage` — the one `REGROUND_SENTENCE`, the brief's four files,
+  and the checkpoint framed with `CHECKPOINT_DATA_AUTHORITY` as data from a past window —
+  and logs `compact_resumed`; `additionalContext` is deliberately not used, because the
+  probe honored no reply on either harness's compaction events and Leopold does not code
+  against an unproved field. Everything else is silence, and every unexpected input fails
+  **open**: this is a continuity hook and it never blocks a compaction. `leopold doctor`
+  prints the capability row per harness naming both events; `scripts/leopold-watch.py`
+  registers `compact_checkpoint`, `compact_resumed`, `checkpoint_oversize` and
+  `checkpoint_unmergeable`. Covered in `scripts/test-hooks.sh` (write, the composition per
+  section, the two harnesses' byte-identical document, merge-not-nest with ledger dedupe,
+  the cap boundary to the byte, unmergeable, heading-shaped plan items, inactive /
+  foreign / no-state / unparseable, and the PostCompact text),
+  `packages/driver/test/checkpoint.test.ts` and
+  `reground.test.ts`, `scripts/test-doctor-matrix.sh`, `scripts/test-harness-lib.sh` and
+  `scripts/test-codex-install.sh`. Mutation-verified: the oversize branch disabled → 7
+  failures; the prior-document validation skipped → 12; the ownership gate removed → 5;
+  `session` dropped from the events → 4; the `compact_checkpoints` bump dropped → 2; a
+  payload field (`prompt_id`) let into the document → 3; the hook's re-grounding sentence
+  reworded → 1; `CHECKPOINT_DATA_AUTHORITY` paraphrased → 1; the last section dropped from
+  the writer → 1 (`missing section "Next Step"`); `cp_line()`'s `#` strip unlooped back to
+  one sed pass → 8 bash assertions plus `@scenario a heading-shaped plan item never
+  becomes a heading in the hook's document` in `checkpoint.test.ts`.
+- **The review lenses as native Codex agent roles — one definition, two harnesses.**
+  `packages/driver/src/review.ts` now exports its lenses as data (`REVIEW_LENSES`: lens,
+  role id, description, focus text, read-only, model env key) in place of the private
+  `LENS_FOCUS` map, and `extensions/lib/harness.sh` gains the one writer that turns them
+  into Codex agent roles: `leo_write_codex_agent_roles <codex-home> <lens-spec>…` writes
+  `$CODEX_HOME/agents/leopold-lens-{correctness,security,does-it-work,conformance}.toml`
+  in the shape the probe captured — `name` / `description` / `developer_instructions`,
+  `sandbox_mode = "read-only"`, and a `model` taken from `LEOPOLD_CODEX_REVIEW_MODEL` or
+  omitted entirely so the harness default stands. `scripts/install-codex.sh` (and so
+  `./install.sh` on any machine with Codex) calls it; the writer is idempotent — a file
+  whose bytes already match is not rewritten, and one that changed is backed up to
+  `<file>.leopold.bak` first — and rolls back rather than shipping a file that would not
+  parse. Any Codex session can now convene the same panel the driver does:
+  `spawn_agent(agent_type="leopold-lens-correctness")`. `buildArgv` in
+  `packages/driver/src/providers/codex.ts` names the lens role on a review query
+  (`-c agents.<role>.config_file=<path>`, the only override Codex 0.152.1 accepts) while
+  keeping `--sandbox read-only`, and names nothing when the role file is not installed.
+  Per `hooks/hook-matrix.tsv` row `review-lens-roles`: Codex `available` on
+  `SubagentStart`, Claude Code `substitute` — it has no role files at all, each lens is
+  the driver's own SDK session, which the same payload names in the same `agent_type`
+  field. `leopold doctor` states both, counting the role files on Codex
+  (`verified … — 4 role files in …`, `incomplete — 3/4 … (missing: …)`,
+  `not installed — run ./install.sh`) and repeating what the probe proved rather than
+  implying a parity that does not exist: **`codex exec` cannot run *as* a role**
+  (`-c agent_role=`, `-c agent_type=`, `-c role=` and a role file as a `--profile` layer
+  were all rejected), so a headless lens is held read-only by `--sandbox`. New
+  `packages/driver/test/codex-agent-roles.test.ts` renders the roles through the bash
+  writer and asserts every field against `REVIEW_LENSES` — parity derived from the driver's
+  source, never a second copy — plus the accepted-key bound (one unknown key makes Codex
+  ignore the whole file), three-write byte stability, and the review argv. Covered in
+  `scripts/test-harness-lib.sh` (writer, idempotency, backup, model override, TOML
+  escaping, nameless spec), `scripts/test-codex-install.sh` (the roles a Codex install
+  actually lands, and three installs leaving one file per lens untouched) and
+  `scripts/test-doctor-matrix.sh` (the three Codex row states and the Claude substitute
+  line). Mutation-verified: a lens focus edited in `review.ts` → 1 failure; a lens dropped
+  from the shell spec list → 4; `sandbox_mode` dropped → 1; the role override removed from
+  `buildArgv` → 2; idempotency disabled → 1; the doctor branch removed → 9; the installer
+  call removed → 14.
+- **The permission policy: the prompt an autonomous run answers itself, on both
+  harnesses.** New `hooks/permission-policy.sh` rides `PermissionRequest` — appended to
+  `leo_core_hook_specs` with no matcher, so the one list wires it into `settings.json`
+  and `config.toml` alike and nothing pastes JSON or TOML anywhere else. While the
+  session that CONDUCTS an active run hits a permission prompt, the hook answers `allow`
+  in the reply shape the probe captured (`hookSpecificOutput.decision.behavior`) instead
+  of stalling on a click nobody is there to make. The one exception is git, and it is not
+  re-implemented: the payload is handed to `hooks/guard-irreversible.sh` as a synthesized
+  `PreToolUse` payload and its deny is repeated **verbatim** — same reason string,
+  `ALLOW_GIT` / `ALLOW_PUSH` honored identically, force-push denied token or not.
+  Everything else is silence, which is never a loosening: no `state.json`, an inactive
+  run, or a session that does not own the run (ownership read exactly as
+  `stop-continuity.sh` reads it, so the two hooks cannot disagree) all leave today's
+  prompt untouched. It fails CLOSED where a guard must — a payload that does not parse
+  (every field it decides on is read out of that payload, so an allow would be granted
+  over a request nobody read, with no command left for the git lock to judge), an
+  unparseable `state.json`, or a git lock it cannot consult: each denies, naming which.
+  Every decision logs `permission_decided` (tool, command, decision, reason, session, and
+  `agent_id` when the payload has one). Coverage per harness comes from
+  `hooks/hook-matrix.tsv`: Claude Code 2.1.259 `available` (fires under
+  `--permission-prompts none`, allow and deny both honored), Codex CLI 0.152.1
+  `substitute` (fires under `--approve-for-me`, deny honored, allow ignored) — wired on
+  both, and `leopold doctor` now prints a wired `substitute` row with the tsv's own note
+  on the line (`… — substitute on PermissionRequest: …`) so a harness that honors half
+  the reply never reads as parity. `scripts/leopold-watch.py`
+  registers `permission_decided`. `scripts/test-guard.sh` gained a policy section that
+  runs the guard's entire red-team list through the hook and asserts every denied command
+  comes back denied *with the guard's own reason* and every allowed one allowed (103
+  checks); `scripts/test-hooks.sh` covers the event line, the reply shape, and the
+  inactive / foreign / driver / ownerless / fail-closed paths. Mutation-verified: the
+  guard call removed → 30 failures; the reason paraphrased → 15; the ownership block
+  removed → 7; the fail-closed branches opened → 5, 3 and 3; the event log dropped → 5;
+  the doctor's substitute note dropped → 2; its on-disk hook check un-derived from the
+  spec list → 1.
+- **The capability matrix in `leopold doctor`, and one registry for every event the watch
+  renders.** Doctor now joins `hooks/hook-matrix.tsv` with the live wiring and prints one
+  row per capability per harness that is on the machine — `verified` (declared **and** the
+  matrix's evidence anchor resolves in the installed `docs/reference/hook-events.md`),
+  `wired` (declared, proof missing), `not wired — run ./install.sh`, or `unavailable on
+  <harness> <probed version>` quoting the row's own note — plus a drift row per harness
+  when the installed binary is not the one the matrix was probed against
+  (`re-run scripts/probe-hook-events.sh`). Never silence for a harness that is here; the
+  matrix is read through `extensions/lib/harness.sh`'s own resolver, so doctor and the
+  installer can never disagree about which file decided. `scripts/leopold-watch.py` gains
+  an `EVENTS` registry — severity class + a one-line meaning per event — from which the
+  page's `SEV` map and the feed's description line are generated, with a generic fallback
+  renderer so an unregistered event shows its name and scalar fields instead of a blank
+  row; `window_roll`, `checkpoint_instruction`, `checkpoint_grace`, `max_windows`,
+  `no_progress_across_windows`, `persona_guard_block` and the watcher's relaunch events
+  are registered. New `scripts/test-doctor-matrix.sh` (under `make doctor-test`) asserts
+  all four statuses and the drift row in temp `CLAUDE_HOME` / `CODEX_HOME` /
+  `LEOPOLD_HOME` with stub `claude` / `codex` binaries on `PATH`, and
+  `scripts/test-watch-events.py` (under `make watch-test`) derives the event names every
+  script in `hooks/` emits and fails on any name the registry lacks. Both mutation-verified.
+- **The hook-event probe.** `scripts/probe-hook-events.sh` live-probes every hook event
+  the installed Claude Code and Codex CLI document — 33 and 12 at the probed versions —
+  from a `mktemp -d` project, with `scripts/probe/dump-hook.sh` wired on each event
+  through the shared writer (`leo_wire_hooks_json` / `leo_wire_hooks_toml`), one trigger
+  per event (pass/fail Bash, the session's own PLAN.md edit and an external write, a
+  subagent spawn, a task completion with exit-2 blocking, forced and manual compaction, an
+  API failure through a stdlib stub answering 429/529/500/401, permission allow/deny, a
+  mid-session settings edit, MCP elicitation, worktrees, `--init`/`--maintenance`,
+  `/model`, `register_repo_root`, SIGINT to `codex exec`, Codex role files). It records
+  the exact `--version` output, fingerprints the real `~/.claude` and `~/.codex` before
+  and after, and renders `docs/reference/hook-events.md` (+ `.pt-BR.md`): a captured
+  verbatim payload, or a recorded "not fired" naming the trigger tried, for every event —
+  no blank row. Never part of `make test`; `make hooks-check` lints it, and
+  `make probe-test` pins the dump hook's contract and the renderer hermetically.
+- **The capability matrix.** `hooks/hook-matrix.tsv` derives, from those captures alone,
+  one row per capability x event x harness — `capability event harness status evidence
+  note`, status `available` / `substitute` / `unavailable`, evidence the anchor of the
+  `hook-events.md` section that proves the row. Its `# probed:` header quotes the
+  `--version` output the probe recorded, never a number typed by hand. The captures
+  overturned the assumption that compaction and subagents were Claude-first: Codex 0.152.1
+  fires all 12 of its documented events, so **compact-checkpoint** (PreCompact/PostCompact,
+  minus a `compact_summary` on Codex), **subagent-accounting** (SubagentStart/SubagentStop,
+  same `agent_id` + `agent_transcript_path` keys) and **subagent-cap** (denied at
+  PreToolUse, where a deny reply exists) are available on BOTH. **permission-policy** is
+  available on Claude Code under `--permission-prompts none` and a Codex substitute for
+  the deny half only (allow is not honored there); **verify-receipt** splits pass/fail
+  across PostToolUse and PostToolUseFailure on Claude Code and is a weaker
+  ran-not-passed receipt on Codex; **done-gate** rides TaskCompleted on Claude Code with
+  the PLAN.md `- [ ]` -> `- [x]` PreToolUse gate carrying the whole bound on Codex; and
+  **api-error-stop** (StopFailure), **file-watch** (FileChanged) and **config-guard**
+  (ConfigChange) are named `unavailable` on Codex rather than silently degraded.
+  `.leopold/DECISIONS.md` records each capability's shape and the payload field it rides
+  on. `scripts/test-hook-matrix.sh` pins the file — every evidence anchor resolves to a
+  heading, every `available` row was captured firing, every `unavailable` row is absent
+  from that harness's matrix, no capability lacks a row for either harness, and the
+  probed-versions header matches the page — and runs in `make hooks-test` and in CI.
+- **One list of Leopold's own hooks, and a harness never gets one it cannot fire.**
+  `extensions/lib/harness.sh` gains `leo_core_hook_specs <asset home>`, the single
+  `EVENT|MATCHER|COMMAND|TIMEOUT` list every install path reads: `install.sh` hands it to
+  the JSON writer in place of the inline jq merge it carried since the first release,
+  `scripts/install-codex.sh` hands the same list to the TOML writer, and the two places
+  the hooks are also spelled — the plugin manifest `hooks/hooks.json` and
+  `settings.template.json`, the block printed for a machine with no jq — are pinned to
+  it by `scripts/test-harness-lib.sh` (event + matcher + script, plus the timeout for
+  the template). Both writers now read `hooks/hook-matrix.tsv` (asset home
+  first, the checkout beside `harness.sh` second) and refuse a spec for an event the
+  target harness does not have, printing `<event>: unavailable on Codex <probed version>
+  — not wired` instead of writing a dead `[[hooks.<event>]]` table into config.toml — the
+  five Codex 0.152.1 lacks (`StopFailure`, `PostToolUseFailure`, `TaskCompleted`,
+  `FileChanged`, `ConfigChange`) can no longer reach it, an event the matrix has no row
+  for is wired unchanged. Claude Code is never held back to that intersection: the same
+  list wires all ten of this run's events there.
+
+  **Only the matrix's status word may drop a hook.** `unavailable`, or a `substitute`
+  whose evidence says the event is not on that harness at all — an `available` row is
+  wired whatever section it cites, because the status column is the contract and the
+  evidence anchor is evidence for a human. A matrix that is missing, unreadable, or that
+  the reader cannot parse means the question could not be asked — so every spec is wired
+  and the reason is printed, naming the file and (for a failed read) awk's exit status. A
+  gate that read its own inability to open a file as a refusal would let one `chmod` on
+  `hook-matrix.tsv` silently uninstall the git lock, which is the exact inverse of what
+  it is for. `scripts/probe-hook-events.sh` — the live probe the matrix is DERIVED from —
+  turns the gate off entirely with `LEO_WIRE_UNCHECKED=1` and asserts every spec it
+  handed over actually landed: an instrument filtered by its own output could only ever
+  confirm what it already said, and would publish a verbatim "not fired" for an event
+  nobody ever hooked.
+
+  **An installer reports what landed, not what it asked for.** Every writer call now sets
+  `LEO_WIRED_COUNT` / `LEO_WIRED_EVENTS` / `LEO_REFUSED_EVENTS` after the write validates
+  (the dispatcher aggregates them per harness), and both installers read those: a count
+  and the event names when hooks landed, a loud "NOT ONE Leopold hook was declared — the
+  git lock is NOT armed" when none did. The end-of-install verification checks each core
+  hook's own command — per hook in `settings.json`, the guard's `command = "…"` line in
+  `config.toml` — so a managed block with no git lock in it can no longer read as green.
+
+  **An event that becomes refused loses the wiring it already had.** A managed
+  `[[hooks.<event>]]` block left by an earlier Leopold is stripped when every spec in the
+  list is refused, and refused hooks are pruned out of `settings.json` (a JSON merge only
+  ever added) by the exact `(event, command)` pairs that were refused — never by the
+  command alone, which would sweep the same script out of every other event and every
+  other tagged block on the way past — with the emptied entries and event keys pruned with
+  them. The removal line names the events actually removed, and a config holding nothing
+  of Leopold's is left byte-identical, mtime included.
+
+### Changed
+- **The git lock is wired identically on both harnesses.** Codex CLI now gets the core
+  spec's matcher `Bash|Edit|Write|MultiEdit|NotebookEdit` instead of a hand-written
+  `Bash`, and Claude Code now gets the timeouts Codex already had (Stop 15 s, PreToolUse
+  5 s). The lock's scope is unchanged — `git commit` and `git push` (force-push always)
+  are still its only denials, and `guard-irreversible.sh` still exits 0 for any tool but
+  Bash, so the alternatives Codex has no tool for cost nothing. An older `settings.json`
+  is upgraded in place: three installs over it leave exactly one Leopold hook per event
+  and every hook the user added themselves untouched.
+- **The docs that print that wiring are pinned to the same list.** The `settings.json`
+  and `config.toml` blocks in `docs/reference/hooks{,.pt-BR}.md` and
+  `docs/concepts/harnesses{,.pt-BR}.md` now show exactly what the writer produces —
+  matcher, timeouts and emission order — and `scripts/test-harness-lib.sh` parses each
+  page's fenced block and fails if any of them drifts from `leo_core_hook_specs` again.
+
+### Fixed
+- **`verified` was unreachable on the npm install path.** `packages/driver` vendors the
+  harness into `assets/` for the install path the docs call the fastest one, and the
+  vendored list carried no `docs/` — so `install.sh` (which copies `docs/` best-effort) left the
+  asset home without `docs/reference/hook-events.md`, every evidence anchor the matrix
+  cites failed to resolve, and doctor reported *every* correctly wired capability —
+  `run-continuity`, `git-lock`, `permission-policy` — as `wired … re-run ./install.sh`.
+  A correctly armed git lock read as a warning, the remedy it named could not fix it
+  (reinstalling never brought a page the package did not carry), and the four-status
+  contract collapsed to three. `copy-runtime.mjs` now vendors `docs`, and doctor tells the
+  two diagnoses apart, because they have different remedies: the evidence page is not
+  installed at all (it names where it looked and points at the installer), or the page is
+  here and the section the matrix cites has moved (it names the page, the anchor, and
+  `make probe-hook-events`). `scripts/test-doctor-matrix.sh` gained a section that builds
+  the npm asset home from `copy-runtime.mjs`'s own dir list with **no**
+  `LEO_HOOK_EVENTS_DOC` and no `LEO_MATRIX_TSV` — the env vars every other section
+  exports, which is why none of them could see this — and asserts `verified` there;
+  `scripts/test-codex-install.sh` asserts the matrix and the page land in the asset home
+  from a real install. Mutation-verified: `docs` removed from the vendored list → 5
+  failures; the two diagnoses collapsed into one → 3.
+- **CI stayed green on regressions `make test` caught.** `scripts/test-doctor-matrix.sh`
+  and `scripts/test-watch-events.py` — the only automated proof of the doctor's capability
+  rows and the watch's event registry — ran in `make test` and in no CI job, because
+  `.github/workflows/ci.yml` enumerates one step per suite by hand. Both are steps now,
+  the syntax check reads `hooks/*.sh` instead of an enumeration that had already fallen
+  behind `hooks/permission-policy.sh`, and the enumeration itself is no longer trusted:
+  new `scripts/test-ci-parity.sh` (first in the gate, `make ci-parity`) derives the suites
+  from `make -n test` and from the workflow and fails in **both** directions — a suite the
+  gate runs and CI does not, and a step CI runs that a clean local run would not predict.
+  CLAUDE.md's "`make test` is the gate, it is what CI runs" is now a test rather than a
+  sentence. Mutation-verified in both directions.
+
 ## [0.22.0] - 2026-09-02
 
 ### Fixed

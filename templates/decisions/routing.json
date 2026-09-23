@@ -1,0 +1,48 @@
+{
+  "version": "decisions/1.0",
+  "questions": {
+    "effort": {
+      "type": "choice",
+      "instructions": {
+        "question": "How much reasoning effort does this plan item need?",
+        "focus": "Judge the BLAST RADIUS in `evidence`, not the wording of `item`. A dramatic sentence about a one-line doc change is low; a plain sentence about a helper with fifty callers is not.",
+        "note": "`evidence.files` and `evidence.references` were gathered by code, not guessed. Trust them over the item's own description of itself."
+      },
+      "criteria": {
+        "low": { "what": "Cosmetic, or a blast radius of one file with no callers", "examples": ["fix a typo in a heading", "rename a local variable"] },
+        "medium": { "what": "An ordinary change: one module, callers that are easy to see", "not_for": "Anything touching money, identity, data integrity or deploys" },
+        "high": { "what": "A wide blast radius, a public contract, or a project the charter flags high-risk" },
+        "xhigh": { "what": "Wide blast radius AND a sharp edge: auth, permissions, or a guard that denies things" },
+        "max": { "what": "Sharp edges that are hard to walk back: schema and migrations, payments, crypto, irreversible operations" }
+      }
+    },
+    "irreversible": {
+      "type": "noul",
+      "instructions": {
+        "question": "Does this item touch money, identity, data integrity, or anything hard to walk back?",
+        "focus": "Hard to walk back means a later commit cannot simply revert it: a migration that has run, a payment taken, a credential rotated, data deleted."
+      },
+      "criteria": {
+        "true": { "what": "A mistake here survives a revert", "examples": ["run a schema migration", "rotate a signing key", "delete rows"] },
+        "false": { "what": "Fully recoverable by reverting the diff", "not_for": "A change that is merely large" }
+      }
+    },
+    "cosmetic": {
+      "type": "noul",
+      "instructions": {
+        "question": "Is this item genuinely cosmetic, regardless of how it is worded?",
+        "focus": "Cosmetic means the behaviour of the program is unchanged. A file path containing the word `docs` does not make an item cosmetic.",
+        "note": "This question exists because the deterministic classifier mistakes a cited docs/ path for a docs change. See .leopold/DECISIONS.md, the item-1 spike."
+      },
+      "criteria": {
+        "true": { "what": "No behaviour changes: wording, formatting, comments", "examples": ["reword a README paragraph"] },
+        "false": { "what": "Behaviour, wiring, or test coverage changes", "examples": ["build the doctor's capability matrix", "run the full verification gate"] }
+      }
+    }
+  },
+  "thresholds": {
+    "effort":       { "floor": 0.5, "escalate": 0.65, "act": 0.85, "act_raise": 0.65, "act_lower": 0.85 },
+    "irreversible": { "floor": 0.5, "escalate": 0.65, "act": 0.85, "act_raise": 0.65, "act_lower": 0.85 },
+    "cosmetic":     { "floor": 0.5, "escalate": 0.65, "act": 0.85, "act_raise": 0.65, "act_lower": 0.85 }
+  }
+}
