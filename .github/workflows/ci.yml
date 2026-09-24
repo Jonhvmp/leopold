@@ -196,14 +196,25 @@ jobs:
           notes="$(awk -v ver="${{ steps.ver.outputs.v }}" 'BEGIN{f=0} $0 ~ "## \\["ver"\\]"{f=1;next} /^## \[/{if(f)exit} f{print}' CHANGELOG.md)"
           [ -z "$notes" ] && notes="Leopold $V"
           gh release create "$V" --title "Leopold $V" --notes "$notes"
+      # npm is gated on the registry, not on the tag: the tag is pushed before the
+      # publish runs, so a publish that fails (an expired NPM_TOKEN did, on v0.23.0)
+      # would otherwise never be retried — every later run sees the tag and skips.
+      - name: Already on npm?
+        id: npm
+        run: |
+          if npm view "leopold-driver@${{ steps.ver.outputs.v }}" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Setup Node for npm
-        if: steps.tag.outputs.new == 'true' && env.NPM_TOKEN != ''
+        if: steps.npm.outputs.published == 'false' && env.NPM_TOKEN != ''
         uses: actions/setup-node@v7
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
       - name: Publish leopold-driver to npm (idempotent)
-        if: steps.tag.outputs.new == 'true' && env.NPM_TOKEN != ''
+        if: steps.npm.outputs.published == 'false' && env.NPM_TOKEN != ''
         working-directory: packages/driver
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
