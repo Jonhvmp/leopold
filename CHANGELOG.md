@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-24
+
 ### Added
 - **`decisions`: typed, calibrated judgements for the driver and the hooks — optional by
   construction.** A new capability that lets code ask a model a *typed* question — `choice`,
